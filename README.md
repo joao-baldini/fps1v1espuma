@@ -1,46 +1,84 @@
 # aim_duelo
 
-Duelo 1v1 e Deathmatch inspirado no CS2 que roda no navegador. O jogo continua em um arquivo só (`index.html`), com geometria leve, áudio sintetizado, cinco arenas de duelo e um mapa próprio para DM. Sem modelos, texturas ou arquivos de som pesados.
+FPS inspirado no CS2 que roda no navegador, com três modos: **1v1**, **2v2** e **DM**. O jogo continua em um arquivo só (`index.html`), com geometria leve, áudio sintetizado, cinco arenas de duelo e um mapa próprio para DM. Sem modelos, texturas ou arquivos de som pesados.
+
+## Modos de jogo
+
+No menu, escolha o modo em **Modo de jogo**:
+
+| Modo | Sozinho | Online |
+|---|---|---|
+| 1v1 | Treinar contra bot (fácil, médio ou difícil) | Sala com o mesmo código para duas pessoas |
+| 2v2 | Você e um bot aliado contra dois bots | Sala para até 4 pessoas; bots completam as vagas |
+| DM | Você + 9 bots, todos contra todos, 5 minutos | — |
 
 ## Como jogar com seu parceiro
 
 1. Abra o jogo pelo GitHub Pages (ou abra o `index.html` direto no Chrome).
-2. Os dois digitam o **mesmo código de sala** e clicam em **Entrar na sala 1v1**.
+2. Escolha **1v1** ou **2v2**. Todos digitam o **mesmo código de sala** e clicam em **Entrar na sala**.
 3. Quem entrar primeiro cria a sala e vira o juiz das rodadas. Quando o segundo conecta, a partida começa sozinha.
 
 A conexão é direta entre os dois navegadores (WebRTC via PeerJS). O servidor público do PeerJS só faz o pareamento; o jogo em si não passa por servidor. Algumas redes corporativas bloqueiam conexão direta. Se não conectar em 15 segundos, testem fora da VPN ou em outra rede.
 
-Sem parceiro? Use **Treinar contra bot** (fácil, médio ou difícil).
+Sem parceiro? Use **Treinar contra bot** no 1v1 ou **Jogar 2v2 com bots**.
+
+## 2v2
+
+Rodadas de dois contra dois nos mapas de duelo, com as mesmas regras do 1v1: 3 s de freeze, primeiro a N rodadas, sem respawn dentro da rodada. A rodada acaba quando um time inteiro morre; se o tempo acabar, vence o time com mais vida somada. Não há fogo amigo: tiros param no aliado sem causar dano. Aliados aparecem em azul, com um marcador sobre a cabeça; inimigos em vermelho. O placar no topo mostra quantos de cada time estão vivos.
+
+- **Com bots:** você e um bot aliado contra dois bots, na dificuldade escolhida. Os bots sorteiam uma arma a cada rodada, passam a posição de inimigos vistos para o aliado e saem para caçar depois de alguns segundos.
+- **Online:** quem cria a sala vira o juiz: roda os bots, a rodada e o placar e retransmite tudo para as outras pessoas (até 4 por sala). Em **Times na sala 2v2**, escolha *pessoas em lados opostos* (cada uma com um bot aliado) ou *pessoas no mesmo time contra bots*. Quando alguém entra ou sai, começa uma partida nova e um bot assume a vaga livre. Cada pessoa controla o próprio movimento e a própria vida, como no 1v1.
 
 ## Deathmatch
 
-Em **Mapa**, escolha **Distrito DM · todos contra todos · 10 jogadores**. Selecione **Somente pistolas**, **Somente precisão**, **Somente rifles** ou **Tudo liberado**, escolha a dificuldade e clique em **Jogar Deathmatch · 5 minutos**. A categoria limita suas armas e as dos bots; a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento; a opção de capacete vale para todos eles.
+Em **Modo de jogo**, escolha **DM**. Selecione **Somente pistolas**, **Somente precisão**, **Somente rifles** ou **Tudo liberado**, escolha a dificuldade e clique em **Jogar Deathmatch · 5 minutos**. A categoria limita suas armas e as dos bots; a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento; a opção de capacete vale para todos eles.
 
-Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e coldzera**. É todos contra todos: os bots enxergam, perseguem e acertam uns aos outros com os mesmos raios de tiro, colisões e cálculo de dano usados contra o jogador. Os nomes não alteram a dificuldade.
+O mapa é **Medina**, feito para o DM: assimétrico, em tons de areia, com dois "bombsites" elevados (escadas, sem rampas), meio com portas, túneis em ziguezague, uma longa com porta, passarela estreita e área aberta ao sul. Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e coldzera**. É todos contra todos: os bots enxergam, perseguem e acertam uns aos outros com os mesmos raios de tiro, colisões e cálculo de dano usados contra o jogador. Os nomes não alteram a dificuldade.
 
 - Preparação de 3 segundos, seguida de **5 minutos completos** de partida.
-- Respawn automático após **1,5 segundo**, com vida e carregador cheios. A escolha entre 18 pontos prioriza distância dos vivos e cobertura.
+- No início, cada participante nasce num dos 26 pontos sem que nenhum par se enxergue. Cada ponto olha para a rota mais aberta, nunca para uma parede.
+- Respawn automático após **1,5 segundo**, com vida e carregador cheios. O ponto escolhido nunca está à vista de um inimigo vivo nem perto dele; depois disso, vale a distância e a variedade.
 - Proteção de **1,8 segundo** ao nascer, encerrada ao mover ou atirar; os bots seguem a mesma regra. Um anel azul identifica bots protegidos.
 - Reserva de munição infinita, com carregadores, cadência e recargas normais.
 - Killfeed mantém os últimos oito abates, inclusive bot contra bot. **Tab** mostra os dez participantes; no menu, use **Ver placar do Deathmatch**.
 - Vence quem tem mais abates; desempates por menos mortes e depois mais headshots. Empates exatos dividem a vitória. Ao zerar o relógio, tiros, respawns e placar param; é possível jogar novamente ou voltar ao menu.
 
-O mapa tem quatro conjuntos de coberturas, pátio central e rotas pelo perímetro. Usa o mesmo piso branco e paredes azuis dos mapas atuais. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
+Os bots navegam também pelas plataformas e escadas. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
+
+## Arsenal (tecla B) e skins
+
+Durante a partida, aperte **B** para abrir o arsenal: uma grade com as armas por categoria (pistolas, rifles, precisão, facas), no estilo do Valorant. O mouse continua travado e move um cursor próprio; clique numa arma para equipá-la na hora (ela passa a valer também nas próximas rodadas). Você continua podendo andar com o arsenal aberto. **B** ou **Esc** fecha. No DM, as armas fora da categoria da partida ficam desativadas. Fora da partida, use **Abrir arsenal** na aba **Armas**.
+
+Na parte de baixo do arsenal ficam as skins da arma em foco. Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de tom a cada abate seguido, como no Valorant, e o quinto vira finalização; um emblema com a contagem aparece no HUD. A sequência zera quando você morre ou renasce. Clicar numa skin toca uma prévia dos sons.
+
+| Skin | Armas | Visual | Sons |
+|---|---|---|---|
+| Padrão | todas | original | originais |
+| Sublime | só AK-47 | modelo próprio em marfim, frisos dourados e filetes de energia ciano, inspirado na linha Prime (Sublime em português) do Valorant | tiro elétrico; sinos ao abater |
+| Pulso Neon | armas de fogo | azul-marinho com filetes ciano e magenta | laser sintetizado; bipes de fliperama |
+| Brasa | armas de fogo | carvão com filetes laranja e dourado | estampido grave com estalos; gongo |
+| Glacial | armas de fogo | branco gelo e azul | disparo cristalino; sinos de gelo |
+
+A **AK-47 Sublime** vem bloqueada. Digite o código de desbloqueio em **Armas → Código de skin**; ela fica liberada naquele navegador. O jogo guarda só o hash SHA-256 do código, nunca o código em si. Como tudo roda no navegador, isso evita o acesso casual, mas não impede quem edita o jogo ou os dados salvos.
+
+No 1v1 online, o oponente vê sua skin na arma em terceira pessoa e ouve o tiro dela; no 2v2 online, os outros ouvem o tiro da sua skin.
 
 ## Equipamento
 
-Abra a aba **Armas**, ou clique em **Escolher armas e equipamento do bot**, antes de entrar na partida. Escolha uma arma de cada categoria e a categoria equipada ao nascer. As escolhas ficam salvas no navegador e funcionam tanto no 1v1 quanto no treino. Mudanças durante a partida entram na próxima rodada.
+Abra a aba **Armas**, ou clique em **Escolher armas, skins e bot**, antes de entrar na partida. Escolha uma arma de cada categoria e a categoria equipada ao nascer. As escolhas ficam salvas no navegador e funcionam tanto no 1v1 quanto no treino. Durante a partida, troque de arma na hora pelo arsenal (**B**).
 
 | Tecla | Categoria | Opções |
 |---|---|---|
 | 1 | Rifle | AK-47, M4A4, M4A1-S com silenciador |
 | 2 | Pistola | Desert Eagle, USP-S com silenciador |
 | 3 | Faca | Karambit, Butterfly |
+
+As mãos são as mesmas com qualquer arma: pele, sem luva, e manga na cor do boneco (no 2v2, na cor do time).
 | 4 | Precisão | AWP, SSG 08 (Scout) |
 
 O bot pode usar qualquer uma das sete armas de fogo, com sua própria cadência, carregador e recarga. Também é possível escolher se ele tem capacete: a proteção aparece no personagem e reduz apenas o dano na cabeça. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância. Os jogadores usam capacete no 1v1.
 
-As facas têm animações distintas de puxada, inspeção, corte e estocada. A Butterfly é compacta, com lâmina curva simples e dois cabos lisos, sem recortes ou enfeites. A puxada de 0,8 s e a inspeção de 4,2 s seguem a sequência do vídeo de referência: subir com a faca fechada, abrir, girar o pulso e segurar; na inspeção, apoiar no indicador e exibir a lâmina antes de voltar. Os dedos da mão direita abrem e fecham; a mão esquerda fica baixa, com dedos separados e o punho conectado ao antebraço. Os cortes alternam de direção; o botão direito faz uma estocada. Segurar o botão repete o ataque na cadência da faca. Atacar interrompe a inspeção com uma transição curta. A Deagle tem ferrolho móvel, recuo visual mais forte e som mais grave. São recriações estilizadas em geometria do próprio jogo.
+As facas têm animações distintas de puxada, inspeção, corte e estocada. A Butterfly segue o formato da do CS2: lâmina clip point com swedge (falso fio) no dorso, kicker e choil no tang, dois cabos esqueletizados com três rasgos cada, pinos aparentes e trava no cabo seguro. Os cabos ficam empilhados dos dois lados da lâmina. A puxada de 0,8 s e a inspeção de 4,2 s seguem a sequência do vídeo de referência: subir com a faca fechada, abrir, girar o pulso e segurar; na inspeção, apoiar no indicador e exibir a lâmina antes de voltar. Os dedos da mão direita abrem e fecham; a mão esquerda fica baixa, com dedos separados e o punho conectado ao antebraço. Os cortes alternam de direção; o botão direito faz uma estocada. Segurar o botão repete o ataque na cadência da faca. Atacar interrompe a inspeção com uma transição curta. A Deagle tem ferrolho móvel, recuo visual mais forte e som mais grave. São recriações estilizadas em geometria do próprio jogo.
 
 A Karambit tem modelo e animações próprios: lâmina contínua em garra, cabo arredondado e anel apoiado no indicador, em pegada invertida. A puxada de 0,65 s gira a faca pelo anel e fecha a mão sobre o cabo. A inspeção de 2,8 s gira, exibe a lâmina e retorna; cortes e golpe forte usam movimentos específicos. O indicador permanece fechado no anel quando os outros dedos se abrem. Em repouso, há apenas uma respiração leve, com transição contínua ao terminar uma ação. A interpolação cúbica mantém a velocidade contínua entre poses, sem ultrapassar os pontos de captura. A pegada usa esta [referência visual de CS2 na Comunidade Steam](https://steamuserimages-a.akamaihd.net/ugc/2095921547381812206/7B4754A7E72DFF2350B1CC9C75BED2E55EA42306/). A butterfly mantém seu modelo, pegada e animações.
 
@@ -56,9 +94,9 @@ Os cinco mapas de duelo são simétricos (girados 180°), com chão branco e uma
 | Ponte | roxo | Ponte elevada no meio; dá para passar por baixo |
 | Fortes | laranja | Cada base fica num forte elevado, com duas rampas descendo e um muro alto no meio |
 | Rotação | — | Fila com os 5 mapas em ordem aleatória; quando a fila acaba, embaralha de novo |
-| Distrito DM | azul | Arena exclusiva de todos contra todos, com dez participantes e respawn |
+| Medina | areia | Mapa exclusivo do DM: assimétrico, dois sites elevados com escadas, meio com portas, túneis, longa e passarela |
 
-Vale o mapa escolhido por quem criou a sala.
+No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
 
 ## Regras
 
@@ -87,7 +125,7 @@ Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Sou
 
 **Bunnyhop assistido** vem ligado: segure Espaço para pular novamente ao tocar o chão. Para ganhar controle no ar, solte W, alterne A/D e acompanhe o movimento com o mouse. É possível desligar a assistência e usar pulos manuais ou configurar a rodinha para pular. Nesse caso, troque armas pelas teclas 1–4 ou Q. A velocidade aérea tem limite para impedir aceleração ilimitada.
 
-Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precisão. Os rifles têm spray, com recuo menor nas M4s. A Scout recupera parte da precisão no ápice do salto. O recuo da câmera acompanha o desvio dos tiros.
+O tranco de câmera ao atirar (Deagle, AWP, Scout, USP-S) e ao tomar tiro é menor, e tiros seguidos recebidos não acumulam além de um teto. O recuo das armas na mão também é mais contido. Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precisão. Os rifles têm spray, com recuo menor nas M4s. A Scout recupera parte da precisão no ápice do salto. O recuo da câmera acompanha o desvio dos tiros.
 
 É uma aproximação própria para este jogo no navegador, sem o motor Source 2 nem os assets do CS2. Referência de movimento: [código do Source publicado pela Valve](https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/game/shared/gamemovement.cpp). Parâmetros das armas: [dados do jogo espelhados pelo SteamTracking](https://github.com/SteamTracking/GameTracking-CS2/blob/master/game/csgo/pak01_dir/scripts/weapons.vdata), adaptados ao balanceamento existente.
 
@@ -105,6 +143,7 @@ Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precis
 | Q / rodinha | Última arma / trocar arma |
 | R | Recarregar |
 | F | Inspecionar (giros da Karambit e Butterfly) |
+| B | Arsenal: grade de armas e skins |
 | Tab | Placar |
 | Esc | Menu e configurações |
 
@@ -122,17 +161,19 @@ Tudo fica salvo no navegador.
 
 Sem pós-processamento, sombras em tempo real ou antialiasing. O mapa e as partes estáticas das armas usam geometria agrupada; impactos e rastros são reutilizados. As animações só transformam grupos existentes. A resolução padrão não multiplica pixels por telas de DPI alto. O ajuste automático reduz a resolução quando o tempo médio de quadro sobe; o menu renderiza a 30 FPS e abas ocultas suspendem a atualização.
 
-No DM, os nove bots compartilham geometria por instanciamento: corpo, cabeça, capacete e sete modelos de arma, com efeitos reutilizados. A navegação calcula a malha uma vez e reutiliza buffers de busca; a percepção dos bots é distribuída ao longo dos quadros. Áudio e passos simultâneos têm limite próprio para evitar picos.
+No DM e no 2v2, os outros participantes compartilham geometria por instanciamento: corpo, cabeça, capacete, nove modelos de arma (facas incluídas) e marcador de aliado, com efeitos reutilizados. A cor de cada instância é alocada com a capacidade total antes do primeiro desenho; antes dessa correção o buffer ficava vazio e a GPU descartava os bots, que ficavam invisíveis. A navegação é uma grade 2,5D: cada célula guarda a altura do chão e só liga vizinhas sem degrau maior que um passo, então os bots sobem escadas, rampas e plataformas. A malha é calculada uma vez por mapa e reutiliza buffers de busca; a percepção dos bots é distribuída ao longo dos quadros. Áudio e passos simultâneos têm limite próprio para evitar picos.
 
 Mouse bruto quando disponível, disparo processado no evento de clique e envio imediato de tiros no 1v1. A latência final depende do navegador, monitor, hardware e rede; não há garantia de latência zero ou desempenho igual em todos os PCs.
 
 Prévia local com Node.js 22 ou mais recente: `node tools/serve.mjs`, depois abra `http://127.0.0.1:8081`. Use `--port=8082` para trocar a porta. O servidor aceita um caminho de vídeo opcional para revisão local em `/reference.mp4`; esse vídeo não é incorporado ao jogo.
 
-A página `/tools/knife-preview.html` permite visualizar as facas isoladas ou na mão e reproduzir cada animação, com uma régua para conferir poses intermediárias. Ela reutiliza a geometria, as posições e as animações de `index.html` e usa enquadramento 16:9. Não é carregada pelo jogo. A Butterfly isolada usa 212 triângulos e três chamadas de desenho; com mãos e braços, cerca de 668 triângulos e 11 chamadas. A animação dos dedos reutiliza uma única geometria com interpolação na GPU.
+A página `/tools/knife-preview.html` permite visualizar as facas isoladas ou na mão e reproduzir cada animação, com uma régua para conferir poses intermediárias. Ela reutiliza a geometria, as posições e as animações de `index.html` e usa enquadramento 16:9. Não é carregada pelo jogo. A Butterfly isolada usa cerca de 1.270 triângulos e três chamadas de desenho; com mãos e braços, cerca de 1.660 triângulos e 11 chamadas. A animação dos dedos reutiliza uma única geometria com interpolação na GPU.
 
-Use `/tools/knife-preview.html?weapon=knife` para abrir diretamente a Karambit. O modelo tem 1.080 triângulos e três chamadas de desenho; com mãos e braços, cerca de 1.536 triângulos e 11 chamadas. Lâmina, cabo e anel compartilham geometria entre primeira e terceira pessoa. As curvas são criadas uma única vez; as animações reutilizam os mesmos grupos e buffers.
+Use `/tools/knife-preview.html?weapon=knife` para abrir diretamente a Karambit. O modelo tem 1.080 triângulos e três chamadas de desenho; com mãos e braços, cerca de 1.470 triângulos e 11 chamadas. Lâmina, cabo e anel compartilham geometria entre primeira e terceira pessoa. As curvas são criadas uma única vez; as animações reutilizam os mesmos grupos e buffers.
 
-Testes sem dependências: `node --test tests/game.test.cjs`. Cobrem as 24 combinações de equipamento, dano e capacete, recargas e armas do bot, precisão, contra-strafe, diagonal, consistência entre 30/60/144 FPS, bunnyhop, colisões, rampas e animações das facas. Também verificam os dez participantes do DM, categorias, navegação, spawns, proteção, autoria dos abates, confrontos reais entre bots nas quatro categorias, recargas e encerramento exato de cinco minutos.
+Testes sem dependências: `node --test tests/game.test.cjs`. Cobrem as 24 combinações de equipamento, dano e capacete, recargas e armas do bot, precisão, contra-strafe, diagonal, consistência entre 30/60/144 FPS, bunnyhop, colisões, rampas e animações das facas. Também verificam os dez participantes do DM, categorias, navegação, spawns iniciais sem linha de visão entre si e virados para rotas abertas, sites elevados alcançáveis, proteção, autoria dos abates, confrontos reais entre bots nas quatro categorias, recargas e encerramento exato de cinco minutos. Para as novidades: o bloqueio da AK Sublime (código só como hash), a sequência de abates das skins e uma partida 2v2 completa com bots (times de dois, sem fogo amigo, placar e estatísticas consistentes).
+
+Para testar salas online sem o servidor público do PeerJS, rode um servidor PeerJS local e abra o jogo com `?peerserver=127.0.0.1:9000`.
 
 ## Publicar no GitHub Pages
 
