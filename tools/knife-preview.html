@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prévia das facas · aim_duelo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#17212a;color:#edf0ee;font:14px system-ui,sans-serif}#stage{height:calc(100vh - 160px);display:flex;justify-content:center;align-items:center}canvas{display:block;max-width:100%;max-height:100%;aspect-ratio:16/9}
+footer{height:160px;padding:14px 22px;background:#111920;display:grid;gap:10px}h1{font-size:17px;margin:0}button,select{font:inherit;background:#263540;color:inherit;border:1px solid #4b606a;border-radius:5px;padding:7px 12px;cursor:pointer}button[aria-pressed=true]{border-color:#f0b76a;background:#574329}input{width:100%;accent-color:#e9ad61}.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.muted{color:#9eb1bc;font-size:12px}#status{margin-left:auto}
+</style>
+<div id="stage"><canvas id="preview"></canvas></div>
+<footer><div class="row"><h1>Facas · geometria e animações do jogo</h1><span id="status" class="muted">Carregando…</span></div>
+<div class="row"><select id="weapon" aria-label="Faca"><option value="butterfly">Butterfly</option><option value="knife">Karambit</option></select><select id="view" aria-label="Visualização"><option value="hands">Na mão</option><option value="model">Modelo isolado</option></select>
+<button data-action="idle">Repouso</button><button data-action="draw">Puxada</button><button data-action="inspect">Inspeção</button><button data-action="slash">Corte esquerdo</button><button data-action="backslash">Corte de volta</button><button data-action="stab">Estocada direita</button><button id="play" aria-pressed="false">Reproduzir</button></div>
+<div class="row"><label for="time">Posição da animação</label><output id="timeLabel">0%</output><span class="muted">Use a régua para conferir cada pose. Clique no corte durante uma inspeção para conferir a transição.</span></div><input id="time" aria-label="Posição da animação" type="range" min="0" max="1000" value="1000">
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(async()=>{
+  const source = await (await fetch('/index.html')).text(), script = source.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const section=(a,b)=>script.slice(script.indexOf(a),script.indexOf(b,script.indexOf(a)));
+  // Reuse the exact model, poses and transitions from index.html; no duplicated knife implementation.
+  const factory = new Function('THREE',`
+    const V3=THREE.Vector3,TAU=Math.PI*2,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+    const angDiff=(a,b)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
+    const S={pcol:'vermelho'},pcolHex=()=>0x7c8991;
+    const P={weapon:'butterfly',kAnim:null},W={butterfly:{draw:800},knife:{draw:650}},now=()=>performance.now();
+    ${section('const VM_BASE =','const VM_YAW =')}
+    ${section('const FACES =','/* ================= Mapas')}
+    ${section('const skinMat =','const MUZZLE =')}
+    ${section('const bladeMat =','let deagleSlide =')}
+    return {P,W,VM_BASE,buildKnifeHands,buildButterfly,buildKarambit,applyKnifePose,sampleKnifeAnimation,beginKnifeAnimation,KNIFE_REST,KNIFE_DURATIONS};
+  `);
+  const api=factory(THREE), scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(55,1,.01,5);
+  const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('preview'),antialias:false,powerPreference:'high-performance'});
+  renderer.setClearColor(0x263946);renderer.setPixelRatio(1);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x8899aa,.75));const sun=new THREE.DirectionalLight(0xffffff,.55);sun.position.set(.4,1,.6);scene.add(sun);
+  const root=new THREE.Group();scene.add(root);root.scale.setScalar(.5);
+  const rigs={},models={};for(const key of ['butterfly','knife']){const group=new THREE.Group();rigs[key]={group,rig:api.buildKnifeHands(group,key==='butterfly')};root.add(group);models[key]=key==='butterfly'?api.buildButterfly().pivot:api.buildKarambit();scene.add(models[key]);}
+  const initialWeapon=new URLSearchParams(location.search).get('weapon')==='knife' ? 'knife' : 'butterfly';
+  api.P.weapon=initialWeapon;document.getElementById('weapon').value=initialWeapon;
+  let playing=false,action='idle',time=1,last=performance.now();const range=document.getElementById('time'),label=document.getElementById('timeLabel');
+  function selectAction(next){action=next;const t=performance.now();if(api.P.kAnim)api.P.kAnim.t0=t-time*api.P.kAnim.duration;if(next==='idle')api.P.kAnim=null;else api.beginKnifeAnimation(next,t);time=next==='idle'?1:0;range.value=time*1000;document.querySelectorAll('[data-action]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.action===next)));}
+  document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>selectAction(b.dataset.action));
+  range.oninput=()=>{time=Number(range.value)/1000;playing=false;document.getElementById('play').setAttribute('aria-pressed','false');};
+  document.getElementById('play').onclick=()=>{playing=!playing;document.getElementById('play').setAttribute('aria-pressed',String(playing));if(playing&&time>=1){time=0;if(action!=='idle')api.P.kAnim=null;selectAction(action);}};
+  document.getElementById('weapon').onchange=e=>{api.P.weapon=e.target.value;api.P.kAnim=null;selectAction('idle');};
+  function resize(){const h=Math.min(Math.max(180,innerHeight-160),innerWidth*9/16),w=h*16/9;renderer.setSize(w,h);camera.aspect=16/9;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
+  function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;const key=api.P.weapon,anim=api.P.kAnim;
+    if(playing&&anim){time=Math.min(1,time+dt*1000/anim.duration);range.value=Math.round(time*1000);}label.textContent=Math.round(time*100)+'%';
+    const pose=api.sampleKnifeAnimation(anim,anim?anim.t0+time*anim.duration:t);api.applyKnifePose(rigs[key].rig,pose);
+    const isolated=document.getElementById('view').value==='model';
+    for(const k of ['butterfly','knife']){rigs[k].group.visible=!isolated&&k===key;models[k].visible=isolated&&k===key;}
+    root.position.set(...api.VM_BASE[key]);camera.position.set(0,0,0);camera.rotation.set(0,0,0);
+    if(isolated){models[key].position.set(.015,-.005,-.60);models[key].rotation.set(.08,-.18,0);models[key].scale.setScalar(1.45);if(key==='butterfly'){models[key].children.at(-1).rotation.z=pose[6];models[key].children.at(-1).children.at(-1).rotation.z=pose[7];}}
+    renderer.render(scene,camera);document.getElementById('status').textContent=`${renderer.info.render.triangles} triângulos · ${renderer.info.render.calls} chamadas de desenho`;
+  }selectAction('idle');requestAnimationFrame(frame);
+})().catch(e=>{document.getElementById('status').textContent=e.message;console.error(e);});
+</script>
+</html>
