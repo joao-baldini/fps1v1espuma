@@ -1180,18 +1180,6 @@ const BUTTERFLY_SIZE = .62, BUTTERFLY_TILT = -.556, BUTTERFLY_GAP = .0085;
 const butterflySteel = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, specular: 0x8a979f, shininess: 70 });
 const butterflyHardware = new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x4a555c, shininess: 35 });
 let butterflyGeo = null;
-function knifeExtrude(points, depth, holes = []) {
-  const shape = new THREE.Shape(); shape.moveTo(...points[0]);
-  for (let i = 1; i < points.length; i++) shape.lineTo(...points[i]);
-  shape.closePath();
-  for (const [x, y, radius] of holes) {
-    const hole = new THREE.Path();
-    for (let i = 0; i <= 8; i++) { const a = -i / 8 * TAU, px = x + Math.cos(a) * radius, py = y + Math.sin(a) * radius; if (i === 0) hole.moveTo(px, py); else hole.lineTo(px, py); }
-    shape.holes.push(hole);
-  }
-  const geometry = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, steps: 1, curveSegments: 1 });
-  geometry.translate(0, 0, -depth / 2); return geometry;
-}
 function mergeKnifeParts(parts) {
   const p=[],n=[],c=[];
   for (const [geometry,hex,z=0] of parts) {
@@ -1264,10 +1252,9 @@ function buildButterfly() {
   blade.add(free); pivot.add(blade);
   return { pivot, blade, free };
 }
-const knifeArmGeo = new THREE.CylinderGeometry(1,1,1,6), knifeArmUp = new V3(0,1,0);
+// Mesmo padrão das armas de fogo: mão em bloco de pele e manga em bloco na cor do boneco.
+const knifeArmGeo = new THREE.BoxGeometry(2,1,2), knifeArmUp = new V3(0,1,0);
 const knifeArmA = new V3(), knifeArmB = new V3(), knifeArmDir = new V3();
-// Mesmas mãos das armas de fogo: pele sem luva e manga na cor do boneco.
-const knifeFingerMat = new THREE.MeshLambertMaterial({ color:0xd2a77c, morphTargets:true, morphNormals:true });
 // Pose channels: hand x/y/z, pitch/yaw/roll, blade hinge, free hinge, left x/y/z/roll, finger opening, presentation at the index finger.
 const KNIFE_REST = new Float32Array(14), knifePose = new Float32Array(14);
 // Vídeo: puxada de 27.75–28.55 s; mão fechada sobe, abre, gira o pulso e segura.
@@ -1370,40 +1357,6 @@ function beginKnifeAnimation(type, t) {
   const from = type === 'draw' ? null : new Float32Array(sampleKnifeAnimation(P.kAnim,t));
   P.kAnim = { type, weapon: P.weapon, t0: t, duration: type === 'draw' ? W[P.weapon].draw : (P.weapon === 'knife' ? KARAMBIT_DURATIONS : KNIFE_DURATIONS)[type], from };
 }
-function knifePalm(width, height, depth) {
-  const x=width/2,y=height/2,c=.008;
-  return knifeExtrude([[-x+c,-y],[x-c,-y],[x,-y+c],[x,y-c],[x-c,y],[-x+c,y],[-x,y-c],[-x,-y+c]],depth);
-}
-function buildKnifeGlove(open,ringGrip=false) {
-  const hand=new THREE.Group(), body=[], digits=[], extended=[];
-  const add=(list,geo)=>list.push([geo,0x3a4349]);
-  add(body,knifePalm(.064,.065,open ? .028 : .037));
-  const thumbSide=open ? 1 : -1;
-  add(body,new THREE.BoxGeometry(.019,.035,.021).rotateZ(-thumbSide*.70).rotateX(-.25).translate(thumbSide*.032,.001,-.003));
-  add(body,new THREE.BoxGeometry(.017,.023,.019).rotateZ(-thumbSide*.95).rotateX(-.35).translate(thumbSide*.043,.019,-.009));
-  const lengths=[.030,.039,.036,.027];
-  for (let i=0;i<4;i++) {
-    const x=(i-1.5)*.014,length=lengths[i];
-    if(ringGrip&&i===0){
-      add(extended,new THREE.BoxGeometry(.012,.026,.018).rotateX(-.60).translate(x,.032,-.010));
-      add(extended,new THREE.BoxGeometry(.011,.019,.017).rotateX(-1.80).translate(x,.039,-.026));
-    }else{
-      add(extended,new THREE.BoxGeometry(.012,length*.65,.016).rotateX(-.25).translate(x,.028+length*.30,-.003));
-      add(extended,new THREE.BoxGeometry(.011,length*.45,.015).rotateX(-.70).translate(x,.028+length*.75,-.014));
-    }
-    if (!open) {
-      add(digits,new THREE.BoxGeometry(.012,.026,.018).rotateX(-.60).translate(x,.032,-.010));
-      add(digits,new THREE.BoxGeometry(.011,.019,.017).rotateX(-1.80).translate(x,.039,-.026));
-    }
-  }
-  hand.add(new THREE.Mesh(mergeKnifeParts(body),skinMat));
-  const extendedGeo=mergeKnifeParts(extended),fingerGeo=open ? extendedGeo : mergeKnifeParts(digits);
-  if (!open) { fingerGeo.morphAttributes.position=[extendedGeo.attributes.position]; fingerGeo.morphAttributes.normal=[extendedGeo.attributes.normal]; }
-  const fingers=new THREE.Mesh(fingerGeo,open ? skinMat : knifeFingerMat); hand.add(fingers);
-  if (!open) extendedGeo.dispose();
-  for (const [geo] of [...body,...digits,...extended]) geo.dispose();
-  return { hand,fingers };
-}
 function fitKnifeArm(mesh, a, b, radius) {
   knifeArmDir.copy(b).sub(a); const length = knifeArmDir.length();
   mesh.position.copy(a).add(b).multiplyScalar(.5); mesh.scale.set(radius,length,radius);
@@ -1415,7 +1368,6 @@ function applyKnifePose(rig, pose) {
   rig.right.rotation.set((butterfly ? .40 : RH_ROT[0])+pose[3],(butterfly ? -.24 : RH_ROT[1])+pose[4],(butterfly ? .12 : RH_ROT[2])+pose[5]);
   rig.left.position.set(-.18+pose[8],-.045+pose[9],.015+pose[10]); rig.left.rotation.set(-.72,.15,-.65+pose[11]);
   const opening=pose[12] || 0,presentation=pose[13] || 0;
-  rig.fingers.morphTargetInfluences[0]=opening;
   if (butterfly) {
     rig.holder.position.set(-.048+opening*.036,.026+opening*.039,-.014-opening*.009);
     rig.holder.rotation.z=-.08-presentation*1.25;
@@ -1427,26 +1379,25 @@ function applyKnifePose(rig, pose) {
   if (butterfly) { rig.blade.rotation.z = pose[6]; rig.free.rotation.z = pose[7]; }
   for (let i=0;i<2;i++) {
     const hand = i ? rig.left : rig.right, arm = rig.arms[i]; hand.updateMatrix();
-    knifeArmB.set(0,-.055,.006).applyMatrix4(hand.matrix);
-    // pulso curto de pele e manga até perto da mão, como nas armas de fogo
-    knifeArmA.copy(arm.elbow).lerp(knifeArmB,.9); fitKnifeArm(arm.skin,knifeArmA,knifeArmB,.022);
-    fitKnifeArm(arm.sleeve,arm.elbow,knifeArmA,.037);
+    // a manga termina na face do bloco da mão voltada para o cotovelo, como o antebraço das armas (espessura .072)
+    knifeArmB.copy(arm.elbow).sub(hand.position).setLength(.04).add(hand.position);
+    fitKnifeArm(arm.sleeve,arm.elbow,knifeArmB,.036);
   }
 }
 function buildKnifeHands(g, butterfly = false) {
-  const rightGlove=buildKnifeGlove(false,!butterfly),right=rightGlove.hand;
+  const right=new THREE.Group(); right.add(new THREE.Mesh(gloveGeo, skinMat));
   g.add(right);
   const holder = new THREE.Group(); holder.position.set(...(butterfly ? [-.048,.026,-.014] : [-.023,.040,-.022])); holder.rotation.set(...(butterfly ? [.10,-.16,-.08] : KH_ROT));
   const rig = butterfly ? buildButterfly() : { pivot: buildKarambit() };
   const pivot = rig.pivot; holder.add(pivot); right.add(holder); if (!butterfly) pivot.scale.setScalar(KARAMBIT_SCALE);
   // Como no CS, as facas aparecem só com a mão direita; a esquerda segue montada para as poses, mas oculta.
-  const lh=buildKnifeGlove(true).hand; lh.visible=false;
+  const lh=new THREE.Group(); lh.visible=false;
   g.add(lh);
   const arms = [[.42,-.42,.26],[-.44,-.44,.26]].map(elbow=> {
-    const skin = new THREE.Mesh(knifeArmGeo,skinMat), sleeve = new THREE.Mesh(knifeArmGeo,sleeveMat); g.add(skin,sleeve); if (elbow[0] < 0) skin.visible = sleeve.visible = false;
-    return { skin, sleeve, elbow: new V3(...elbow) };
+    const sleeve = new THREE.Mesh(knifeArmGeo,sleeveMat); g.add(sleeve); if (elbow[0] < 0) sleeve.visible = false;
+    return { sleeve, elbow: new V3(...elbow) };
   });
-  const result = { holder, pivot, right, left: lh, fingers:rightGlove.fingers, arms, ...rig }; applyKnifePose(result,KNIFE_REST); return result;
+  const result = { holder, pivot, right, left: lh, arms, ...rig }; applyKnifePose(result,KNIFE_REST); return result;
 }
 let deagleSlide = null;
 const vmBody = {}, vmSkin = {};

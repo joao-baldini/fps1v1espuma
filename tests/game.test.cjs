@@ -45,7 +45,7 @@ function game(saved) {
   vm.runInContext(section('function overlap(', '/* ================= Áudio'), context);
   vm.runInContext(section('const P =', 'const G ='), context);
   vm.runInContext(section('function spawnSelf(', '/* ================= Oponente na tela'), context);
-  vm.runInContext(section('const KNIFE_REST =', 'function knifePalm'), context);
+  vm.runInContext(section('const KNIFE_REST =', 'function fitKnifeArm'), context);
   const state = vm.runInContext('({P, S, W, ORDER, CATEGORIES, BOT, LEVELS, configureLoadout, damageFor, physics, playerInput, inaccuracy, spawnSelf, selectWeapon, inspect, shoot, updateWeapon, startReload, botSpawn, botUpdate, botDamage, sampleKnifePose, sampleKnifeAnimation, beginKnifeAnimation, BF_DRAW, BF_INSPECT, KNIFE_CLIPS, KNIFE_DURATIONS, KARAMBIT_CLIPS, KARAMBIT_DURATIONS, sampleKarambitPose, sampleKarambitIdle, PHYS_STEP, BHOP_CAP, MAPS, DM, DM_POOLS, DM_BOT_NAMES, dmLoadoutOrder, dmBuildNav, dmSetup, dmTick, dmDamage, dmRespawn, dmChooseSpawn, dmRefreshTargets, dmCell, dmFindPath, dmWalkClear, dmBotFire, dmRanking, dmFinish, dmStop, dmKillReward, trace, clearLine, overlapAny, stat})', context);
   return Object.assign(state, { context, events, keys, tick: value => { clock = value; }, floor });
 }
