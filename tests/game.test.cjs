@@ -16,6 +16,9 @@ class Vec {
   constructor(x = 0, y = 0, z = 0) { this.set(x, y, z); }
   set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }
   copy(v) { return this.set(v.x, v.y, v.z); }
+  crossVectors(a, b) { return this.set(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x); }
+  normalize() { const n = Math.hypot(this.x, this.y, this.z); return this.set(this.x / n, this.y / n, this.z / n); }
+  negate() { return this.set(-this.x, -this.y, -this.z); }
 }
 function game(saved) {
   let clock = 10000, seed = 92741;
@@ -23,7 +26,10 @@ function game(saved) {
   const floor = { min: [-1000, -1, -1000], max: [1000, 0, 1000] };
   const context = vm.createContext({
     performance: { now: () => clock }, localStorage: { getItem: () => saved ? JSON.stringify(saved) : null }, V3: Vec,
-    boxes: [floor], ramps: [], STEP_UP: .5, AX: 30, AZ: 30, C: 1.2, MS: .95,
+    boxes: [floor], ramps: [], STEP_UP: .5, AX: 30, AZ: 30, C: 1.2, WALL_H: 7,
+    THREE: { Color: class {}, Mesh: class { constructor(geometry) { this.geometry = geometry; } } },
+    scene: { add() {}, remove() {} }, worldMat: null, worldMesh: null,
+    addBoxTo() {}, geoFrom() { return { dispose() {} }; },
     MAP: { spawn: { hx: 2, z0: 20, z1: 24 }, exit: { zc: -20, hw: 7 } },
     G: { mode: 'bot', me: 'A', opp: 'B', stats: {}, names: {}, view: { ph: 'live', m: 'match', r: 1 } },
     PCOLORS: { red:'#d8432c', orange:'#f08a24', yellow:'#f2c230', green:'#3fae4a', purple:'#8a4fd8', pink:'#e85aa8', black:'#2b2d33' },
@@ -34,33 +40,29 @@ function game(saved) {
     remoteShotFx() {}, banner() {}, killBanner() {}, healFx() {}, spat: () => ({ v:.5, pan:0 }), addFeed: (killer,victim,w,hs) => events.push({topic:'feed',killer,victim,w,hs}),
     netSend: e => events.push(e), emit: (topic, data) => events.push({ topic, data }),
     botEmit: (topic, data) => events.push({ topic, data }),
-    spawnPoint: (side,spec) => ({ x: spec?spec[0]:0, y: 0, z: spec?spec[1]:0, yaw: spec?spec[2]:0 }),
+    spawnPoint: (side,spec) => ({ x: spec?spec[0]:0, y: spec?context.groundAt(spec[0], spec[1]):0, z: spec?spec[1]:0, yaw: spec?spec[2]:0 }),
     setTimeout() {}, console,
   });
   vm.runInContext(section('const V3 =', '/* ================= Configurações').replace('const V3 = THREE.Vector3, ', 'const '), context);
   vm.runInContext(section('const DEFAULTS =', '/* ================= Render'), context);
-  vm.runInContext(section('const MAPS =', 'const MAP_IDS'), context);
+  vm.runInContext(section('const THEMES =', 'const RAMP_FLIP'), context);
   vm.runInContext(section('function stat(', '/* ================= Rede P2P'), context);
-  vm.runInContext(section('function rampHeightAt', 'function addTri'), context);
+  vm.runInContext(section('const RAMP_FLIP', '// Rotação:'), context);
   vm.runInContext(section('function overlap(', '/* ================= Áudio'), context);
   vm.runInContext(section('const P =', 'const G ='), context);
+  vm.runInContext(section('const INTERP =', '/* ================= Rodadas'), context);
   vm.runInContext(section('function spawnSelf(', '/* ================= Oponente na tela'), context);
   vm.runInContext(section('const KNIFE_REST =', 'function fitKnifeArm'), context);
   const state = vm.runInContext('({P, S, W, ORDER, CATEGORIES, BOT, LEVELS, configureLoadout, damageFor, physics, playerInput, inaccuracy, spawnSelf, selectWeapon, inspect, shoot, updateWeapon, startReload, botSpawn, botUpdate, botDamage, sampleKnifePose, sampleKnifeAnimation, beginKnifeAnimation, BF_DRAW, BF_INSPECT, KNIFE_CLIPS, KNIFE_DURATIONS, KARAMBIT_CLIPS, KARAMBIT_DURATIONS, sampleKarambitPose, sampleKarambitIdle, PHYS_STEP, BHOP_CAP, MAPS, DM, DM_POOLS, DM_BOT_NAMES, dmLoadoutOrder, dmBuildNav, dmSetup, dmTick, dmDamage, dmRespawn, dmChooseSpawn, dmRefreshTargets, dmCell, dmFindPath, dmWalkClear, dmBotFire, dmRanking, dmFinish, dmStop, dmKillReward, trace, clearLine, overlapAny, stat})', context);
   return Object.assign(state, { context, events, keys, tick: value => { clock = value; }, floor });
 }
-function dmWorld(g) {
-  const map=g.MAPS.deathmatch;
+function dmWorld(g, map='deathmatch') {
   g.context.G.mode='dm';g.context.G.opp=null;
-  g.context.MAP=map;g.context.AX=map.ax;g.context.AZ=map.az;
-  g.context.boxes=[g.floor];
-  const X=map.ax,Z=map.az;
-  g.context.boxes.push({min:[-X-1,0,-Z-1],max:[-X,7,Z+1]},{min:[X,0,-Z-1],max:[X+1,7,Z+1]},{min:[-X,0,-Z-1],max:[X,7,-Z]},{min:[-X,0,Z],max:[X,7,Z+1]});
-  map.build({box(x,z,w,d,h,color,y=0){g.context.boxes.push({min:[x-w/2,y,z-d/2],max:[x+w/2,y+h,z+d/2]});}},{});
+  g.context.buildMap(map);
   g.dmBuildNav();return g;
 }
-function deathmatch(category='all',level='medio') {
-  const g=dmWorld(game());g.S.dmWeapons=category;g.S.dmLevel=level;
+function deathmatch(category='all',level='medio',map='deathmatch') {
+  const g=dmWorld(game(),map);g.S.dmWeapons=category;g.S.dmLevel=level;
   g.dmSetup(10000);
   g.advance=(milliseconds,dt=1/60)=>{const end=g.time+milliseconds;while(g.time<end){g.time=Math.min(end,g.time+dt*1000);g.tick(g.time);g.dmTick(dt,g.time);}};
   g.time=10000;return g;
@@ -88,6 +90,37 @@ test('DM spawn points and routes are free, connected and spread across the arena
   const bot=g.DM.bots[0];let paths=0;
   for(const p of g.DM.spawnPoints)if(g.dmFindPath(bot,p.x,p.z)){paths++;for(const id of bot.path)assert.ok(n.open[id]);}
   assert.ok(paths>=15);
+});
+
+test('Dust II connects both levels of the CT crossing to the Deathmatch routes', () => {
+  const g = deathmatch('all', 'dificil', 'dust2'), n = g.DM.nav, bot = g.DM.bots[0];
+  assert.equal(g.context.G.view.mp, 'dust2');
+  assert.equal(g.DM.actors.length, 10);
+  assert.ok(g.DM.spawnPoints.length >= 25);
+  const under = g.dmCell(9.5, -16, .75), over = g.dmCell(9.5, -16, 4.25);
+  assert.equal(under, over + n.plane);
+  assert.ok(n.open[over] && n.open[under]);
+  assert.equal(g.clearLine([9.5, 2.4, -16], [9.5, 5.9, -16]), false);
+
+  bot.pos.set(3.5, .75, -16);
+  assert.ok(g.dmFindPath(bot, 9.5, -16, .75));
+  assert.equal(bot.path.at(-1), under);
+  assert.ok(g.dmWalkClear(3.5, -16, 16.5, -16, .75, 1.03));
+  assert.equal(g.dmWalkClear(9.5, -16, 9.5, -16, .75, 4.25), false);
+  bot.pos.set(9.5, 2.65, -5.3);
+  assert.ok(g.dmFindPath(bot, 14, -23, 4.25));
+  assert.ok(bot.path.every(id => id < n.plane));
+  assert.ok(bot.path.some(id => n.height[id] === 4.25));
+
+  const ct = entity(3.5, -16), short = entity(9.5, -5.3);
+  ct.pos.y = .75;
+  short.pos.y = 2.65;
+  for (let i = 0; i < 360; i++) {
+    g.physics(ct, 1, 0, 5.5, false, g.PHYS_STEP);
+    g.physics(short, 0, -1, 5.5, false, g.PHYS_STEP);
+  }
+  assert.ok(ct.pos.x > 17 && ct.pos.y < 1.4);
+  assert.ok(short.pos.z < -18 && short.pos.y === 4.25);
 });
 
 test('each DM category constrains player switching and bot weapons at every respawn', () => {
@@ -315,6 +348,73 @@ test('all seven bot weapons use the selected ammo, reload time, fire rate and da
   }
 });
 
+test('hard bot travels with the knife, can miss a hop, and waits for the gun draw on contact', () => {
+  const g = game({ botLevel: 'dificil' }), b = g.BOT;
+  g.context.Math.random = () => .1;
+  g.botSpawn(0, [0, 20, 0]);
+  b.wp = new Vec(0, 0, -20); b.route = [];
+  g.P.alive = false;
+  let t = 10000, tookOff = false, landed = false, maxSpeed = 0;
+  for (; t < 12800 && !landed; t += 1000 / 60) {
+    g.tick(t); g.botUpdate(1 / 60, t);
+    if (!b.onGround) tookOff = true;
+    if (tookOff && b.onGround) landed = true;
+    if (b.knifeOut) maxSpeed = Math.max(maxSpeed, Math.hypot(b.vel.x, b.vel.z));
+  }
+  assert.ok(landed && maxSpeed > g.W.rifle.speed);
+  assert.equal(b.hopsLeft, 0);
+  assert.equal(b.knifeOut, true);
+  const ammo = b.mag;
+  g.P.alive = true; g.P.pos.set(b.pos.x, 0, b.pos.z - 8); b.yaw = 0;
+  g.tick(t); g.botUpdate(1 / 60, t);
+  assert.equal(b.knifeOut, false);
+  assert.ok(b.nextFire >= t + g.W.rifle.draw);
+  assert.equal(b.mag, ammo);
+});
+
+test('hard bot strafes between bursts and fires some shots crouched from a stable stance', () => {
+  const g = game({ botLevel: 'dificil' }), b = g.BOT;
+  g.context.Math.random = () => .25;
+  g.botSpawn(0, [0, 0, 0]); g.P.pos.set(0, 0, -10);
+  let fired = 0, crouched = 0, movedBetweenBursts = false;
+  for (let t = 10000; t < 16500; t += 1000 / 60) {
+    const ammo = b.mag;
+    g.tick(t); g.botUpdate(1 / 60, t);
+    const speed = Math.hypot(b.vel.x, b.vel.z);
+    if (b.mag < ammo) {
+      fired++;
+      if (b.crouch) { crouched++; assert.equal(b.h, 1.15); }
+      assert.ok(b.onGround && speed < 1);
+    }
+    if (fired && t < b.pauseUntil && speed > 2) movedBetweenBursts = true;
+  }
+  assert.ok(crouched > 0 && crouched < fired && movedBetweenBursts);
+});
+
+test('2v2 crouch snapshot lowers head, gun and hitbox while keeping the feet at floor height', () => {
+  const g = game(), cx = g.context, proxy = cx.arenaMakeProxy('B', 1);
+  const instance = () => ({ count: 0, instanceMatrix: {}, placed: [],
+    setMatrixAt(i, pose) { this.placed[i] = pose; },
+    setColorAt() {},
+  });
+  const legs = instance(), body = instance(), head = instance(), gun = instance(), helmet = instance();
+  const dummy = { position: new Vec(), scale: new Vec(), rotation: new Vec(), updateMatrix() {
+    this.matrix = { y: this.position.y, sy: this.scale.y };
+  } };
+  g.DM.mode = 'team'; g.P.team = 0; proxy.team = 1; proxy.pz = -5;
+  g.DM.actors.push(g.P, proxy);
+  g.DM.render = { legs, body, head, helmet, guns: { rifle: gun }, meshes: [legs, body, head, gun, helmet], dummy, color: { set() {} } };
+  cx.proxyPush(proxy, 0, 0, -5, 0, 0, 1, 'rifle', 100, 1, 1, 1);
+  cx.arenaUpdateProxies(10060); g.dmRefreshTargets(); cx.dmRender(10060);
+  assert.equal(proxy.crouch, true);
+  assert.equal(legs.placed[0].y, 0);
+  assert.ok(legs.placed[0].sy < .21);
+  assert.ok(Math.abs(head.placed[0].y + .65) < 1e-8);
+  assert.equal(gun.placed[0].y, head.placed[0].y);
+  assert.equal(g.trace([0, 1, 0], [0, 0, -1], 10, g.DM.playerTargets).part, 'head');
+  assert.equal(g.trace([0, 1.64, 0], [0, 0, -1], 10, g.DM.playerTargets), null);
+});
+
 test('semiautomatic weapons require a fresh press, automatic rifles continue while held', () => {
   const g = game(); g.spawnSelf(0); g.selectWeapon('pistol'); g.P.drawEnd = 0; g.P.m1 = true; g.P.m1Press = true;
   g.updateWeapon(0, 20000); assert.equal(g.P.ammo.pistol.mag, 6);
@@ -536,13 +636,15 @@ function connect(host, guest, code) {
   return () => { for (let i = 0; i < 4; i++) { const a = toGuest.sent.splice(0), b = toHost.sent.splice(0); a.forEach(m => toHost.handlers.data(m)); b.forEach(m => toGuest.handlers.data(m)); } };
 }
 
-test('DM room: a friend takes a bot slot, respawns from the host, and kills, rewards and scores match on both sides', () => {
-  const host = fakeNet(dmWorld(game())), guest = fakeNet(dmWorld(game()));
+test('DM room: a friend joins the host map, takes a bot slot, and shares respawns, kills, rewards and scores', () => {
+  const host = fakeNet(dmWorld(game(), 'dust2')), guest = fakeNet(dmWorld(game()));
   for (const g of [host, guest]) { g.S.dmWeapons = 'rifle'; g.S.name = g === host ? 'Ana' : 'Beto'; vm.runInContext("ARENA.kind='dm';ARENA.net=true;ARENA.host=true", g.context); }
   let t = 10000; const tick = ms => { t += ms; host.tick(t); guest.tick(t); };
   tick(0); const pump = connect(host, guest, 'amigos');
   pump(); tick(400); host.dmTick(0, t); pump();
   vm.runInContext('arenaNetTick(now())', host.context); pump();
+  assert.equal(guest.context.MAP.id, 'dust2');
+  assert.equal(guest.context.G.view.mp, 'dust2');
   assert.equal(host.DM.actors.length, 10); assert.equal(host.DM.bots.length, 8);
   assert.equal(guest.context.G.me, 'B'); assert.equal(guest.DM.actors.length, 10);
   assert.deepEqual(Array.from(host.DM.actors, e => e.id).sort(), Array.from(guest.DM.actors, e => e.id).sort());

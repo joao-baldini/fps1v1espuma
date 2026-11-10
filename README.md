@@ -1,6 +1,6 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com quatro modos: **1v1**, **2v2**, **XvX** e **DM**. O jogo continua em um arquivo só (`index.html`), com geometria leve, áudio sintetizado, cinco arenas de duelo e um mapa próprio para DM. Sem modelos, texturas ou arquivos de som pesados.
+FPS inspirado no CS2 que roda no navegador, com quatro modos: **1v1**, **2v2**, **XvX** e **DM**. O jogo continua em um arquivo só (`index.html`), com geometria leve, áudio sintetizado, cinco arenas de duelo e dois mapas de DM. Sem modelos, texturas ou arquivos de som pesados.
 
 ## Modos de jogo
 
@@ -32,12 +32,12 @@ No **XvX**, escolha o tamanho de **Seu time** e do **Time inimigo** (1 a 5 cada)
 
 ## Deathmatch
 
-Em **Modo de jogo**, escolha **DM**. Para jogar sozinho, use **Jogar DM com bots**. Para jogar com amigos, todos digitam o mesmo código e clicam em **Entrar na sala de DM**: quem chega primeiro vira o juiz, e cada pessoa que entra assume a vaga de um bot sem reiniciar a partida (se alguém sai, um bot volta). Selecione **Somente pistolas**, **Somente precisão**, **Somente rifles** ou **Tudo liberado**, escolha a dificuldade e clique em **Jogar Deathmatch · 5 minutos**. A categoria limita suas armas e as dos bots; a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento; a opção de capacete vale para todos eles.
+Em **Modo de jogo**, escolha **DM**. Selecione **Medina** ou **Dust II**, a categoria de armas e a dificuldade. Para jogar sozinho, use **Jogar DM com bots**. Para jogar com amigos, todos digitam o mesmo código e clicam em **Entrar na sala de DM**. Quem chega primeiro cria a sala e define o mapa. Cada pessoa que entra assume a vaga de um bot durante a partida, e um bot volta se alguém sai. A categoria limita as armas de todos, e a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento, e a opção de capacete vale para todos eles.
 
-O mapa é **Medina**, feito para o DM: assimétrico, em tons de areia, com dois "bombsites" elevados (escadas, sem rampas), meio com portas, túneis em ziguezague, uma longa com porta, passarela estreita e área aberta ao sul. Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e coldzera**. É todos contra todos: os bots enxergam, perseguem e acertam uns aos outros com os mesmos raios de tiro, colisões e cálculo de dano usados contra o jogador. Os nomes não alteram a dificuldade.
+Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e coldzera**. Os bots enxergam, perseguem e acertam uns aos outros com os mesmos raios de tiro, colisões e cálculo de dano usados contra o jogador. Os nomes não alteram a dificuldade.
 
 - Preparação de 3 segundos, seguida de **5 minutos completos** de partida.
-- No início, cada participante nasce num dos 26 pontos sem que nenhum par se enxergue. Cada ponto olha para a rota mais aberta, nunca para uma parede.
+- No início, o jogo distribui os participantes pelos pontos do mapa, priorizando distância e pontos sem visão entre si. Cada ponto olha para a rota mais aberta.
 - Abate recarrega o carregador na hora; abate com tiro na cabeça também cura **50 de vida** (até 100). Vale para pessoas e bots.
 - Respawn automático após **1,5 segundo**, com vida e carregador cheios. O ponto escolhido nunca está à vista de um inimigo vivo nem perto dele; depois disso, vale a distância e a variedade.
 - Proteção de **1,8 segundo** ao nascer, encerrada ao mover ou atirar; os bots seguem a mesma regra. Um anel azul identifica bots protegidos.
@@ -45,7 +45,7 @@ O mapa é **Medina**, feito para o DM: assimétrico, em tons de areia, com dois 
 - Killfeed mantém os últimos oito abates, inclusive bot contra bot. **Tab** mostra os dez participantes; no menu, use **Ver placar do Deathmatch**.
 - Vence quem tem mais abates; desempates por menos mortes e depois mais headshots. Empates exatos dividem a vitória. Ao zerar o relógio, tiros, respawns e placar param; é possível jogar novamente ou voltar ao menu.
 
-Os bots navegam também pelas plataformas e escadas. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
+Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da travessia do CT na Dust II. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
 
 ## Arsenal (tecla B) e skins
 
@@ -99,6 +99,7 @@ Os cinco mapas de duelo são simétricos (girados 180°), com chão branco e uma
 | Fortes | laranja | Cada base fica num forte elevado, com duas rampas descendo e um muro alto no meio |
 | Rotação | — | Fila com os 5 mapas em ordem aleatória; quando a fila acaba, embaralha de novo |
 | Medina | areia | Mapa exclusivo do DM: assimétrico, dois sites elevados com escadas, meio com portas, túneis, longa e passarela |
+| Dust II | areia | Recriação simplificada para DM com Long e Pit, Short sobre a passagem do CT, Meio com Xbox, Túneis B em dois níveis e caixas nos bombsites |
 
 No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
 
@@ -128,6 +129,8 @@ Valores de perto. O dano no corpo da AK, Deagle e AWP foi preservado do jogo ant
 Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%. A luneta usa a velocidade própria da AWP ou da Scout.
 
 **Bunnyhop assistido** vem ligado: segure Espaço para pular novamente ao tocar o chão. Para ganhar controle no ar, solte W, alterne A/D e acompanhe o movimento com o mouse. É possível desligar a assistência e usar pulos manuais ou configurar a rodinha para pular. Nesse caso, troque armas pelas teclas 1–4 ou Q. A velocidade aérea tem limite para impedir aceleração ilimitada.
+
+No difícil, os bots se deslocam entre rajadas, fazem contra-strafe antes do disparo, às vezes agacham para fazer spray e tentam quebrar a linha de visão durante a recarga. Em trechos livres, podem sacar a faca e tentar sequências curtas de bunnyhop, com acertos e erros de tempo. O agachamento aparece para os outros jogadores no 1v1, no 2v2, no XvX e no DM.
 
 A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atirar, e as balas seguem o recuo inteiro (por isso sobem um pouco acima da mira no spray). O recuo das armas ficou cerca de 8% maior que o original. O solavanco ao tomar tiro é pequeno e tem teto, e o recuo das armas na mão é mais contido. Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precisão. Os rifles têm spray, com recuo menor nas M4s. A Scout recupera parte da precisão no ápice do salto. O recuo da câmera acompanha o desvio dos tiros.
 

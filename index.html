@@ -257,11 +257,12 @@ button:disabled{opacity:.5;cursor:default}
       <option value="ponte">Ponte · roxo (ponte no meio)</option><option value="fortes">Fortes · laranja (bases elevadas)</option><option value="rotacao">Rotação · troca a cada rodada</option>
     </select><small id="mapInfo">Vale o mapa de quem criou a sala.</small></label>
     <div id="dmOptions" class="fld" hidden>
+      <label class="fld"><span>Mapa do Deathmatch</span><select data-k="dmMap"><option value="deathmatch">Medina</option><option value="dust2">Dust II</option></select></label>
       <div class="grid2">
         <label class="fld"><span>Armas do Deathmatch</span><select data-k="dmWeapons" aria-label="Armas do Deathmatch"><option value="pistol">Somente pistolas</option><option value="sniper">Somente precisão</option><option value="rifle">Somente rifles</option><option value="all">Tudo liberado</option></select></label>
         <label class="fld"><span>Dificuldade do Deathmatch</span><select data-k="dmLevel" aria-label="Dificuldade do Deathmatch"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
       </div>
-      <p class="note">Mapa Medina · 5 minutos · 10 participantes · todos contra todos · respawn automático. Abate recarrega a arma; abate com tiro na cabeça cura 50. A categoria limita as armas de todos; a faca continua disponível. Para jogar com amigos, use o código da sala abaixo: bots completam as vagas.</p>
+      <p class="note">5 minutos · 10 participantes · todos contra todos · respawn automático. Abate recarrega a arma; abate com tiro na cabeça cura 50. A categoria limita as armas de todos; a faca continua disponível. Em salas, vale o mapa escolhido por quem cria e os bots completam as vagas.</p>
       <p class="dm-roster">donk · ZywOo · m0NESY · NiKo · KSCERATO · ropz · YEKINDAR · molodoy · coldzera</p>
       <button id="btnDm" class="primary" type="button">Jogar DM com bots · 5 minutos</button>
     </div>
@@ -409,7 +410,7 @@ const fin = n => typeof n === 'number' && isFinite(n);
 
 /* ================= Configurações ================= */
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: '1v1', teamSetup: 'versus', xvx: { mine: 1, foes: 5 }, dmWeapons:'all', dmLevel:'medio',
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: '1v1', teamSetup: 'versus', xvx: { mine: 1, foes: 5 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio',
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife', sniper: 'sniper' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', botHelmet: true, autoBhop: true, wheelJump: false, adaptiveScale: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
 function genCode() { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; let c = ''; for (let i = 0; i < 5; i++) c += a[Math.floor(Math.random() * a.length)]; return c; }
@@ -554,8 +555,10 @@ renderer.autoClear = false;
 const SKY = 0xcfe8ff;
 renderer.setClearColor(SKY);
 const scene = new THREE.Scene();
+const ACTOR_LAYER = 1;
 const camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.05, 250);
 camera.rotation.order = 'YXZ';
+camera.layers.enable(ACTOR_LAYER);
 const vmScene = new THREE.Scene();
 const vmCam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.01, 5);
 
@@ -729,6 +732,179 @@ MAPS.deathmatch = {
     B.box(-14.5,13.5,C,C,C,K.crate2);B.box(7.5,-1.2,C,C,C,K.crate2);
   }
 };
+// Dust II: norte no topo da planta de referência. A malha usa apenas sólidos e rampas do jogo.
+MAPS.dust2 = {
+  name: 'Dust II', theme: 'areia', dm: true, ax: 33, az: 35,
+  spawn: { hx: 7, z0: 30, z1: 32 },
+  dmSpawns: [
+    [-27.8,31.8], [-17.8,31.8], [-9,30.4], [3.3,31.8], [9.6,29.4], [-21.8,25.8],
+    [-28.2,16.6], [-21.8,11.4], [-25.8,5.1], [-30.2,.4], [-21.8,-.8], [-10.5,-5.2],
+    [-29.1,-9.2], [-30.2,-16], [-24.5,-13.5], [-20.1,-17.1], [-21.1,-26.4], [-28.7,-31.4],
+    [-13.2,-20.2], [-8.4,-23.5], [-3.2,-16.1], [3.5,-18.1], [16.5,-16.8],
+    [-4.2,7.7], [1,1.5], [4.2,-5.3], [9.5,-20.7], [15.6,-24.8], [26.2,-30.9],
+    [27.7,-22.4], [30.5,-13.4], [27.3,-4.4], [26.2,12.8], [20.5,12.6], [13.1,1.2],
+    [13.2,22.6], [7.4,12.4],
+  ],
+  build(B, K) {
+    const footprint = [];
+    const area = (x0, z0, x1, z1, y = 0, col = K.floor) => {
+      footprint.push([x0, z0, x1, z1]);
+      if (y > 0) B.solid([x0, 0, z0], [x1, y, z1], col);
+    };
+    const slope = (x0, z0, x1, z1, low, high, dir) => {
+      area(x0, z0, x1, z1, low, K.ramp);
+      B.ramp(x0, z0, x1, z1, low, high, dir, K.ramp);
+    };
+    const roof = (x0, z0, x1, z1, y) => B.solid([x0, y, z0], [x1, y + 1.45, z1], K.bld);
+    const crate = (x, z, y, w = 1.2, d = 1.2, h = 1.2) => B.box(x, z, w, d, h, h > 1.2 ? K.crate2 : K.crate, y);
+    const t = 2.65, mid = .75, long = 1.4, short = 4.25, upper = 1.65, b = 1.75, bPlat = 2.15;
+
+    // Base TR, plataforma, saída dos túneis e duas descidas para o meio.
+    area(-32, 29, 11.2, 34, t);
+    area(-31, 24, -11, 29, t);
+    area(-19, 21, -11, 24, t, K.plat);
+    slope(-31, 18, -19, 24, upper, t, '+z');
+    area(-30.8, 6.4, -19, 18, upper);
+    area(-28.4, 3, -24.2, 6.4, upper);
+    area(-5.8, 15.2, -2.4, 29, t); // Suicide
+    area(-7.8, 9.6, 11.4, 15.2, t);
+    area(5.2, 15.2, 15.2, 26.4, t);
+    area(-2.4, 26.4, 10, 29, t);
+    crate(-12.5, 26.8, t, 2.4, 1.2, 2.15);
+    crate(-6.6, 31.2, t, 2.2, 1.8, 2.1);
+    crate(7.6, 27.8, t, 1.3, 1.25, 1.8);
+    crate(-28.8, 14.1, upper, 2.3, 1.2, 1.15);
+    crate(-20.4, 8.5, upper, 1.4, 1.4, 2.0);
+
+    // Meio inclinado, portas duplas e Xbox sob o salto para a passarela.
+    slope(-5.8, -5.2, -.45, 9.6, mid, t, '+z');
+    area(-5.8, -13.8, -.45, -5.2, mid);
+    B.solid([-5.8, mid, -10.7], [-3.5, 4.1, -10.25], K.shield);
+    B.solid([-1.75, mid, -10.35], [-.45, 4.1, -9.9], K.shield);
+    crate(-1.22, -6.38, mid, 1.54, 1.6, 1.15);
+    crate(-6.7, 11.1, t, 1.1, 1.6, 1.1);
+
+    // Catwalk, cotovelo e escadas do Short. O piso passa sobre a saída do CT.
+    area(-.45, -3.6, 2.6, 9.6, t, K.plat);
+    area(-.45, -7.2, 11.4, -3.6, t, K.plat);
+    B.solid([-.45, t, -3.6], [-.25, t + .72, 6], K.wall);
+    B.solid([1.55, t, -7.2], [7.8, t + .72, -7], K.wall);
+    for (let i = 0; i < 4; i++) {
+      area(7.8, -12 + i * 1.2, 11.4, -12 + (i + 1) * 1.2, short - i * .4, K.ramp);
+    }
+    area(7.8, -20, 11.4, -12);
+    B.deck([7.8, 3.8, -20], [11.4, short, -12], K.plat);
+    B.solid([7.8, 0, -20], [11.4, 3.8, -19.4], K.bld);
+    B.solid([7.8, 0, -13.8], [11.4, 3.8, -12], K.bld);
+    B.solid([7.8, short, -20], [8.02, short + .8, -12], K.wall);
+    B.solid([11.18, short, -20], [11.4, short + .8, -12], K.wall);
+
+    // CT Mid e base CT coberta, com rampa para o cruzamento da Long.
+    area(-16, -22.6, -.45, -13.8, mid);
+    area(-16, -25.2, -5.8, -22.6, mid);
+    area(-.45, -20, 7.8, -13.8, mid);
+    area(7.8, -19.4, 11.4, -13.8, mid);
+    slope(11.4, -19.4, 23.2, -13.8, mid, long, '+x');
+    roof(.8, -20, 7.8, -13.8, 3.8);
+    crate(-7.4, -15, mid, 2.4, 1.3, 1.35);
+    crate(-3.4, -21.7, mid, 1.65, 1.1, 1.35);
+    crate(6.5, -18.7, mid, 1.3, 1.25);
+
+    // A, rampa da Long, Default, Quad, Ninja e Goose.
+    area(7.8, -26, 23.2, -20, short, K.plat);
+    area(17.6, -30, 29.8, -26, short, K.plat);
+    area(22, -32, 29.8, -30, short, K.plat);
+    slope(23.2, -26, 29.8, -19.4, long, short, '-z');
+    crate(20.75, -24.8, short, 2.4, 1.4, 1.65);
+    crate(19.85, -24.8, short + 1.65, 1.2, 1.4, .85);
+    crate(17.25, -22.2, short, 1.5, 1.6, 1.55);
+    crate(10, -25.3, short, 2.35, 1.35, 1.95);
+    crate(24.2, -29.05, short, 1.25, 1.25, 1.4);
+    crate(28.9, -30.85, short, 1.25, 1.75, 1.4);
+    B.solid([13, short, -20.22], [23.2, short + .75, -20], K.wall);
+
+    // Long: saída do lado da Blue, Car, Pit e Side Pit abaixo da rua.
+    slope(11.4, 6.4, 15.2, 15.2, long, t, '+z');
+    area(11.4, -1.6, 23.2, 6.4, long);
+    area(23.2, -19.4, 29.8, 6.4, long);
+    area(29.8, -18.2, 32, -9, long);
+    slope(23.2, 6.4, 29.8, 10.6, 0, long, '-z');
+    area(23.2, 10.6, 29.8, 14.6);
+    area(19, 9.4, 23.2, 14.6);
+    area(28.45, 10.6, 29.8, 14.6, long, K.plat);
+    B.solid([11.4, long, 8], [12.3, 4.9, 8.45], K.shield);
+    B.solid([14.15, long, 8.35], [15.2, 4.9, 8.8], K.shield);
+    roof(11.4, 7.2, 15.2, 10, 4.9);
+    crate(16.45, -.75, long, 3.25, 1.5, 2.1);
+    crate(30.25, -16.1, long, 2.6, 1.45, 1.08);
+    crate(28.65, -15.55, long, 1.1, 1.05, .65);
+    crate(19.7, 13.95, 0, 1.25, 1.25, .95);
+
+    // B: plataforma do fundo, caixas, janela com peitoril e saída para CT Mid.
+    area(-32, -21.2, -18.4, -11.2, b);
+    area(-30.7, -28.3, -18.4, -21.2, bPlat, K.plat);
+    area(-30.7, -34, -26.6, -28.3, bPlat, K.plat);
+    slope(-18.4, -21.2, -16, -15.2, mid, b, '-x');
+    B.solid([-17.7, mid, -21.2], [-17.2, 4.9, -19.6], K.shield);
+    B.solid([-17.2, mid, -17.45], [-16.7, 4.9, -15.2], K.shield);
+    area(-18.4, -25.2, -16, -22.6, 2.7);
+    roof(-18.4, -25.2, -16, -22.6, 4.9);
+    crate(-15.25, -24.05, mid, 1.45, 1.55, 1.1);
+    crate(-24, -25.4, bPlat, 2.4, 1.55, 1.35);
+    crate(-23.4, -25.4, bPlat + 1.35, 1.2, 1.55, .95);
+    crate(-27.2, -22.6, bPlat, 1.55, 2.3, 1.45);
+    crate(-29.4, -18.1, b, 1.6, 1.6, 2.05);
+    crate(-21.25, -12.3, b, 2.65, 1.5, 1.1);
+    crate(-29.9, -28.8, bPlat, 1.55, 1.5, 1.25);
+
+    // Upper e Lower Tunnels têm teto, uma curva e uma escada entre os níveis.
+    area(-30.7, -11.2, -27, -3, upper);
+    area(-32, -3, -16, 3, upper);
+    area(-12.4, -7.6, -5.8, -3, mid);
+    area(-12.4, -3, -9, 1.8, mid);
+    for (let i = 0; i < 3; i++) {
+      area(-16 + i * 1.2, -3, -16 + (i + 1) * 1.2, 1.8, upper - i * .3, K.ramp);
+    }
+    roof(-30.7, -8, -27, -3, 4.65);
+    roof(-32, -3, -12.4, 3, 4.65);
+    roof(-12.4, -3, -9, 1.8, 4.65);
+    roof(-12.4, -7.6, -5.8, -3, 4.65);
+    roof(-28.4, 3, -24.2, 5.2, 4.65);
+    crate(-30.05, -7.1, upper, 1.25, 1.2, 1.6);
+    crate(-25.45, -1.75, upper, 1.5, 1.6, 1.95);
+    crate(-18.1, 2.25, upper, 1.45, 1.5);
+    crate(-8.1, -7.15, mid, 1.6, .9, 1.35);
+
+    buildDust2Walls(B, K.bld, this.ax, this.az, footprint);
+  },
+};
+// Fecha os espaços entre as rotas, unindo trechos de parede com a mesma largura.
+function buildDust2Walls(B, color, ax, az, footprint) {
+  const cuts = [...new Set([-az, az, ...footprint.flatMap(([, z0, , z1]) => [z0, z1])])].sort((a, b) => a - b);
+  const walls = [];
+  let previous = new Map();
+  for (let i = 1; i < cuts.length; i++) {
+    const z0 = cuts[i - 1], z1 = cuts[i], z = (z0 + z1) / 2;
+    const spans = footprint.filter(([, a, , b]) => a < z && z < b).map(([a, , b]) => [a, b]);
+    spans.push([ax, ax]);
+    spans.sort((a, b) => a[0] - b[0]);
+    const next = new Map();
+    let x = -ax;
+    for (const [left, right] of spans) {
+      if (x < left) {
+        const key = x + ',' + left;
+        const wall = previous.get(key) || [[x, 0, z0], [left, 7.8, z1]];
+        if (!previous.has(key)) walls.push(wall);
+        wall[1][2] = z1;
+        next.set(key, wall);
+      }
+      x = Math.max(x, right);
+    }
+    previous = next;
+  }
+  for (const [a, b] of walls) B.solid(a, b, color);
+}
+if (!MAPS[S.dmMap]?.dm) S.dmMap = 'deathmatch';
 const MAP_IDS = Object.keys(MAPS).filter(id=>!MAPS[id].dm);
 const RAMP_FLIP = { '+z': '-z', '-z': '+z', '+x': '-x', '-x': '+x' };
 function rampHeightAt(r, x, z) {
@@ -740,9 +916,9 @@ function rampHeightAt(r, x, z) {
 }
 function rampH(x, z) { let h = -Infinity; for (const r of ramps) { const v = rampHeightAt(r, x, z); if (v !== null && v > h) h = v; } return h; }
 function rampBlock(x, z, y) { for (const r of ramps) { const h = rampHeightAt(r, x, z); if (h !== null && y < h - STEP_UP && y + H_STAND > r.y0) return true; } return false; }
-function groundAt(x, z) {
+function groundAt(x, z, belowDeck = false) {
   let g = Math.max(0, rampH(x, z));
-  for (const b of boxes) if (x > b.min[0] && x < b.max[0] && z > b.min[2] && z < b.max[2] && b.max[1] <= 4.5 && b.max[1] > g) g = b.max[1];
+  for (const b of boxes) if (x >= b.min[0] && x <= b.max[0] && z >= b.min[2] && z <= b.max[2] && b.max[1] <= 4.5 && b.max[1] > g && !(belowDeck && b.deck)) g = b.max[1];
   return g;
 }
 function addTri(out, a, b, c, n, col) { for (const v of [a, b, c]) { out.p.push(v[0], v[1], v[2]); out.n.push(n[0], n[1], n[2]); out.c.push(col.r, col.g, col.b); } }
@@ -751,7 +927,7 @@ function buildMap(id) {
   MAP = Object.assign({ id: MAPS[id] ? id : 'caixas' }, def);
   AX = def.ax; AZ = def.az; boxes = []; ramps = [];
   const out = { p: [], n: [], c: [] };
-  const solid = (a, b, hex) => { addBoxTo(out, a, b, hex, false, true); boxes.push({ min: a, max: b }); };
+  const solid = (a, b, hex, deck = false) => { addBoxTo(out, a, b, hex, false, a[1] <= 0); boxes.push({ min: a, max: b, deck }); };
   const mirrorBox = (a, b) => [[-b[0], a[1], -b[2]], [-a[0], b[1], -a[2]]];
   const ramp = (x0, z0, x1, z1, y0, y1, dir, hex) => {
     const r = { x0, z0, x1, z1, y0, y1, dir }; ramps.push(r);
@@ -779,6 +955,8 @@ function buildMap(id) {
   };
   const B = {
     solid,
+    ramp,
+    deck: (a, b, col) => solid(a, b, col, true),
     box: (x, z, w, d, h, col, y0 = 0) => solid([x - w / 2, y0, z - d / 2], [x + w / 2, y0 + h, z + d / 2], col),
     pair: (x, z, w, d, h, col, y0 = 0) => { B.box(x, z, w, d, h, col, y0); B.box(-x, -z, w, d, h, col, y0); },
     pairSolid: (a, b, col) => { solid(a, b, col); const m = mirrorBox(a, b); solid(m[0], m[1], col); },
@@ -833,7 +1011,7 @@ col=min(col,vec3(1.0));
 float d=length(vW-cameraPosition);col=mix(col,uFog,clamp((d-40.0)/80.0,0.0,0.3));
 gl_FragColor=vec4(col,1.0);}`,
 });
-buildMap(S.mode === 'dm' ? 'deathmatch' : S.map === 'rotacao' ? 'caixas' : S.map);
+buildMap(S.mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? 'caixas' : S.map);
 // céu em degradê, sempre centrado na câmera
 const skyGeo = new THREE.SphereGeometry(200, 24, 12);
 { const pos = skyGeo.attributes.position, cols = [], top = new THREE.Color(0x4fa3f2), hor = new THREE.Color(0xdcefff), c = new THREE.Color();
@@ -1445,6 +1623,7 @@ function setOppSkins(map) {
 }
 const oppFlash = new THREE.Mesh(flashGeo, flashMat); oppFlash.position.set(.16, 1.26, -.68); oppFlash.visible = false; oppUpper.add(oppFlash);
 oppGroup.add(oppLegs, oppUpper); oppGroup.visible = false; scene.add(oppGroup);
+oppGroup.traverse(object => object.layers.set(ACTOR_LAYER));
 function setOppColor(k) { oppTint.color.set(pcolHex(k)); }
 
 /* ================= Efeitos ================= */
@@ -1892,18 +2071,155 @@ function updateWeapon(dt, t) {
 const LEVELS = {
   facil:   { react: 650, vr: 300, turn: 3.2, err: 0.07, hs: 0.12, counter: false, burst: [2, 4], spread: 1.6, label: 'fácil' },
   medio:   { react: 500, vr: 200, turn: 6, err: 0.045, hs: 0.2, counter: true, burst: [3, 5], spread: 1.15, label: 'médio' },
-  dificil: { react: 270, vr: 110, turn: 12, err: 0.022, hs: 0.5, counter: true, burst: [4, 7], spread: 1.0, label: 'difícil' },
+  dificil: { react: 270, vr: 110, turn: 12, err: 0.022, hs: 0.5, counter: true, burst: [4, 7], spread: 1.0, tactical: true, label: 'difícil' },
 };
+const botHeldWeapon = b => b.knifeOut ? 'knife' : b.w || b.weapon;
+const botEyeY = b => b.pos.y + (b.crouch ? EYE_CROUCH : 1.62);
+const botShotTime = b => Math.max(b.reactAt, b.nextFire, b.burst > 0 ? 0 : b.pauseUntil);
+const botStable = b => b.onGround && b.vel.x * b.vel.x + b.vel.z * b.vel.z < 1;
+
+function resetBotMovement(b, t) {
+  b.knifeOut = false; b.knifeAt = t + 650; b.cautionUntil = 0;
+  b.strafe = 1; b.strafeUntil = 0; b.crouchAt = b.crouchUntil = b.crouchK = 0;
+  b.hopCheckAt = t + 1150 + (b.index || 1) * 75;
+  b.hopsLeft = b.airSign = 0;
+}
+function botEquipGun(b, t) {
+  if (!b.knifeOut) return;
+  b.knifeOut = false; b.knifeAt = t + 1100;
+  b.nextFire = Math.max(b.nextFire, t + W[b.w].draw);
+}
+function botListen(b, enemy, distanceSq, t) {
+  const gunshot = enemy.lastShot > 0 && t - enemy.lastShot < 240 && distanceSq < (W[botHeldWeapon(enemy)].silenced ? 121 : 324);
+  const running = distanceSq < 81 && enemy.onGround && !enemy.crouch &&
+    (enemy.remote ? enemy.speed > STEP_SPEED : Math.hypot(enemy.vel.x, enemy.vel.z) > STEP_SPEED);
+  if (gunshot || running) b.cautionUntil = Math.max(b.cautionUntil, t + 1150);
+}
+function botSetCrouch(b, want) {
+  b.crouch = want || (b.crouch && overlapAny(b.pos.x, b.pos.y, b.pos.z, H_STAND));
+  b.h = b.crouch ? H_CROUCH : H_STAND;
+}
+function botEngage(b, enemy, distance, t) {
+  botEquipGun(b, t);
+  b.cautionUntil = Math.max(b.cautionUntil, t + 1450);
+  b.hopsLeft = b.airSign = 0;
+  const ready = b.onGround && !b.reloadEnd && b.mag > 0;
+  if (ready && W[b.w].auto && b.mag >= 4 && distance < 19 && b.burst <= 0 &&
+      t >= b.crouchAt && t + 65 >= botShotTime(b)) {
+    b.crouchAt = t + 1350 + Math.random() * 850;
+    const head = [enemy.pos.x, enemy.pos.y + (enemy.crouch ? 1.02 : 1.66), enemy.pos.z];
+    if (Math.random() < .42 && clearLine([b.pos.x, b.pos.y + EYE_CROUCH, b.pos.z], head)) {
+      b.crouchUntil = t + 520 + Math.random() * 300;
+    }
+  }
+  botSetCrouch(b, ready && t < b.crouchUntil);
+}
+function botFightMove(b, enemy, dx, dz, distance, aligned, t) {
+  const retreat = b.reloadEnd || !b.mag;
+  if (!retreat && t + 115 >= botShotTime(b) && (aligned || b.burst > 0 || b.crouch)) return [0, 0, true];
+  const forward = retreat ? -.62 : distance < 6 ? -.27 : distance > 19 && !W[b.w].scope ? .28 : 0;
+  const x = dx / (distance || 1), z = dz / (distance || 1);
+  if (t >= b.strafeUntil) {
+    const y = b.pos.y;
+    const preferred = Math.random() < .68 ? -(b.strafe || 1) : (b.strafe || 1);
+    const eye = retreat ? [enemy.pos.x, botEyeY(enemy), enemy.pos.z] : null;
+    let best = -Infinity;
+    b.strafe = 0;
+    for (const side of [preferred, -preferred]) {
+      const tx = b.pos.x + (x * forward - z * side) * 1.35, tz = b.pos.z + (z * forward + x * side) * 1.35;
+      const ty = navStep(b.pos.x, b.pos.z, y, tx, tz, true, 4);
+      if (!fin(ty)) continue;
+      const score = (side === preferred ? 1 : 0) + (eye && !clearLine(eye, [tx, ty + 1.62, tz]) ? 2 : 0);
+      if (score > best) { best = score; b.strafe = side; }
+    }
+    b.strafeUntil = t + 180 + Math.random() * 235;
+  }
+  return [x * forward - z * b.strafe, z * forward + x * b.strafe, false];
+}
+function botBurstSize(b, L, distance) {
+  if (!W[b.w].auto) return 1;
+  if (L.tactical && !b.crouch) {
+    const min = distance > 25 ? 1 : distance > 12 ? 2 : 3;
+    return min + Math.floor(Math.random() * (min === 1 ? 2 : 3));
+  }
+  return L.burst[0] + Math.floor(Math.random() * (L.burst[1] - L.burst[0] + 1));
+}
+function botTravel(b, wx, wz, distance, t) {
+  const quiet = t >= Math.max(b.knowsUntil, b.cautionUntil, b.tagUntil) && !b.reloadEnd && b.mag > 0;
+  const drawDistance = W[b.w].draw * .001 * W.knife.speed + .5;
+  b.crouchUntil = 0;
+  botSetCrouch(b, false);
+  if (!quiet || distance < drawDistance || b.crouch) botEquipGun(b, t);
+  else if (distance > drawDistance + 1.3 && t >= b.knifeAt) b.knifeOut = true;
+  if (!quiet || distance < 2.3 || b.crouch) {
+    b.hopsLeft = b.airSign = 0;
+    return;
+  }
+  if (b.onGround && !b.hopsLeft && distance > 5 && t >= b.hopCheckAt && b.vel.x * wx + b.vel.z * wz > 4) {
+    b.hopCheckAt = t + 1900 + Math.random() * 2350;
+    if (Math.random() < .72) {
+      b.hopsLeft = 2 + (Math.random() < .4 ? 1 : 0);
+      b.hopAt = t;
+    }
+  }
+}
+function botHopClear(b, wx, wz) {
+  const y = b.pos.y;
+  for (const distance of [0, 1.4, 2.8, 4.2]) {
+    const x = b.pos.x + wx * distance, z = b.pos.z + wz * distance;
+    if (Math.abs(groundAt(x, z) - y) > .18 || overlapAny(x, y + .04, z, H_STAND + 1.5)) return false;
+  }
+  return true;
+}
+function botPhysics(b, wx, wz, speed, dt, t, brake = false) {
+  if (b.knifeOut) speed = W.knife.speed;
+  if (b.crouch) speed *= CROUCH_MUL;
+  if (t < b.tagUntil) speed *= .45;
+  b.physTime = Math.min(b.physTime + dt, .0625);
+  while (b.physTime >= PHYS_STEP) {
+    let x = wx, z = wz, jump = false;
+    const grounded = b.onGround;
+    if (grounded && b.hopsLeft > 0 && t >= b.hopAt) {
+      if (b.vel.x * wx + b.vel.z * wz > 3.5 && botHopClear(b, wx, wz)) {
+        jump = true; b.hopsLeft--; b.hopAt = Infinity;
+        b.airSign = Math.random() < .5 ? -1 : 1; b.airTurnAt = t + 290;
+      } else b.hopsLeft = 0;
+    }
+    if (brake && grounded) {
+      const v = Math.hypot(b.vel.x, b.vel.z);
+      const afterFriction = Math.max(0, v - Math.max(v, STOP_SPEED) * FRICTION * PHYS_STEP);
+      const k = v > 0 ? Math.min(1, afterFriction / (ACCEL * speed * PHYS_STEP)) / v : 0;
+      x = -b.vel.x * k; z = -b.vel.z * k;
+    } else if (!grounded && b.airSign) {
+      const v = Math.hypot(b.vel.x, b.vel.z) || 1, vx = b.vel.x / v, vz = b.vel.z / v;
+      const error = vx * wz - vz * wx;
+      const side = Math.abs(error) > .12 ? Math.sign(error) : t < b.airTurnAt ? b.airSign : -b.airSign;
+      x = vx * .08 - vz * side; z = vz * .08 + vx * side;
+    }
+    physics(b, x, z, speed, jump, PHYS_STEP);
+    if (!grounded && b.onGround && b.airSign) {
+      b.airSign = 0;
+      if (b.hopsLeft > 0) {
+        const timing = Math.random();
+        if (timing < .25) b.hopsLeft = 0;
+        else b.hopAt = timing < .67 ? t : t + 55 + Math.random() * 100;
+      }
+    }
+    b.physTime -= PHYS_STEP; b.landSpread *= Math.exp(-PHYS_STEP * 16);
+  }
+}
 const BOT = { pos: new V3(0, 0, 20), vel: new V3(), yaw: 0, pitch: 0, h: H_STAND, crouch: false, onGround: true, hp: 100, alive: true, w: 'rifle',
   nextFire: 0, see: false, reactAt: 0, aimHead: false, err: 0, ex: 0, ey: 0, errT: 0, lastSeen: new V3(), knowsUntil: 0, wp: null,
-  stuckCheck: 0, lastPos: new V3(), route: [], strafe: 1, strafeT: 0, burst: 0, pauseUntil: 0, shots: 0, tagUntil: 0 };
+  stuckCheck: 0, lastPos: new V3(), route: [], path: [], pathAt: 0, planAt: 0, burst: 0, pauseUntil: 0, shots: 0, tagUntil: 0 };
 function botSpawn(side, spec) {
   const sp = spawnPoint(side ? 1 : 0, spec);
   BOT.pos.set(sp.x, sp.y, sp.z); BOT.vel.set(0, 0, 0); BOT.yaw = sp.yaw; BOT.pitch = 0; BOT.hp = 100; BOT.alive = true;
   BOT.w = W[S.botWeapon] && !W[S.botWeapon].melee ? S.botWeapon : 'rifle'; BOT.helmet = !!S.botHelmet;
   BOT.mag = W[BOT.w].mag; BOT.reserve = W[BOT.w].res; BOT.reloadEnd = 0; BOT.nextFire = now() + W[BOT.w].draw;
   BOT.h = H_STAND; BOT.crouch = false; BOT.onGround = true; BOT.physTime = BOT.landSpread = 0;
-  BOT.see = false; BOT.knowsUntil = 0; BOT.burst = 0; BOT.shots = 0; BOT.tagUntil = 0;
+  BOT.see = false; BOT.knowsUntil = 0; BOT.burst = 0; BOT.pauseUntil = 0; BOT.shots = 0; BOT.tagUntil = 0;
+  BOT.path.length = 0; BOT.pathAt = 0; BOT.planAt = 0; BOT.stuckAt = now() + 900; BOT.lastPos.copy(BOT.pos);
+  resetBotMovement(BOT, now());
   // rota de saída: contorna a parede da base pelo lado mais perto e segue para o meio
   const ex = MAP.exit || { zc: -AZ * .8, hw: 7 }, sz = sp.z < 0 ? -1 : 1, sx = sp.x === 0 ? (Math.random() < .5 ? -1 : 1) : Math.sign(sp.x);
   const w1 = freeNear(sx * (ex.hw + 1.1), sz * (Math.abs(ex.zc) + .2));
@@ -1942,29 +2258,41 @@ function botDamage(dmg, part, wkey) {
 }
 function botUpdate(dt, t) {
   const B = BOT, v = G.view, L = LEVELS[S.botLevel] || LEVELS.medio;
-  let wx = 0, wz = 0, shootNow = false;
+  let wx = 0, wz = 0, shootNow = false, brake = false, distance = 0;
   if (B.alive) {
-    const live = v.ph === 'live', eye = [B.pos.x, B.pos.y + 1.62, B.pos.z];
+    const live = v.ph === 'live', eye = [B.pos.x, botEyeY(B), B.pos.z];
     let vis = false;
     if (live && P.alive) {
       const head = [P.pos.x, P.pos.y + (P.crouch ? 1.02 : 1.66), P.pos.z], chest = [P.pos.x, P.pos.y + (P.crouch ? 0.72 : 1.2), P.pos.z];
-      const yawTo = Math.atan2(-(P.pos.x - B.pos.x), -(P.pos.z - B.pos.z));
+      const dx = P.pos.x - B.pos.x, dz = P.pos.z - B.pos.z, yawTo = Math.atan2(-dx, -dz);
+      if (L.tactical) botListen(B, P, dx * dx + dz * dz, t);
       if ((Math.abs(angDiff(B.yaw, yawTo)) < 1.4 || t < B.knowsUntil) && (clearLine(eye, head) || clearLine(eye, chest))) vis = true;
     }
     if (vis) {
-      if (!B.see) { B.see = true; B.reactAt = t + L.react + Math.random() * L.vr; B.aimHead = Math.random() < L.hs; B.err = L.err * (0.6 + Math.random() * 0.8); B.errT = 0; }
+      if (!B.see) {
+        B.see = true; B.reactAt = t + L.react + Math.random() * L.vr; B.aimHead = Math.random() < L.hs; B.err = L.err * (0.6 + Math.random() * 0.8); B.errT = 0;
+        if (L.tactical) { B.planAt = B.strafeUntil = 0; B.burst = 0; }
+      }
       B.lastSeen.copy(P.pos); B.knowsUntil = t + 3500;
     } else B.see = false;
     if (B.see) {
-      const tp = [P.pos.x, P.pos.y + (B.aimHead ? (P.crouch ? 1.0 : 1.64) : (P.crouch ? 0.72 : 1.2)), P.pos.z];
-      const dx = tp[0] - eye[0], dy = tp[1] - eye[1], dz = tp[2] - eye[2], hd = Math.hypot(dx, dz);
+      const dx = P.pos.x - B.pos.x, dz = P.pos.z - B.pos.z;
+      distance = Math.hypot(dx, dz);
+      if (L.tactical) botEngage(B, P, distance, t);
+      const dy = P.pos.y + (B.aimHead ? (P.crouch ? 1.0 : 1.64) : (P.crouch ? 0.72 : 1.2)) - botEyeY(B);
       if (t > B.errT) { B.errT = t + 250; B.ex = (Math.random() * 2 - 1) * B.err; B.ey = (Math.random() * 2 - 1) * B.err * 0.6; B.err *= 0.72; }
-      const ty = Math.atan2(-dx, -dz) + B.ex, tpi = Math.atan2(dy, hd) + B.ey, turn = L.turn * dt;
+      const ty = Math.atan2(-dx, -dz) + B.ex, tpi = Math.atan2(dy, distance) + B.ey, turn = L.turn * dt;
       B.yaw += clamp(angDiff(B.yaw, ty), -turn, turn); B.pitch += clamp(tpi - B.pitch, -turn, turn);
-      const err = Math.abs(angDiff(B.yaw, ty)) + Math.abs(tpi - B.pitch);
-      if (t >= B.reactAt && err < 0.05) shootNow = true;
-      if (t > B.strafeT) { B.strafe = Math.random() < 0.5 ? -1 : 1; B.strafeT = t + 350 + Math.random() * 600; }
-      if (!(shootNow && L.counter)) { wx = Math.cos(B.yaw) * B.strafe; wz = -Math.sin(B.yaw) * B.strafe; }
+      const aligned = Math.abs(angDiff(B.yaw, ty)) + Math.abs(tpi - B.pitch) < .05;
+      shootNow = t >= B.reactAt && aligned;
+      if (L.tactical) [wx, wz, brake] = botFightMove(B, P, dx, dz, distance, aligned, t);
+      else {
+        if (t > B.strafeUntil) { B.strafe = Math.random() < .5 ? -1 : 1; B.strafeUntil = t + 350 + Math.random() * 600; }
+        if (!(shootNow && L.counter)) { wx = Math.cos(B.yaw) * B.strafe; wz = -Math.sin(B.yaw) * B.strafe; }
+      }
+    } else if (live && L.tactical) {
+      [wx, wz, distance] = botDuelTravel(B, dt, t);
+      botTravel(B, wx, wz, distance, t);
     } else if (live) {
       let tgt = t < B.knowsUntil ? B.lastSeen : B.wp;
       if (!tgt || (tgt === B.wp && Math.hypot(tgt.x - B.pos.x, tgt.z - B.pos.z) < 1.2)) { B.wp = (B.route && B.route.length) ? B.route.shift() : randomPoint(); tgt = B.wp; }
@@ -1973,22 +2301,22 @@ function botUpdate(dt, t) {
       else if (tgt === B.lastSeen) B.knowsUntil = 0;
       if (t > B.stuckCheck) { if (Math.hypot(B.pos.x - B.lastPos.x, B.pos.z - B.lastPos.z) < 0.4) { B.wp = (B.route && B.route.length) ? B.route.shift() : randomPoint(); B.knowsUntil = 0; } B.lastPos.copy(B.pos); B.stuckCheck = t + 700; }
     }
-    if (v.ph === 'freeze') { wx = 0; wz = 0; }
+    if (!live) { B.hopsLeft = B.airSign = 0; }
   }
   const weapon = W[B.w];
-  let maxS = weapon.scope && B.see ? weapon.scopedSpeed : weapon.speed; if (t < B.tagUntil) maxS *= 0.45;
-  B.physTime = Math.min(B.physTime + dt, .0625);
-  while (B.physTime >= PHYS_STEP) { physics(B, wx, wz, maxS, false, PHYS_STEP); B.physTime -= PHYS_STEP; B.landSpread *= Math.exp(-PHYS_STEP * 16); }
+  const speed = weapon.scope && B.see && (!L.tactical || brake) ? weapon.scopedSpeed : weapon.speed;
+  botPhysics(B, wx, wz, speed, dt, t, brake);
+  if (L.tactical && (!brake || !botStable(B))) shootNow = false;
   if (B.reloadEnd && t >= B.reloadEnd) { const take = Math.min(weapon.mag - B.mag, B.reserve); B.mag += take; B.reserve -= take; B.reloadEnd = 0; }
   if (B.alive && B.mag === 0 && !B.reloadEnd && B.reserve > 0) { B.reloadEnd = t + weapon.reload; B.shots = 0; }
   if (B.alive && shootNow && !B.reloadEnd && B.mag > 0 && t >= B.nextFire) {
-    if (B.burst <= 0 && t >= B.pauseUntil) B.burst = weapon.auto ? L.burst[0] + Math.floor(Math.random() * (L.burst[1] - L.burst[0] + 1)) : 1;
+    if (B.burst <= 0 && t >= B.pauseUntil) B.burst = botBurstSize(B, L, distance);
     if (B.burst > 0) { botFire(L); B.mag--; B.burst--; B.nextFire = t + weapon.rof; if (B.burst === 0) B.pauseUntil = t + (weapon.scope ? weapon.rof : B.w === 'pistol' ? 500 : 240) + Math.random() * 180; }
   }
   if (!shootNow) B.shots = Math.max(0, B.shots - dt * 10);
 }
 function botFire(L) {
-  const B = BOT, w = W[B.w], eye = [B.pos.x, B.pos.y + 1.62, B.pos.z];
+  const B = BOT, w = W[B.w], eye = [B.pos.x, botEyeY(B), B.pos.z];
   const inac = inaccuracy(B, w, !!w.scope, B.shots * w.shotSpread) * L.spread;
   const rr = inac * Math.random(), th = Math.random() * TAU;
   const dir = dirFrom(B.yaw + Math.cos(th) * rr, B.pitch + Math.sin(th) * rr + (w.auto ? Math.min(B.shots, 8) * .003 : 0));
@@ -2011,35 +2339,58 @@ function dmNeighbours(nav,id,direction){
   const x=id%nav.w,z=Math.floor(id/nav.w);
   return direction===0 ? (x>0?id-1:-1) : direction===1 ? (x<nav.w-1?id+1:-1) : direction===2 ? (z>0?id-nav.w:-1) : (z<nav.h-1?id+nav.w:-1);
 }
-// Navegação em grade 2,5D: cada célula guarda a altura do chão (caixas baixas, plataformas, rampas) e só
-// liga vizinhas quando o caminho entre elas não tem degrau maior que um passo nem parede fina no meio.
+// Uma grade de chão, com uma segunda altura nas células debaixo de passarelas.
+const navX = (nav,id) => nav.minX + (id % nav.w) * nav.step;
+const navZ = (nav,id) => nav.minZ + Math.floor((id % nav.plane) / nav.w) * nav.step;
 // Folga testada acima da altura de um degrau: escadas e beiradas baixas não bloqueiam a célula.
 const NAV_LIFT=.46;
 function navClear(x,y,z){return !overlapAny(x,y+NAV_LIFT,z,H_STAND-NAV_LIFT);}
 function navFree(x,y,z){return navClear(x,y,z)&&navClear(x-.12,y,z)&&navClear(x+.12,y,z)&&navClear(x,y,z-.12)&&navClear(x,y,z+.12);}
-function navStep(ax,az,ay,bx,bz){
-  let py=ay;
-  for(let i=1;i<=5;i++){const k=i/5,x=ax+(bx-ax)*k,z=az+(bz-az)*k,y=groundAt(x,z);if(Math.abs(y-py)>.45||!navClear(x,y,z))return false;py=y;}
-  return true;
+function navStep(ax, az, y, bx, bz, layered, steps = 5) {
+  for (let i = 1; i <= steps; i++) {
+    const k = i / steps, x = ax + (bx - ax) * k, z = az + (bz - az) * k;
+    let nextY = groundAt(x, z);
+    if (layered && Math.abs(nextY - y) > .45) nextY = groundAt(x, z, true);
+    if (Math.abs(nextY - y) > .45 || !navClear(x, nextY, z)) return NaN;
+    y = nextY;
+  }
+  return y;
 }
 function dmBuildNav(spawnList){
-  const step=1.4,minX=-AX+1,minZ=-AZ+1,w=Math.floor((AX*2-2)/step)+1,h=Math.floor((AZ*2-2)/step)+1,n=w*h;
-  const nav={step,minX,minZ,w,h,open:new Uint8Array(n),link:new Uint8Array(n),height:new Float32Array(n),seen:new Int32Array(n),parent:new Int32Array(n),queue:new Int32Array(n),stamp:0,walk:[]};
-  for(let id=0;id<n;id++){const x=minX+(id%w)*step,z=minZ+Math.floor(id/w)*step,y=groundAt(x,z);nav.height[id]=y;nav.open[id]=navFree(x,y,z)?1:0;}
-  for(let id=0;id<n;id++)if(nav.open[id])for(let d=0;d<4;d++){
-    const next=dmNeighbours(nav,id,d);if(next<0||!nav.open[next])continue;
-    if(navStep(minX+(id%w)*step,minZ+Math.floor(id/w)*step,nav.height[id],minX+(next%w)*step,minZ+Math.floor(next/w)*step))nav.link[id]|=1<<d;
+  const step=1.4,minX=-AX+1,minZ=-AZ+1,w=Math.floor((AX*2-2)/step)+1,h=Math.floor((AZ*2-2)/step)+1;
+  const plane = w * h, layered = boxes.some(b => b.deck), n = layered ? 2 * plane : plane;
+  const nav={map:MAP,step,minX,minZ,w,h,plane,layered,open:new Uint8Array(n),links:new Int32Array(n*4).fill(-1),height:new Float32Array(n),seen:new Int32Array(n),parent:new Int32Array(n),queue:new Int32Array(n),stamp:0,walk:[]};
+  for (let id = 0; id < plane; id++) {
+    const x = navX(nav, id), z = navZ(nav, id), y = groundAt(x, z);
+    nav.height[id] = y;
+    nav.open[id] = navFree(x, y, z) ? 1 : 0;
+    if (layered && y >= H_STAND) {
+      const lower = groundAt(x, z, true);
+      if (y - lower >= H_STAND && navFree(x, lower, z)) {
+        nav.height[id + plane] = lower;
+        nav.open[id + plane] = 1;
+      }
+    }
+  }
+  for (let id = 0; id < n; id++) if (nav.open[id]) for (let d = 0; d < 4; d++) {
+    const next = dmNeighbours(nav, id % plane, d), lower = next + plane;
+    if (next < 0 || !(nav.open[next] || nav.open[lower])) continue;
+    const y = navStep(navX(nav, id), navZ(nav, id), nav.height[id], navX(nav, next), navZ(nav, next), layered);
+    if (nav.open[next] && Math.abs(y - nav.height[next]) < .05) nav.links[id * 4 + d] = next;
+    else if (nav.open[lower] && Math.abs(y - nav.height[lower]) < .05) nav.links[id * 4 + d] = lower;
   }
   // Só mantém ligações de mão dupla, para a busca nunca prender um bot num beco sem volta.
-  for(let id=0;id<n;id++)for(let d=0;d<4;d++)if(nav.link[id]>>d&1){const next=dmNeighbours(nav,id,d);if(!(nav.link[next]>>(d^1)&1))nav.link[id]&=~(1<<d);}
+  for (let edge = 0; edge < nav.links.length; edge++) {
+    const next = nav.links[edge], reverse = (edge % 4) ^ 1;
+    if (next >= 0 && nav.links[next * 4 + reverse] !== (edge >> 2)) nav.links[edge] = -1;
+  }
   // Mantém a maior região conectada; cantos e topos de caixa isolados ficam de fora.
   for(let first=0;first<n;first++)if(nav.open[first]&&!nav.seen[first]){
     let head=0,tail=1;nav.queue[0]=first;nav.seen[first]=1;
-    while(head<tail){const id=nav.queue[head++];for(let d=0;d<4;d++){if(!(nav.link[id]>>d&1))continue;const next=dmNeighbours(nav,id,d);if(!nav.seen[next]){nav.seen[next]=1;nav.queue[tail++]=next;}}}
+    while(head<tail){const id=nav.queue[head++];for(let d=0;d<4;d++){const next=nav.links[id*4+d];if(next>=0&&!nav.seen[next]){nav.seen[next]=1;nav.queue[tail++]=next;}}}
     if(tail>nav.walk.length)nav.walk=Array.from(nav.queue.subarray(0,tail));
   }
   if(!nav.walk.length)throw new Error('Mapa sem área navegável');nav.open.fill(0);for(const id of nav.walk)nav.open[id]=1;
-  for(let id=0;id<n;id++)if(!nav.open[id])nav.link[id]=0;
   nav.seen.fill(0);DM.nav=nav;
   const list=spawnList||MAP.dmSpawns||[];
   DM.spawnPoints=list.map(([x,z,yaw])=>({x,z,y:groundAt(x,z),yaw})).filter(p=>!overlapAny(p.x,p.y+.03,p.z,H_STAND)&&nav.open[dmCell(p.x,p.z)]);
@@ -2058,12 +2409,18 @@ function dmSpawnYaw(p,others){
   }
   return best;
 }
-function dmCell(x,z){
+function dmCell(x,z,y=groundAt(x,z)){
   const n=DM.nav,cx=clamp(Math.round((x-n.minX)/n.step),0,n.w-1),cz=clamp(Math.round((z-n.minZ)/n.step),0,n.h-1),id=cz*n.w+cx;
-  if(n.open[id])return id;
+  const layer = cell => {
+    const lower = cell + n.plane;
+    if (n.open[lower] && (!n.open[cell] || Math.abs(y - n.height[lower]) < Math.abs(y - n.height[cell]))) return lower;
+    return n.open[cell] ? cell : -1;
+  };
+  const direct = layer(id);
+  if (direct >= 0) return direct;
   let best=-1,distance=Infinity;
   for(let r=1;r<=4&&best<0;r++)for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){
-    const nx=cx+dx,nz=cz+dz;if(nx<0||nz<0||nx>=n.w||nz>=n.h)continue;const next=nz*n.w+nx;if(!n.open[next])continue;
+    const nx=cx+dx,nz=cz+dz;if(nx<0||nz<0||nx>=n.w||nz>=n.h)continue;const next=layer(nz*n.w+nx);if(next<0)continue;
     const d=(n.minX+nx*n.step-x)**2+(n.minZ+nz*n.step-z)**2;if(d<distance){distance=d;best=next;}
   }
   return best>=0?best:n.walk[0];
@@ -2071,13 +2428,18 @@ function dmCell(x,z){
 function navLinked(n,a,b){
   if(a===b)return true;
   const ax=a%n.w,az=Math.floor(a/n.w),dx=b%n.w-ax,dz=Math.floor(b/n.w)-az;
-  const bit=(id,ddx,ddz)=>ddx<0?n.link[id]&1:ddx>0?n.link[id]>>1&1:ddz<0?n.link[id]>>2&1:n.link[id]>>3&1;
-  if(Math.abs(dx)+Math.abs(dz)===1)return !!bit(a,dx,dz);
-  if(Math.abs(dx)===1&&Math.abs(dz)===1){const viaX=a+dx,viaZ=a+dz*n.w;return !!(bit(a,dx,0)&&bit(viaX,0,dz))||!!(bit(a,0,dz)&&bit(viaZ,dx,0));}
+  const next=(id,ddx,ddz)=>n.links[id*4+(ddx<0?0:ddx>0?1:ddz<0?2:3)];
+  if(Math.abs(dx)+Math.abs(dz)===1)return next(a,dx,dz)===b;
+  if(Math.abs(dx)===1&&Math.abs(dz)===1){const viaX=next(a,dx,0),viaZ=next(a,0,dz);return (viaX>=0&&next(viaX,0,dz)===b)||(viaZ>=0&&next(viaZ,dx,0)===b);}
   return false;
 }
-function dmWalkClear(x,z,tx,tz){
-  const n=DM.nav,steps=Math.max(1,Math.ceil(Math.hypot(tx-x,tz-z)/(n.step*.4)));let prev=-1;
+function dmWalkClear(x,z,tx,tz,y=groundAt(x,z),ty=groundAt(tx,tz)){
+  const n=DM.nav,distance=Math.hypot(tx-x,tz-z);
+  if (n.layered) {
+    const steps = Math.max(1, Math.ceil(distance / .28));
+    return Math.abs(navStep(x, z, y, tx, tz, true, steps) - ty) < .05;
+  }
+  const steps=Math.max(1,Math.ceil(distance/(n.step*.4)));let prev=-1;
   for(let i=0;i<=steps;i++){
     const k=i/steps,cx=Math.round((x+(tx-x)*k-n.minX)/n.step),cz=Math.round((z+(tz-z)*k-n.minZ)/n.step);
     if(cx<0||cz<0||cx>=n.w||cz>=n.h)return false;const id=cz*n.w+cx;if(!n.open[id])return false;
@@ -2085,16 +2447,63 @@ function dmWalkClear(x,z,tx,tz){
   }
   return true;
 }
-function dmFindPath(bot,x,z){
-  const n=DM.nav,start=dmCell(bot.pos.x,bot.pos.z),goal=dmCell(x,z);bot.path.length=0;bot.pathAt=0;
+function dmFindPath(bot,x,z,y){
+  const n=DM.nav,start=dmCell(bot.pos.x,bot.pos.z,bot.pos.y),goal=dmCell(x,z,y);bot.path.length=0;bot.pathAt=0;
   if(start===goal)return false;
-  const gx=n.minX+(goal%n.w)*n.step,gz=n.minZ+Math.floor(goal/n.w)*n.step;
-  if(dmWalkClear(bot.pos.x,bot.pos.z,gx,gz)){bot.path.push(goal);return true;}
+  const gx=navX(n,goal),gz=navZ(n,goal);
+  if(dmWalkClear(bot.pos.x,bot.pos.z,gx,gz,bot.pos.y,n.height[goal])){bot.path.push(goal);return true;}
   if(++n.stamp>=2147483647){n.seen.fill(0);n.stamp=1;}
   let head=0,tail=1;n.queue[0]=start;n.seen[start]=n.stamp;n.parent[start]=-1;
-  while(head<tail&&n.seen[goal]!==n.stamp){const id=n.queue[head++];for(let d=0;d<4;d++){if(!(n.link[id]>>d&1))continue;const next=dmNeighbours(n,id,d);if(n.seen[next]!==n.stamp){n.seen[next]=n.stamp;n.parent[next]=id;n.queue[tail++]=next;}}}
+  while(head<tail&&n.seen[goal]!==n.stamp){const id=n.queue[head++];for(let d=0;d<4;d++){const next=n.links[id*4+d];if(next>=0&&n.seen[next]!==n.stamp){n.seen[next]=n.stamp;n.parent[next]=id;n.queue[tail++]=next;}}}
   if(n.seen[goal]!==n.stamp)return false;
   for(let id=goal;id!==start&&id>=0;id=n.parent[id])bot.path.push(id);bot.path.reverse();return !!bot.path.length;
+}
+function botPathInput(b, dt, t) {
+  const n = DM.nav;
+  let wx = 0, wz = 0, distance = 0;
+  for (let look = Math.min(b.pathAt + 4, b.path.length - 1); look > b.pathAt; look--) {
+    const id = b.path[look];
+    if (dmWalkClear(b.pos.x, b.pos.z, navX(n, id), navZ(n, id), b.pos.y, n.height[id])) {
+      b.pathAt = look;
+      break;
+    }
+  }
+  while (b.pathAt < b.path.length) {
+    const id = b.path[b.pathAt], dx = navX(n, id) - b.pos.x, dz = navZ(n, id) - b.pos.z;
+    distance = Math.hypot(dx, dz);
+    if (distance >= .4) {
+      wx = dx / distance; wz = dz / distance;
+      b.yaw += clamp(angDiff(b.yaw, Math.atan2(-dx, -dz)), -4 * dt, 4 * dt);
+      b.pitch *= Math.exp(-dt * 8);
+      break;
+    }
+    b.pathAt++;
+  }
+  if (t >= b.stuckAt) {
+    if (Math.hypot(b.pos.x - b.lastPos.x, b.pos.z - b.lastPos.z) < .3) {
+      b.planAt = 0; b.knowsUntil = 0; b.path.length = 0;
+    }
+    b.lastPos.copy(b.pos); b.stuckAt = t + 900;
+  }
+  return [wx, wz, distance];
+}
+function botDuelTravel(b, dt, t) {
+  if (DM.nav?.map !== MAP) dmBuildNav([]);
+  const n = DM.nav;
+  if (b.wp && Math.hypot(b.wp.x - b.pos.x, b.wp.z - b.pos.z) < 1.4) {
+    b.wp = b.route.shift() || null;
+    b.planAt = 0;
+  }
+  if (t >= b.planAt || b.pathAt >= b.path.length) {
+    const goal = t < b.knowsUntil ? b.lastSeen : b.wp;
+    const id = goal ? dmCell(goal.x, goal.z, goal.y) : n.walk[Math.floor(Math.random() * n.walk.length)];
+    if (!dmFindPath(b, navX(n, id), navZ(n, id), n.height[id])) {
+      b.knowsUntil = 0;
+      b.wp = b.route.shift() || null;
+    }
+    b.planAt = t + 2100 + Math.random() * 1100;
+  }
+  return botPathInput(b, dt, t);
 }
 // Respawn: evita qualquer spawn à vista de um inimigo vivo ou perto dele; depois prefere distância e variedade.
 function dmChooseSpawn(entity,t){
@@ -2152,6 +2561,7 @@ function dmResetBot(entity,p,t,pool,start){
   entity.target=null;entity.seen=false;entity.thinkAt=start+entity.index*13;entity.reactAt=0;entity.shots=0;entity.burst=0;entity.pauseUntil=0;entity.aimError=0;entity.ex=entity.ey=0;
   entity.path.length=0;entity.pathAt=0;entity.planAt=0;entity.knowsUntil=0;entity.lastAttacker=null;entity.flashUntil=0;entity.fireReady=false;entity.stuckAt=t+900;entity.lastPos.copy(entity.pos);
   entity.readyAt=start+650;entity.physTime=entity.landSpread=0;entity.tagUntil=0;entity.helmet=!!DM.helmet;
+  entity.lastShot = 0; resetBotMovement(entity, start);
 }
 function dmUpdateHitboxes(e){
   if(!e.dmBoxes){e.dmBoxes=hitboxesAt(0,0,0,false);for(const box of e.dmBoxes)box.actor=e.id;}
@@ -2168,7 +2578,7 @@ function dmSetup(t){
   DM.active=true;DM.category=DM_POOLS[S.dmWeapons]?S.dmWeapons:'all';DM.level=LEVELS[S.dmLevel]?S.dmLevel:'medio';DM.helmet=!!S.botHelmet;
   DM.phase='freeze';DM.startsAt=t+3000;DM.endsAt=DM.startsAt+DM_DURATION;DM.scoreVersion=0;DM.winners=[];DM.resultReady=false;DM.nextSoundAt=DM.nextStepAt=0;
   DM.mode='dm';if(!DM.pool.length)for(let i=0;i<9;i++)DM.pool.push(dmMakeBot(i));
-  G.stats={};G.names={};G.view={m:'dm-'+Math.random().toString(36).slice(2,8),r:1,ph:'freeze',endsAt:DM.startsAt,sc:{},tg:0,rt:300,win:null,why:'',mp:'deathmatch'};
+  G.stats={};G.names={};G.view={m:'dm-'+Math.random().toString(36).slice(2,8),r:1,ph:'freeze',endsAt:DM.startsAt,sc:{},tg:0,rt:300,win:null,why:'',mp:MAP.id};
   P.id=G.me;P.lastSpawn=-1;
   // Online, pessoas ocupam as vagas e bots completam os dez; sozinho, são os nove bots.
   if(ARENA.net&&ARENA.kind==='dm')arenaBuildActors(dmOnlineRoster());
@@ -2190,6 +2600,7 @@ function dmDamage(victim,amount,part,weapon,attacker,t){
   // Jogador remoto (2v2 online): a vida dele é de quem controla; o acerto vai pela rede.
   if(victim.remote){teamSendHit(victim,damage,part,weapon,attacker);return damage;}
   victim.hp-=damage;victim.tagUntil=t+350;victim.lastAttacker=attacker.id;
+  if (victim !== P) victim.cautionUntil = t + 1800;
   if(victim===P){hurtPunch();dmgDir(attacker.pos.x,attacker.pos.z);AU.hurt();flashRed();}
   if(victim.hp===0){
     victim.alive=false;victim.deathT=t;victim.respawnAt=team?Infinity:t+DM_RESPAWN_MS;victim.safeUntil=0;victim.vel.set(0,0,0);victim.reloadEnd=0;victim.target=null;
@@ -2217,11 +2628,12 @@ function dmStop(){
   if(DM.render)for(const mesh of DM.render.meshes)mesh.visible=false;
 }
 function dmSense(b,t,L){
-  const eye=[b.pos.x,b.pos.y+1.62,b.pos.z];let target=null,best=Infinity;
+  const eye=[b.pos.x,botEyeY(b),b.pos.z];let target=null,best=Infinity;
   for(const e of DM.actors){
     if(e===b||!e.alive||t<e.safeUntil||dmAllies(b,e))continue;
     const dx=e.pos.x-b.pos.x,dz=e.pos.z-b.pos.z,d=dx*dx+dz*dz;
     if(d>2304)continue;
+    if (L.tactical) botListen(b, e, d, t);
     const yaw=Math.atan2(-dx,-dz),known=e.id===b.lastAttacker||e.id===b.target;
     if(d>64&&!known&&Math.abs(angDiff(b.yaw,yaw))>1.65)continue;
     const score=d*(e.id===b.target ? .7 : 1);if(score>=best)continue;
@@ -2229,7 +2641,7 @@ function dmSense(b,t,L){
     best=score;target=e;
   }
   if(target){
-    if(b.target!==target.id||!b.seen){b.reactAt=t+L.react+Math.random()*L.vr;b.aimHead=Math.random()<L.hs;b.aimError=L.err;b.aimErrorAt=0;b.burst=0;}
+    if(b.target!==target.id||!b.seen){b.reactAt=t+L.react+Math.random()*L.vr;b.aimHead=Math.random()<L.hs;b.aimError=L.err;b.aimErrorAt=0;b.burst=0;if(L.tactical)b.planAt=b.strafeUntil=0;}
     b.target=target.id;b.seen=true;b.lastSeen.copy(target.pos);b.knowsUntil=t+2400;
     if(DM.mode==='team')for(const mate of DM.bots)if(mate!==b&&mate.alive&&mate.team===b.team&&!mate.seen&&t>=mate.knowsUntil){mate.lastSeen.copy(target.pos);mate.knowsUntil=t+1800;mate.planAt=0;}
   }else b.seen=false;
@@ -2241,45 +2653,48 @@ function dmBotMove(b,dt,t,L){
   if(!b.mag&&!b.reloadEnd){b.reloadEnd=t+W[b.w].reload;b.shots=0;}
   if(t>=b.thinkAt)dmSense(b,t,L);
   const target=DM.byId.get(b.target);if(!target||!target.alive||t<target.safeUntil)b.seen=false;
-  let wx=0,wz=0;
+  let wx=0,wz=0,brake=false,distance=0;
   if(t>=b.readyAt&&b.seen){
-    const dx=target.pos.x-b.pos.x,dz=target.pos.z-b.pos.z,dy=target.pos.y+(b.aimHead?(target.crouch?1.0:1.64):(target.crouch?.72:1.2))-(b.pos.y+1.62);
+    const dx=target.pos.x-b.pos.x,dz=target.pos.z-b.pos.z;
+    distance = Math.hypot(dx, dz);
+    if (L.tactical) botEngage(b, target, distance, t);
+    const dy=target.pos.y+(b.aimHead?(target.crouch?1.0:1.64):(target.crouch?.72:1.2))-botEyeY(b);
     if(t>=b.aimErrorAt){b.ex=(Math.random()*2-1)*b.aimError;b.ey=(Math.random()*2-1)*b.aimError*.55;b.aimError*=.7;b.aimErrorAt=t+260;}
-    const ty=Math.atan2(-dx,-dz)+b.ex,tp=Math.atan2(dy,Math.hypot(dx,dz))+b.ey,turn=L.turn*dt;
+    const ty=Math.atan2(-dx,-dz)+b.ex,tp=Math.atan2(dy,distance)+b.ey,turn=L.turn*dt;
     b.yaw+=clamp(angDiff(b.yaw,ty),-turn,turn);b.pitch+=clamp(tp-b.pitch,-turn,turn);
-    b.fireReady=t>=b.reactAt&&Math.abs(angDiff(b.yaw,ty))+Math.abs(tp-b.pitch)<.045;
-    if(t>=b.strafeUntil){b.strafe=Math.random()<.5?-1:1;b.strafeUntil=t+450+Math.random()*650;}
-    if(!(b.fireReady&&L.counter)&&!b.reloadEnd){wx=Math.cos(b.yaw)*b.strafe;wz=-Math.sin(b.yaw)*b.strafe;}
-    if(b.reloadEnd){wx=-dx/(Math.hypot(dx,dz)||1);wz=-dz/(Math.hypot(dx,dz)||1);}
+    const aligned = Math.abs(angDiff(b.yaw,ty)) + Math.abs(tp-b.pitch) < .045;
+    b.fireReady=t>=b.reactAt&&aligned;
+    if (L.tactical) [wx, wz, brake] = botFightMove(b, target, dx, dz, distance, aligned, t);
+    else {
+      if(t>=b.strafeUntil){b.strafe=Math.random()<.5?-1:1;b.strafeUntil=t+450+Math.random()*650;}
+      if(!(b.fireReady&&L.counter)&&!b.reloadEnd){wx=Math.cos(b.yaw)*b.strafe;wz=-Math.sin(b.yaw)*b.strafe;}
+      if(b.reloadEnd){wx=-dx/(distance||1);wz=-dz/(distance||1);}
+    }
   }else if(t>=b.readyAt){
     const n=DM.nav;
     if(t>=b.planAt||b.pathAt>=b.path.length){
       let cell=n.walk[Math.floor(Math.random()*n.walk.length)];
-      if(t<b.knowsUntil)cell=dmCell(b.lastSeen.x,b.lastSeen.z);
+      if(t<b.knowsUntil)cell=dmCell(b.lastSeen.x,b.lastSeen.z,b.lastSeen.y);
       else if(DM.mode==='team')cell=teamGoalCell(b,t);
-      dmFindPath(b,n.minX+(cell%n.w)*n.step,n.minZ+Math.floor(cell/n.w)*n.step);b.planAt=t+2400+Math.random()*1200;
+      dmFindPath(b,navX(n,cell),navZ(n,cell),n.height[cell]);b.planAt=t+2400+Math.random()*1200;
     }
-    if(b.pathAt<b.path.length){
-      for(let look=Math.min(b.pathAt+4,b.path.length-1);look>b.pathAt;look--){const id=b.path[look];if(dmWalkClear(b.pos.x,b.pos.z,n.minX+(id%n.w)*n.step,n.minZ+Math.floor(id/n.w)*n.step)){b.pathAt=look;break;}}
-      const id=b.path[b.pathAt],dx=n.minX+(id%n.w)*n.step-b.pos.x,dz=n.minZ+Math.floor(id/n.w)*n.step-b.pos.z,d=Math.hypot(dx,dz);
-      if(d<.4){b.pathAt++;}else{wx=dx/d;wz=dz/d;b.yaw+=clamp(angDiff(b.yaw,Math.atan2(-dx,-dz)),-4*dt,4*dt);b.pitch*=Math.exp(-dt*8);}
-    }
-    if(t>=b.stuckAt){if(Math.hypot(b.pos.x-b.lastPos.x,b.pos.z-b.lastPos.z)<.3){b.planAt=0;b.knowsUntil=0;b.path.length=0;}b.lastPos.copy(b.pos);b.stuckAt=t+900;}
+    [wx, wz, distance] = botPathInput(b, dt, t);
+    if (L.tactical) botTravel(b, wx, wz, distance, t);
   }
   if(wx||wz)b.safeUntil=0;
-  const w=W[b.w];let speed=w.scope&&b.seen?w.scopedSpeed:w.speed;if(t<b.tagUntil)speed*=.45;
-  b.physTime=Math.min(b.physTime+dt,.0625);
-  while(b.physTime>=PHYS_STEP){physics(b,wx,wz,speed,false,PHYS_STEP);b.landSpread*=Math.exp(-PHYS_STEP*16);b.physTime-=PHYS_STEP;}
+  const w=W[b.w], speed=w.scope&&b.seen&&(!L.tactical||brake)?w.scopedSpeed:w.speed;
+  botPhysics(b, wx, wz, speed, dt, t, brake);
+  if (L.tactical && (!brake || !botStable(b))) b.fireReady = false;
   if(!b.fireReady)b.shots=Math.max(0,b.shots-dt*10);
-  if(Math.hypot(b.vel.x,b.vel.z)>STEP_SPEED&&t>=b.stepAt){b.stepAt=t+360;if(t>=DM.nextStepAt){const s=spat(b.pos.x,b.pos.z);if(s.v>.45){AU.step(s.v*.13,s.pan);DM.nextStepAt=t+110;}}}
+  if(b.onGround&&Math.hypot(b.vel.x,b.vel.z)>STEP_SPEED&&t>=b.stepAt){b.stepAt=t+360;if(t>=DM.nextStepAt){const s=spat(b.pos.x,b.pos.z);if(s.v>.45){AU.step(s.v*.13,s.pan);DM.nextStepAt=t+110;}}}
 }
 function dmBotFire(b,t,L){
-  if(!b.alive||!b.fireReady||b.reloadEnd||!b.mag||t<b.nextFire||t<b.readyAt)return;
+  if(!b.alive||!b.fireReady||b.knifeOut||b.reloadEnd||!b.mag||t<b.nextFire||t<b.readyAt)return;
   const w=W[b.w];
-  if(b.burst<=0){if(t<b.pauseUntil)return;b.burst=w.auto?L.burst[0]+Math.floor(Math.random()*(L.burst[1]-L.burst[0]+1)):1;}
-  b.safeUntil=0;b.mag--;b.nextFire=t+w.rof;b.burst--;b.flashUntil=t+45;
+  if(b.burst<=0){if(t<b.pauseUntil)return;const e=DM.byId.get(b.target);b.burst=botBurstSize(b,L,e?Math.hypot(e.pos.x-b.pos.x,e.pos.z-b.pos.z):Infinity);}
+  b.safeUntil=0;b.mag--;b.nextFire=t+w.rof;b.burst--;b.flashUntil=t+45;b.lastShot=t;
   if(!b.burst)b.pauseUntil=t+(w.scope?w.rof:w.auto?240:300)+Math.random()*180;
-  const eye=[b.pos.x,b.pos.y+1.62,b.pos.z],spread=inaccuracy(b,w,!!w.scope,b.shots*w.shotSpread)*L.spread;
+  const eye=[b.pos.x,botEyeY(b),b.pos.z],spread=inaccuracy(b,w,!!w.scope,b.shots*w.shotSpread)*L.spread;
   const r=spread*Math.sqrt(Math.random()),a=Math.random()*TAU,dir=dirFrom(b.yaw+Math.cos(a)*r,b.pitch+Math.sin(a)*r+(w.auto?Math.min(b.shots,8)*.002:0));b.shots++;
   const hit=trace(eye,dir,300,DM.hitboxes,b.id),end=hit?hit.point:[eye[0]+dir[0]*100,eye[1]+dir[1]*100,eye[2]+dir[2]*100];
   tracer([eye[0]+dir[0]*.65,eye[1]-.1+dir[1]*.65,eye[2]+dir[2]*.65],end,55);
@@ -2301,8 +2716,19 @@ function dmEnsureRender(){
   const meshes=[],dummy=new THREE.Object3D(),color=new THREE.Color();
   // A cor por instância precisa ser alocada com a capacidade total ANTES de zerar `count`:
   // o three r128 dimensiona instanceColor por `count`, e um buffer vazio faz a GPU descartar o desenho (bots invisíveis).
-  function pool(geometry,material){const mesh=new THREE.InstancedMesh(geometry,material.clone(),ACTOR_CAP);mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;mesh.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(ACTOR_CAP*3).fill(1),3);mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);mesh.count=0;scene.add(mesh);meshes.push(mesh);return mesh;}
-  const body=pool(boxModel([[[-.2,0,-.12],[-.02,.81,.12],0x555555],[[.02,0,-.12],[.2,.81,.12],0x555555],[[-.23,.81,-.15],[.23,1.52,.15],0xffffff],[[-.25,1.18,-.38],[.25,1.32,-.18],0xdddddd]]).geometry,basicMat);
+  function pool(geometry, material) {
+    const mesh = new THREE.InstancedMesh(geometry, material.clone(), ACTOR_CAP);
+    mesh.layers.set(ACTOR_LAYER);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ACTOR_CAP * 3).fill(1), 3);
+    mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    mesh.count = 0;
+    scene.add(mesh); meshes.push(mesh);
+    return mesh;
+  }
+  const legs=pool(boxModel([[[-.2,0,-.12],[-.02,.81,.12],0x555555],[[.02,0,-.12],[.2,.81,.12],0x555555]]).geometry,basicMat);
+  const body=pool(boxModel([[[-.23,.81,-.15],[.23,1.52,.15],0xffffff],[[-.25,1.18,-.38],[.25,1.32,-.18],0xdddddd]]).geometry,basicMat);
   const head=pool(boxModel([[[-.13,1.52,-.13],[.13,1.76,.13],0xf2cfa4],[[-.08,1.6,-.135],[.08,1.65,-.13],0x111111]]).geometry,basicMat);
   const helmet=pool(oppHelmet.geometry,basicMat),guns={};
   for(const key of DM_POOLS.all){const src=oppGuns[key];src.updateMatrix();guns[key]=pool(boxModel(thirdPersonParts(key)).geometry.applyMatrix4(src.matrix),basicMat);}
@@ -2310,7 +2736,7 @@ function dmEnsureRender(){
   const ally=pool(new THREE.ConeGeometry(.1,.17,4).rotateX(Math.PI).translate(0,2.12,0),new THREE.MeshBasicMaterial({color:0x5fd3ff}));
   const protection=pool(new THREE.RingGeometry(.42,.46,20).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x8eefff,transparent:true,opacity:.7,side:THREE.DoubleSide,depthWrite:false}));
   const flash=pool(flashGeo,flashMat);
-  DM.render={meshes,dummy,color,body,head,helmet,guns,protection,flash,ally};
+  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally};
 }
 // Junta as malhas de um modelo (facas) numa só geometria com cor por vértice, para desenhar por instância.
 function meshesToGeometry(root){
@@ -2318,16 +2744,21 @@ function meshesToGeometry(root){
   root.traverse(o=>{if(!o.isMesh)return;const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push([g,g.attributes.color?null:o.material.color.getHex()]);});
   const merged=mergeKnifeParts(parts);for(const [g] of parts)g.dispose();merged.computeBoundingSphere();return merged;
 }
-function dmRender(t){
+function dmRender(t, dt = 0){
   const r=DM.render;if(!r)return;for(const mesh of r.meshes){mesh.count=0;mesh.visible=true;}
-  function put(mesh,b,offset=0,flash=false){const d=r.dummy;d.position.set(b.pos.x,b.pos.y+offset,b.pos.z);d.rotation.set(0,b.yaw,0,'YXZ');d.scale.set(1,1,1);if(flash){d.position.x+=Math.cos(b.yaw)*.16-Math.sin(b.yaw)*.7;d.position.y+=1.26;d.position.z-=Math.sin(b.yaw)*.16+Math.cos(b.yaw)*.7;d.rotation.z=t*.1;}d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
+  function put(mesh,b,offset=0,scaleY=1,flash=false){const d=r.dummy;d.position.set(b.pos.x,b.pos.y+offset,b.pos.z);d.rotation.set(0,b.yaw,0,'YXZ');d.scale.set(1,scaleY,1);if(flash){d.position.x+=Math.cos(b.yaw)*.16-Math.sin(b.yaw)*.7;d.position.y+=1.26;d.position.z-=Math.sin(b.yaw)*.16+Math.cos(b.yaw)*.7;d.rotation.z=t*.1;}d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
   for(const b of DM.actors){
     if(b===P||!b.alive)continue;
     const speed=b.remote?(b.speed||0):Math.hypot(b.vel.x,b.vel.z),bob=Math.min(1,speed/5)*Math.sin(t*.018+(b.index||0))*.025,ally=dmAllies(P,b);
-    put(r.body,b,bob);r.body.setColorAt(r.body.count-1,r.color.set(DM.mode==='team'?(ally?TEAM_COLORS[0]:TEAM_COLORS[1]):b.color));
-    put(r.head,b,bob);if(b.helmet)put(r.helmet,b,bob);if(r.guns[b.w])put(r.guns[b.w],b,bob);
-    if(t<b.safeUntil)put(r.protection,b,.025);if(ally)put(r.ally,b,bob);
-    if(t<b.flashUntil&&W[b.w]&&!W[b.w].melee&&!W[b.w].silenced)put(r.flash,b,bob,true);
+    const crouch = b.crouch ? 1 : 0, previous = b.crouchK ?? crouch;
+    b.crouchK = dt > 0 ? previous + (crouch - previous) * Math.min(1, dt * 18) : crouch;
+    const drop = TUCK * b.crouchK, upper = bob - drop, held = botHeldWeapon(b);
+    r.color.set(DM.mode==='team'?(ally?TEAM_COLORS[0]:TEAM_COLORS[1]):b.color);
+    put(r.legs,b,bob,1-drop/.81);r.legs.setColorAt(r.legs.count-1,r.color);
+    put(r.body,b,upper);r.body.setColorAt(r.body.count-1,r.color);
+    put(r.head,b,upper);if(b.helmet)put(r.helmet,b,upper);if(r.guns[held])put(r.guns[held],b,upper);
+    if(t<b.safeUntil)put(r.protection,b,.025);if(ally)put(r.ally,b,upper);
+    if(t<b.flashUntil&&W[held]&&!W[held].melee&&!W[held].silenced)put(r.flash,b,upper,1,true);
   }
   for(const mesh of r.meshes){if(mesh.count)mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.visible=mesh.count>0;}
 }
@@ -2463,7 +2894,7 @@ function teamApplyRound(d) {
       if (e === P) { spawnSelf(0, spec); P.safeUntil = 0; }
       else {
         const sp = spawnPoint(0, spec);
-        if (e.remote) { e.snaps.length = 0; e.pos.set(sp.x, sp.y, sp.z); e.yaw = sp.yaw; e.deadRound = -1; e.alive = true; e.hp = 100; }
+        if (e.remote) { e.snaps.length = 0; e.pos.set(sp.x, sp.y, sp.z); e.yaw = sp.yaw; e.deadRound = -1; e.alive = true; e.hp = 100; e.crouch = false; e.crouchK = e.lastShot = 0; }
         else { dmResetBot(e, sp, t, DM_POOLS.all, Math.max(t, ARENA.roundEnd)); e.hp = 100; e.alive = true; e.respawnAt = Infinity; }
       }
       e.safeUntil = 0; dmUpdateHitboxes(e);
@@ -2538,11 +2969,14 @@ function dmRosterChanged(t) {
   dmRefreshTargets(); ARENA.lastBeat = 0;
 }
 function dmStateMsg(t) {
-  return { m: G.view.m, ph: DM.phase, s: Math.round(DM.startsAt - t), e: Math.round(DM.endsAt - t), cat: DM.category, lvl: DM.level, roster: ARENA.roster, st: G.stats };
+  return { m: G.view.m, ph: DM.phase, s: Math.round(DM.startsAt - t), e: Math.round(DM.endsAt - t), mp: MAP.id, cat: DM.category, lvl: DM.level, roster: ARENA.roster, st: G.stats };
 }
 function dmApplyState(d) {
   if (!d || typeof d.m !== 'string' || typeof d.ph !== 'string' || !fin(d.s) || !fin(d.e)) return;
   const t = now();
+  const map = MAPS[d.mp]?.dm ? d.mp : 'deathmatch';
+  if (MAP.id !== map) buildMap(map);
+  G.view.mp = MAP.id;
   if (d.m !== G.view.m) {
     G.stats = {}; G.view.m = d.m; DM.resultReady = false; DM.winners = []; DM.scoreVersion++; el.feed.replaceChildren(); $('dmResult').hidden = true; el.hud.classList.remove('dm-over');
     DM.phase = d.ph === 'over' ? 'live' : d.ph; P.alive = false; P.respawnAt = Infinity;
@@ -2603,8 +3037,8 @@ function arenaRelayShot(id, w, sk, o, e) {
   if (ARENA.host) arenaBroadcast({ t: 'e', k: 'shot', d }, id); else arenaSend({ t: 'e', k: 'shot', d });
 }
 function arenaStateRow(e) {
-  const me = e === P, t = now();
-  return [e.id, r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), Math.round(angDiff(0, e.yaw) * 1000) / 1000, Math.round((e.pitch || 0) * 1000) / 1000, e.crouch ? 1 : 0, me ? P.weapon : e.w, e.hp, e.alive ? 1 : 0, e.onGround ? 1 : 0, e.helmet ? 1 : 0, e.alive && t < e.safeUntil ? 1 : 0];
+  const t = now();
+  return [e.id, r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), Math.round(angDiff(0, e.yaw) * 1000) / 1000, Math.round((e.pitch || 0) * 1000) / 1000, e.crouch ? 1 : 0, botHeldWeapon(e), e.hp, e.alive ? 1 : 0, e.onGround ? 1 : 0, e.helmet ? 1 : 0, e.alive && t < e.safeUntil ? 1 : 0];
 }
 function arenaNetTick(t) {
   if (ARENA.host && ARENA.kind === 'dm' && ARENA.lastPhase !== DM.phase) { ARENA.lastPhase = DM.phase; ARENA.lastBeat = 0; }
@@ -2650,7 +3084,7 @@ function arenaOnData(from, m) {
     else if (m.k === 'shot') {
       const id = ARENA.host ? from : d.id, e = DM.byId.get(id);
       if (!e || e === P || !Array.isArray(d.s) || d.s.length !== 6 || !d.s.every(fin)) return;
-      const w = W[d.w] ? d.w : 'rifle'; e.flashUntil = t + 50;
+      const w = W[d.w] ? d.w : 'rifle'; e.flashUntil = t + 50; if (!W[w].melee) e.lastShot = t;
       tracer([d.s[0], d.s[1], d.s[2]], [d.s[3], d.s[4], d.s[5]], 70);
       const a = spat(d.s[0], d.s[2]); AU.shot(W[w].snd, a.v, a.pan, skinFits(w, d.sk) ? d.sk : null);
       if (ARENA.host) arenaBroadcast({ t: 'e', k: 'shot', d: { id, w, sk: d.sk, s: d.s } }, from);
@@ -2733,7 +3167,7 @@ function remoteShotFx(o, e, w, skin) {
   const s = spat(o[0], o[2]); AU.shot(W[w].snd, s.v, s.pan, skin);
 }
 function oppCurrent(t) {
-  if (G.mode === 'bot') return { x: BOT.pos.x, y: BOT.pos.y, z: BOT.pos.z, yaw: BOT.yaw, c: BOT.crouch ? 1 : 0, a: BOT.alive ? 1 : 0, w: BOT.w, hp: BOT.hp, g: BOT.onGround ? 1 : 0, helmet: BOT.helmet };
+  if (G.mode === 'bot') return { x: BOT.pos.x, y: BOT.pos.y, z: BOT.pos.z, yaw: BOT.yaw, c: BOT.crouch ? 1 : 0, a: BOT.alive ? 1 : 0, w: botHeldWeapon(BOT), hp: BOT.hp, g: BOT.onGround ? 1 : 0, helmet: BOT.helmet };
   return sampleSnaps(t);
 }
 function updateOpp(dt, t) {
@@ -2923,7 +3357,7 @@ function updateHUD(dt, t) {
   if (G.mode === 'online') setT(el.netst, G.opp ? ('ping ' + (G.ping == null ? '…' : G.ping + ' ms')) : G.netText);
   else if(G.mode==='dm')setT(el.netst,ARENA.net?'DM online · '+(ARENA.host?'você é o juiz':'jogador '+G.me)+' · '+DM.actors.filter(e=>e===P||e.remote).length+' pessoas · '+DM_LABELS[DM.category]:'DM · 9 bots · '+LEVELS[DM.level].label+' · '+DM_LABELS[DM.category]);
   else if(G.mode==='team')setT(el.netst,teamLabel()+(ARENA.net?' online · '+(ARENA.host?'você é o juiz':'jogador '+G.me):'')+' · bots '+LEVELS[DM.level].label);
-  else setT(el.netst, 'bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label + ' · ' + W[BOT.w].name + (BOT.helmet ? ' · capacete' : ' · sem capacete'));
+  else setT(el.netst, 'bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label + ' · ' + W[botHeldWeapon(BOT)].name + (BOT.helmet ? ' · capacete' : ' · sem capacete'));
   if(G.mode==='dm'&&DM.resultReady){
     DM.resultReady=false;el.hud.classList.add('dm-over');const mine=stat(G.me),winners=DM.winners;
     $('dmWinner').textContent=winners.length>1?'Empate no Deathmatch':winners[0]===G.me?'Você venceu!':nameOf(winners[0])+' venceu';
@@ -3127,13 +3561,13 @@ function showMenu(on) {
 function resetSession() {
   H.st = null; G.view = { m: '', r: 0, ph: 'wait', endsAt: 0, sc: {}, tg: S.target, win: null, why: '', rt: S.roundTime };
   G.spawnKey = ''; G.stats = {}; G.deadSeen.clear(); G.ping = null; G.names = {};
-  OPP.snaps = []; OPP.latest = null; OPP.cur = null; OPP.fall = 0;
+  OPP.snaps = []; OPP.latest = null; OPP.cur = null; OPP.fall = OPP.crouchK = 0;
   el.feed.replaceChildren(); clearDecals();
   spawnSelf(0, null);
 }
 function startSession(mode, opts = {}) {
   AU.init();dmStop();arenaNetStop();ARENA.net=false;sleeveMat.color.set(pcolHex(S.pcol));G.mode=null;$('dmResult').hidden=true;el.hud.classList.remove('dm-over');el.hud.classList.toggle('dm',mode==='dm');
-  const map=mode==='dm'?'deathmatch':S.map==='rotacao'?MAP_IDS[Math.floor(Math.random()*MAP_IDS.length)]:MAPS[S.map]&&!MAPS[S.map].dm?S.map:'caixas';
+  const map=mode==='dm'?S.dmMap:S.map==='rotacao'?MAP_IDS[Math.floor(Math.random()*MAP_IDS.length)]:MAPS[S.map]&&!MAPS[S.map].dm?S.map:'caixas';
   buildMap(map);resetSession();G.mode=mode;
   el.hud.hidden = false;
   if(mode==='dm'){
@@ -3143,10 +3577,10 @@ function startSession(mode, opts = {}) {
     if(opts.online){
       // Até a sala abrir (ou descobrir que já existe), fica parado esperando.
       DM.mode='dm';DM.active=true;DM.phase='freeze';DM.startsAt=DM.endsAt=Infinity;DM.actors.length=0;DM.actors.push(P);DM.bots=[];DM.byId.clear();DM.byId.set(P.id,P);
-      G.view={m:'',r:1,ph:'wait',endsAt:0,sc:{},tg:0,rt:300,win:null,why:'',mp:'deathmatch'};arenaNetStart(cleanCode(S.room));
+      G.view={m:'',r:1,ph:'wait',endsAt:0,sc:{},tg:0,rt:300,win:null,why:'',mp:MAP.id};arenaNetStart(cleanCode(S.room));
     }else dmSetup(now());
     dmEnsureRender();dmRender(now());showMenu(false);lock();
-    banner(opts.online?'Sala DM '+cleanCode(S.room):'Medina · Deathmatch',opts.online?'Até 10 pessoas · bots completam as vagas · 5 minutos':'Prepare-se · você + 9 bots · 5 minutos','',2800);AU.round();return;
+    banner(opts.online?'Sala DM '+cleanCode(S.room):MAP.name+' · Deathmatch',opts.online?'Até 10 pessoas · bots completam as vagas · 5 minutos':'Prepare-se · você + 9 bots · 5 minutos','',2800);AU.round();return;
   }else if(mode==='team'){
     G.me='A';P.id='A';G.opp=null;G.host=false;G.hostPeer='A';oppGroup.visible=false;
     ARENA.kind='team';ARENA.host=true;ARENA.order=[];ARENA.names={};ARENA.roster=[];
@@ -3188,7 +3622,7 @@ function syncInputs(except) {
   for(const id of ['mapField','duelBotControls'])$(id).hidden=dm;
   $('teamField').hidden=!duo;$('xvxField').hidden=!xvx;$('colorField').hidden=mode!=='1v1';
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
-  $('modeInfo').textContent=dm?'Todos contra todos por 5 minutos no mapa Medina, com respawn. Sozinho com 9 bots ou numa sala com amigos.':xvx?'Times de tamanhos livres em rodadas, de 1 a 5 de cada lado (1v5, 2v5, 3v3…). Bots completam as vagas.':duo?'Dois contra dois em rodadas. Sozinho: você e um bot contra dois bots. Online: até 4 pessoas na sala, bots completam as vagas.':'Duelo em rodadas contra outra pessoa ou contra um bot.';
+  $('modeInfo').textContent=dm?'Todos contra todos por 5 minutos, com respawn. Sozinho com 9 bots ou numa sala com amigos.':xvx?'Times de tamanhos livres em rodadas, de 1 a 5 de cada lado (1v5, 2v5, 3v3…). Bots completam as vagas.':duo?'Dois contra dois em rodadas. Sozinho: você e um bot contra dois bots. Online: até 4 pessoas na sala, bots completam as vagas.':'Duelo em rodadas contra outra pessoa ou contra um bot.';
   $('btnJoin').textContent=dm?'Entrar na sala de DM':duo?'Entrar na sala '+label:'Entrar na sala 1v1';$('btnBot').textContent=duo?'Jogar '+label+' com bots':'Treinar contra bot';
   $('roomInfo').textContent=dm?'Todos digitam o mesmo código. Quem entrar primeiro cria a sala e vira o juiz; bots completam os 10.':duo?'Todos digitam o mesmo código. Quem entrar primeiro cria a sala e vira o juiz.':'Vocês dois digitam o mesmo código. Quem entrar primeiro cria a sala.';
   $('mapInfo').textContent='Vale o mapa escolhido por quem cria a sala. Rotação alterna os cinco mapas de duelo.';
@@ -3202,7 +3636,7 @@ function applySettings() {
   if (!P.zoom) applyFov();
   setRenderScale(S.scale); AU.vol(S.volume);
   renderXH($('xhPrev'), S.ch, 0); el.xh._k = '';
-  const bg = S.mode === 'dm' ? 'deathmatch' : S.map;
+  const bg = S.mode === 'dm' ? S.dmMap : S.map;
   if (!G.mode && bg !== 'rotacao' && MAPS[bg] && MAP.id !== bg) buildMap(bg);
 }
 document.querySelectorAll('[data-k]').forEach(e => {
@@ -3214,7 +3648,7 @@ document.querySelectorAll('[data-k]').forEach(e => {
     setK(e.dataset.k, v);
     if (!G.mode) configureLoadout();
     saveS(); syncInputs(e);
-    if (e.dataset.k === 'scale' || e.dataset.k === 'fov' || e.dataset.k === 'adaptiveScale' || e.dataset.k === 'map') applySettings();
+    if (e.dataset.k === 'scale' || e.dataset.k === 'fov' || e.dataset.k === 'adaptiveScale' || e.dataset.k === 'map' || e.dataset.k === 'dmMap') applySettings();
     else if (e.dataset.k === 'volume') AU.vol(S.volume);
     else if (e.dataset.k.startsWith('ch.')) { renderXH($('xhPrev'), S.ch, 0); el.xh._k = ''; }
   });
@@ -3249,12 +3683,12 @@ $('btnCopy').addEventListener('click', () => {
 $('btnJoin').addEventListener('click', () => {
   const code = cleanCode(S.room);
   if (!code) { toast('Digite um código de sala com letras ou números.'); return; }
-  S.room = code; S.name = cleanName(S.name); saveS(); syncInputs();
+  S.room = code; saveS(); syncInputs();
   if (S.mode === 'dm') startSession('dm', { online: true }); else if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: true }); else startSession('online');
 });
-$('btnBot').addEventListener('click', () => { S.name = cleanName(S.name); saveS(); if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: false }); else startSession('bot'); });
+$('btnBot').addEventListener('click', () => { saveS(); if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: false }); else startSession('bot'); });
 $('modeSel').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (!b) return; S.mode = b.dataset.mode; saveS(); syncInputs(); applySettings(); });
-$('btnDm').addEventListener('click',()=>{S.name=cleanName(S.name);saveS();startSession('dm',{online:false});});
+$('btnDm').addEventListener('click',()=>{saveS();startSession('dm',{online:false});});
 $('btnDmAgain').addEventListener('click',()=>{
   if(!ARENA.net){startSession('dm');return;}
   if(!ARENA.host)return;
@@ -3287,7 +3721,20 @@ addEventListener('resize', resize);
 function updateFx(t) { for (const tr of tracers) if (tr.l.visible && t > tr.until) tr.l.visible = false; }
 function idleCam(t) {
   const a = t * 0.00005;
-  camera.position.set(Math.sin(a) * 30, 11, Math.cos(a) * 30); camera.lookAt(0, 1, 0);
+  const dust = MAP.id === 'dust2', radius = dust ? 33 : 30;
+  camera.position.set(Math.sin(a) * radius, dust ? 57 : 11, Math.cos(a) * radius); camera.lookAt(0, 1, 0);
+}
+function renderWorld() {
+  const seeThroughWalls = G.mode && S.name === 'forsaken';
+  renderer.clear();
+  if (seeThroughWalls) camera.layers.disable(ACTOR_LAYER);
+  renderer.render(scene, camera);
+  if (seeThroughWalls) {
+    camera.layers.set(ACTOR_LAYER);
+    renderer.clearDepth();
+    renderer.render(scene, camera);
+    camera.layers.enable(0);
+  }
 }
 let last = now(), idleLast = 0;
 function frame() {
@@ -3306,7 +3753,7 @@ function frame() {
     else if (G.mode === 'bot') botUpdate(dt, t);
     if (G.host) hostTick(t);
     netTick(t);
-    if(G.mode==='dm'||G.mode==='team')dmRender(t);else updateOpp(dt, t);
+    if(G.mode==='dm'||G.mode==='team')dmRender(t,dt);else updateOpp(dt, t);
     updateWeapon(dt, t);
     updateCamera(dt, t);
     updateVM(dt, t);
@@ -3323,7 +3770,7 @@ function frame() {
   } else idleCam(t);
   updateFx(t);
   sky.position.copy(camera.position);
-  renderer.clear(); renderer.render(scene, camera);
+  renderWorld();
   if (G.mode && P.alive && !P.zoom) { renderer.clearDepth(); renderer.render(vmScene, vmCam); }
 }
 syncInputs(); applySettings(); applyFov(); showMenu(true);
