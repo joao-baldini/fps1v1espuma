@@ -31,7 +31,7 @@ function game(saved) {
     OPP: { cur: null, flashUntil: 0 }, keys, K: key => keys.has(key), locked: true,
     AU: new Proxy({}, { get: () => () => {} }),
     applyFov() {}, hitmark() {}, dmgNumber() {}, dmgDir() {}, flashRed() {}, addDecal() {}, tracer() {},
-    remoteShotFx() {}, banner() {}, killBanner() {}, spat: () => ({ v:.5, pan:0 }), addFeed: (killer,victim,w,hs) => events.push({topic:'feed',killer,victim,w,hs}),
+    remoteShotFx() {}, banner() {}, killBanner() {}, healFx() {}, spat: () => ({ v:.5, pan:0 }), addFeed: (killer,victim,w,hs) => events.push({topic:'feed',killer,victim,w,hs}),
     netSend: e => events.push(e), emit: (topic, data) => events.push({ topic, data }),
     botEmit: (topic, data) => events.push({ topic, data }),
     spawnPoint: (side,spec) => ({ x: spec?spec[0]:0, y: 0, z: spec?spec[1]:0, yaw: spec?spec[2]:0 }),
@@ -46,18 +46,22 @@ function game(saved) {
   vm.runInContext(section('const P =', 'const G ='), context);
   vm.runInContext(section('function spawnSelf(', '/* ================= Oponente na tela'), context);
   vm.runInContext(section('const KNIFE_REST =', 'function knifePalm'), context);
-  const state = vm.runInContext('({P, S, W, ORDER, CATEGORIES, BOT, LEVELS, configureLoadout, damageFor, physics, playerInput, inaccuracy, spawnSelf, selectWeapon, inspect, shoot, updateWeapon, startReload, botSpawn, botUpdate, botDamage, sampleKnifePose, sampleKnifeAnimation, beginKnifeAnimation, BF_DRAW, BF_INSPECT, KNIFE_CLIPS, KNIFE_DURATIONS, KARAMBIT_CLIPS, KARAMBIT_DURATIONS, sampleKarambitPose, sampleKarambitIdle, PHYS_STEP, BHOP_CAP, MAPS, DM, DM_POOLS, DM_BOT_NAMES, dmLoadoutOrder, dmBuildNav, dmSetup, dmTick, dmDamage, dmRespawn, dmChooseSpawn, dmRefreshTargets, dmCell, dmFindPath, dmWalkClear, dmBotFire, dmRanking, dmFinish, dmStop, trace, clearLine, overlapAny, stat})', context);
+  const state = vm.runInContext('({P, S, W, ORDER, CATEGORIES, BOT, LEVELS, configureLoadout, damageFor, physics, playerInput, inaccuracy, spawnSelf, selectWeapon, inspect, shoot, updateWeapon, startReload, botSpawn, botUpdate, botDamage, sampleKnifePose, sampleKnifeAnimation, beginKnifeAnimation, BF_DRAW, BF_INSPECT, KNIFE_CLIPS, KNIFE_DURATIONS, KARAMBIT_CLIPS, KARAMBIT_DURATIONS, sampleKarambitPose, sampleKarambitIdle, PHYS_STEP, BHOP_CAP, MAPS, DM, DM_POOLS, DM_BOT_NAMES, dmLoadoutOrder, dmBuildNav, dmSetup, dmTick, dmDamage, dmRespawn, dmChooseSpawn, dmRefreshTargets, dmCell, dmFindPath, dmWalkClear, dmBotFire, dmRanking, dmFinish, dmStop, dmKillReward, trace, clearLine, overlapAny, stat})', context);
   return Object.assign(state, { context, events, keys, tick: value => { clock = value; }, floor });
 }
-function deathmatch(category='all',level='medio') {
-  const g=game(), map=g.MAPS.deathmatch;
-  g.context.G.mode='dm';g.context.G.opp=null;g.S.dmWeapons=category;g.S.dmLevel=level;
+function dmWorld(g) {
+  const map=g.MAPS.deathmatch;
+  g.context.G.mode='dm';g.context.G.opp=null;
   g.context.MAP=map;g.context.AX=map.ax;g.context.AZ=map.az;
   g.context.boxes=[g.floor];
   const X=map.ax,Z=map.az;
   g.context.boxes.push({min:[-X-1,0,-Z-1],max:[-X,7,Z+1]},{min:[X,0,-Z-1],max:[X+1,7,Z+1]},{min:[-X,0,-Z-1],max:[X,7,-Z]},{min:[-X,0,Z],max:[X,7,Z+1]});
   map.build({box(x,z,w,d,h,color,y=0){g.context.boxes.push({min:[x-w/2,y,z-d/2],max:[x+w/2,y+h,z+d/2]});}},{});
-  g.dmBuildNav();g.dmSetup(10000);
+  g.dmBuildNav();return g;
+}
+function deathmatch(category='all',level='medio') {
+  const g=dmWorld(game());g.S.dmWeapons=category;g.S.dmLevel=level;
+  g.dmSetup(10000);
   g.advance=(milliseconds,dt=1/60)=>{const end=g.time+milliseconds;while(g.time<end){g.time=Math.min(end,g.time+dt*1000);g.tick(g.time);g.dmTick(dt,g.time);}};
   g.time=10000;return g;
 }
@@ -326,9 +330,12 @@ test('every knife animation settles to the held pose and remains continuous betw
     const final = Array.from(g.sampleKnifePose(poses, 1));
     for (let i = 0; i < final.length; i++) assert.ok(Math.abs(i === 6 || i === 7 ? Math.sin(final[i]) : final[i]) < 1e-6);
     for (let i = 1; i < poses.length - 1; i++) {
-      const before = Array.from(g.sampleKnifePose(poses, poses[i][0] - 1e-6));
-      const after = Array.from(g.sampleKnifePose(poses, poses[i][0] + 1e-6));
-      assert.ok(before.every((v,j) => Math.abs(v-after[j]) < 1e-5));
+      const k = poses[i][0], e = 1e-5;
+      const before = Array.from(g.sampleKnifePose(poses, k - 1e-9)), at = Array.from(g.sampleKnifePose(poses, k));
+      const after = Array.from(g.sampleKnifePose(poses, k + 1e-9)), later = Array.from(g.sampleKnifePose(poses, k + e)), earlier = Array.from(g.sampleKnifePose(poses, k - e));
+      assert.ok(before.every((v,j) => Math.abs(v-after[j]) < 1e-6));
+      // velocidade contínua: a butterfly não para mais em cada pose-chave
+      assert.ok(at.every((v,j) => Math.abs((v-earlier[j])/e - (later[j]-v)/e) < .3));
     }
   }
 });
@@ -370,8 +377,8 @@ test('attacking during inspection blends from the exact current pose without a o
   g.shoot(12650,false); const after = Array.from(g.sampleKnifeAnimation(g.P.kAnim,12650));
   assert.ok(before.every((v,i) => Math.abs(i === 6 || i === 7 ? Math.sin(v-after[i]) : v-after[i]) < 1e-6));
   g.tick(12700); g.inspect(); assert.equal(g.P.kAnim.type,'slash');
-  const end = Array.from(g.sampleKnifeAnimation(g.P.kAnim,14000));
-  assert.ok(end.every((v,i) => Math.abs(i === 6 || i === 7 ? Math.sin(v) : v) < 1e-6));
+  const end = Array.from(g.sampleKnifeAnimation(g.P.kAnim,14000)), idle = Array.from(g.context.sampleButterflyIdle(14000));
+  assert.ok(end.every((v,i) => Math.abs(i === 6 || i === 7 ? Math.sin(v - idle[i]) : v - idle[i]) < 1e-6));
 });
 
 test('both knife attacks retain their original damage and switching clears their animations', () => {
@@ -477,7 +484,7 @@ test('2v2 with bots plays full rounds: teams of two, no friendly fire and consis
   Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } }, MAP_IDS: ['caixas'] });
   cx.G.mode = 'team'; cx.G.opp = null; g.S.map = 'caixas'; g.S.target = 3; g.S.roundTime = 40; g.S.botLevel = 'dificil';
   let t = 10000; g.tick(t); vm.runInContext('teamSetup(10000,false)', cx);
-  const T = vm.runInContext('TEAM', cx);
+  const T = vm.runInContext('ARENA', cx);
   assert.deepEqual(Array.from(g.DM.actors, e => e.team).sort(), [0, 0, 1, 1]);
   const phases = new Set(); let checkedFriendlyFire = false;
   while (t < 10000 + 400000 && !(g.DM.phase === 'over')) {
@@ -495,4 +502,116 @@ test('2v2 with bots plays full rounds: teams of two, no friendly fire and consis
   for (const k of kills) assert.notEqual(g.DM.byId.get(k.killer).team, g.DM.byId.get(k.victim).team);
   const stats = Object.values(cx.G.stats); assert.equal(stats.reduce((s, e) => s + e.k, 0), stats.reduce((s, e) => s + e.d, 0));
   assert.equal(stats.reduce((s, e) => s + e.k, 0), kills.length);
+});
+
+test('DM kills refill the magazine at once and headshot kills heal 50, for the player and for bots', () => {
+  const g = deathmatch('rifle'), bot = g.DM.bots[0], victim = g.DM.bots[1], other = g.DM.bots[2];
+  g.dmTick(0, 13000); for (const e of g.DM.actors) e.safeUntil = 0;
+  g.P.weapon = 'rifle'; g.P.ammo.rifle.mag = 3; g.P.reloadEnd = 99999; g.P.hp = 30;
+  assert.equal(g.dmDamage(victim, 200, 'body', 'rifle', g.P, 13001), 100);
+  assert.equal(g.P.ammo.rifle.mag, 30); assert.equal(g.P.reloadEnd, 0); assert.equal(g.P.hp, 30);
+  assert.equal(g.dmDamage(other, 200, 'head', 'rifle', g.P, 13002), 100);
+  assert.equal(g.P.hp, 80);
+  g.P.hp = 90; const third = g.DM.bots[3]; g.dmDamage(third, 200, 'head', 'rifle', g.P, 13003); assert.equal(g.P.hp, 100);
+  bot.hp = 20; bot.mag = 1; const fourth = g.DM.bots[4];
+  g.dmDamage(fourth, 200, 'head', bot.w, bot, 13004);
+  assert.equal(bot.hp, 70); assert.equal(bot.mag, g.W[bot.w].mag);
+});
+
+// Sala online simulada: PeerJS falso que entrega as mensagens reais do protocolo entre anfitrião e convidado.
+function fakeNet(g) {
+  const peers = [];
+  class FakeConn { constructor() { this.handlers = {}; this.open = false; this.sent = []; } on(ev, fn) { this.handlers[ev] = fn; } send(m) { this.sent.push(JSON.parse(JSON.stringify(m))); } close() {} }
+  class FakePeer { constructor(id) { this.id = id; this.handlers = {}; peers.push(this); } on(ev, fn) { this.handlers[ev] = fn; } connect() { this.conn = new FakeConn(); return this.conn; } destroy() {} reconnect() {} }
+  const node = () => ({ hidden: true, textContent: '', disabled: false, classList: { add() {}, remove() {}, toggle() {} }, replaceChildren() {}, style: { setProperty() {} } });
+  Object.assign(g.context, { Peer: FakePeer, ICE: {}, PEER_OPTS: {}, INTERP: 55, clearTimeout() {}, toast() {}, leaveSession() {}, sleeveMat: { color: { set() {} } }, clearDecals() {},
+    document: { getElementById: node }, el: { feed: node(), hud: node() } });
+  g.peers = peers; g.FakeConn = FakeConn; return g;
+}
+function connect(host, guest, code) {
+  vm.runInContext(`arenaNetStart('${code}')`, host.context); host.peers.at(-1).handlers.open();
+  vm.runInContext(`arenaNetStart('${code}')`, guest.context); guest.peers.at(-1).handlers.error({ type: 'unavailable-id' });
+  const gp = guest.peers.at(-1); gp.handlers.open(); const toHost = gp.conn, toGuest = new host.FakeConn();
+  host.peers[0].handlers.connection(toGuest); toGuest.open = toHost.open = true; toGuest.handlers.open(); toHost.handlers.open();
+  return () => { for (let i = 0; i < 4; i++) { const a = toGuest.sent.splice(0), b = toHost.sent.splice(0); a.forEach(m => toHost.handlers.data(m)); b.forEach(m => toGuest.handlers.data(m)); } };
+}
+
+test('DM room: a friend takes a bot slot, respawns from the host, and kills, rewards and scores match on both sides', () => {
+  const host = fakeNet(dmWorld(game())), guest = fakeNet(dmWorld(game()));
+  for (const g of [host, guest]) { g.S.dmWeapons = 'rifle'; g.S.name = g === host ? 'Ana' : 'Beto'; vm.runInContext("ARENA.kind='dm';ARENA.net=true;ARENA.host=true", g.context); }
+  let t = 10000; const tick = ms => { t += ms; host.tick(t); guest.tick(t); };
+  tick(0); const pump = connect(host, guest, 'amigos');
+  pump(); tick(400); host.dmTick(0, t); pump();
+  vm.runInContext('arenaNetTick(now())', host.context); pump();
+  assert.equal(host.DM.actors.length, 10); assert.equal(host.DM.bots.length, 8);
+  assert.equal(guest.context.G.me, 'B'); assert.equal(guest.DM.actors.length, 10);
+  assert.deepEqual(Array.from(host.DM.actors, e => e.id).sort(), Array.from(guest.DM.actors, e => e.id).sort());
+  assert.equal(guest.P.alive, true, 'guest spawned by the host');
+  tick(3200); host.dmTick(0, t); vm.runInContext('dmGuestTick(0,now())', guest.context);
+  assert.equal(host.DM.phase, 'live'); assert.equal(guest.DM.phase, 'live');
+  guest.P.safeUntil = 0; host.P.safeUntil = 0;
+  for (let i = 0; i < 3; i++) { tick(40); vm.runInContext('arenaNetTick(now())', guest.context); pump(); vm.runInContext('arenaUpdateProxies(now()+100)', host.context); }
+  const proxyB = host.DM.byId.get('B'); assert.equal(proxyB.alive, true); proxyB.safeUntil = 0;
+  host.P.hp = 40; host.P.weapon = 'rifle'; host.P.ammo.rifle.mag = 2;
+  assert.ok(host.dmDamage(proxyB, 200, 'head', 'rifle', host.P, t) > 0);
+  pump(); pump();
+  assert.equal(guest.P.alive, false);
+  assert.equal(host.stat('A').k, 1); assert.equal(guest.stat('A').k, 1); assert.equal(guest.stat('B').d, 1);
+  assert.equal(host.P.hp, 90); assert.equal(host.P.ammo.rifle.mag, 30);
+  tick(1600); host.dmTick(0, t); pump();
+  assert.equal(guest.P.alive, true, 'guest respawned after the DM delay');
+  for (let i = 0; i < 3; i++) { tick(40); vm.runInContext('arenaNetTick(now())', guest.context); pump(); vm.runInContext('arenaUpdateProxies(now()+100)', host.context); }
+  assert.equal(host.DM.byId.get('B').alive, true, 'host sees the respawned friend');
+  const bot = host.DM.bots[0]; bot.safeUntil = 0; bot.alive = true; bot.hp = 100;
+  guest.P.hp = 30; guest.P.safeUntil = 0;
+  const botProxy = guest.DM.byId.get(bot.id); botProxy.alive = true; botProxy.safeUntil = 0;
+  assert.ok(guest.dmDamage(botProxy, 200, 'head', 'rifle', guest.P, t) > 0);
+  pump(); pump();
+  assert.equal(bot.alive, false); assert.equal(host.stat('B').k, 1); assert.equal(guest.stat('B').k, 1); assert.equal(guest.P.hp, 80);
+});
+
+test('XvX: 1v5 against bots respects team sizes and plays rounds with only cross-team kills', () => {
+  const g = game(), cx = g.context, map = g.MAPS.caixas;
+  vm.runInContext(section('let mapQueue', 'const SUN ='), cx);
+  cx.MAP = Object.assign({ id: 'caixas' }, map); cx.AX = map.ax; cx.AZ = map.az; cx.boxes = [g.floor]; cx.ramps = [];
+  const X = map.ax, Z = map.az;
+  cx.boxes.push({ min: [-X - 1, 0, -Z - 1], max: [-X, 7, Z + 1] }, { min: [X, 0, -Z - 1], max: [X + 1, 7, Z + 1] }, { min: [-X, 0, -Z - 1], max: [X, 7, -Z] }, { min: [-X, 0, Z], max: [X, 7, Z + 1] });
+  const B = { box(x, z, w, d, h, c, y = 0) { cx.boxes.push({ min: [x - w / 2, y, z - d / 2], max: [x + w / 2, y + h, z + d / 2] }); },
+    pair(x, z, w, d, h, c, y = 0) { B.box(x, z, w, d, h, c, y); B.box(-x, -z, w, d, h, c, y); },
+    shield(zc, hw) { cx.MAP.exit = { zc, hw }; B.box(0, zc, hw * 2, .8, 3.2); B.box(0, -zc, hw * 2, .8, 3.2); } };
+  map.build(B, {});
+  Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } }, MAP_IDS: ['caixas'] });
+  cx.G.mode = 'team'; g.S.map = 'caixas'; g.S.mode = 'xvx'; g.S.xvx = { mine: 1, foes: 5 }; g.S.target = 2; g.S.roundTime = 40;
+  let t = 10000; g.tick(t); vm.runInContext('teamSetup(10000,false)', cx);
+  assert.deepEqual(Array.from(g.DM.actors, e => e.team).sort(), [0, 1, 1, 1, 1, 1]);
+  const T = vm.runInContext('ARENA', cx);
+  while (t < 10000 + 300000 && g.DM.phase !== 'over') { t += 1000 / 30; g.tick(t); vm.runInContext(`teamTick(1/30,${t})`, cx); }
+  assert.equal(g.DM.phase, 'over'); assert.equal(Math.max(...T.sc), 2);
+  const kills = g.events.filter(e => e.topic === 'feed');
+  for (const k of kills) assert.notEqual(g.DM.byId.get(k.killer).team, g.DM.byId.get(k.victim).team);
+});
+
+test('Team room: people on opposite sides, bots fill the rest, and a networked kill counts on both sides', () => {
+  const setup = g => {
+    const cx = g.context, map = g.MAPS.caixas; vm.runInContext(section('let mapQueue', 'const SUN ='), cx);
+    cx.MAP = Object.assign({ id: 'caixas' }, map); cx.AX = map.ax; cx.AZ = map.az; cx.boxes = [g.floor]; cx.ramps = []; cx.MAP_IDS = ['caixas'];
+    cx.G.mode = 'team'; g.S.map = 'caixas'; g.S.mode = '2v2'; g.S.teamSetup = 'versus';
+    vm.runInContext("ARENA.kind='team';ARENA.host=true", cx); vm.runInContext('teamSetup(now(),true)', cx); return g;
+  };
+  const host = setup(fakeNet(game())), guest = setup(fakeNet(game()));
+  let t = 10000; host.tick(t); guest.tick(t);
+  const pump = connect(host, guest, 'times'); pump();
+  t += 1600; host.tick(t); guest.tick(t); vm.runInContext(`teamTick(0,${t})`, host.context); pump();
+  const roster = vm.runInContext('ARENA.roster', host.context);
+  assert.deepEqual(Array.from(roster, r => r[0] + r[1] + r[3][0]), ['A0h', 'X10b', 'B1h', 'X21b']);
+  assert.equal(guest.context.G.me, 'B'); assert.equal(guest.P.team, 1); assert.equal(guest.DM.actors.length, 4);
+  t += 3100; host.tick(t); guest.tick(t); vm.runInContext(`teamTick(0,${t})`, host.context); pump();
+  assert.equal(host.DM.phase, 'live'); assert.equal(guest.DM.phase, 'live');
+  for (let i = 0; i < 3; i++) { t += 40; host.tick(t); guest.tick(t); vm.runInContext('arenaNetTick(now())', guest.context); vm.runInContext('arenaNetTick(now())', host.context); pump(); }
+  vm.runInContext('arenaUpdateProxies(now()+100)', guest.context);
+  const proxyA = guest.DM.byId.get('A'); assert.equal(proxyA.alive, true);
+  assert.ok(guest.dmDamage(proxyA, 200, 'head', 'usps', guest.P, t) > 0); pump(); pump();
+  assert.equal(host.P.alive, false); assert.equal(host.stat('B').k, 1); assert.equal(guest.stat('B').k, 1); assert.equal(guest.stat('A').d, 1);
+  const ally = guest.DM.actors.find(e => e !== guest.P && e.team === guest.P.team);
+  assert.equal(guest.dmDamage(ally, 50, 'body', 'usps', guest.P, t), 0, 'no friendly fire across the network either');
 });
