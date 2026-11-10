@@ -31,7 +31,7 @@ function game(saved) {
     OPP: { cur: null, flashUntil: 0 }, keys, K: key => keys.has(key), locked: true,
     AU: new Proxy({}, { get: () => () => {} }),
     applyFov() {}, hitmark() {}, dmgNumber() {}, dmgDir() {}, flashRed() {}, addDecal() {}, tracer() {},
-    remoteShotFx() {}, banner() {}, spat: () => ({ v:.5, pan:0 }), addFeed: (killer,victim,w,hs) => events.push({topic:'feed',killer,victim,w,hs}),
+    remoteShotFx() {}, banner() {}, killBanner() {}, spat: () => ({ v:.5, pan:0 }), addFeed: (killer,victim,w,hs) => events.push({topic:'feed',killer,victim,w,hs}),
     netSend: e => events.push(e), emit: (topic, data) => events.push({ topic, data }),
     botEmit: (topic, data) => events.push({ topic, data }),
     spawnPoint: (side,spec) => ({ x: spec?spec[0]:0, y: 0, z: spec?spec[1]:0, yaw: spec?spec[2]:0 }),
@@ -41,7 +41,7 @@ function game(saved) {
   vm.runInContext(section('const DEFAULTS =', '/* ================= Render'), context);
   vm.runInContext(section('const MAPS =', 'const MAP_IDS'), context);
   vm.runInContext(section('function stat(', '/* ================= Rede P2P'), context);
-  vm.runInContext(section('function rampHeightAt', 'function groundAt'), context);
+  vm.runInContext(section('function rampHeightAt', 'function addTri'), context);
   vm.runInContext(section('function overlap(', '/* ================= Áudio'), context);
   vm.runInContext(section('const P =', 'const G ='), context);
   vm.runInContext(section('function spawnSelf(', '/* ================= Oponente na tela'), context);
@@ -54,7 +54,8 @@ function deathmatch(category='all',level='medio') {
   g.context.G.mode='dm';g.context.G.opp=null;g.S.dmWeapons=category;g.S.dmLevel=level;
   g.context.MAP=map;g.context.AX=map.ax;g.context.AZ=map.az;
   g.context.boxes=[g.floor];
-  g.context.boxes.push({min:[-23,0,-23],max:[-22,7,23]},{min:[22,0,-23],max:[23,7,23]},{min:[-22,0,-23],max:[22,7,-22]},{min:[-22,0,22],max:[22,7,23]});
+  const X=map.ax,Z=map.az;
+  g.context.boxes.push({min:[-X-1,0,-Z-1],max:[-X,7,Z+1]},{min:[X,0,-Z-1],max:[X+1,7,Z+1]},{min:[-X,0,-Z-1],max:[X,7,-Z]},{min:[-X,0,Z],max:[X,7,Z+1]});
   map.build({box(x,z,w,d,h,color,y=0){g.context.boxes.push({min:[x-w/2,y,z-d/2],max:[x+w/2,y+h,z+d/2]});}},{});
   g.dmBuildNav();g.dmSetup(10000);
   g.advance=(milliseconds,dt=1/60)=>{const end=g.time+milliseconds;while(g.time<end){g.time=Math.min(end,g.time+dt*1000);g.tick(g.time);g.dmTick(dt,g.time);}};
@@ -78,7 +79,7 @@ test('DM has ten distinct participants, the requested names and a full five-minu
 test('DM spawn points and routes are free, connected and spread across the arena', () => {
   const g=deathmatch(), n=g.DM.nav;
   assert.ok(g.DM.spawnPoints.length>=16);assert.ok(n.walk.length>400);
-  for(const p of g.DM.spawnPoints){assert.equal(g.overlapAny(p.x,.03,p.z,1.8),false);assert.ok(n.open[g.dmCell(p.x,p.z)]);}
+  for(const p of g.DM.spawnPoints){assert.equal(g.overlapAny(p.x,p.y+.03,p.z,1.8),false);assert.ok(n.open[g.dmCell(p.x,p.z)]);}
   for(const a of g.DM.actors)for(const b of g.DM.actors)if(a!==b)assert.ok(Math.hypot(a.pos.x-b.pos.x,a.pos.z-b.pos.z)>5);
   const bot=g.DM.bots[0];let paths=0;
   for(const p of g.DM.spawnPoints)if(g.dmFindPath(bot,p.x,p.z)){paths++;for(const id of bot.path)assert.ok(n.open[id]);}
@@ -135,7 +136,7 @@ test('nine DM bots navigate and kill one another with real shots on the actual m
     assert.ok(new Set(kills.map(e=>e.killer)).size>=3,category);
     assert.ok(kills.every(e=>g.DM_POOLS[category].includes(e.w)),category);
     const stats=Object.values(g.context.G.stats);assert.equal(stats.reduce((s,e)=>s+e.k,0),stats.reduce((s,e)=>s+e.d,0));
-    for(const b of g.DM.bots){assert.ok(Number.isFinite(b.pos.x)&&Number.isFinite(b.pos.z));assert.ok(Math.abs(b.pos.x)<22&&Math.abs(b.pos.z)<22);}
+    for(const b of g.DM.bots){assert.ok(Number.isFinite(b.pos.x)&&Number.isFinite(b.pos.z));assert.ok(Math.abs(b.pos.x)<g.MAPS.deathmatch.ax&&Math.abs(b.pos.z)<g.MAPS.deathmatch.az);}
   }
 });
 
@@ -420,4 +421,78 @@ test('a karambit attack interrupts inspection at the current pose and keeps the 
   for(let i=0;i<before.length;i++)assert.ok(Math.abs(i===6||i===7 ? Math.sin(before[i]-after[i]) : before[i]-after[i])<2e-6);
   const impact=g.sampleKnifeAnimation(g.P.kAnim,13000+g.P.kAnim.duration*.44);
   assert.equal(g.P.kAnim.type,'stab');assert.equal(impact[12],0);assert.equal(impact[6],0);
+});
+
+test('the Sublime AK stays locked until the right code, which is never stored in plain text', () => {
+  const g = game();
+  assert.ok(!html.includes('THEB2026'));
+  g.S.skins = { rifle: 'sublime', m4a4: 'sublime', pistol: 'neon' };
+  assert.equal(g.context.skinOf('rifle'), 'padrao');
+  assert.equal(g.context.skinOf('m4a4'), 'padrao');
+  assert.equal(g.context.skinOf('pistol'), 'neon');
+  assert.deepEqual(Array.from(g.context.unlockSkinCode('errado')), []);
+  assert.equal(g.context.skinOf('rifle'), 'padrao');
+  assert.deepEqual(Array.from(g.context.unlockSkinCode(' theb2026 ')), ['sublime']);
+  assert.equal(g.context.skinOf('rifle'), 'sublime');
+  assert.equal(g.context.skinOf('m4a4'), 'padrao');
+  assert.equal(g.context.sha256Hex('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  assert.equal(g.context.skinOf('rifle', { rifle: 'sublime' }), 'sublime');
+});
+
+test('skin kills escalate the Valorant-style streak and reset on spawn; default skins keep the old sound', () => {
+  const g = game(), banners = [];
+  g.context.killBanner = (id, n) => banners.push([id, n]);
+  g.S.skins = { rifle: 'brasa' }; g.spawnSelf(0);
+  for (let i = 0; i < 6; i++) g.context.onMyKill('rifle');
+  assert.deepEqual(banners.map(b => b[1]), [1, 2, 3, 4, 5, 6]);
+  assert.ok(banners.every(b => b[0] === 'brasa'));
+  g.spawnSelf(0); g.context.onMyKill('pistol'); g.context.onMyKill('knife');
+  assert.equal(banners.length, 6); assert.equal(g.P.streak, 2);
+});
+
+test('DM starts with no two participants in sight of each other, facing open routes, with reachable sites', () => {
+  for (let run = 0; run < 3; run++) {
+    const g = deathmatch(), n = g.DM.nav, first = g.DM.actors.map(a => g.DM.spawnPoints.findIndex(p => Math.abs(p.x - a.pos.x) < .01 && Math.abs(p.z - a.pos.z) < .01));
+    assert.ok(first.every(i => i >= 0));
+    for (const a of first) for (const b of first) if (a !== b) assert.equal(g.DM.spawnVis[a][b], 0, `spawns ${a} and ${b} see each other`);
+    for (const p of g.DM.spawnPoints) { const hit = g.context.traceMap([p.x, p.y + 1.64, p.z], vm.runInContext(`dirFrom(${p.yaw},0)`, g.context), 40); assert.ok(!hit || hit.t >= 6, 'spawn faces a wall'); }
+    const high = n.walk.filter(id => n.height[id] > 1.1);
+    assert.ok(high.length > 20, 'elevated sites are part of the navigation');
+    const bot = g.DM.bots[0], target = high[0];
+    bot.pos.set(0, 0, -1);
+    assert.ok(g.dmFindPath(bot, n.minX + (target % n.w) * n.step, n.minZ + Math.floor(target / n.w) * n.step));
+  }
+});
+
+test('2v2 with bots plays full rounds: teams of two, no friendly fire and consistent scoring', () => {
+  const g = game(), cx = g.context, map = g.MAPS.caixas;
+  vm.runInContext(section('let mapQueue', 'const SUN ='), cx);
+  cx.MAP = Object.assign({ id: 'caixas' }, map); cx.AX = map.ax; cx.AZ = map.az; cx.boxes = [g.floor]; cx.ramps = [];
+  const X = map.ax, Z = map.az;
+  cx.boxes.push({ min: [-X - 1, 0, -Z - 1], max: [-X, 7, Z + 1] }, { min: [X, 0, -Z - 1], max: [X + 1, 7, Z + 1] }, { min: [-X, 0, -Z - 1], max: [X, 7, -Z] }, { min: [-X, 0, Z], max: [X, 7, Z + 1] });
+  const B = { box(x, z, w, d, h, c, y = 0) { cx.boxes.push({ min: [x - w / 2, y, z - d / 2], max: [x + w / 2, y + h, z + d / 2] }); },
+    pair(x, z, w, d, h, c, y = 0) { B.box(x, z, w, d, h, c, y); B.box(-x, -z, w, d, h, c, y); },
+    shield(zc, hw) { cx.MAP.exit = { zc, hw }; B.box(0, zc, hw * 2, .8, 3.2); B.box(0, -zc, hw * 2, .8, 3.2); } };
+  map.build(B, {});
+  Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } }, MAP_IDS: ['caixas'] });
+  cx.G.mode = 'team'; cx.G.opp = null; g.S.map = 'caixas'; g.S.target = 3; g.S.roundTime = 40; g.S.botLevel = 'dificil';
+  let t = 10000; g.tick(t); vm.runInContext('teamSetup(10000,false)', cx);
+  const T = vm.runInContext('TEAM', cx);
+  assert.deepEqual(Array.from(g.DM.actors, e => e.team).sort(), [0, 0, 1, 1]);
+  const phases = new Set(); let checkedFriendlyFire = false;
+  while (t < 10000 + 400000 && !(g.DM.phase === 'over')) {
+    t += 1000 / 30; g.tick(t); vm.runInContext(`teamTick(1/30,${t})`, cx); phases.add(g.DM.phase);
+    if (!checkedFriendlyFire && g.DM.phase === 'live') {
+      const ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team && e.alive);
+      if (ally && g.P.alive) { assert.equal(g.dmDamage(ally, 80, 'body', 'rifle', g.P, t), 0); assert.equal(ally.hp, 100); checkedFriendlyFire = true; }
+    }
+  }
+  assert.ok(checkedFriendlyFire);
+  assert.equal(g.DM.phase, 'over'); assert.equal(Math.max(...T.sc), 3);
+  for (const p of ['freeze', 'live', 'end', 'over']) assert.ok(phases.has(p), p);
+  const kills = g.events.filter(e => e.topic === 'feed');
+  assert.ok(kills.length >= 3);
+  for (const k of kills) assert.notEqual(g.DM.byId.get(k.killer).team, g.DM.byId.get(k.victim).team);
+  const stats = Object.values(cx.G.stats); assert.equal(stats.reduce((s, e) => s + e.k, 0), stats.reduce((s, e) => s + e.d, 0));
+  assert.equal(stats.reduce((s, e) => s + e.k, 0), kills.length);
 });
