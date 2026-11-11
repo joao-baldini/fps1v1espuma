@@ -44,7 +44,23 @@ Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu
 - **Economia (Wingman):** $800 iniciais e teto de $8.000. A vitória paga $2.750 por eliminação ou tempo esgotado e $3.000 por desarme ou detonação. A derrota paga $2.000, $2.300, $2.600 e no máximo $2.900 por derrotas seguidas, voltando ao início quando o time vence; os Atacantes que plantaram e perderam ganham mais $600. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
 - **Loja (B):** pistolas, SMG e escopeta, rifles (AK só para Atacantes, M4 só para Defensores), precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para Defensores). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
 - **Teclas:** 1 primária, 2 pistola, 3 faca, 4 alterna granadas, 5 bomba. Plante segurando **E** no bombsite (ou o clique com a C4 na mão) e desarme segurando **E** perto da bomba. Quem carrega a bomba e morre deixa ela no chão; um Atacante pega passando por cima.
-- **Bots:** compram conforme o dinheiro, carregam e plantam a bomba, seguram o site, desarmam, buscam a bomba caída e usam smoke, flash e HE.
+- **Bots:** compram conforme o dinheiro, carregam e plantam a bomba, desarmam, buscam a bomba caída e usam smoke, flash e HE. Eles jogam em equipe:
+  - **Estudo do mapa:** na primeira rodada de cada mapa, os bots estudam cada bombsite. Eles acham as entradas por onde os Atacantes chegam, um ponto de reunião escondido antes de cada entrada, posições de defesa com cobertura e visão da entrada, e posições dentro do site viradas para a volta dos Defensores.
+  - **Defensores:** se dividem pelas entradas (e pelos sites, quando houver mais de um) e cada um marca um ângulo diferente. Quem está no posto não corre atrás de barulho, só vira para ele. Quando o outro site é atacado, quem está longe gira para ajudar.
+  - **Atacantes:** a cada rodada escolhem uma tática:
+    - **reunir e entrar juntos**, a mais comum;
+    - **rush**;
+    - **dividir** por duas entradas, quando o site tem mais de uma.
+
+    Andam em grupo (quem está muito à frente espera o companheiro) e entram juntos quando todos chegam, no horário combinado, com pouco tempo ou ao fazer contato. Na entrada jogam smoke na volta dos Defensores e flash por cima do site. Se a pessoa estiver com a bomba, os bots acompanham ela.
+  - **Depois do plant:** os Atacantes cercam a bomba em posições com visão dela. Os Defensores se reúnem a uns 12 m e fazem o retake juntos (com flash): quem tem kit, ou está mais perto, desarma e os outros cobrem.
+  - **Habilidades:** presas ao plano.
+    - **Ghost:** liga os passos mudos para entrar no site ou no retake.
+    - **Brutus:** liga a couraça ao entrar no site, no retake ou numa troca de tiros.
+    - **Finder:** de ataque, varre o site antes de entrar e, depois do plant, a volta dos Defensores. De defesa, varre a reunião dos Atacantes no meio da rodada e a bomba antes do retake.
+    - **Detector:** de defesa, coloca o alarme na entrada que marca e volta para a posição. De ataque, coloca o alarme na reunião, vigiando as costas do grupo, e perto da bomba depois de plantar.
+    - **Doctor:** cura quem estiver abaixo de 60 de vida fora da troca de tiros.
+  - **Destravar:** um bot que empaca numa fresta da colisão (comum nos mapas convertidos) dá um passo para o lado, corta aquela ligação da navegação e recalcula a rota sem isolar o destino.
 - **HUD:** dinheiro, colete, C4, barra de plantar/desarmar, relógio da bomba e o nome da área onde você está.
 
 ### Operadores

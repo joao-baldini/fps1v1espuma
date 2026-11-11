@@ -3354,6 +3354,7 @@ function dmFindPath(bot,x,z,y){
 }
 function botPathInput(b, dt, t) {
   const n = DM.nav;
+  if (t < (b.unstickUntil || 0)) return [b.unstick[0], b.unstick[1], 1];
   let wx = 0, wz = 0, distance = 0;
   for (let look = Math.min(b.pathAt + 4, b.path.length - 1); look > b.pathAt; look--) {
     const id = b.path[look];
@@ -3374,9 +3375,31 @@ function botPathInput(b, dt, t) {
     b.pathAt++;
   }
   if (t >= b.stuckAt) {
-    if (Math.hypot(b.pos.x - b.lastPos.x, b.pos.z - b.lastPos.z) < .3) {
+    const still = Math.hypot(b.pos.x - b.lastPos.x, b.pos.z - b.lastPos.z) < .3, next = b.path.length ? b.path[Math.min(b.pathAt, b.path.length - 1)] : -1;
+    if (still) {
       b.planAt = 0; b.knowsUntil = 0; b.path.length = 0;
+      // Preso no ar numa fresta da colisão (caindo sem sair do lugar): volta para o ponto de navegação mais próximo.
+      if (!b.onGround && Math.abs(b.pos.y - b.lastPos.y) < .05 && ++b.airStuck >= 2) {
+        const c = dmCell(b.pos.x, b.pos.z, b.pos.y); b.pos.set(navX(n, c), n.height[c] + .02, navZ(n, c)); b.vel.set(0, 0, 0); b.airStuck = 0;
+      }
     }
+    // Empacado no chão seguindo a rota: a ligação até o próximo ponto não é passável (a colisão bloqueia); corta e recalcula.
+    if (still && b.onGround && next >= 0 && ++b.walkStuck >= 2) {
+      const cur = dmCell(b.pos.x, b.pos.z, b.pos.y), gx = navX(n, next), gz = navZ(n, next);
+      const here = Math.hypot(navX(n, cur) - gx, navZ(n, cur) - gz);
+      const cut = [], goal = b.path[b.path.length - 1], body = DM.actors.some(e => e !== b && e.alive && Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) < 1.3);
+      // Encostado em outro boneco: só desvia, a rota em si está livre.
+      if (!body) for (let k = 0; k < 4; k++) { const nb = n.links[cur * 4 + k]; if (nb >= 0 && Math.hypot(navX(n, nb) - gx, navZ(n, nb) - gz) < here) { cut.push([cur, k, nb]); n.links[cur * 4 + k] = -1; n.links[nb * 4 + (k ^ 1)] = -1; } }
+      // Nunca isola o destino: se o corte separar o mapa, desfaz.
+      if (cut.length && typeof navBfs === 'function' && navBfs(n, cur)[goal] < 0) for (const [c, k, nb] of cut) { n.links[c * 4 + k] = nb; n.links[nb * 4 + (k ^ 1)] = c; }
+      // Passo para o lado para desencostar; se empacar de novo várias vezes, vai direto para o ponto seguinte (bem perto).
+      const side = Math.random() < .5 ? -1 : 1, d = Math.hypot(gx - b.pos.x, gz - b.pos.z) || 1;
+      b.unstick = [-(gz - b.pos.z) / d * side, (gx - b.pos.x) / d * side]; b.unstickUntil = t + 450;
+      if (++b.stuckRuns >= 3 && d < 2.5) { b.pos.set(gx, n.height[next] + .02, gz); b.vel.set(0, 0, 0); b.stuckRuns = 0; }
+      b.walkStuck = 0;
+    }
+    if (!still) b.walkStuck = b.stuckRuns = 0;
+    if (!still || b.onGround) b.airStuck = 0;
     b.lastPos.copy(b.pos); b.stuckAt = t + 900;
   }
   return [wx, wz, distance];
@@ -3589,11 +3612,12 @@ function dmBotMove(b,dt,t,L){
     const n=DM.nav;
     if(t>=b.planAt||b.pathAt>=b.path.length){
       let cell=n.walk[Math.floor(Math.random()*n.walk.length)];
-      if(t<b.knowsUntil)cell=dmCell(b.lastSeen.x,b.lastSeen.z,b.lastSeen.y);
+      if(t<b.knowsUntil&&!(DM.mode==='team'&&ARENA.bomb&&bombHoldsPost(b)))cell=dmCell(b.lastSeen.x,b.lastSeen.z,b.lastSeen.y);
       else if(DM.mode==='team')cell=teamGoalCell(b,t);
       dmFindPath(b,navX(n,cell),navZ(n,cell),n.height[cell]);b.planAt=t+2400+Math.random()*1200;
     }
     [wx, wz, distance] = botPathInput(b, dt, t);
+    if (!wx && !wz && DM.mode === 'team' && ARENA.bomb) botWatch(b, dt);
     if (L.tactical) botTravel(b, wx, wz, distance, t);
   }
   if(wx||wz)b.safeUntil=0;
@@ -4472,25 +4496,198 @@ function bombSlotKey(code) {
   else if (n === 4) { const nades = o.filter(k => W[k].grenade); if (nades.length) selectWeapon(nades[(nades.indexOf(P.weapon) + 1) % nades.length]); }
   else if (n === 5 && o.includes('c4')) selectWeapon('c4');
 }
-// Metas dos bots: o portador vai a um ponto do site; os outros Terroristas avançam junto; a SWAT segura o site;
-// com a bomba plantada, a SWAT vai desarmar e os Terroristas guardam a bomba; bomba no chão: o Terrorista mais perto busca.
 function bombRand(cx, cz, r) { const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * r; return [cx + Math.cos(a) * d, cz + Math.sin(a) * d]; }
+/* ---------- Bots do Plant the Bomb: estudo do mapa e plano de rodada ---------- */
+// Uma vez por mapa, cada bombsite é estudado na grade de navegação: as entradas por onde os Atacantes chegam (rotas
+// quase mínimas do spawn deles), um ponto de reunião escondido antes de cada entrada, posições de defesa com cobertura e
+// visão da entrada, e posições dentro do site viradas para a chegada dos Defensores. A cada rodada os Defensores se dividem
+// pelas entradas (e pelos sites) e os Atacantes escolhem site e tática: reunir e entrar juntos, rush ou dividir.
+const BRAIN = { cache: {}, plan: null };
+function navBfs(n, from) {
+  const size = n.height.length, d = new Int32Array(size).fill(-1); if (from < 0) return d;
+  const q = new Int32Array(size); let head = 0, tail = 1; q[0] = from; d[from] = 0;
+  while (head < tail) { const id = q[head++]; for (let k = 0; k < 4; k++) { const nx = n.links[id * 4 + k]; if (nx >= 0 && d[nx] < 0) { d[nx] = d[id] + 1; q[tail++] = nx; } } }
+  return d;
+}
+const navPt = (n, id) => ({ id, x: navX(n, id), y: n.height[id], z: navZ(n, id) });
+// Pontos da navegação que de fato cabem um boneco em pé (malhas convertidas às vezes têm pontos dentro da colisão).
+const navRoomy = (n, id) => !overlapAny(navX(n, id), n.height[id] + .03, navZ(n, id), H_STAND);
+const eyeOf = (p, h = 1.5) => [p.x, p.y + h, p.z];
+function spawnCell(p) { return dmCell(p[0], p[1], fin(p[3]) ? p[3] : undefined); }
+// Posições de tiro: perto do site, com visão para `watch`, a uma distância boa e encostadas em parede ou caixa.
+function navHolds(n, pool, watch, side, dist, limit, near = 5, far = 17) {
+  const out = [], we = eyeOf(watch, 1.4);
+  for (const id of pool) {
+    const p = navPt(n, id), d = Math.hypot(p.x - watch.x, p.z - watch.z);
+    if (d < near || d > far || (side && !side(id)) || !navRoomy(n, id) || !clearLine(eyeOf(p), we)) continue;
+    let cover = 0; for (let k = 0; k < 4; k++) if (n.links[id * 4 + k] < 0) cover++;
+    out.push({ ...p, watch, score: cover * 3 + Math.min(d, 12) * .35 - Math.abs(d - 10) * .2 + (dist ? Math.min(dist[id], 20) * .02 : 0) });
+  }
+  out.sort((a, b) => b.score - a.score);
+  const picked = []; for (const h of out) { if (picked.every(o => Math.hypot(o.x - h.x, o.z - h.z) > 2.6)) picked.push(h); if (picked.length >= limit) break; }
+  return picked;
+}
+function bombStudy() {
+  const n = DM.nav, key = MAP.id + ':' + n.walk.length; if (BRAIN.cache[key]) return BRAIN.cache[key];
+  const st = n.step, tD = navBfs(n, spawnCell(MAP.plant.t[0])), cD = navBfs(n, spawnCell(MAP.plant.ct[0]));
+  const sites = (MAP.plant.sites || [MAP.plant.site]).filter(Boolean).map(s => {
+    const cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2, sc = dmCell(cx, cz, fin(s.y0) ? s.y0 : undefined), center = navPt(n, sc), sD = navBfs(n, sc);
+    // Entradas: anel a 6–11 m do site (pela rota) onde quem vem do spawn passa quase sem desvio. Cada pedaço conectado
+    // desse anel é um caminho diferente; a entrada é o ponto de menor desvio de cada pedaço.
+    const entries = (dist, base, slack) => {
+      const ring = new Map();
+      for (const id of n.walk) { const d = sD[id]; if (d < 0 || dist[id] < 0) continue; const m = d * st, detour = (dist[id] + d - base) * st;
+        if (m >= 6 && m <= 11 && detour <= slack && navRoomy(n, id)) ring.set(id, detour); }
+      const out = [], seen = new Set();
+      for (const id of ring.keys()) {
+        if (seen.has(id)) continue; let best = id, size = 0; const q = [id]; seen.add(id);
+        while (q.length) { const c = q.pop(); size++; if (ring.get(c) < ring.get(best) || ring.get(c) === ring.get(best) && sD[c] < sD[best]) best = c;
+          for (let k = 0; k < 4; k++) { const nx = n.links[c * 4 + k]; if (nx >= 0 && ring.has(nx) && !seen.has(nx)) { seen.add(nx); q.push(nx); } } }
+        if (size >= 3) { const p = navPt(n, best); out.push({ ...p, detour: ring.get(best), a: Math.atan2(p.x - cx, p.z - cz) }); }
+      }
+      out.sort((a, b) => a.detour - b.detour); const merged = []; for (const e of out) if (merged.every(o => Math.hypot(o.x - e.x, o.z - e.z) > 5)) merged.push(e);
+      return merged.slice(0, 3);
+    };
+    const tEntries = entries(tD, tD[sc], 7), ctEntries = entries(cD, cD[sc], 9);
+    const inner = []; for (const id of n.walk) if (sD[id] >= 0 && sD[id] * st <= 13) inner.push(id);
+    const pool = inner.length > 700 ? inner.filter((_, i) => i % Math.ceil(inner.length / 700) === 0) : inner;
+    for (const e of tEntries) {
+      // Reunião: 13–19 m do site na mesma direção, de preferência sem visão do site.
+      let best = null, bestScore = Infinity;
+      for (const id of n.walk) { const d = sD[id]; if (d < 0 || tD[id] < 0) continue; const m = d * st, detour = (tD[id] + d - tD[sc]) * st; if (m < 13 || m > 19 || detour > 9) continue;
+        const p = navPt(n, id); if (Math.abs(angDiff(Math.atan2(p.x - cx, p.z - cz), e.a)) > .8 || !navRoomy(n, id)) continue;
+        const score = detour + (clearLine(eyeOf(p), eyeOf(center)) ? 15 : 0) + Math.abs(m - 15) * .3; if (score < bestScore) { bestScore = score; best = p; } }
+      e.stage = best || navPt(n, n.walk[0]);
+      if (!best) { let far = null; for (const id of n.walk) if (tD[id] >= 0 && sD[id] >= 0 && sD[id] * st > 12 && tD[id] + sD[id] - tD[sc] <= 3 && (!far || sD[id] < sD[far])) far = id; if (far != null) e.stage = navPt(n, far); }
+      // Defesa: do lado dos Defensores (mais perto do spawn deles que a entrada), mirando a entrada.
+      e.holds = navHolds(n, pool, e, id => cD[id] >= 0 && cD[id] <= cD[e.id] + 2, cD, 3);
+      // Poucas posições boas: completa com ângulos mais abertos (mais longe ou mais perto), sem empilhar ninguém.
+      if (e.holds.length < 3) for (const h of navHolds(n, pool, e, id => cD[id] >= 0 && cD[id] <= cD[e.id] + 6, cD, 6, 3.5, 22))
+        if (e.holds.length < 3 && e.holds.every(o => Math.hypot(o.x - h.x, o.z - h.z) > 3)) e.holds.push(h);
+    }
+    // Dentro do site, depois da entrada dos Atacantes: mirando por onde os Defensores voltam.
+    const posts = []; for (const ce of ctEntries) posts.push(...navHolds(n, pool, ce, id => sD[id] * st <= 7 && tD[id] >= 0 && (cD[id] >= cD[ce.id] - 1), null, 2));
+    if (!posts.length) posts.push({ ...center, watch: ctEntries[0] || center });
+    return { site: s, center, sD, tEntries: tEntries.length ? tEntries : [{ ...center, stage: center, holds: [{ ...center, watch: center }], a: 0 }], ctEntries, posts, pool };
+  });
+  return BRAIN.cache[key] = { sites, tD, cD };
+}
+// Plano da rodada (feito quando a rodada começa a valer).
+function bombPlan(t) {
+  const study = bombStudy(), plan = { r: ARENA.m + ':' + ARENA.r, exec: false, execAt: 0, contact: -1, retake: null, study };
+  const bots = DM.bots.filter(b => b.alive), ts = bots.filter(b => sideOf(b) === 't'), cts = bots.filter(b => sideOf(b) === 'ct');
+  // Atacantes: site, tática e entrada. Brutus e Ghost puxam a entrada.
+  plan.site = Math.floor(Math.random() * study.sites.length); const S = study.sites[plan.site], E = S.tEntries;
+  plan.style = ts.length >= 2 && E.length >= 2 && Math.random() < .25 ? 'split' : Math.random() < .22 ? 'rush' : 'exec';
+  const main = E[Math.random() < .7 || E.length < 2 ? 0 : 1];
+  plan.execAt = ARENA.liveAt + (plan.style === 'rush' ? 0 : 16000 + Math.random() * 16000);
+  ts.sort((a, b) => (b.op === 'brutus' || b.op === 'ghost') - (a.op === 'brutus' || a.op === 'ghost'));
+  ts.forEach((b, i) => { const e = plan.style === 'split' ? E[i % 2] : main; b.ai = { side: 't', entry: e, post: S.posts[i % S.posts.length], spread: bombRand(0, 0, 1.4) }; });
+  // Defensores: um por entrada, alternando os sites; com mais bots que entradas, dobram de posição.
+  const slots = []; for (let k = 0; k < 3; k++) study.sites.forEach((s, si) => { const e = s.tEntries[k]; if (e && e.holds.length) slots.push({ si, e }); });
+  if (!slots.length) slots.push({ si: 0, e: S.tEntries[0] });
+  // Mais bots que vagas: o excedente dobra na entrada principal, numa posição diferente.
+  while (slots.length < cts.length && slots[0].e.holds.length > 1) slots.push({ ...slots[0], extra: true });
+  const taken = []; cts.forEach((b, i) => { const sl = slots[i % slots.length], hold = sl.e.holds.find(h => taken.every(o => Math.hypot(o.x - h.x, o.z - h.z) > 3)) || sl.e.holds[i % Math.max(1, sl.e.holds.length)] || { ...sl.e.stage, watch: sl.e }; taken.push(hold);
+    const dx = hold.x - sl.e.x, dz = hold.z - sl.e.z, dl = Math.hypot(dx, dz) || 1;
+    b.ai = { side: 'ct', site: sl.si, entry: sl.e, hold, task: b.op === 'detector' ? 'alarm' : 'hold', alarmSpot: { x: sl.e.x + dx / dl * 1.8, y: sl.e.y, z: sl.e.z + dz / dl * 1.8 } }; });
+  for (const b of bots) b.ai.spread = bombRand(0, 0, 1.6);
+  for (const b of bots) { b.plantSpot = b.guardSpot = b.holdSpot = null; b.watch = null; b.opAt = 0; }
+  BRAIN.plan = plan; return plan;
+}
+const planSite = () => { const p = BRAIN.plan; return p ? p.study.sites[p.site] : null; };
+// Posições depois de plantar: em volta da bomba, com visão dela e cobertura.
+function bombPostPlant(t) {
+  const plan = BRAIN.plan, p = BOMB.planted; if (!plan || !p) return;
+  const n = DM.nav, bomb = { x: p.x, y: p.y, z: p.z }, S = plan.study.sites.find(s => bombSiteAt(s.center.x, s.center.z, s.center.y) && Math.hypot(s.center.x - p.x, s.center.z - p.z) < 15) || planSite();
+  const cD = plan.study.cD, bc = dmCell(p.x, p.z, p.y), guards = navHolds(n, S.pool, bomb, id => cD[id] >= cD[bc] - 3, null, 4), retakes = navHolds(n, S.pool, bomb, id => cD[id] >= 0 && cD[id] < cD[bc], null, 3);
+  const bD = navBfs(n, bc); let stage = null;
+  for (const id of n.walk) if (bD[id] >= 0 && cD[id] >= 0 && cD[id] < cD[bc] && Math.abs(bD[id] * n.step - 12) < 2.5 && (!stage || cD[id] < cD[stage])) stage = id;
+  plan.retake = { stage: stage != null ? navPt(n, stage) : null, go: false, defuser: null, posts: retakes, bomb };
+  let gi = 0, ri = 0;
+  for (const b of DM.bots) if (b.alive && b.ai) { if (sideOf(b) === 't') { b.ai.guard = guards[gi++ % Math.max(1, guards.length)] || { ...bomb, watch: bomb }; } else b.ai.retakePost = retakes[ri++ % Math.max(1, retakes.length)]; }
+}
+// Bot parado no posto: não corre atrás de barulho, só olha para lá.
+function bombHoldsPost(b) {
+  const plan = BRAIN.plan, ai = b.ai; if (!plan || !ai || DM.phase !== 'live') return false;
+  if (ai.side === 'ct') return !BOMB.planted && ai.task === 'hold';
+  return !!(BOMB.planted && !BOMB.planted.defused && BOMB.carrier !== b.id);
+}
 function bombGoalCell(b, t) {
-  const sites=MAP.plant.sites||[MAP.plant.site],s=sites[ARENA.r%sites.length],side=sideOf(b),cx=(s.x0+s.x1)/2,cz=(s.z0+s.z1)/2,cell=(x,z)=>dmCell(x,z);
-  const p = BOMB.planted;
+  const plan = BRAIN.plan, ai = b.ai, side = sideOf(b), cell = q => q.id != null ? q.id : dmCell(q.x, q.z, q.y), p = BOMB.planted;
+  const S = planSite();
+  if (!plan || !ai || !S) { const c = MAP.plant.site; return dmCell((c.x0 + c.x1) / 2, (c.z0 + c.z1) / 2); }
   if (p && !p.defused) {
-    if (side === 'ct') return cell(p.x, p.z);
-    if (!b.guardSpot) b.guardSpot = bombRand(p.x, p.z, 7); return cell(...b.guardSpot);
+    if (side === 't') return cell(ai.guard || p);
+    const r = plan.retake; if (!r) return dmCell(p.x, p.z, p.y);
+    if (!r.go && r.stage) return dmCell(r.stage.x + ai.spread[0], r.stage.z + ai.spread[1], r.stage.y);
+    if (r.defuser === b.id || !ai.retakePost) return dmCell(p.x, p.z, p.y);
+    return cell(ai.retakePost);
   }
   if (side === 't') {
     const d = BOMB.dropped;
-    if (d) { const near = DM.actors.filter(e => e.alive && sideOf(e) === 't' && !e.remote && e !== P).sort((a, c) => Math.hypot(a.pos.x - d.x, a.pos.z - d.z) - Math.hypot(c.pos.x - d.x, c.pos.z - d.z))[0]; if (near === b) return cell(d.x, d.z); }
-    if (BOMB.carrier === b.id) { if (!b.plantSpot) b.plantSpot = [s.x0 + 1 + Math.random() * (s.x1 - s.x0 - 2), s.z0 + 1 + Math.random() * (s.z1 - s.z0 - 2)]; return cell(...b.plantSpot); }
-    // Escolta: espera alguns segundos e entra no site por outro ponto.
-    if (t < ARENA.liveAt + 4000 + (b.index || 0) * 900) { const c = DM.byId.get(BOMB.carrier); if (c && c.alive) return cell(c.pos.x, c.pos.z); }
-    if (!b.plantSpot) b.plantSpot = bombRand(cx, cz, 5); return cell(...b.plantSpot);
+    if (d) { const near = DM.actors.filter(e => e.alive && sideOf(e) === 't' && !e.remote && e !== P).sort((a, c) => Math.hypot(a.pos.x - d.x, a.pos.z - d.z) - Math.hypot(c.pos.x - d.x, c.pos.z - d.z))[0]; if (near === b) return dmCell(d.x, d.z, d.y); }
+    const carrier = DM.byId.get(BOMB.carrier);
+    // Pessoa com a bomba: os bots acompanham até ela chegar perto do site.
+    if (carrier && (carrier === P || carrier.remote) && carrier.alive && !plan.exec) return dmCell(carrier.pos.x + ai.spread[0] * 2, carrier.pos.z + ai.spread[1] * 2, carrier.pos.y);
+    if (!plan.exec) {
+      const st = ai.entry.stage;
+      // Andam juntos: quem está muito à frente do companheiro espera por ele.
+      const mates = DM.bots.filter(o => o !== b && o.alive && o.ai && o.ai.side === 't' && o.ai.entry === ai.entry), mine = Math.hypot(b.pos.x - st.x, b.pos.z - st.z);
+      if (mates.some(o => Math.hypot(o.pos.x - st.x, o.pos.z - st.z) - mine > 8)) return dmCell(b.pos.x, b.pos.z, b.pos.y);
+      return dmCell(st.x + ai.spread[0], st.z + ai.spread[1], st.y);
+    }
+    if (BOMB.carrier === b.id) { const s = S.site; if (!b.plantSpot) b.plantSpot = [s.x0 + 1 + Math.random() * Math.max(0, s.x1 - s.x0 - 2), s.z0 + 1 + Math.random() * Math.max(0, s.z1 - s.z0 - 2)]; return dmCell(b.plantSpot[0], b.plantSpot[1], fin(s.y0) ? s.y0 : undefined); }
+    // Entrada: primeiro passa pela entrada combinada, depois toma a posição no site.
+    if (!ai.entered) { if (Math.hypot(b.pos.x - ai.entry.x, b.pos.z - ai.entry.z) < 2.5) ai.entered = true; else return cell(ai.entry); }
+    return cell(ai.post);
   }
-  if (!b.holdSpot) b.holdSpot = bombRand(cx, cz, 6.5); return cell(...b.holdSpot);
+  if (ai.task === 'alarm') return cell(ai.alarmSpot || ai.entry);
+  return cell(ai.hold);
+}
+// Decisões de equipe a cada quadro: começo da execução, rotação dos Defensores, retake e para onde cada um olha.
+function bombBrainTick(t) {
+  if (DM.phase !== 'live') return;
+  let plan = BRAIN.plan; if (!plan || plan.r !== ARENA.m + ':' + ARENA.r) plan = bombPlan(t);
+  const S = planSite(), left = ARENA.roundEnd - t, bots = DM.bots.filter(b => b.alive && b.ai);
+  const ts = bots.filter(b => b.ai.side === 't'), cts = bots.filter(b => b.ai.side === 'ct');
+  // Atacantes: executam quando todos chegaram na reunião, no horário combinado, com pouco tempo ou ao fazer contato.
+  if (!plan.exec && !BOMB.planted) {
+    const carrier = DM.byId.get(BOMB.carrier), human = carrier && (carrier === P || carrier.remote) && carrier.alive;
+    const ready = ts.length && ts.every(b => Math.hypot(b.pos.x - b.ai.entry.stage.x, b.pos.z - b.ai.entry.stage.z) < 4.5);
+    if (ready && !plan.readyAt) plan.readyAt = t;
+    if (plan.style === 'rush' || t >= plan.execAt || left < 35000 || (plan.readyAt && t - plan.readyAt > 1800 + Math.random() * 1500) || ts.some(b => b.seen) ||
+        (human && Math.hypot(carrier.pos.x - S.center.x, carrier.pos.z - S.center.z) < 16)) { plan.exec = true; plan.execStart = t; for (const b of ts) b.planAt = 0; }
+  }
+  // Defensores: contato num site faz quem está no outro girar para lá.
+  if (!BOMB.planted && plan.study.sites.length > 1) {
+    const hot = plan.study.sites.findIndex(s => DM.actors.some(e => e.alive && sideOf(e) === 't' && Math.hypot(e.pos.x - s.center.x, e.pos.z - s.center.z) < 20 &&
+      (cts.some(b => b.seen && b.target === e.id) || t < (e.revealUntil || 0) && e.revealTeam === 1 - BOMB.tTeam)));
+    if (hot >= 0 && plan.contact !== hot) { plan.contact = hot; const s = plan.study.sites[hot]; let k = 0;
+      for (const b of cts) if (b.ai.site !== hot) { const e = s.tEntries[k % s.tEntries.length]; b.ai.site = hot; b.ai.entry = e; b.ai.hold = e.holds[1] || e.holds[0] || { ...e, watch: e }; b.ai.task = 'hold'; b.planAt = 0; k++; } }
+  }
+  // Retake: reúnem a uns 12 m da bomba e entram juntos; quem tem kit (ou o mais perto) desarma e os outros cobrem.
+  const p = BOMB.planted;
+  if (p && !p.defused && !p.blown) {
+    if (!plan.retake) bombPostPlant(t);
+    const r = plan.retake, need = (cts.some(b => b.inv && b.inv.kit) ? BOMB.kitMs : BOMB.defuseMs) + 7000, bombLeft = p.t + BOMB.bombMs - t;
+    if (!r.go && (!r.stage || cts.length < 2 || bombLeft < need || cts.every(b => Math.hypot(b.pos.x - r.stage.x, b.pos.z - r.stage.z) < 5))) { r.go = true; for (const b of cts) b.planAt = 0; }
+    if (r.go && !DM.byId.get(r.defuser)?.alive) { const by = cts.slice().sort((a, b) => (!!(b.inv && b.inv.kit) - !!(a.inv && a.inv.kit)) || Math.hypot(a.pos.x - p.x, a.pos.z - p.z) - Math.hypot(b.pos.x - p.x, b.pos.z - p.z))[0]; r.defuser = by ? by.id : null; if (by) by.planAt = 0; }
+  }
+  for (const b of bots) {
+    const ai = b.ai;
+    // Arma na mão (sem faca nem bunnyhop) quando o combate está perto.
+    if (ai.side === 'ct' || plan.exec || BOMB.planted) b.cautionUntil = Math.max(b.cautionUntil || 0, t + 500);
+    if (t < b.knowsUntil && bombHoldsPost(b)) { b.watch = b.lastSeen; continue; }
+    b.watch = BOMB.planted ? (ai.side === 't' ? (ai.guard && ai.guard.watch) : null) : ai.side === 'ct' ? (ai.task === 'hold' ? ai.hold.watch : null) : plan.exec ? (ai.entered ? ai.post.watch : null) : S && S.center;
+  }
+}
+// Bot parado: vira para o ponto que está vigiando.
+function botWatch(b, dt) {
+  const w = b.watch; if (!w) return;
+  const dx = w.x - b.pos.x, dz = w.z - b.pos.z, d = Math.hypot(dx, dz); if (d < 1) return;
+  const yaw = Math.atan2(-dx, -dz), pitch = Math.atan2((w.y || 0) + 1.3 - botEyeY(b), d);
+  b.yaw += clamp(angDiff(b.yaw, yaw), -3.5 * dt, 3.5 * dt); b.pitch += clamp(pitch - b.pitch, -2 * dt, 2 * dt);
 }
 // Ângulo para a granada cair em `to` (arco baixo), ou null se não alcança.
 function nadeAim(from, to, speed) {
@@ -4506,15 +4703,20 @@ function botThrow(b, type, to, t) {
 }
 // Ações dos bots no modo bomba: granadas, pegar a bomba, plantar, desarmar.
 function bombBotsAct(dt, t) {
-  const sites=MAP.plant.sites||[MAP.plant.site],s=sites[ARENA.r%sites.length],cx=(s.x0+s.x1)/2,cz=(s.z0+s.z1)/2;
+  const S = planSite(), plan = BRAIN.plan, s = S ? S.site : MAP.plant.site, cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2;
   for (const b of DM.bots) {
     if (!b.alive) continue;
     const side = sideOf(b), dSite = Math.hypot(b.pos.x - cx, b.pos.z - cz);
     // Utilitários: smoke e flash na entrada do site; HE onde o inimigo foi visto por último.
     if (DM.phase === 'live' && !b.seen && t > (b.nadeAt || 0)) {
-      if (side === 't' && !BOMB.planted && dSite < 17 && dSite > 8) {
-        const ct = MAP.plant.ct[0], tx = cx + (ct[0] - cx) * .35, tz = cz + (ct[1] - cz) * .35;
-        if (botThrow(b, 'smoke', [tx, groundAt(tx, tz), tz], t) || botThrow(b, 'flash', [cx, 2.5, cz], t)) b.nadeAt = t + 2500;
+      if (side === 't' && !BOMB.planted && plan && plan.exec && dSite < 20 && dSite > 7) {
+        // Entrada: smoke na volta dos Defensores e flash por cima do site.
+        const ce = S && S.ctEntries[0], tx = ce ? ce.x : cx + (MAP.plant.ct[0][0] - cx) * .35, tz = ce ? ce.z : cz + (MAP.plant.ct[0][1] - cz) * .35;
+        if (botThrow(b, 'smoke', [tx, ce ? ce.y : groundAt(tx, tz), tz], t) || botThrow(b, 'flash', [cx, (S ? S.center.y : 0) + 2.5, cz], t)) b.nadeAt = t + 2200;
+      } else if (side === 'ct' && BOMB.planted && plan && plan.retake && plan.retake.go && b.nades && b.nades.flash > 0) {
+        // Retake: flash por cima da bomba antes de entrar.
+        const p = BOMB.planted, d = Math.hypot(b.pos.x - p.x, b.pos.z - p.z);
+        if (d > 6 && d < 16 && botThrow(b, 'flash', [p.x, p.y + 2.5, p.z], t)) b.nadeAt = t + 3000;
       } else if (t < b.knowsUntil && b.nades && b.nades.he > 0) {
         const d = Math.hypot(b.lastSeen.x - b.pos.x, b.lastSeen.z - b.pos.z);
         if (d > 6 && d < 22 && botThrow(b, 'he', [b.lastSeen.x, b.lastSeen.y + .2, b.lastSeen.z], t)) b.nadeAt = t + 4000;
@@ -4549,7 +4751,7 @@ function bombTick(dt, t) {
     else bombNextRound(t);
   } else if (DM.phase === 'over' && t >= ARENA.roundEnd) bombNewMatch(t);
   const L = LEVELS[DM.level] || LEVELS.medio;
-  if (DM.phase === 'live') for (const b of DM.bots) dmBotMove(b, dt, t, L);
+  if (DM.phase === 'live') { bombBrainTick(t); for (const b of DM.bots) dmBotMove(b, dt, t, L); }
   bombPickup(t); bombPlayerAction(dt, t); bombBotsAct(dt, t); opsCooldownTick(t); botsUseAbilities(t); scanTick(t); alarmsTick(t);
   dmRefreshTargets();
   if (DM.phase === 'live') { for (const b of DM.bots) if (!b.plantUntil && !b.defuseUntil) dmBotFire(b, t, L); bombCheck(t); }
@@ -4744,37 +4946,52 @@ function alarmsRender(t) {
     a.led.visible = t < a.armedAt ? (t % 300) < 150 : a.tripAt ? (t % 120) < 60 : (t % 1400) < 160;
   }
 }
-// Uso das habilidades pelos bots.
+// Habilidades dos bots, presas ao plano: utilitário na hora da entrada, informação antes, cura fora do combate.
 function botsUseAbilities(t) {
-  const sites=MAP.plant.sites||[MAP.plant.site],s=sites[ARENA.r%sites.length],cx=(s.x0+s.x1)/2,cz=(s.z0+s.z1)/2;
+  const plan = BRAIN.plan, S = planSite(), p = BOMB.planted && !BOMB.planted.defused && !BOMB.planted.blown ? BOMB.planted : null;
   for (const b of DM.bots) {
-    // Brutus liga a couraça ao entrar numa troca de tiros (vendo o inimigo ou tomando tiro).
-    if (b.op === 'brutus') { if (b.alive && b.charges > 0 && DM.phase === 'live' && (b.seen || t < (b.tagUntil || 0))) brutusArmor(b, t); continue; }
-    if (!b.alive || !(b.charges > 0) || DM.phase !== 'live' || b.seen) continue;
-    if (!b.opAt) b.opAt = ARENA.liveAt + 6000 + Math.random() * 14000;
-    if (t < b.opAt) continue;
-    const side = sideOf(b);
-    if (b.op === 'ghost') {
-      // TR: liga ao chegar perto do site; SWAT: ao voltar para o site com a bomba plantada.
-      const near = Math.hypot(b.pos.x - cx, b.pos.z - cz) < 18;
-      if (near && ((side === 't' && !BOMB.planted) || (side === 'ct' && BOMB.planted))) ghostSilence(b, t); else b.opAt = t + 1000;
+    if (!b.alive || !(b.charges > 0) || DM.phase !== 'live') continue;
+    const ai = b.ai, side = sideOf(b), dSite = S ? Math.hypot(b.pos.x - S.center.x, b.pos.z - S.center.z) : 99, dBomb = p ? Math.hypot(b.pos.x - p.x, b.pos.z - p.z) : 99;
+    if (b.op === 'brutus') {
+      // Couraça: ao entrar numa troca de tiros, na entrada do site ou no retake.
+      const entering = plan && ((side === 't' && plan.exec && !p && dSite < 16) || (side === 'ct' && p && plan.retake && plan.retake.go && dBomb < 14));
+      if (b.seen || t < (b.tagUntil || 0) || entering) brutusArmor(b, t);
       continue;
     }
     if (b.op === 'doctor') {
-      // Cura a si mesmo ou um aliado perto (até 15 m, à vista) quando a vida cai abaixo de 50.
-      const mate = DM.actors.filter(e => e.alive && e.team === b.team && e.hp < 50 && Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) < 15 && (e === b || clearLine([b.pos.x, botEyeY(b), b.pos.z], [e.pos.x, e.pos.y + 1.2, e.pos.z]))).sort((a, c) => a.hp - c.hp)[0];
+      // Cura a si mesmo ou um aliado perto (até 15 m, à vista) abaixo de 60 de vida, fora da troca de tiros.
+      if (b.seen) continue;
+      const mate = DM.actors.filter(e => e.alive && e.team === b.team && e.hp < 60 && Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) < 15 && (e === b || clearLine([b.pos.x, botEyeY(b), b.pos.z], [e.pos.x, e.pos.y + 1.2, e.pos.z]))).sort((a, c) => a.hp - c.hp)[0];
       if (mate) { doctorHeal(b, mate, t); if (mate !== b) tracer([b.pos.x, botEyeY(b) - .1, b.pos.z], [mate.pos.x, mate.pos.y + 1.2, mate.pos.z], 80); }
       continue;
     }
-    if (b.op === 'finder') {
-      // TR: escaneia o site antes de entrar; SWAT: escaneia o caminho entre o spawn TR e o site.
-      const tsp = MAP.plant.t[0], k = side === 't' ? 0 : .5, x = cx + (tsp[0] - cx) * k, z = cz + (tsp[1] - cz) * k;
-      finderScan(b, x + (Math.random() - .5) * 4, z + (Math.random() - .5) * 4, t);
+    if (b.seen || !plan || !ai || !S) continue;
+    const jitter = () => (Math.random() - .5) * 3;
+    if (b.op === 'ghost') {
+      // Passos mudos para chegar no site (Atacante) ou no retake (Defensor).
+      if ((side === 't' && plan.exec && !p && dSite < 24) || (side === 'ct' && p && plan.retake && plan.retake.go && dBomb < 26)) ghostSilence(b, t);
+    } else if (b.op === 'finder') {
+      if (side === 't') {
+        // Varre o site logo antes de entrar; depois de plantar, a volta dos Defensores.
+        if (!p && plan.exec && dSite < 32) finderScan(b, S.center.x + jitter(), S.center.z + jitter(), t);
+        else if (p && t - p.t > 8000 && S.ctEntries[0]) finderScan(b, S.ctEntries[0].x, S.ctEntries[0].z, t);
+      } else if (!p) {
+        // Defensor: no meio da rodada, varre a reunião dos Atacantes na entrada que ele marca.
+        if (!b.opAt) b.opAt = ARENA.liveAt + 9000 + Math.random() * 12000;
+        if (t >= b.opAt) { const st = ai.entry.stage; finderScan(b, st.x + jitter(), st.z + jitter(), t); b.opAt = 0; }
+      } else if (plan.retake && dBomb < 22) finderScan(b, p.x + jitter(), p.z + jitter(), t);
     } else if (b.op === 'detector') {
-      // SWAT: alarme no caminho de entrada perto do site; TR: depois de plantar, vigiando a bomba.
-      if (side === 'ct' && Math.hypot(b.pos.x - cx, b.pos.z - cz) < 9) detectorPlace(b, t);
-      else if (side === 't' && BOMB.planted && Math.hypot(b.pos.x - BOMB.planted.x, b.pos.z - BOMB.planted.z) < 7) detectorPlace(b, t);
-      else b.opAt = t + 1500;
+      if (side === 'ct' && !p) {
+        // Alarme na entrada que ele marca: vai até lá, vira para a entrada, coloca e volta para a posição.
+        if (ai.task === 'hold' && t > b.knowsUntil && !ALARM.list.some(a => a.owner === b)) { ai.task = 'alarm'; b.planAt = 0; }
+        if (ai.task === 'alarm' && Math.hypot(b.pos.x - ai.alarmSpot.x, b.pos.z - ai.alarmSpot.z) < 1.8) {
+          b.yaw = Math.atan2(-(ai.entry.x - b.pos.x), -(ai.entry.z - b.pos.z)); detectorPlace(b, t); ai.task = 'hold'; b.planAt = 0;
+        }
+      } else if (side === 't' && p && dBomb < 7) detectorPlace(b, t);
+      else if (side === 't' && !p && !plan.exec && Math.hypot(b.pos.x - ai.entry.stage.x, b.pos.z - ai.entry.stage.z) < 3) {
+        // Na reunião, vigia as costas do grupo.
+        b.yaw = Math.atan2(b.pos.x - S.center.x, b.pos.z - S.center.z); detectorPlace(b, t);
+      }
     }
   }
   // Bots destroem alarmes inimigos que enxergam de perto (atirando neles).

@@ -1555,3 +1555,55 @@ test('Plant the Bomb sides are Atacantes and Defensores, outfits follow the oper
   assert.equal(vm.runInContext('typeof SIDE_COLORS', cx), 'undefined', 'sem uniforme de lado');
   assert.equal(vm.runInContext('S.enemyOutline', cx), 'vermelho');
 });
+test('Plant the Bomb bots: the map study finds attacker entrances, hidden gathering points and defender angles, and defenders split across them', () => {
+  for (const map of ['guard', 'elysion']) {
+    const { g, cx, A, step } = bombWorld(map);
+    const ev = s => vm.runInContext(s, cx);
+    ev('ARENA.sizes = DM.byId.get(G.me).team===0 ? [3,2] : [2,3]; arenaBuildActors(teamRoster()); dmRefreshTargets();');
+    const study = ev('bombStudy()'), site = study.sites[0];
+    assert.ok(site.tEntries.length >= 1 && site.tEntries.length <= 3, map);
+    for (const e of site.tEntries) {
+      const toSite = Math.hypot(e.stage.x - site.center.x, e.stage.z - site.center.z);
+      assert.ok(toSite > 8, map + ': reunião longe do site ' + toSite);
+      for (const h of e.holds) assert.ok(Math.hypot(h.x - e.x, h.z - e.z) >= 3.5, map + ': defensor não fica em cima da entrada');
+    }
+    let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500, () => { g.P.alive = false; });
+    t = step(t, 300, () => { g.P.alive = false; });
+    const plan = ev('BRAIN.plan'); assert.ok(plan && ['exec', 'rush', 'split'].includes(plan.style));
+    const cts = ev("DM.bots.filter(b=>sideOf(b)==='ct')"), ts = ev("DM.bots.filter(b=>sideOf(b)==='t')");
+    assert.equal(cts.length, 2); assert.equal(ts.length, 2);
+    const [a, b] = cts.map(o => o.ai.hold); assert.ok(Math.hypot(a.x - b.x, a.z - b.z) > 3, map + ': defensores em posições diferentes');
+    if (plan.style !== 'split') assert.equal(ts[0].ai.entry, ts[1].ai.entry, 'atacantes juntos na mesma entrada');
+  }
+});
+test('Plant the Bomb bots walk together: the one far ahead waits, the group executes together, and holders watch instead of chasing noise', () => {
+  const { g, cx, step } = bombWorld('guard');
+  const ev = s => vm.runInContext(s, cx);
+  ev('ARENA.sizes = DM.byId.get(G.me).team===0 ? [3,2] : [2,3]; arenaBuildActors(teamRoster()); dmRefreshTargets();');
+  let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500, () => { g.P.alive = false; });
+  const plan = ev('BRAIN.plan'); plan.style = 'exec'; plan.exec = false; plan.execAt = Infinity;
+  const [lead, back] = ev("DM.bots.filter(b=>sideOf(b)==='t')"); back.ai.entry = lead.ai.entry;
+  const st = lead.ai.entry.stage, n = ev('DM.nav');
+  lead.pos.set(st.x + 1, st.y, st.z); back.pos.set(st.x + 14, st.y, st.z + 1);
+  const goal = b => { const c = cx.bombGoalCell(b, t); return [ev(`navX(DM.nav,${c})`), ev(`navZ(DM.nav,${c})`)]; };
+  const ahead = goal(lead); assert.ok(Math.hypot(ahead[0] - lead.pos.x, ahead[1] - lead.pos.z) < 1.5, 'quem está na frente espera');
+  back.pos.set(st.x - 1, st.y, st.z + .5); vm.runInContext(`bombBrainTick(${t})`, cx); t += 2000; vm.runInContext(`bombBrainTick(${t})`, cx); t += 2000; vm.runInContext(`bombBrainTick(${t})`, cx);
+  assert.equal(plan.exec, true, 'reunidos: entram juntos');
+  const holder = ev("DM.bots.find(b=>sideOf(b)==='ct')"); holder.ai.task = 'hold'; holder.knowsUntil = t + 3000; holder.lastSeen.set(holder.pos.x + 9, holder.pos.y, holder.pos.z);
+  assert.equal(ev(`bombHoldsPost(DM.bots.find(b=>sideOf(b)==='ct'))`), true); vm.runInContext(`bombBrainTick(${t})`, cx);
+  assert.equal(holder.watch, holder.lastSeen, 'só vira para o barulho, sem sair da posição');
+});
+test('Plant the Bomb bots use their operator skills with the plan: Detector alarms its entrance, attackers pop Ghost/Brutus/Finder on the execute', () => {
+  const { g, cx, step } = bombWorld('guard');
+  const ev = s => vm.runInContext(s, cx);
+  ev('ARENA.sizes = DM.byId.get(G.me).team===0 ? [3,2] : [2,3]; arenaBuildActors(teamRoster()); dmRefreshTargets();');
+  let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500, () => { g.P.alive = false; });
+  const [t1, t2] = ev("DM.bots.filter(b=>sideOf(b)==='t')"), [c1] = ev("DM.bots.filter(b=>sideOf(b)==='ct')");
+  t1.op = 'ghost'; t2.op = 'brutus'; c1.op = 'detector'; for (const b of [t1, t2, c1]) { b.charges = 1; b.seen = false; }
+  c1.ai.task = 'alarm'; c1.pos.set(c1.ai.alarmSpot.x, c1.ai.entry.y, c1.ai.alarmSpot.z);
+  const S = ev('planSite()'); for (const b of [t1, t2]) b.pos.set(S.center.x + 9, S.center.y, S.center.z);
+  const plan = ev('BRAIN.plan'); plan.exec = true; plan.execStart = t;
+  vm.runInContext(`botsUseAbilities(${t})`, cx);
+  assert.ok(ev('ALARM.list.length') >= 1 && c1.ai.task === 'hold', 'alarme colocado na entrada e volta para a posição');
+  assert.ok(t1.silentUntil > t, 'Ghost liga os passos mudos na entrada'); assert.ok(t2.toughUntil > t, 'Brutus liga a couraça na entrada');
+});
