@@ -285,6 +285,8 @@ button:disabled{opacity:.5;cursor:default}
 #dmgn.head{color:#ffe066}
 #dmgdir{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}
 #dmgdir i{position:absolute;left:-60px;top:-150px;width:120px;height:14px;border-radius:50% 50% 0 0/100% 100% 0 0;background:radial-gradient(ellipse at 50% 100%,rgba(255,60,40,.9),rgba(255,60,40,0) 70%)}
+#blindfx{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6}
+#smokefx{position:absolute;inset:0;background:#b9bdc1;opacity:0;pointer-events:none;z-index:5}
 #redflash{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(200,20,10,.45));opacity:0}
 #scope{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent 0,transparent 44vmin,#000 44.2vmin)}
 #scope::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#000}
@@ -353,6 +355,7 @@ button:disabled{opacity:.5;cursor:default}
 
 <div id="hud" hidden>
   <div id="redflash"></div>
+  <div id="blindfx"></div><div id="smokefx"></div>
   <div id="scope" hidden></div>
   <div id="xh" class="xh"><i></i><i></i><i></i><i></i><i></i></div>
   <div id="hitm"><i></i><i></i><i></i><i></i></div>
@@ -668,7 +671,12 @@ const W = {
   // Escopeta no papel da Bucky: doze chumbos por disparo, letal de perto, fraca de longe.
   bucky: { name: 'Bucky', dmg: 19, pellets: 12, pelletSpread: .055, mult: { head: 2, body: 1, leg: .75 }, rof: 900, mag: 5, res: 20, reload: 2600, speed: 5.5, auto: false,
     base: .002, move: .03, air: .15, shotSpread: 0, recover: 6, kickP: .07, kickY: .02, helmetPen: 1, rangeModifier: .3, draw: 700, snd: 'bucky' },
+  // Granadas: ficam na mão até o clique; esquerdo lança longe, direito joga perto.
+  he: { name: 'HE', grenade: 'he', dmg: 0, mult: { head: 1, body: 1, leg: 1 }, mag: 1, res: 0, rof: 900, speed: 6.1, base: 0, move: 0, air: 0, draw: 450, snd: 'he' },
+  flash: { name: 'Flash', grenade: 'flash', dmg: 0, mult: { head: 1, body: 1, leg: 1 }, mag: 1, res: 0, rof: 900, speed: 6.1, base: 0, move: 0, air: 0, draw: 450, snd: 'flash' },
+  smoke: { name: 'Smoke', grenade: 'smoke', dmg: 0, mult: { head: 1, body: 1, leg: 1 }, mag: 1, res: 0, rof: 900, speed: 6.1, base: 0, move: 0, air: 0, draw: 450, snd: 'smoke' },
 };
+const GRENADES = ['he', 'flash', 'smoke'];
 const SLOT = { Digit1: 'rifle', Digit2: 'pistol', Digit3: 'knife', Digit4: 'sniper' };
 const CATEGORIES = { rifle: ['rifle', 'm4a4', 'm4a1s', 'ump', 'bucky'], pistol: ['pistol', 'usps'], knife: ['knife', 'butterfly'], sniper: ['sniper', 'ssg'] };
 const ALL_WEAPONS = Object.keys(W), ORDER = [];
@@ -1654,6 +1662,12 @@ const AU = {
     }
     else this.noise(0.09, 3200, 2, 0.18 * v, pan, 'bandpass');
   },
+  clink(v, pan) { this.tone(1700 + Math.random() * 500, .05, .07 * v, 'triangle', pan, -400); this.noise(.02, 3000, 2, .05 * v, pan, 'bandpass'); },
+  boom(v, pan) { this.noise(.95, 380, .5, 1.1 * v, pan); this.tone(46, .75, .95 * v, 'sine', pan, -18); this.noise(.22, 2600, .7, .45 * v, pan, 'highpass'); },
+  pop(v, pan) { this.noise(.14, 3400, .8, .7 * v, pan, 'bandpass'); this.tone(2600, .5, .07 * v, 'sine', pan, -300); },
+  hiss(v, pan) { this.noise(1.8, 5200, .4, .26 * v, pan, 'highpass'); this.noise(.5, 900, .6, .2 * v, pan); },
+  ring(v) { this.tone(3500, 2.4, .05 * v, 'sine', 0, -150); },
+  swish() { this.noise(.18, 1500, .8, .16, 0, 'bandpass'); },
   deagleShot(v, pan) {
     // Estampido curto, corpo grave e retorno do ferrolho; as skins só acrescentam seu timbre.
     this.noise(.025, 2400, .65, .32 * v, pan, 'bandpass');
@@ -1816,6 +1830,10 @@ GUNS.ssg = [
   [[-.022,-.064,.21],[.022,.025,.35],0x434f43], [[.025,-.005,-.055],[.08,.012,-.035],0x5a6062]
 ];
 GUNS.butterfly = [];
+// Granadas na palma da mão direita (mesma mão da pistola).
+GUNS.he = [[[-.018,-.06,-.03],[.042,0,.02],0x4d5a2e], [[-.004,0,-.013],[.03,.017,.006],0x2b2f22], [[.026,-.042,-.009],[.035,.02,.002],0x8f9496], [[.029,.012,-.017],[.037,.029,0],0xb8bcbf]];
+GUNS.flash = [[[-.008,-.075,-.022],[.032,.012,.018],0xc9cdd0], [[-.004,.012,-.014],[.028,.026,.01],0x3b4045], [[-.009,-.042,-.023],[.033,-.033,.019],0x7a8086], [[.03,-.052,-.006],[.038,.02,.002],0x8f9496]];
+GUNS.smoke = [[[-.01,-.08,-.024],[.034,.012,.02],0x5d6a74], [[-.006,.012,-.016],[.03,.026,.012],0x2f363c], [[-.011,-.05,-.025],[.035,-.04,.021],0xd0d4d6], [[.032,-.055,-.007],[.04,.02,.002],0x8f9496]];
 // UMP-45: corpo quadrado, pente reto à frente do gatilho, coronha rebatível e trilho em cima.
 GUNS.ump = [
   [[-.028,-.035,-.30],[.028,.035,.07],0x2b2f33], [[-.012,.035,-.28],[.012,.045,.03],0x1c1f22],
@@ -1842,6 +1860,7 @@ const ARMS = {
   sniper: [{ hand: [0, -.05, -.45], from: [0, -.065, -.43], to: [-.24, -.34, -.04] }, { hand: [0, -.09, .01], from: [.01, -.10, .04], to: [.17, -.32, .33] }],
 };
 ARMS.m4a4 = ARMS.m4a1s = ARMS.rifle; ARMS.usps = ARMS.pistol; ARMS.ssg = ARMS.sniper; ARMS.butterfly = [];
+ARMS.he = ARMS.flash = ARMS.smoke = [{ hand: [.012, -.085, .005], from: [.02, -.10, .03], to: [.16, -.33, .32] }];
 ARMS.ump = [{ hand: [0, -.06, -.27], from: [0, -.075, -.26], to: [-.24, -.34, 0] }, { hand: [0, -.085, .005], from: [.01, -.10, .035], to: [.17, -.32, .32] }];
 ARMS.bucky = [{ hand: [0, -.062, -.47], from: [0, -.077, -.46], to: [-.24, -.34, -.06] }, { hand: [0, -.085, .025], from: [.01, -.10, .055], to: [.17, -.32, .34] }];
 vmScene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.75));
@@ -1859,8 +1878,8 @@ function limb(group, from, to, thick, mat) {
 }
 const MUZZLE = { rifle: [0, .01, -.67], pistol: [0, .035, -.32], sniper: [0,.025,-.945], m4a4: [0,.01,-.79], m4a1s: [0,.01,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.89], ump: [0,.005,-.475], bucky: [0,.014,-.745] };
 const VM_BASE = { rifle: [.15, -.16, -.40], pistol: [.13, -.145, -.38], knife: [.005, -.11, -.38], sniper: [.15, -.16, -.38] };
-VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.rifle; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
-const VM_YAW = { rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0, ump: .05, bucky: .05 };
+VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.rifle; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.he = VM_BASE.flash = VM_BASE.smoke = [.13, -.15, -.38]; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
+const VM_YAW = { rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0, ump: .05, bucky: .05, he: .03, flash: .03, smoke: .03 };
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: .95, depthWrite: false, blending: THREE.AdditiveBlending });
 const flashGeo = new THREE.PlaneGeometry(.13, .13);
 const vmRoot = new THREE.Group(); vmRoot.scale.setScalar(0.5); vmScene.add(vmRoot);
@@ -2704,6 +2723,10 @@ function updateWeapon(dt, t) {
   completeReload(t);
   if (P.reloadEnd && P.zoom) { P.zoom=0; applyFov(); }
   const canAct = P.alive && G.view.ph !== 'freeze' && locked && t >= P.drawEnd && !P.reloadEnd && (G.mode==='dm'?DM.phase==='live'&&t<DM.endsAt:G.mode==='team'?DM.phase==='live'||DM.phase==='end':true);
+  if (w.grenade) {
+    if (canAct && t >= P.nextFire && (P.m1Press || P.m2Press)) playerThrow(t, P.m1Press);
+    afterThrow(t); P.m1Press = P.m2Press = false; P.punch *= Math.exp(-dt * 10); return;
+  }
   if (canAct && !w.melee && am.mag === 0 && am.res > 0 && t >= P.nextFire) startReload(t);
   const trig = w.auto || w.melee ? P.m1 : P.m1Press;
   if (canAct && t >= P.nextFire) {
@@ -3251,7 +3274,7 @@ function dmFinish(){
 }
 function dmDamage(victim,amount,part,weapon,attacker,t){
   const team=DM.mode==='team';
-  if(!DM.active||DM.phase!=='live'||(!team&&t>=DM.endsAt)||!victim||!victim.alive||!attacker||attacker===victim||!attacker.alive||t<victim.safeUntil||dmAllies(victim,attacker))return 0;
+  if(!DM.active||DM.phase!=='live'||(!team&&t>=DM.endsAt)||!victim||!victim.alive||!attacker||attacker===victim||(!attacker.alive&&!W[weapon]?.grenade)||t<victim.safeUntil||dmAllies(victim,attacker))return 0;
   const damage=Math.min(victim.hp,Math.max(0,Math.round(amount)));if(!damage)return 0;
   // Jogador remoto (2v2 online): a vida dele é de quem controla; o acerto vai pela rede.
   if(victim.remote){teamSendHit(victim,damage,part,weapon,attacker);return damage;}
@@ -3284,6 +3307,7 @@ function dmStop(){
   if(DM.render)for(const mesh of DM.render.meshes)mesh.visible=false;
 }
 function dmSense(b,t,L){
+  if(t<(b.blindUntil||0)){b.seen=false;b.thinkAt=t+120;return;}
   const eye=[b.pos.x,botEyeY(b),b.pos.z];let target=null,best=Infinity;
   for(const e of DM.actors){
     if(e===b||!e.alive||t<e.safeUntil||dmAllies(b,e))continue;
@@ -3293,7 +3317,7 @@ function dmSense(b,t,L){
     const yaw=Math.atan2(-dx,-dz),known=e.id===b.lastAttacker||e.id===b.target;
     if(d>64&&!known&&Math.abs(angDiff(b.yaw,yaw))>1.65)continue;
     const score=d*(e.id===b.target ? .7 : 1);if(score>=best)continue;
-    if(!clearLine(eye,[e.pos.x,e.pos.y+(e.crouch?1.02:1.66),e.pos.z])&&!clearLine(eye,[e.pos.x,e.pos.y+(e.crouch?.72:1.2),e.pos.z]))continue;
+    if(!seeLine(eye,[e.pos.x,e.pos.y+(e.crouch?1.02:1.66),e.pos.z])&&!seeLine(eye,[e.pos.x,e.pos.y+(e.crouch?.72:1.2),e.pos.z]))continue;
     best=score;target=e;
   }
   if(target){
@@ -3308,7 +3332,7 @@ function dmBotMove(b,dt,t,L){
   if(b.reloadEnd&&t>=b.reloadEnd){b.mag=W[b.w].mag;b.reloadEnd=0;}
   if(!b.mag&&!b.reloadEnd){b.reloadEnd=t+W[b.w].reload;b.shots=0;}
   if(t>=b.thinkAt)dmSense(b,t,L);
-  const target=DM.byId.get(b.target);if(!target||!target.alive||t<target.safeUntil)b.seen=false;
+  const target=DM.byId.get(b.target);if(!target||!target.alive||t<target.safeUntil||t<(b.blindUntil||0))b.seen=false;
   let wx=0,wz=0,brake=false,distance=0;
   if(t>=b.readyAt&&b.seen){
     const dx=target.pos.x-b.pos.x,dz=target.pos.z-b.pos.z;
@@ -3594,6 +3618,153 @@ function aimbotzClickBoard() {
   return true;
 }
 
+/* ================= Granadas (HE, flash e smoke) ================= */
+// Projéteis com gravidade e quique nas caixas e rampas do mapa. Valem nos modos com atores (DM, times e bomba).
+const NADE = { gravity: 9, far: 15.5, near: 6.5, fuse: 1600, smokeR: 3.2, smokeMs: 18000, heR: 7, heMax: 98, flashR: 28, list: [], clouds: [], fx: [], gfx: null };
+const NADE_COLORS = { he: 0x4d5a2e, flash: 0xc9cdd0, smoke: 0x5d6a74 };
+// Geometrias e materiais só existem com o three.js de verdade (os testes rodam a lógica sem renderizar).
+function nadeGfx() {
+  if (NADE.gfx || !THREE.BoxGeometry) return NADE.gfx;
+  const mats = {}; for (const [k, c] of Object.entries(NADE_COLORS)) mats[k] = new THREE.MeshBasicMaterial({ color: c });
+  // Bolhas da fumaça com tom fixo por face (mais claras em cima), no mesmo acabamento chapado do mundo.
+  const puff = new THREE.IcosahedronGeometry(1, 1), nrm = puff.attributes.normal, col = [];
+  for (let i = 0; i < nrm.count; i++) { const k = .74 + .2 * nrm.getY(i) + .06 * nrm.getX(i); col.push(k, k, k); }
+  puff.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  NADE.gfx = { box: new THREE.BoxGeometry(.07, .1, .07), puff, ball: new THREE.IcosahedronGeometry(1, 2), mats };
+  return NADE.gfx;
+}
+// Ponto encostado numa caixa sólida (com folga do raio da granada) ou abaixo da superfície de uma rampa.
+function nadeBlocked(x, y, z) {
+  for (const b of boxes) if (x > b.min[0] - .04 && x < b.max[0] + .04 && y > b.min[1] - .04 && y < b.max[1] + .04 && z > b.min[2] - .04 && z < b.max[2] + .04) return true;
+  return y < rampH(x, z);
+}
+function throwNade(owner, type, eye, yaw, pitch, speed, t, vel) {
+  const d = dirFrom(yaw, pitch), gfx = nadeGfx();
+  const n = { type, owner, team: owner.team, pos: new V3(eye[0] + d[0] * .35, eye[1] + d[1] * .35 - .05, eye[2] + d[2] * .35), vel: new V3(d[0] * speed, d[1] * speed, d[2] * speed),
+    t0: t, fuseAt: t + NADE.fuse, stillT: 0, bounceAt: 0, mesh: null };
+  if (vel) { n.vel.x += vel.x * .6; n.vel.z += vel.z * .6; n.vel.y += Math.max(0, vel.y) * .4; }
+  if (nadeBlocked(n.pos.x, n.pos.y, n.pos.z)) n.pos.set(eye[0], eye[1], eye[2]);
+  if (gfx) { n.mesh = new THREE.Mesh(gfx.box, gfx.mats[type]); n.mesh.position.copy(n.pos); scene.add(n.mesh); }
+  NADE.list.push(n);
+  return n;
+}
+function nadeMove(n, dt, t) {
+  n.vel.y -= NADE.gravity * dt;
+  let hard = false;
+  for (const axis of ['x', 'z', 'y']) {
+    const next = n.pos[axis] + n.vel[axis] * dt;
+    if (!nadeBlocked(axis === 'x' ? next : n.pos.x, axis === 'y' ? next : n.pos.y, axis === 'z' ? next : n.pos.z)) { n.pos[axis] = next; continue; }
+    if (Math.abs(n.vel[axis]) > 1.2) hard = true;
+    if (axis === 'y' && n.vel.y < 0) { n.vel.y *= -.35; n.vel.x *= .62; n.vel.z *= .62; if (Math.abs(n.vel.y) < .9) n.vel.y = 0; }
+    else n.vel[axis] *= axis === 'y' ? -.2 : -.45;
+  }
+  if (n.vel.y === 0) { const k = Math.exp(-dt * 4); n.vel.x *= k; n.vel.z *= k; }
+  if (hard && t > n.bounceAt) { n.bounceAt = t + 120; const s = spat(n.pos.x, n.pos.z); AU.clink(s.v, s.pan); }
+}
+// A fumaça bloqueia a visão (dos bots e da flash): segmento que passa perto do centro de uma nuvem.
+function smokeBlocks(a, b) {
+  for (const c of NADE.clouds) {
+    const r = c.r * .85; if (r < .8) continue;
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], L2 = dx * dx + dy * dy + dz * dz;
+    const k = clamp(((c.x - a[0]) * dx + (c.y - a[1]) * dy + (c.z - a[2]) * dz) / (L2 || 1), 0, 1);
+    const px = a[0] + dx * k - c.x, py = a[1] + dy * k - c.y, pz = a[2] + dz * k - c.z;
+    if (px * px + py * py + pz * pz < r * r) return true;
+  }
+  return false;
+}
+const seeLine = (a, b) => clearLine(a, b) && !smokeBlocks(a, b);
+function nadeFx(x, y, z, color, size, ms, t) {
+  const gfx = nadeGfx(); if (!gfx) return;
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .9, depthWrite: false }), m = new THREE.Mesh(gfx.ball, mat);
+  m.position.set(x, y, z); m.scale.setScalar(.2); scene.add(m); NADE.fx.push({ m, mat, t0: t, ms, size });
+}
+function nadeDetonate(n, t) {
+  const c = [n.pos.x, n.pos.y + .15, n.pos.z], s = spat(c[0], c[2]);
+  if (n.type === 'smoke') {
+    const cloud = { x: c[0], y: n.pos.y + 1.1, z: c[2], r: .5, t0: t, until: t + NADE.smokeMs, puffs: [], mat: null }, gfx = nadeGfx();
+    if (gfx) {
+      cloud.mat = new THREE.MeshBasicMaterial({ color: 0xd2d6da, vertexColors: true, transparent: true, opacity: .96 });
+      for (let i = 0; i < 16; i++) {
+        const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * .62, m = new THREE.Mesh(gfx.puff, cloud.mat);
+        cloud.puffs.push([m, Math.cos(a) * r, (Math.random() * 2 - 1) * .32, Math.sin(a) * r, .42 + Math.random() * .22]); scene.add(m);
+      }
+    }
+    NADE.clouds.push(cloud); AU.hiss(s.v, s.pan); return;
+  }
+  if (n.type === 'he') {
+    AU.boom(s.v, s.pan); nadeFx(c[0], c[1] + .3, c[2], 0xffa040, 2.4, 260, t); nadeFx(c[0], c[1] + .5, c[2], 0x55504a, 3, 900, t);
+    if (Math.hypot(P.pos.x - c[0], P.pos.z - c[2]) < 10) P.punch = Math.min(P.punch + .03, .05);
+    for (const e of DM.actors) {
+      if (!e.alive || e === n.owner) continue;
+      const chest = [e.pos.x, e.pos.y + 1.1, e.pos.z], d = Math.hypot(chest[0] - c[0], chest[1] - c[1], chest[2] - c[2]);
+      if (d > NADE.heR || !clearLine(c, chest)) continue;
+      const dmg = Math.round(NADE.heMax * Math.pow(1 - d / NADE.heR, 1.5));
+      if (dmg > 0 && dmDamage(e, dmg, 'body', 'he', n.owner, t) && n.owner === P) { hitmark(''); dmgNumber(dmg, false); }
+    }
+    return;
+  }
+  AU.pop(s.v, s.pan); nadeFx(c[0], c[1], c[2], 0xffffff, 1.4, 160, t);
+  for (const e of DM.actors) {
+    if (!e.alive) continue;
+    const eye = e === P ? eyePos() : [e.pos.x, botEyeY(e), e.pos.z], dx = c[0] - eye[0], dy = c[1] - eye[1], dz = c[2] - eye[2], d = Math.hypot(dx, dy, dz);
+    if (d > NADE.flashR || !seeLine(eye, c)) continue;
+    const f = e === P ? dirFrom(P.yaw, P.pitch) : dirFrom(e.yaw, e.pitch || 0), dot = (f[0] * dx + f[1] * dy + f[2] * dz) / (d || 1);
+    // Olhando para a flash: cegueira total; de lado: parcial; de costas: só um clarão curto.
+    const dur = (dot > .55 ? 3600 : dot > 0 ? 1200 + 2400 * dot / .55 : 450) * clamp(1.25 - d / NADE.flashR, .35, 1);
+    e.blindUntil = Math.max(e.blindUntil || 0, t + dur);
+    if (e === P) { if (dur > 1500) AU.ring(1); }
+    else { e.seen = false; e.fireReady = false; }
+  }
+}
+function nadesTick(dt, t) {
+  for (let i = NADE.list.length - 1; i >= 0; i--) {
+    const n = NADE.list[i], speed = Math.hypot(n.vel.x, n.vel.y, n.vel.z), steps = Math.max(1, Math.ceil(speed * dt / .12));
+    for (let k = 0; k < steps; k++) nadeMove(n, dt / steps, t);
+    if (n.mesh) { n.mesh.position.copy(n.pos); n.mesh.rotation.x += dt * speed * 2; n.mesh.rotation.z += dt * speed; }
+    n.stillT = Math.hypot(n.vel.x, n.vel.y, n.vel.z) < .3 ? n.stillT + dt : 0;
+    if (n.type === 'smoke' ? n.stillT > .35 || t - n.t0 > 4500 : t >= n.fuseAt) { nadeDetonate(n, t); if (n.mesh) scene.remove(n.mesh); NADE.list.splice(i, 1); }
+  }
+  for (let i = NADE.clouds.length - 1; i >= 0; i--) {
+    const c = NADE.clouds[i], k = clamp((t - c.t0) / 900, 0, 1), fade = clamp((c.until - t) / 2000, 0, 1);
+    c.r = NADE.smokeR * (.35 + .65 * k * (2 - k)) * (.8 + .2 * fade);
+    for (const [m, ox, oy, oz, sz] of c.puffs) { m.position.set(c.x + ox * c.r, c.y + oy * c.r, c.z + oz * c.r); m.scale.setScalar(sz * c.r); }
+    if (c.mat) c.mat.opacity = .96 * fade;
+    if (t >= c.until) { for (const [m] of c.puffs) scene.remove(m); if (c.mat) c.mat.dispose(); NADE.clouds.splice(i, 1); }
+  }
+  for (let i = NADE.fx.length - 1; i >= 0; i--) {
+    const f = NADE.fx[i], k = clamp((t - f.t0) / f.ms, 0, 1);
+    f.m.scale.setScalar(.2 + f.size * Math.sqrt(k)); f.mat.opacity = .9 * (1 - k);
+    if (k >= 1) { scene.remove(f.m); f.mat.dispose(); NADE.fx.splice(i, 1); }
+  }
+}
+function nadesClear() {
+  for (const n of NADE.list) if (n.mesh) scene.remove(n.mesh);
+  for (const c of NADE.clouds) { for (const [m] of c.puffs) scene.remove(m); if (c.mat) c.mat.dispose(); }
+  for (const f of NADE.fx) { scene.remove(f.m); f.mat.dispose(); }
+  NADE.list.length = NADE.clouds.length = NADE.fx.length = 0;
+}
+// Quanto a câmera está dentro de uma nuvem (0 a 1), para escurecer a tela.
+function smokeInside(x, y, z) {
+  let k = 0; for (const c of NADE.clouds) { const d = Math.hypot(x - c.x, y - c.y, z - c.z); k = Math.max(k, clamp((c.r - d) / (c.r * .5), 0, 1)); }
+  return k;
+}
+// Lançamento do jogador: clique esquerdo longe, direito perto; o ângulo sobe um pouco, como no CS.
+function playerThrow(t, far) {
+  const type = W[P.weapon].grenade; if (!type || !(P.nades && P.nades[type] > 0)) return false;
+  const pitch = P.pitch + (far ? .12 : .06) * (1 - Math.abs(P.pitch) / 1.6);
+  throwNade(P, type, eyePos(), P.yaw, pitch, far ? NADE.far : NADE.near, t, P.vel);
+  P.nades[type]--; P.nextFire = t + 900; P.throwT = t; P.afterThrow = t + 450; AU.swish();
+  return true;
+}
+// Depois do arremesso: continua com a mesma granada se sobrou, senão troca para outra granada ou a arma anterior.
+function afterThrow(t) {
+  if (!P.afterThrow || t < P.afterThrow) return;
+  P.afterThrow = 0; const type = W[P.weapon].grenade;
+  if (!type || P.nades[type] > 0) return;
+  const i = ORDER.indexOf(P.weapon); if (i >= 0) ORDER.splice(i, 1);
+  const next = GRENADES.find(g => P.nades[g] > 0 && ORDER.includes(g)) || (ORDER.includes(P.lastW) ? P.lastW : ORDER[0]), prev = P.lastW;
+  selectWeapon(next); P.lastW = ORDER.includes(prev) && prev !== next ? prev : (ORDER.find(k => k !== next) || next);
+}
 /* ================= Times (2v2 e XvX) e salas online de times e de DM ================= */
 // Usa o mesmo motor de atores do DM (bots, navegação, hitboxes, render instanciado).
 // Online, quem cria a sala é o juiz: recebe o estado de cada pessoa, simula os bots que completam as vagas
@@ -3719,7 +3890,7 @@ function teamApplyRound(d) {
   const v = G.view; v.m = d.m; v.r = d.r; v.ph = d.ph; v.endsAt = ARENA.roundEnd; v.tg = ARENA.tg; v.mp = MAP.id;
   const key = d.m + ':' + d.r, sd = d.sd && typeof d.sd === 'object' ? d.sd : {};
   if ((d.ph === 'freeze' || d.ph === 'live') && ARENA.spawnKey !== key) {
-    ARENA.spawnKey = key; clearDecals();
+    ARENA.spawnKey = key; clearDecals(); nadesClear(); P.blindUntil = 0;
     for (const e of DM.actors) {
       const spec = Array.isArray(sd[e.id]) && sd[e.id].length === 3 && sd[e.id].every(fin) ? sd[e.id] : randSpawn(e.team);
       if (e === P) { spawnSelf(0, spec); P.safeUntil = 0; }
@@ -4044,6 +4215,13 @@ function updateVM(dt, t) {
   const sw = Math.exp(-dt * 9); P.swayX *= sw; P.swayY *= sw;
   vmRoot.position.x -= P.swayX * .00005; vmRoot.position.y += P.swayY * .00005;
   vmRoot.rotation.set(P.kick * .04 + relK * .5 - drawK * .6 - P.swayY * .00012, VM_YAW[P.weapon] - P.swayX * .00012, 0);
+  if (w.grenade && P.throwT) {
+    // Arremesso: a mão vai para trás, joga para a frente e some até a próxima granada subir.
+    const k = clamp((t - P.throwT) / 420, 0, 1), swing = Math.sin(k * Math.PI);
+    vmRoot.position.y += swing * .05 - (k > .5 ? (k - .5) * .5 : 0); vmRoot.position.z -= swing * .1; vmRoot.rotation.x -= swing * .6;
+    vmGuns[P.weapon].visible = k < .45 || !P.afterThrow;
+    if (k >= 1 && !P.afterThrow) P.throwT = 0;
+  }
   if (P.weapon === 'pistol') {
     const shotAge = Math.max(0, t - P.lastShot), lift = Math.pow(P.kick, .7);
     vmRoot.rotation.x += lift * .18; vmRoot.rotation.z -= lift * .03;
@@ -4065,7 +4243,7 @@ function updateVM(dt, t) {
 }
 
 /* ================= HUD ================= */
-const el = { hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
+const el = { blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
   scMe: $('scMe'), scOp: $('scOp'), nmMe: $('nmMe'), nmOp: $('nmOp'), clock: $('clock'), clockT: $('clockT'), clockL: $('clockL'),
   wait: $('waitline'), banner: $('banner'), bH: $('bH'), bP: $('bP'), feed: $('feed'), hpbox: $('hpbox'), hp: $('hp'),
   wname: $('wname'), ammo: $('ammo'), res: $('res'), fps: $('fps'), netst: $('netst'), board: $('board'), dead: $('deadmsg') };
@@ -4111,7 +4289,7 @@ function flashRed() {
   el.red.style.transition = 'none'; el.red.style.opacity = 1;
   clearTimeout(redT); redT = setTimeout(() => { el.red.style.transition = 'opacity .5s'; el.red.style.opacity = 0; }, 80);
 }
-const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY' };
+const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY', he: 'HE', flash: 'FLASH', smoke: 'SMOKE' };
 function headshotIcon() {
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
   svg.setAttribute('viewBox','0 0 28 24');svg.setAttribute('role','img');svg.setAttribute('aria-label','Tiro na cabeça');
@@ -4163,7 +4341,14 @@ function renderBoard() {
   if(G.mode==='dm')boardVersion=DM.scoreVersion;
 }
 let fpsN = 0, fpsT = now(), fpsV = 0, boardT = 0, boardVersion=-1;
+function updateNadeHUD(t) {
+  const blind = P.alive && P.blindUntil > t ? clamp((P.blindUntil - t) / 900, 0, 1) : 0, e = eyePos();
+  const fog = G.mode === 'dm' || G.mode === 'team' ? smokeInside(e[0], e[1], e[2]) * .92 : 0;
+  if (el.blind._o !== blind) { el.blind._o = blind; el.blind.style.opacity = blind; }
+  if (el.smoke._o !== fog) { el.smoke._o = fog; el.smoke.style.opacity = fog; }
+}
 function updateHUD(dt, t) {
+  updateNadeHUD(t);
   const v = G.view, w = W[P.weapon];
   setT(el.scMe, String(v.sc[G.me] || 0)); setT(el.scOp, String(G.opp ? (v.sc[G.opp] || 0) : 0));
   setT(el.nmMe, cleanName(S.name)); setT(el.nmOp, G.opp ? nameOf(G.opp) : '—');
@@ -4190,6 +4375,7 @@ function updateHUD(dt, t) {
   setT(el.hp, String(P.hp)); el.hpbox.classList.toggle('low', P.hp <= 25);
   setT(el.wname, w.name);
   if (w.melee) { setT(el.ammo, '—'); setT(el.res, ''); }
+  else if (w.grenade) { setT(el.ammo, String(P.nades ? P.nades[w.grenade] || 0 : 0)); setT(el.res, ''); }
   else { const am = P.ammo[P.weapon]; setT(el.ammo, infiniteMagazine() ? '∞' : P.reloadEnd ? '…' : String(am.mag)); setT(el.res, infiniteMagazine() ? '' : '/ ' + (infiniteReserve() ? '∞' : am.res)); }
   const showXH = P.alive && !P.zoom;
   setH(el.xh, !showXH); setH(el.scope, !(P.zoom && P.alive));
@@ -4455,7 +4641,7 @@ function resetSession(spawn = null) {
   H.st = null; G.view = { m: '', r: 0, ph: 'wait', endsAt: 0, sc: {}, tg: S.target, win: null, why: '', rt: S.roundTime };
   G.spawnKey = ''; G.stats = {}; G.deadSeen.clear(); G.ping = null; G.names = {};
   OPP.snaps = []; OPP.latest = null; OPP.cur = null; OPP.fall = OPP.crouchK = 0;
-  el.feed.replaceChildren(); clearDecals();
+  el.feed.replaceChildren(); clearDecals(); nadesClear(); P.blindUntil = 0;
   spawnSelf(0, spawn);
 }
 function startSession(mode, opts = {}) {
@@ -4505,7 +4691,7 @@ function startSession(mode, opts = {}) {
 }
 function leaveSession() {
   resetRoundAudio();
-  netStop();arenaNetStop();ARENA.net=false;closeBuy();dmStop();sleeveMat.color.set(pcolHex(S.pcol));G.mode = null; G.opp = null; H.st = null; oppGroup.visible = false;
+  netStop();arenaNetStop();ARENA.net=false;closeBuy();dmStop();nadesClear();sleeveMat.color.set(pcolHex(S.pcol));G.mode = null; G.opp = null; H.st = null; oppGroup.visible = false;
   if (aimbotzBoard) aimbotzBoard.mesh.visible = false;
   if (aimbotzViewmodelBoard) aimbotzViewmodelBoard.mesh.visible = false;
   $('dmResult').hidden=true;el.board.hidden=true;el.hud.classList.remove('dm');el.hud.hidden = true;configureLoadout();syncInputs($('inName'));showMenu(true);applySettings();
@@ -4794,6 +4980,7 @@ function frame() {
     if(ARENA.net)arenaNetTick(t);
   } else if (G.mode === 'team') teamTick(dt, t);
   else if (G.mode === 'bot') botUpdate(dt, t);
+  if (G.mode === 'dm' || G.mode === 'team') nadesTick(dt, t);
   if (G.host) hostTick(t);
   netTick(t);
   if(G.mode==='dm'||G.mode==='team'||G.mode==='aimbotz')dmRender(t,dt);else updateOpp(dt, t);

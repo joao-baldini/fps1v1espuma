@@ -407,7 +407,7 @@ test('Aimbotz board controls match their visible positions and select only guns 
       g.selectWeapon(b.weapon);assert.equal(g.P.weapon,b.weapon);
     }
   }
-  assert.equal(buttons.filter(b => b.weapon).length, Object.values(g.W).filter(w=>!w.melee).length);
+  assert.equal(buttons.filter(b => b.weapon).length, Object.values(g.W).filter(w=>!w.melee&&!w.grenade).length);
   assert.ok(buttons.every(b=>!b.weapon||!g.W[b.weapon].melee));
   for(const invalid of ['knife','butterfly','invalid']){cx.aimbotzEquip(invalid);assert.equal(g.S.aimbotzWeapon,'rifle');assert.equal(g.ORDER.length,2);}
   assert.equal(cx.aimbotzButtonAt(from, [0, 0, -1]), null);
@@ -418,7 +418,7 @@ test('Aimbotz infinite magazines cancel a reload, keep every gun full, and stay 
   assert.equal(cx.infiniteMagazine(),false);
   g.P.ammo.rifle.mag=0;cx.startReload(11000);assert.ok(g.P.reloadEnd>11000);
   cx.aimbotzSetInfiniteAmmo(true);assert.equal(g.P.reloadEnd,0);
-  for(const weapon of Object.keys(g.W).filter(k=>!g.W[k].melee)){
+  for(const weapon of Object.keys(g.W).filter(k=>!g.W[k].melee&&!g.W[k].grenade)){
     cx.aimbotzEquip(weapon);const w=g.W[weapon];
     for(let n=0;n<w.mag*3;n++){
       g.shoot(15000+n*w.rof,false);assert.equal(g.P.ammo[weapon].mag,w.mag);assert.equal(g.P.nextFire,15000+(n+1)*w.rof);
@@ -754,7 +754,7 @@ test('collisions still block walls, land on boxes, and climb ramps', () => {
 
 test('all seven bot weapons use the selected ammo, reload time, fire rate and damage identity', () => {
   const g = game();
-  for (const key of Object.keys(g.W).filter(k => !g.W[k].melee)) {
+  for (const key of Object.keys(g.W).filter(k => !g.W[k].melee && !g.W[k].grenade)) {
     g.context.G.view.ph = 'freeze';
     g.S.botWeapon = key; g.S.botHelmet = false; g.botSpawn(1);
     assert.equal(g.BOT.w, key); assert.equal(g.BOT.helmet, false);
@@ -1157,4 +1157,57 @@ test('bots fight across the Depósito and Borgo maps and use their elevated part
     assert.ok(high > 0, map + ': bots never climbed');
     for (const b of g.DM.bots) assert.ok(Math.abs(b.pos.x) < 24 && Math.abs(b.pos.z) < 24 && Number.isFinite(b.pos.y));
   }
+});
+
+function nadeWorld() {
+  const g = game(), cx = g.context;
+  cx.G.mode = 'dm'; vm.runInContext("DM.active=true;DM.phase='live';DM.mode='dm';DM.endsAt=Infinity;DM.startsAt=0;", cx);
+  const bot = (i, x, z, yaw = 0) => { const b = cx.dmMakeBot(i); b.pos.set(x, 0, z); b.alive = true; b.hp = 100; b.yaw = yaw; b.pitch = 0; b.safeUntil = 0; return b; };
+  g.spawnSelf(0, [0, 0, 0]); g.P.safeUntil = 0;
+  const run = (from, ms) => { for (let t = from; t <= from + ms; t += 1000 / 60) { g.tick(t); cx.nadesTick(1 / 60, t); } };
+  const actors = list => { cx.__list = list; vm.runInContext('DM.actors.length=0;DM.byId.clear();for(const e of __list){DM.actors.push(e);DM.byId.set(e.id,e);}', cx); };
+  return { g, cx, bot, run, actors, N: vm.runInContext('NADE', cx) };
+}
+test('grenades bounce off walls instead of passing through them and settle on the floor', () => {
+  const { g, cx, run, N } = nadeWorld();
+  cx.boxes.push({ min: [-5, 0, -3.2], max: [5, 4, -3] });
+  const n = cx.throwNade(g.P, 'smoke', [0, 1.6, 0], 0, 0, 15, 10000, null);
+  run(10000, 600); assert.ok(n.pos.z > -3.05, 'atravessou a parede: ' + n.pos.z); assert.ok(n.vel.z >= 0 || n.vel.z > -1);
+  run(10600, 2500); assert.equal(N.list.length, 0); assert.equal(N.clouds.length, 1);
+});
+test('HE damage falls with distance, respects cover and keeps counting after the thrower dies', () => {
+  const { g, cx, bot, run, actors, N } = nadeWorld();
+  const near = bot(0, 0, -2.4), mid = bot(1, 0, -5.5), far = bot(2, 0, -9), hidden = bot(3, 3, 0);
+  cx.boxes.push({ min: [1.4, 0, -1], max: [1.7, 3, 1] });
+  actors([g.P, near, mid, far, hidden]);
+  cx.throwNade(g.P, 'he', [0, .3, -.4], 0, -1.5, 0, 10000, null); g.P.alive = false;
+  run(10000, 1700);
+  assert.equal(N.list.length, 0);
+  assert.ok(near.hp < mid.hp && mid.hp < 100, near.hp + ' ' + mid.hp);
+  assert.equal(far.hp, 100); assert.equal(hidden.hp, 100);
+});
+test('flash blinds who looks at it much longer than who turns away, and smoke hides both ways', () => {
+  const { g, cx, bot, run, actors, N } = nadeWorld();
+  const facing = bot(0, 0, 5, 0), away = bot(1, 0, -5, 0);
+  actors([g.P, facing, away]);
+  g.P.alive = false;
+  cx.throwNade(g.P, 'flash', [0, 1.6, 0], 0, 0, 0, 10000, null); N.list[0].vel.set(0, 0, 0);
+  run(10000, 1650);
+  assert.ok(facing.blindUntil - 11650 > 2000, String(facing.blindUntil));
+  assert.ok(away.blindUntil - 11650 < 600, String(away.blindUntil));
+  const s = cx.throwNade(g.P, 'smoke', [0, .2, 20], 0, -1.5, 0, 20000, null);
+  run(20000, 2000);
+  assert.equal(N.clouds.length, 1);
+  assert.equal(cx.smokeBlocks([-8, 1.6, 20], [8, 1.6, 20]), true);
+  assert.equal(vm.runInContext('seeLine([-8, 1.6, 30], [8, 1.6, 30])', cx), true);
+  run(22000, 19000); assert.equal(N.clouds.length, 0);
+});
+test('throwing the last grenade switches back to a gun and removes the grenade slot', () => {
+  const { g, cx } = nadeWorld();
+  g.P.nades = { he: 1, flash: 0, smoke: 0 }; g.ORDER.splice(0, g.ORDER.length, 'rifle', 'pistol', 'knife', 'he');
+  g.selectWeapon('he'); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.m1Press = true;
+  g.updateWeapon(0, 30000);
+  assert.equal(g.P.nades.he, 0); assert.equal(vm.runInContext('NADE.list.length', cx), 1);
+  g.updateWeapon(0, 30500);
+  assert.notEqual(g.P.weapon, 'he'); assert.ok(!g.ORDER.includes('he')); assert.ok(g.ORDER.includes(g.P.weapon));
 });
