@@ -394,12 +394,12 @@ button:disabled{opacity:.5;cursor:default}
     <button id="btnArsenal" type="button">Abrir arsenal · armas e skins</button>
     <div class="fld"><span>Código de skin</span><div class="row"><input id="skinCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Código de skin" placeholder="Digite o código"><button id="btnSkinCode" type="button">Desbloquear</button></div><small id="skinCodeMsg">A AK-47 Sublime só aparece para quem tem o código.</small></div>
     <div class="grid2">
-      <label class="fld"><span>1 · Rifle</span><select data-k="loadout.rifle" aria-label="Seu rifle"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S · silenciador</option></select></label>
+      <label class="fld"><span>1 · Primária</span><select data-k="loadout.rifle" aria-label="Sua arma primária"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S · silenciador</option><option value="ump">UMP-45</option><option value="bucky">Bucky · escopeta</option></select></label>
       <label class="fld"><span>2 · Pistola</span><select data-k="loadout.pistol" aria-label="Sua pistola"><option value="pistol">Desert Eagle</option><option value="usps">USP-S · silenciador</option></select></label>
       <label class="fld"><span>3 · Faca</span><select data-k="loadout.knife" aria-label="Sua faca"><option value="knife">Karambit</option><option value="butterfly">Butterfly</option></select></label>
       <label class="fld"><span>4 · Precisão</span><select data-k="loadout.sniper" aria-label="Seu rifle de precisão"><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
       <label class="fld"><span>Arma ao nascer</span><select data-k="startSlot" aria-label="Arma ao nascer"><option value="rifle">Rifle · 1</option><option value="pistol">Pistola · 2</option><option value="knife">Faca · 3</option><option value="sniper">Precisão · 4</option></select></label>
-      <label class="fld"><span>Arma do bot</span><select data-k="botWeapon" aria-label="Arma do bot"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S</option><option value="pistol">Desert Eagle</option><option value="usps">USP-S</option><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
+      <label class="fld"><span>Arma do bot</span><select data-k="botWeapon" aria-label="Arma do bot"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S</option><option value="ump">UMP-45</option><option value="bucky">Bucky</option><option value="pistol">Desert Eagle</option><option value="usps">USP-S</option><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
     </div>
     <label class="chk"><input type="checkbox" data-k="botHelmet">Bot com capacete</label>
     <div class="fld" id="colorField"><span>Cor do seu boneco no 1v1</span><div class="sw" id="pcolors"></div></div>
@@ -545,11 +545,17 @@ const W = {
   ssg: { name: 'SSG 08', dmg: 88, mult: { head: 4, body: 1, leg: .75 }, rof: 1250, mag: 10, res: 90, reload: 3700, speed: 5.842, auto: false,
     base: .0005, noscope: .045, move: .095, air: .11, shotSpread: 0, recover: 7, kickP: .038, kickY: .0065, scope: true, scopedSpeed: 5.842, helmetPen: .85, draw: 1000, snd: 'ssg' },
   butterfly: { name: 'Butterfly', melee: true, dmg: 40, heavy: 65, rof: 450, heavyRof: 1000, range: 1.9, speed: 6.35, draw: 800, snd: 'knife' },
+  // Submetralhadora no papel da UMP-45: dano alto por tiro, precisa se movendo, perde dano com a distância.
+  ump: { name: 'UMP-45', dmg: 35, mult: { head: 4, body: 1, leg: .75 }, rof: 90, mag: 25, res: 100, reload: 3500, speed: 5.842, auto: true,
+    base: .0032, move: .045, air: .2, shotSpread: .0042, recover: 7, pattern: true, recoilScale: .6, recoilJitter: .0024, helmetPen: .65, rangeModifier: .75, draw: 600, snd: 'ump' },
+  // Escopeta no papel da Bucky: doze chumbos por disparo, letal de perto, fraca de longe.
+  bucky: { name: 'Bucky', dmg: 19, pellets: 12, pelletSpread: .055, mult: { head: 2, body: 1, leg: .75 }, rof: 900, mag: 5, res: 20, reload: 2600, speed: 5.5, auto: false,
+    base: .002, move: .03, air: .15, shotSpread: 0, recover: 6, kickP: .07, kickY: .02, helmetPen: 1, rangeModifier: .3, draw: 700, snd: 'bucky' },
 };
 const SLOT = { Digit1: 'rifle', Digit2: 'pistol', Digit3: 'knife', Digit4: 'sniper' };
-const CATEGORIES = { rifle: ['rifle', 'm4a4', 'm4a1s'], pistol: ['pistol', 'usps'], knife: ['knife', 'butterfly'], sniper: ['sniper', 'ssg'] };
+const CATEGORIES = { rifle: ['rifle', 'm4a4', 'm4a1s', 'ump', 'bucky'], pistol: ['pistol', 'usps'], knife: ['knife', 'butterfly'], sniper: ['sniper', 'ssg'] };
 const ALL_WEAPONS = Object.keys(W), ORDER = [];
-const DM_POOLS = {pistol:['pistol','usps'],sniper:['sniper','ssg'],rifle:['rifle','m4a4','m4a1s'],all:['rifle','m4a4','m4a1s','pistol','usps','sniper','ssg']};
+const DM_POOLS = {pistol:['pistol','usps'],sniper:['sniper','ssg'],rifle:['rifle','m4a4','m4a1s'],all:['rifle','m4a4','m4a1s','ump','pistol','usps','sniper','ssg']};
 const DM_LABELS = {pistol:'pistolas',sniper:'precisão',rifle:'rifles',all:'tudo liberado'};
 const DM_BOT_NAMES = ['donk','ZywOo','m0NESY','NiKo','KSCERATO','ropz','YEKINDAR','molodoy','coldzera'];
 const DM_DURATION=300000,DM_RESPAWN_MS=1500,DM_PROTECT_MS=1800,ACTOR_CAP=12;
@@ -572,7 +578,7 @@ const PAT = [[0,0],[.016,.001],[.02,.002],[.024,-.002],[.026,.003],[.026,.004],[
 /* ================= Skins ================= */
 // Cada skin troca as cores do modelo, o som do tiro e o som de abate (que sobe de tom a cada abate seguido, como no Valorant).
 // "Sublime" (nome da linha Prime no Valorant em português) é exclusiva da AK: marfim, ouro e energia ciano, com modelo próprio.
-const FIREARMS = ['rifle','m4a4','m4a1s','pistol','usps','sniper','ssg'];
+const FIREARMS = ['rifle','m4a4','m4a1s','ump','bucky','pistol','usps','sniper','ssg'];
 const SKINS = {
   padrao:  { name: 'Padrão', for: null, desc: 'Acabamento original.' },
   sublime: { name: 'Sublime', for: ['rifle'], lock: 'a0ae4456e6fd4a5c7974355a34cfe9aa5ddd469272b195abe9b99259aa1fadd9', css: ['#f2eadb','#d9a93a','#5ff6ff'], desc: 'Marfim, ouro e energia ciano. Tiro elétrico e sinos ao abater.' },
@@ -1522,6 +1528,12 @@ const AU = {
     else if (w === 'm4a4') { this.noise(.13, 2200, .7, .42 * v, pan); this.tone(135, .085, .28 * v, 'triangle', pan, -70); }
     else if (w === 'm4a1s' || w === 'usps') { this.noise(.07, 1250, 1.1, .22 * v, pan, 'bandpass'); this.tone(w === 'usps' ? 210 : 155, .065, .17 * v, 'sine', pan, -75); }
     else if (w === 'ssg') { this.noise(.28, 2400, .6, .5 * v, pan); this.tone(105, .19, .36 * v, 'triangle', pan, -65); }
+    else if (w === 'ump') { this.noise(.1, 1900, .8, .38 * v, pan); this.tone(150, .07, .24 * v, 'triangle', pan, -80); }
+    else if (w === 'bucky') {
+      // Estrondo largo e o "tchac-tchac" da telha voltando depois do tiro.
+      this.noise(.32, 1300, .55, .78 * v, pan); this.tone(78, .24, .58 * v, 'sine', pan, -30); this.noise(.06, 3800, .9, .22 * v, pan, 'highpass');
+      this.noise(.035, 2400, 2.2, .14 * v, pan, 'bandpass', .42); this.noise(.04, 1700, 2, .16 * v, pan, 'bandpass', .55);
+    }
     else this.noise(0.09, 3200, 2, 0.18 * v, pan, 'bandpass');
   },
   deagleShot(v, pan) {
@@ -1534,7 +1546,7 @@ const AU = {
   },
   // Tiros das skins: o silenciador (M4A1-S, USP-S) abafa o mesmo timbre.
   skinShot(id, w, v, pan) {
-    const quiet = w === 'm4a1s' || w === 'usps', heavy = w === 'sniper' || w === 'ssg' || w === 'pistol';
+    const quiet = w === 'm4a1s' || w === 'usps', heavy = w === 'sniper' || w === 'ssg' || w === 'pistol' || w === 'bucky';
     if (quiet) v *= .5;
     const body = heavy ? 1.35 : 1, f = quiet ? .55 : 1;
     if (id === 'sublime') {
@@ -1739,6 +1751,23 @@ GUNS.ssg = [
   [[-.022,-.064,.21],[.022,.025,.35],0x434f43], [[.025,-.005,-.055],[.08,.012,-.035],0x5a6062]
 ];
 GUNS.butterfly = [];
+// UMP-45: corpo quadrado, pente reto à frente do gatilho, coronha rebatível e trilho em cima.
+GUNS.ump = [
+  [[-.028,-.035,-.30],[.028,.035,.07],0x2b2f33], [[-.012,.035,-.28],[.012,.045,.03],0x1c1f22],
+  [[-.004,.045,-.29],[.004,.064,-.27],0x15181a], [[-.010,.045,.0],[.010,.060,.024],0x15181a],
+  [[-.008,-.004,-.44],[.008,.014,-.30],0x3a3f43], [[-.012,-.008,-.465],[.012,.018,-.435],0x1d2023],
+  [[-.018,-.18,-.215],[.018,-.035,-.15],0x232629], [[-.017,-.13,-.02],[.017,-.035,.035],0x1f2225],
+  [[-.006,-.072,-.075],[.006,-.062,-.02],0x15181a], [[-.020,-.018,.07],[.020,.018,.25],0x3a3f43],
+  [[-.026,-.08,.24],[.026,.03,.28],0x1f2225]
+];
+// Bucky: escopeta de bomba com cano grosso, tubo de cartuchos, telha e coronha de madeira.
+GUNS.bucky = [
+  [[-.028,-.04,-.24],[.028,.03,.06],0x2a2d30], [[-.016,0,-.72],[.016,.028,-.24],0x34383b],
+  [[-.014,-.03,-.62],[.014,-.002,-.24],0x2c3033], [[-.026,-.046,-.56],[.026,.004,-.38],0x6b4a2e],
+  [[-.019,-.004,-.735],[.019,.032,-.715],0x1c1f22], [[-.003,.028,-.70],[.003,.037,-.69],0xd8c46a],
+  [[-.017,-.13,0],[.017,-.035,.05],0x6b4a2e], [[-.006,-.076,-.06],[.006,-.066,0],0x15181a],
+  [[-.022,-.07,.06],[.022,.03,.30],0x6b4a2e], [[-.026,-.09,.29],[.026,.035,.33],0x1f2225]
+];
 const DEAGLE_SLIDE = [[[ -.032,.009,-.32],[.032,.068,.029],0xa9b2bc], [[-.018,.068,-.30],[.018,.079,-.276],0x232930], [[-.027,.068,.008],[.027,.083,.028],0x252b32], [[-.020,.017,-.325],[.020,.05,-.318],0x171c21]];
 // braços: mão (centro) e antebraço (do punho até sair da tela), no espaço da arma
 const ARMS = {
@@ -1748,6 +1777,8 @@ const ARMS = {
   sniper: [{ hand: [0, -.05, -.45], from: [0, -.065, -.43], to: [-.24, -.34, -.04] }, { hand: [0, -.09, .01], from: [.01, -.10, .04], to: [.17, -.32, .33] }],
 };
 ARMS.m4a4 = ARMS.m4a1s = ARMS.rifle; ARMS.usps = ARMS.pistol; ARMS.ssg = ARMS.sniper; ARMS.butterfly = [];
+ARMS.ump = [{ hand: [0, -.06, -.27], from: [0, -.075, -.26], to: [-.24, -.34, 0] }, { hand: [0, -.085, .005], from: [.01, -.10, .035], to: [.17, -.32, .32] }];
+ARMS.bucky = [{ hand: [0, -.062, -.47], from: [0, -.077, -.46], to: [-.24, -.34, -.06] }, { hand: [0, -.085, .025], from: [.01, -.10, .055], to: [.17, -.32, .34] }];
 ARMS.m4a4 = [{hand:[0,-.065,-.35],from:[0,-.08,-.34],to:[-.24,-.34,-.04]}, {hand:[0,-.16,.02],from:[.01,-.16,.05],to:[.17,-.32,.33]}];
 vmScene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.75));
 { const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(0.4, 1, 0.6); vmScene.add(sun); }
@@ -1764,8 +1795,8 @@ function limb(group, from, to, thick, mat) {
 }
 const MUZZLE = { rifle: [0, .01, -.67], pistol: [0, .035, -.32], sniper: [0,.025,-.945], m4a4: [0,0,-.665], m4a1s: [0,.01,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.89] };
 const VM_BASE = { rifle: [.15, -.16, -.40], pistol: [.13, -.145, -.38], knife: [.005, -.11, -.38], sniper: [.15, -.16, -.38] };
-VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.rifle; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
-const VM_YAW = { rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0 };
+VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.rifle; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
+const VM_YAW = { rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0, ump: .05, bucky: .05 };
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: .95, depthWrite: false, blending: THREE.AdditiveBlending });
 const flashGeo = new THREE.PlaneGeometry(.13, .13);
 const vmRoot = new THREE.Group(); vmRoot.scale.setScalar(0.5); vmScene.add(vmRoot);
@@ -2508,6 +2539,20 @@ function inspect() {
   if (W[P.weapon].melee) { if (t < P.nextFire || P.kAnim && P.kAnim.type === 'inspect') return; beginKnifeAnimation('inspect',t); }
   else P.inspT = t;
 }
+// Rajada de chumbos: devolve, por vítima, o dano somado e o melhor ponto atingido (cabeça > corpo > perna).
+const PART_RANK = { leg: 0, body: 1, head: 2 };
+function pelletVolley(eye, yaw, pitch, w, targets, ignore, each, helmetOf) {
+  const hits = new Map();
+  for (let i = 0; i < w.pellets; i++) {
+    const r0 = w.pelletSpread * Math.sqrt(Math.random()), a = Math.random() * TAU, d = dirFrom(yaw + Math.cos(a) * r0, pitch + Math.sin(a) * r0);
+    const r = trace(eye, d, 300, targets, ignore);
+    if (each) each(r, d, i);
+    if (!r || !r.part) continue;
+    const key = r.actor || 'x', h = hits.get(key) || { dmg: 0, part: 'leg', actor: r.actor };
+    h.dmg += damageFor(w, r.part, helmetOf(r), r.t); if (PART_RANK[r.part] > PART_RANK[h.part]) h.part = r.part; hits.set(key, h);
+  }
+  return hits;
+}
 function shoot(t, heavy) {
   if(G.mode==='dm'){if(DM.phase!=='live'||t>=DM.endsAt)return;P.safeUntil=0;}
   P.inspT = 0;
@@ -2532,14 +2577,25 @@ function shoot(t, heavy) {
   const inac = inaccuracy(P, w, P.zoom > 0, P.spread);
   const rr = inac * Math.sqrt(Math.random()), th = Math.random() * TAU;
   const dir = aim ? aim.direction : dirFrom(P.yaw + P.recoilY + Math.cos(th) * rr, P.pitch + P.recoilP + Math.sin(th) * rr);
-  const res = aim || trace(e, dir, 300, targets);
-  applyRecoil(w);
-  if (aim) P.recoilP=P.recoilY=0;
-  AU.shot(w.snd, 1, 0, skinOf(P.weapon)); P.flashT = t + 45;
-  const end = res ? res.point : [e[0] + dir[0] * 300, e[1] + dir[1] * 300, e[2] + dir[2] * 300];
   const mz = muzzleWorld();
-  tracer(mz, end, 45);
-  if (res) { if (res.part) {const victim=res.actor ? DM.byId.get(res.actor) : G.mode==='bot' ? BOT : OPP.cur;dealDamage(damageFor(w,res.part,victim&&victim.helmet,res.t),res.part,P.weapon,res.actor);} else addDecal(res.point, res.normal); }
+  let end;
+  if (w.pellets && !aim) {
+    // Escopeta: cada chumbo é um raio; o dano soma por vítima e conta o melhor ponto atingido.
+    const yaw = P.yaw + P.recoilY + Math.cos(th) * rr, pitch = P.pitch + P.recoilP + Math.sin(th) * rr;
+    const hits = pelletVolley(e, yaw, pitch, w, targets, null, (r, d, i) => { if (i < 4) tracer(mz, r ? r.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60], 45); if (r && !r.part && i < 5) addDecal(r.point, r.normal); },
+      r => { const victim = r.actor ? DM.byId.get(r.actor) : G.mode === 'bot' ? BOT : OPP.cur; return victim && victim.helmet; });
+    end = mz;
+    for (const h of hits.values()) dealDamage(h.dmg, h.part, P.weapon, h.actor);
+    applyRecoil(w);
+  } else {
+    const res = aim || trace(e, dir, 300, targets);
+    applyRecoil(w);
+    if (aim) P.recoilP=P.recoilY=0;
+    end = res ? res.point : [e[0] + dir[0] * 300, e[1] + dir[1] * 300, e[2] + dir[2] * 300];
+    tracer(mz, end, 45);
+    if (res) { if (res.part) {const victim=res.actor ? DM.byId.get(res.actor) : G.mode==='bot' ? BOT : OPP.cur;dealDamage(damageFor(w,res.part,victim&&victim.helmet,res.t),res.part,P.weapon,res.actor);} else addDecal(res.point, res.normal); }
+  }
+  AU.shot(w.snd, 1, 0, skinOf(P.weapon)); P.flashT = t + 45;
   if (w.scope && P.zoom) { P.zoom = 0; applyFov(); }
   if ((G.mode === 'team' || G.mode === 'dm') && ARENA.net) arenaRelayShot(G.me, P.weapon, skinOf(P.weapon), mz, end);
   if (G.mode === 'online' && G.opp) { netSend({ t: 'e', k: 'shot', d: { w: P.weapon, sk: skinOf(P.weapon), s: [[mz[0], mz[1], mz[2], end[0], end[1], end[2]].map(r2)] } }); }
@@ -2847,9 +2903,16 @@ function botFire(L) {
   const rr = inac * Math.random(), th = Math.random() * TAU;
   const dir = dirFrom(B.yaw + Math.cos(th) * rr, B.pitch + Math.sin(th) * rr + (w.auto ? Math.min(B.shots, 8) * .003 : 0));
   const targets = P.alive ? hitboxesAt(P.pos.x, P.pos.y, P.pos.z, P.crouch) : null;
-  const res = trace(eye, dir, 300, targets); B.shots++;
   const sy = Math.sin(B.yaw), cy = Math.cos(B.yaw);
   const o = [eye[0] + dir[0] * .6 + cy * .16, eye[1] - .3, eye[2] + dir[2] * .6 - sy * .16];
+  if (w.pellets) {
+    B.shots++;
+    const hits = pelletVolley(eye, B.yaw + Math.cos(th) * rr, B.pitch + Math.sin(th) * rr, w, targets, null, (r, d, i) => { if (i < 3) remoteShotFx(o, r ? r.point : [eye[0] + d[0] * 60, eye[1] + d[1] * 60, eye[2] + d[2] * 60], B.w); }, () => P.helmet);
+    const h = hits.get('x');
+    if (h && G.view.ph === 'live') botEmit('hit', { to: G.me, d: h.dmg, p: h.part, m: G.view.m, r: G.view.r, sx: B.pos.x, sz: B.pos.z, w: B.w });
+    return;
+  }
+  const res = trace(eye, dir, 300, targets); B.shots++;
   const end = res ? res.point : [eye[0] + dir[0] * 300, eye[1] + dir[1] * 300, eye[2] + dir[2] * 300];
   remoteShotFx(o, end, B.w);
   if (res && res.part && G.view.ph === 'live') botEmit('hit', { to: G.me, d: damageFor(w, res.part, P.helmet, res.t), p: res.part, m: G.view.m, r: G.view.r, sx: B.pos.x, sz: B.pos.z, w: B.w });
@@ -3222,9 +3285,16 @@ function dmBotFire(b,t,L){
   if(!b.burst)b.pauseUntil=t+(w.scope?w.rof:w.auto?240:300)+Math.random()*180;
   const eye=[b.pos.x,botEyeY(b),b.pos.z],spread=inaccuracy(b,w,!!w.scope,b.shots*w.shotSpread)*L.spread;
   const r=spread*Math.sqrt(Math.random()),a=Math.random()*TAU,dir=dirFrom(b.yaw+Math.cos(a)*r,b.pitch+Math.sin(a)*r+(w.auto?Math.min(b.shots,8)*.002:0));b.shots++;
-  const hit=trace(eye,dir,300,DM.hitboxes,b.id),end=hit?hit.point:[eye[0]+dir[0]*100,eye[1]+dir[1]*100,eye[2]+dir[2]*100];
-  tracer([eye[0]+dir[0]*.65,eye[1]-.1+dir[1]*.65,eye[2]+dir[2]*.65],end,55);
-  if(hit&&hit.part){const victim=DM.byId.get(hit.actor);if(victim)dmDamage(victim,damageFor(w,hit.part,victim.helmet,hit.t),hit.part,b.w,b,t);}
+  let end;
+  if(w.pellets){
+    const hits=pelletVolley(eye,b.yaw+Math.cos(a)*r,b.pitch+Math.sin(a)*r,w,DM.hitboxes,b.id,(h,d,i)=>{if(i<3)tracer([eye[0]+d[0]*.65,eye[1]-.1+d[1]*.65,eye[2]+d[2]*.65],h?h.point:[eye[0]+d[0]*60,eye[1]+d[1]*60,eye[2]+d[2]*60],55);},h=>{const v=DM.byId.get(h.actor);return v&&v.helmet;});
+    end=[eye[0]+dir[0]*20,eye[1]+dir[1]*20,eye[2]+dir[2]*20];
+    for(const h of hits.values()){const victim=DM.byId.get(h.actor);if(victim)dmDamage(victim,h.dmg,h.part,b.w,b,t);}
+  }else{
+    const hit=trace(eye,dir,300,DM.hitboxes,b.id);end=hit?hit.point:[eye[0]+dir[0]*100,eye[1]+dir[1]*100,eye[2]+dir[2]*100];
+    tracer([eye[0]+dir[0]*.65,eye[1]-.1+dir[1]*.65,eye[2]+dir[2]*.65],end,55);
+    if(hit&&hit.part){const victim=DM.byId.get(hit.actor);if(victim)dmDamage(victim,damageFor(w,hit.part,victim.helmet,hit.t),hit.part,b.w,b,t);}
+  }
   if(t>=DM.nextSoundAt){const s=spat(b.pos.x,b.pos.z);if(s.v>.3){AU.shot(w.snd,s.v*.48,s.pan);DM.nextSoundAt=t+50;}}
   if(ARENA.net)arenaRelayShot(b.id,b.w,'padrao',[eye[0]+dir[0]*.65,eye[1]-.1+dir[1]*.65,eye[2]+dir[2]*.65],end);
 }
@@ -3257,7 +3327,7 @@ function dmEnsureRender(){
   const body=pool(boxModel([[[-.23,.81,-.15],[.23,1.52,.15],0xffffff],[[-.25,1.18,-.38],[.25,1.32,-.18],0xdddddd]]).geometry,basicMat);
   const head=pool(boxModel([[[-.13,1.52,-.13],[.13,1.76,.13],0xf2cfa4],[[-.08,1.6,-.135],[.08,1.65,-.13],0x111111]]).geometry,basicMat);
   const helmet=pool(oppHelmet.geometry,basicMat),guns={};
-  for(const key of DM_POOLS.all){const src=oppGuns[key];src.updateMatrix();guns[key]=pool(boxModel(thirdPersonParts(key)).geometry.applyMatrix4(src.matrix),basicMat);}
+  for(const key of FIREARMS){const src=oppGuns[key];src.updateMatrix();guns[key]=pool(boxModel(thirdPersonParts(key)).geometry.applyMatrix4(src.matrix),basicMat);}
   for(const key of ['knife','butterfly']){const m=key==='butterfly'?buildButterfly().pivot:buildKarambit();m.position.set(.16,1.26,-.12);m.scale.setScalar(.85);guns[key]=pool(meshesToGeometry(m),basicMat);}
   const ally=pool(new THREE.ConeGeometry(.1,.17,4).rotateX(Math.PI).translate(0,2.12,0),new THREE.MeshBasicMaterial({color:0x5fd3ff}));
   const protection=pool(new THREE.RingGeometry(.42,.46,20).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x8eefff,transparent:true,opacity:.7,side:THREE.DoubleSide,depthWrite:false}));
@@ -3928,7 +3998,7 @@ function flashRed() {
   el.red.style.transition = 'none'; el.red.style.opacity = 1;
   clearTimeout(redT); redT = setTimeout(() => { el.red.style.transition = 'opacity .5s'; el.red.style.opacity = 0; }, 80);
 }
-const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY' };
+const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY' };
 function addFeed(killer, victim, w, hs) {
   const d = document.createElement('div');
   if (killer === G.me || victim === G.me) d.className = 'mine';
@@ -4033,7 +4103,7 @@ function updateHUD(dt, t) {
 /* ================= Arsenal (tecla B): grade de armas e skins ================= */
 // Durante a partida o mouse continua travado: um cursor próprio percorre a grade e o clique equipa na hora.
 const BUY = { open: false, inGame: false, x: 0, y: 0, hover: null, focus: 'rifle' };
-const BUY_COLS = [['pistol', 'Pistolas', '2'], ['rifle', 'Rifles', '1'], ['sniper', 'Precisão', '4'], ['knife', 'Facas', '3']];
+const BUY_COLS = [['pistol', 'Pistolas', '2'], ['rifle', 'Primárias', '1'], ['sniper', 'Precisão', '4'], ['knife', 'Facas', '3']];
 const slotOf = k => Object.keys(CATEGORIES).find(c => CATEGORIES[c].includes(k));
 const hexCss = h => '#' + h.toString(16).padStart(6, '0');
 function weaponSvg(k, skin) {

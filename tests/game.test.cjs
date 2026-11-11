@@ -481,7 +481,7 @@ test('old settings migrate and invalid equipment falls back to usable slots', ()
   assert.equal(g.S.startSlot, 'rifle');
 });
 
-test('all 24 equipment combinations equip, switch, shoot and reload each selected gun', () => {
+test('every equipment combination equips, switches, shoots and reloads each selected gun', () => {
   const g = game(); let combinations = 0;
   for (const rifle of g.CATEGORIES.rifle) for (const pistol of g.CATEGORIES.pistol)
     for (const knife of g.CATEGORIES.knife) for (const sniper of g.CATEGORIES.sniper) {
@@ -501,7 +501,7 @@ test('all 24 equipment combinations equip, switch, shoot and reload each selecte
       }
       combinations++;
     }
-  assert.equal(combinations, 24);
+  assert.equal(combinations, Object.values(g.CATEGORIES).reduce((n, c) => n * c.length, 1));
 });
 
 test('equipment edits take effect on the next spawn, with the chosen starting slot', () => {
