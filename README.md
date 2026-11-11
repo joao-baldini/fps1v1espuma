@@ -50,7 +50,7 @@ Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da trave
 
 ## Aimbotz
 
-Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados e renascem imediatamente no mesmo ponto. Vire para o quadro atrás do ponto inicial, mire e clique em **−** ou **+** para mudar a quantidade de bots, ou no nome da arma para equipá-la. A reserva de munição é ilimitada, com a recarga normal de cada arma.
+Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados: ao morrer, o corpo cai e um novo alvo nasce imediatamente no mesmo ponto, já podendo receber tiros. Os corpos desaparecem em 0,36 s e usam as mesmas malhas instanciadas dos alvos. Vire para o quadro atrás do ponto inicial, mire e clique em **−** ou **+** para mudar a quantidade de bots, ou no nome da arma para equipá-la. A reserva de munição é ilimitada, com a recarga normal de cada arma.
 
 ## Arsenal (tecla B) e skins
 
@@ -137,7 +137,7 @@ Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Sou
 
 No difícil, os bots se deslocam entre rajadas, fazem contra-strafe antes do disparo, às vezes agacham para fazer spray e tentam quebrar a linha de visão durante a recarga. Em trechos livres, podem sacar a faca e tentar sequências curtas de bunnyhop, com acertos e erros de tempo. O agachamento aparece para os outros jogadores no 1v1, no 2v2, no XvX e no DM.
 
-A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atirar, e as balas seguem o recuo inteiro (por isso sobem um pouco acima da mira no spray). O recuo das armas ficou cerca de 8% maior que o original. O solavanco ao tomar tiro é pequeno e tem teto, e o recuo das armas na mão é mais contido. Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precisão. Os rifles têm spray, com recuo menor nas M4s. A Scout recupera parte da precisão no ápice do salto. O recuo da câmera acompanha o desvio dos tiros.
+A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atirar, e as balas seguem o recuo inteiro (por isso sobem um pouco acima da mira no spray). A AK-47 teve redução de 5% no recuo vertical e lateral, inclusive na variação aleatória do spray. O solavanco ao tomar tiro é pequeno e tem teto, e o recuo das armas na mão é mais contido. Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precisão. Os rifles têm spray, com recuo menor nas M4s. A Scout recupera parte da precisão no ápice do salto. O recuo da câmera acompanha o desvio dos tiros.
 
 É uma aproximação própria para este jogo no navegador, sem o motor Source 2 nem os assets do CS2. Referência de movimento: [código do Source publicado pela Valve](https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/game/shared/gamemovement.cpp). Parâmetros das armas: [dados do jogo espelhados pelo SteamTracking](https://github.com/SteamTracking/GameTracking-CS2/blob/master/game/csgo/pak01_dir/scripts/weapons.vdata), adaptados ao balanceamento existente.
 

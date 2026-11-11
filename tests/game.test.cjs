@@ -73,7 +73,7 @@ function entity(x = 0, z = 0) {
 
 test('the complete game script parses', () => new vm.Script(script));
 
-test('Aimbotz counts live targets and restores a killed bot in place immediately', () => {
+test('Aimbotz kills the old bot and immediately spawns a damageable replacement in place', () => {
   const g = game(), cx = g.context;
   cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; cx.G.view.ph = 'practice';
   g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
@@ -93,10 +93,77 @@ test('Aimbotz counts live targets and restores a killed bot in place immediately
   g.P.pitch = Math.atan2(1.64 - cx.eyePos()[1], 13);
   g.shoot(12000, false);
   assert.equal(g.stat(cx.G.me).k, 1);
-  assert.equal(bot.hp, 100);
-  assert.equal(bot.alive, true);
-  assert.deepEqual(Object.values(bot.pos), original);
+  assert.equal(bot.hp, 0);
+  assert.equal(bot.alive, false);
+  const replacement = g.DM.byId.get(bot.id);
+  assert.notEqual(replacement, bot);
+  assert.equal(g.DM.actors[1], replacement);
+  assert.equal(replacement.hp, 100);
+  assert.equal(replacement.alive, true);
+  assert.deepEqual(Object.values(replacement.pos), original);
   assert.equal(g.DM.playerTargets[0].actor, bot.id);
+  const deaths = vm.runInContext('aimbotzDeaths', cx);
+  assert.equal(deaths[0], bot);
+  // There is no invulnerability window or delay before hitting the replacement.
+  cx.aimbotzHit(100, 'body', 'rifle', bot.id);
+  assert.equal(replacement.alive, false);
+  assert.equal(g.stat(cx.G.me).k, 2);
+  assert.equal(g.DM.byId.get(bot.id).hp, 100);
+  assert.equal(g.DM.playerTargets.length, 3);
+
+  // Repeated kills keep both live target count and the death-effect pool bounded.
+  for (let i = 0; i < 30; i++) cx.aimbotzHit(100, 'body', 'rifle', bot.id);
+  assert.equal(deaths.length, 12);
+  assert.equal(g.DM.actors.length, 2);
+  assert.equal(g.DM.byId.size, 2);
+  cx.aimbotzSetup();
+  assert.equal(deaths.length, 0);
+});
+
+test('every available weapon kills Aimbotz targets with actual shots or knife attacks', () => {
+  for (const weapon of Object.keys(game().W)) {
+    const g=game(),cx=g.context;
+    cx.buildMap('aimbotz');cx.G.mode='aimbotz';g.spawnSelf(0,[0,9,0]);cx.aimbotzSetup();cx.aimbotzSetBots(1);cx.aimbotzEquip(weapon);
+    const bot=g.DM.actors[1];g.P.pos.set(bot.pos.x,bot.pos.y,bot.pos.z+1.2);
+    g.P.pitch=Math.atan2(1.05-cx.eyePos()[1],1.2);g.P.yaw=0;
+    for(let n=0;n<8&&bot.alive;n++){
+      g.P.recoilP=g.P.recoilY=g.P.spread=0;g.shoot(12000+n*1000,false);
+    }
+    assert.equal(bot.alive,false,weapon);
+    assert.equal(g.stat(cx.G.me).k,1,weapon);
+    assert.equal(g.DM.byId.get(bot.id).hp,100,weapon);
+  }
+});
+
+test('Aimbotz renders falling bodies separately from live targets and retires the effects', () => {
+  const g = game(), cx = g.context;
+  cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
+  cx.aimbotzHit(100, 'head', 'rifle', g.DM.actors[1].id);
+  let pose;
+  const mesh = () => ({count:0, visible:false, poses:[], instanceMatrix:{},
+    setMatrixAt(i) { this.poses[i] = {...pose}; }, setColorAt() {}});
+  const legs=mesh(),body=mesh(),head=mesh();
+  g.DM.render = {meshes:[legs,body,head],legs,body,head,guns:{},color:{set(){}},
+    dummy:{position:new Vec(),rotation:{set(x,y,z){pose={tilt:z,yaw:y};}},scale:{set(){}},updateMatrix(){}}};
+  cx.dmRender(10180);
+  assert.equal(head.count, 9); // Eight live targets plus one falling body.
+  assert.equal(head.poses[0].tilt, 0);
+  assert.ok(head.poses[8].tilt > .5 && head.poses[8].tilt < 1);
+  cx.dmRender(10360);
+  assert.equal(head.count, 8);
+  assert.equal(vm.runInContext('aimbotzDeaths.length', cx), 0);
+});
+
+test('AK-47 has exactly five percent less vertical and horizontal recoil across a full spray', () => {
+  const current=game(), previous=game();
+  previous.W.rifle.recoilScale=.92; previous.W.rifle.recoilJitter=.002;
+  for(let shot=0;shot<30;shot++){
+    current.context.applyRecoil(current.W.rifle); previous.context.applyRecoil(previous.W.rifle);
+    assert.ok(Math.abs(current.P.recoilP-previous.P.recoilP*.95)<1e-12);
+    assert.ok(Math.abs(current.P.recoilY-previous.P.recoilY*.95)<1e-12);
+  }
+  assert.equal(current.W.m4a4.recoilScale,.69);
+  assert.equal(current.W.m4a1s.recoilScale,.53);
 });
 
 test('Aimbotz board controls match their visible positions and equip every available weapon', () => {

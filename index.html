@@ -528,7 +528,7 @@ const cleanCode = c => (c || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(
 /* ================= Armas ================= */
 const W = {
   rifle:  { name: 'AK-47', dmg: 36, mult: { head: 4, body: .75, leg: .75 }, rof: 100, mag: 30, res: 90, reload: 2500, speed: 5.461, auto: true,
-            base: .0015, move: .075, air: .25, shotSpread: .0035, recover: 6, pattern: true, recoilScale: .92, helmetPen: .775, draw: 550, snd: 'rifle' },
+            base: .0015, move: .075, air: .25, shotSpread: .0035, recover: 6, pattern: true, recoilScale: .874, recoilJitter: .0019, helmetPen: .775, draw: 550, snd: 'rifle' },
   pistol: { name: 'Desert Eagle', dmg: 53, mult: { head: 4, body: .75, leg: .75 }, rof: 225, mag: 7, res: 35, reload: 2200, speed: 5.842, auto: false,
             base: .0028, move: .07, air: .22, shotSpread: .028, recover: 5, kickP: .052, kickY: .013, helmetPen: .932, draw: 650, snd: 'pistol' },
   knife:  { name: 'Karambit', melee: true, dmg: 40, heavy: 65, rof: 450, heavyRof: 1000, range: 1.9, speed: 6.35, draw: 650, snd: 'knife' },
@@ -1277,14 +1277,26 @@ const AU = {
   },
   shot(w, v, pan, skin) {
     v = v == null ? 1 : v;
+    if (w === 'pistol') {
+      this.deagleShot(v, pan);
+      if (skin && skin !== 'padrao' && SKINS[skin]) this.skinShot(skin, w, v * .22, pan);
+      return;
+    }
     if (skin && skin !== 'padrao' && SKINS[skin]) return this.skinShot(skin, w, v, pan);
     if (w === 'rifle') { this.noise(0.16, 2600, 0.7, 0.5 * v, pan); this.tone(120, 0.09, 0.32 * v, 'triangle', pan, -60); }
     else if (w === 'sniper') { this.noise(0.5, 1400, 0.6, 0.75 * v, pan); this.tone(70, 0.32, 0.55 * v, 'sine', pan, -30); this.noise(0.08, 5000, 1, 0.25 * v, pan, 'highpass'); }
-    else if (w === 'pistol') { this.noise(.30, 950, .6, .66 * v, pan); this.noise(.045, 4200, .8, .26 * v, pan, 'highpass'); this.tone(78, .27, .62 * v, 'sine', pan, -48); this.tone(145, .11, .22 * v, 'triangle', pan, -85); }
     else if (w === 'm4a4') { this.noise(.13, 2200, .7, .42 * v, pan); this.tone(135, .085, .28 * v, 'triangle', pan, -70); }
     else if (w === 'm4a1s' || w === 'usps') { this.noise(.07, 1250, 1.1, .22 * v, pan, 'bandpass'); this.tone(w === 'usps' ? 210 : 155, .065, .17 * v, 'sine', pan, -75); }
     else if (w === 'ssg') { this.noise(.28, 2400, .6, .5 * v, pan); this.tone(105, .19, .36 * v, 'triangle', pan, -65); }
     else this.noise(0.09, 3200, 2, 0.18 * v, pan, 'bandpass');
+  },
+  deagleShot(v, pan) {
+    // Estampido curto, corpo grave e retorno do ferrolho; as skins só acrescentam seu timbre.
+    this.noise(.025, 2400, .65, .32 * v, pan, 'bandpass');
+    this.noise(.28, 580, .7, .74 * v, pan);
+    this.tone(70, .32, .64 * v, 'sine', pan, -28);
+    this.tone(125, .13, .24 * v, 'triangle', pan, -65);
+    this.noise(.045, 1800, 1.2, .11 * v, pan, 'bandpass', .065);
   },
   // Tiros das skins: o silenciador (M4A1-S, USP-S) abafa o mesmo timbre.
   skinShot(id, w, v, pan) {
@@ -2075,7 +2087,7 @@ function startReload(t) {
   P.reloadEnd = t + w.reload; P.zoom = 0; applyFov(); AU.reload();
 }
 function applyRecoil(w) {
-  if (w.pattern) { const i = Math.min(Math.floor(P.shots), PAT.length - 1), scale = w.recoilScale || .85; P.recoilP += PAT[i][0] * scale; P.recoilY += PAT[i][1] * scale + (Math.random() - 0.5) * 0.002; P.shots++; }
+  if (w.pattern) { const i = Math.min(Math.floor(P.shots), PAT.length - 1), scale = w.recoilScale || .85; P.recoilP += PAT[i][0] * scale; P.recoilY += PAT[i][1] * scale + (Math.random() - 0.5) * (w.recoilJitter ?? .002); P.shots++; }
   else { P.recoilP += w.kickP || 0; P.recoilY += (Math.random() - 0.5) * (w.kickY || 0); }
   P.spread += w.shotSpread || 0; P.kick = 1;
 }
@@ -2819,15 +2831,16 @@ function dmTick(dt,t){
 }
 function dmEnsureRender(){
   if(DM.render)return;
-  const meshes=[],dummy=new THREE.Object3D(),color=new THREE.Color();
+  const meshes=[],dummy=new THREE.Object3D(),color=new THREE.Color(),capacity=ACTOR_CAP*2;
+  // Até 12 alvos vivos e 12 corpos de abates recentes no Aimbotz, nas mesmas chamadas de desenho.
   // A cor por instância precisa ser alocada com a capacidade total ANTES de zerar `count`:
   // o three r128 dimensiona instanceColor por `count`, e um buffer vazio faz a GPU descartar o desenho (bots invisíveis).
   function pool(geometry, material) {
-    const mesh = new THREE.InstancedMesh(geometry, material.clone(), ACTOR_CAP);
+    const mesh = new THREE.InstancedMesh(geometry, material.clone(), capacity);
     mesh.layers.set(ACTOR_LAYER);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.frustumCulled = false;
-    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ACTOR_CAP * 3).fill(1), 3);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3).fill(1), 3);
     mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     mesh.count = 0;
     scene.add(mesh); meshes.push(mesh);
@@ -2852,7 +2865,7 @@ function meshesToGeometry(root){
 }
 function dmRender(t, dt = 0){
   const r=DM.render;if(!r)return;for(const mesh of r.meshes){mesh.count=0;mesh.visible=true;}
-  function put(mesh,b,offset=0,scaleY=1,flash=false){const d=r.dummy;d.position.set(b.pos.x,b.pos.y+offset,b.pos.z);d.rotation.set(0,b.yaw,0,'YXZ');d.scale.set(1,scaleY,1);if(flash){d.position.x+=Math.cos(b.yaw)*.16-Math.sin(b.yaw)*.7;d.position.y+=1.26;d.position.z-=Math.sin(b.yaw)*.16+Math.cos(b.yaw)*.7;d.rotation.z=t*.1;}d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
+  function put(mesh,b,offset=0,scaleY=1,flash=false,tilt=0){const d=r.dummy;d.position.set(b.pos.x,b.pos.y+offset,b.pos.z);d.rotation.set(0,b.yaw,tilt,'YXZ');d.scale.set(1,scaleY,1);if(flash){d.position.x+=Math.cos(b.yaw)*.16-Math.sin(b.yaw)*.7;d.position.y+=1.26;d.position.z-=Math.sin(b.yaw)*.16+Math.cos(b.yaw)*.7;d.rotation.z=t*.1;}d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
   for(const b of DM.actors){
     if(b===P||!b.alive)continue;
     const speed=b.remote?(b.speed||0):Math.hypot(b.vel.x,b.vel.z),bob=Math.min(1,speed/5)*Math.sin(t*.018+(b.index||0))*.025,ally=dmAllies(P,b);
@@ -2865,6 +2878,17 @@ function dmRender(t, dt = 0){
     put(r.head,b,upper);if(b.helmet)put(r.helmet,b,upper);if(r.guns[held])put(r.guns[held],b,upper);
     if(t<b.safeUntil)put(r.protection,b,.025);if(ally)put(r.ally,b,upper);
     if(t<b.flashUntil&&W[held]&&!W[held].melee&&!W[held].silenced)put(r.flash,b,upper,1,true);
+  }
+  if(G.mode==='aimbotz'){
+    for(let i=aimbotzDeaths.length-1;i>=0;i--){
+      const b=aimbotzDeaths[i],age=(t-b.deathT)/AIMBOTZ_DEATH_MS;
+      if(age>=1){aimbotzDeaths.splice(i,1);continue;}
+      const fall=clamp(age,0,1),tilt=fall*Math.PI*.49;
+      r.color.set(b.color);
+      for(const mesh of [r.legs,r.body,r.head]){
+        put(mesh,b,.18*fall,1,false,tilt);if(mesh!==r.head)mesh.setColorAt(mesh.count-1,r.color);
+      }
+    }
   }
   for(const mesh of r.meshes){if(mesh.count)mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.visible=mesh.count>0;}
 }
@@ -2885,6 +2909,7 @@ const AIMBOTZ_BUTTONS = [
   })),
 ];
 let aimbotzBoard = null;
+const AIMBOTZ_DEATH_MS = 360, aimbotzDeaths = [];
 
 function aimbotzSetBots(value) {
   const count = Number(value);
@@ -2907,6 +2932,7 @@ function aimbotzEquip(weapon) {
   selectWeapon(S.aimbotzWeapon);
 }
 function aimbotzSetup() {
+  aimbotzDeaths.length = 0;
   DM.actors.length = 0; DM.actors.push(P);
   DM.byId.clear(); DM.byId.set(P.id, P);
   aimbotzSetBots(S.aimbotzBots);
@@ -2914,11 +2940,17 @@ function aimbotzSetup() {
 }
 function aimbotzHit(damage, part, weapon, id) {
   const target = DM.byId.get(id);
-  if (!target || target === P) return;
-  target.hp -= damage;
+  if (!target || target === P || !target.alive) return;
+  target.hp = Math.max(0, target.hp - damage);
   AU.hit(part === 'head'); dmgNumber(damage, part === 'head');
   if (target.hp <= 0) {
-    target.hp = 100;
+    target.alive = false; target.deathT = now();
+    if (aimbotzDeaths.length === ACTOR_CAP) aimbotzDeaths.shift();
+    aimbotzDeaths.push(target);
+    // O corpo deixa de receber tiros; o novo alvo nasce no mesmo ponto sem espera ou proteção.
+    const replacement = { ...target, pos: new V3().copy(target.pos), vel: new V3(), hp: 100, alive: true, deathT: 0 };
+    DM.actors[DM.actors.indexOf(target)] = replacement; DM.byId.set(id, replacement);
+    dmRefreshTargets();
     const score = stat(G.me);
     score.k++; if (part === 'head') score.hs++;
     onMyKill(weapon);
@@ -3842,6 +3874,7 @@ function startSession(mode, opts = {}) {
 function leaveSession() {
   netStop();arenaNetStop();ARENA.net=false;closeBuy();dmStop();sleeveMat.color.set(pcolHex(S.pcol));G.mode = null; G.opp = null; H.st = null; oppGroup.visible = false;
   if (aimbotzBoard) aimbotzBoard.mesh.visible = false;
+  aimbotzDeaths.length = 0;
   $('dmResult').hidden=true;el.board.hidden=true;el.hud.classList.remove('dm');el.hud.hidden = true;configureLoadout();showMenu(true);applySettings();
   if (document.pointerLockElement) document.exitPointerLock();
 }
