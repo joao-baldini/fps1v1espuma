@@ -1338,7 +1338,7 @@ test('operators: Finder reveals enemies inside a 20 m scan, Detector alarm hides
   assert.equal(g.DM.phase, 'live');
   const foes = g.DM.actors.filter(e => e.team !== g.P.team), ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team);
   for (const e of g.DM.actors) if (e !== g.P) { e.alive = true; }
-  assert.ok(g.DM.actors.every(e => ['finder', 'detector', 'doctor'].includes(e.op)));
+  assert.ok(g.DM.actors.every(e => ['finder', 'detector', 'doctor', 'ghost'].includes(e.op)));
   assert.notEqual(ally.op, g.P.op);
   // Finder
   g.P.op = 'finder'; g.P.charges = 1; g.P.alive = true;
@@ -1416,4 +1416,28 @@ test('Doctor: left click heals the ally in the crosshair, right click heals your
   // bot Doctor se cura com a vida baixa
   const doc = ally; doc.op = 'doctor'; doc.charges = 1; doc.hp = 20; doc.seen = false; doc.opAt = 1;
   vm.runInContext(`botsUseAbilities(${t + 2000})`, cx); assert.equal(doc.hp, 70); assert.equal(doc.charges, 0);
+});
+test('crouch like CS: the view lowers over ~0.22 s, speed drops with the duck amount, and spamming makes ducking slower until it recovers', () => {
+  const g = game(); g.spawnSelf(0, [0, 0, 0]); g.context.G.view.ph = 'live';
+  let t = 10000; const run = ms => { for (const end = t + ms; t < end; t += 1000 / 128) { g.tick(t); g.playerInput(1 / 128, t); } };
+  g.keys.add('KeyC'); run(60);
+  assert.ok(g.P.duck > .1 && g.P.duck < .6, 'meio do caminho: ' + g.P.duck); assert.ok(g.P.eyeOff < 1.64 && g.P.eyeOff > 1.0);
+  run(250); assert.equal(g.P.duck, 1); assert.equal(g.P.crouch, true); assert.ok(Math.abs(g.P.eyeOff - 1.0) < 1e-6);
+  g.keys.delete('KeyC'); run(300); assert.equal(g.P.duck, 0); assert.equal(g.P.crouch, false);
+  // spam: várias agachadas seguidas deixam a próxima bem mais lenta
+  for (let i = 0; i < 5; i++) { g.keys.add('KeyC'); run(40); g.keys.delete('KeyC'); run(40); }
+  const slow = g.P.duckSpeed; assert.ok(slow < 2.5, 'stamina: ' + slow);
+  g.keys.add('KeyC'); run(150); assert.ok(g.P.duck < .8, 'agachar mais lento depois do spam'); g.keys.delete('KeyC');
+  run(3000); assert.ok(g.P.duckSpeed > 4.5, 'recuperou');
+});
+test('Ghost: five seconds of silent footsteps that bots cannot hear, one charge per round', () => {
+  const { g, cx, step } = bombWorld();
+  let t = step(10000, 11500);
+  const foe = g.DM.actors.find(e => e.team !== g.P.team), listener = foe;
+  g.P.op = 'ghost'; g.P.charges = 1; g.P.alive = true;
+  g.P.pos.set(listener.pos.x + 3, listener.pos.y, listener.pos.z); g.P.vel.set(5, 0, 0); g.P.onGround = true; g.P.crouch = false;
+  listener.cautionUntil = 0; cx.botListen(listener, g.P, 9, t); assert.ok(listener.cautionUntil > t, 'ouve os passos normais');
+  cx.useAbility(t); assert.equal(g.P.charges, 0); assert.equal(g.P.silentUntil, t + 5000);
+  listener.cautionUntil = 0; cx.botListen(listener, g.P, 9, t + 100); assert.equal(listener.cautionUntil, 0, 'passos mudos');
+  listener.cautionUntil = 0; cx.botListen(listener, g.P, 9, t + 5100); assert.ok(listener.cautionUntil > t + 5100, 'voltou a ouvir');
 });

@@ -298,8 +298,8 @@ button:disabled{opacity:.5;cursor:default}
 #minimap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(12,14,18,.94);padding:12px;z-index:21;color:#fff}
 #minimap header{display:flex;gap:12px;align-items:baseline;margin-bottom:8px;font:700 16px/1 var(--display)}#minimap header span{font:500 12px/1.2 var(--body);color:#aab2ba}#mmCanvas{display:block;max-width:80vw;max-height:72vh}
 #opPick{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(8,10,12,.92);color:#fff}
-#opPick .op-wrap{width:min(1100px,94vw);display:grid;gap:12px}#opPick h2{font:700 42px/1 var(--display);text-transform:uppercase;margin:0}#opPick p{margin:0;color:#aab2ba}
-.op-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+#opPick .op-wrap{width:min(960px,94vw);display:grid;gap:12px}#opPick h2{font:700 42px/1 var(--display);text-transform:uppercase;margin:0}#opPick p{margin:0;color:#aab2ba}
+.op-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .op-card{display:grid;grid-template-columns:90px 1fr;gap:14px;align-items:center;text-align:left;padding:16px;background:#121a1c;border:1px solid #ffffff22;color:#fff;text-transform:none;letter-spacing:0}
 .op-card:hover,.op-card:focus-visible{border-color:var(--op);box-shadow:inset 0 -3px 0 var(--op)}.op-card b{font:700 26px/1 var(--display);text-transform:uppercase;color:var(--op)}
 .op-card small{display:block;margin-top:6px;font:500 13px/1.35 var(--body);color:#c9d2d8}.op-card em{display:block;font:700 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;color:#aab2ba;font-style:normal}
@@ -666,7 +666,7 @@ function loadS() {
   if (!['1v1', '2v2', 'xvx', 'dm', 'tdm', 'aimbotz', 'bomb'].includes(s.mode)) s.mode = '1v1';
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
   if (!['guard', 'elysion', 'rotacao'].includes(s.bombMap)) s.bombMap = 'guard';
-  if (!['finder', 'detector', 'doctor'].includes(s.operator)) s.operator = 'finder';
+  if (!['finder', 'detector', 'doctor', 'ghost'].includes(s.operator)) s.operator = 'finder';
   if (typeof s.smoothRecoil !== 'boolean') s.smoothRecoil = true;
   if (typeof s.aimbotzInfiniteAmmo !== 'boolean') s.aimbotzInfiniteAmmo = false;
   s.viewmodel = normalizeViewmodel(s.viewmodel);
@@ -826,6 +826,11 @@ function skinPartsFor(k, id, parts, accents = true) {
 const GRAV = 20.32, JUMP_V = 7.66, RADIUS = 0.3, H_STAND = 1.8, H_CROUCH = 1.15, EYE_STAND = 1.64, EYE_CROUCH = 1.0, TUCK = H_STAND - H_CROUCH;
 const FRICTION = 5.2, ACCEL = 5.5, STOP_SPEED = 2.032, AIR_ACCEL = 12, AIR_WISH = .762, BHOP_CAP = 8.12;
 const WALK_MUL = 0.52, CROUCH_MUL = 0.34, STEP_SPEED = 3.2, PHYS_STEP = 1 / 128;
+// Agachar como no CS: a vista e a velocidade descem aos poucos (~0,22 s); cada nova agachada seguida deixa a próxima
+// mais lenta (stamina do "duck spam"), e a velocidade de agachar se recupera com o tempo.
+const DUCK = { ideal: 4.6, min: 1.4, penalty: 1.1, recover: 2.2 };
+// Piso do passo: água rasa (mapas com rio) ou chão comum.
+function stepKind(e) { for (const [x0, z0, x1, z1] of MAP.water || []) if (e.pos.x > x0 && e.pos.x < x1 && e.pos.z > z0 && e.pos.z < z1 && e.pos.y < .3) return 'water'; return ''; }
 
 /* ================= Render ================= */
 const canvas = $('gl');
@@ -1954,7 +1959,13 @@ const AU = {
       if (k === 5) [1.25, 1.5, 2].forEach((m, i) => this.tone(f * m, .9, .05, 'sine', 0, 0, .14 + i * .08));
     } else this.kill();
   },
-  step(v, pan) { this.noise(0.07, 650 + Math.random() * 350, 1.2, 0.22 * v, pan, 'bandpass'); },
+  // Passo: batida grave do calcanhar e a raspada da sola logo depois; pés alternados com leve variação de tom e lado.
+  step(v, pan, kind) {
+    const foot = (this.foot = !this.foot), p = clamp(pan + (foot ? .06 : -.06), -1, 1), f = .88 + Math.random() * .24;
+    if (kind === 'water') { this.noise(.17, 1700 * f, .7, .34 * v, p, 'bandpass'); this.noise(.11, 4200 * f, .6, .14 * v, p, 'highpass', .035); return; }
+    this.noise(.055, 200 * f, .9, .62 * v, p, 'lowpass'); this.tone(72 * f, .05, .2 * v, 'sine', p, -22);
+    this.noise(.04, 1450 * f, 1.5, .17 * v, p, 'bandpass', .028); this.noise(.025, 3600 * f, 1.2, .05 * v, p, 'highpass', .03);
+  },
   land(v, pan) { this.noise(0.12, 420, 1, 0.3 * v, pan, 'lowpass'); },
   scope(weapon, skin, zoom) {
     if (weapon === 'sniper' && skin === 'padrao' && zoom > 0) {
@@ -2736,7 +2747,7 @@ function spawnSelf(side, spec) {
   if(G.mode==='dm'){const order=dmLoadoutOrder(P.loadout,DM.category);ORDER.splice(0,ORDER.length,...order);}
   const sp = spawnPoint(side ? 1 : 0, spec);
   P.pos.set(sp.x, sp.y, sp.z); P.vel.set(0, 0, 0); P.yaw = sp.yaw; P.pitch = 0;
-  P.hp = 100; P.alive = true; P.crouch = false; P.h = H_STAND; P.eyeOff = EYE_STAND; P.onGround = true;
+  P.hp = 100; P.alive = true; P.crouch = false; P.duck = 0; P.duckSpeed = DUCK.ideal; P.wantDuck = false; P.h = H_STAND; P.eyeOff = EYE_STAND; P.onGround = true;
   P.recoilP = P.recoilY = P.shots = P.spread = 0; P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null;
   refillAmmo(P);
   P.weapon = S.loadout[S.startSlot]; P.lastW = S.loadout.pistol;
@@ -2757,20 +2768,30 @@ function playerInput(dt, t) {
   const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
   const wx = -sy * fz + cy * fx, wz = -cy * fz - sy * fx;
   const wantC = P.alive && locked && (K('KeyC') || (S.crouchCtrl && (K('ControlLeft') || K('ControlRight'))));
-  if (wantC && !P.crouch) {
-    P.crouch = true;
-    if (!P.onGround && !overlapAny(P.pos.x, P.pos.y + TUCK, P.pos.z, H_CROUCH)) { P.pos.y += TUCK; P.eyeOff = EYE_CROUCH; }
-  } else if (!wantC && P.crouch) {
-    if (P.onGround) { if (!overlapAny(P.pos.x, P.pos.y, P.pos.z, H_STAND)) P.crouch = false; }
-    else if (!overlapAny(P.pos.x, P.pos.y - TUCK, P.pos.z, H_STAND)) { P.pos.y -= TUCK; P.crouch = false; P.eyeOff = EYE_STAND; }
-    else if (!overlapAny(P.pos.x, P.pos.y, P.pos.z, H_STAND)) P.crouch = false;
+  P.duckSpeed = Math.min(DUCK.ideal, (P.duckSpeed ?? DUCK.ideal) + DUCK.recover * dt);
+  if (wantC && !P.wantDuck) P.duckSpeed = Math.max(DUCK.min, P.duckSpeed - DUCK.penalty);
+  P.wantDuck = wantC; if (P.duck == null) P.duck = P.crouch ? 1 : 0;
+  if (!P.onGround) {
+    // No ar o corpo encolhe na hora (crouch-jump), como antes.
+    if (wantC && !P.crouch) { P.crouch = true; P.duck = 1; if (!overlapAny(P.pos.x, P.pos.y + TUCK, P.pos.z, H_CROUCH)) P.pos.y += TUCK; }
+    else if (!wantC && P.crouch) {
+      if (!overlapAny(P.pos.x, P.pos.y - TUCK, P.pos.z, H_STAND)) { P.pos.y -= TUCK; P.crouch = false; P.duck = 0; }
+      else if (!overlapAny(P.pos.x, P.pos.y, P.pos.z, H_STAND)) { P.crouch = false; P.duck = 0; }
+    }
+  } else {
+    // No chão: a quantidade agachada anda na velocidade atual; levantar só se houver espaço.
+    const blocked = !wantC && P.crouch && overlapAny(P.pos.x, P.pos.y, P.pos.z, H_STAND), target = wantC || blocked ? 1 : 0;
+    const step = P.duckSpeed * dt; P.duck = target > P.duck ? Math.min(target, P.duck + step) : Math.max(target, P.duck - step);
+    P.crouch = P.duck >= .5 || blocked;
   }
   P.h = P.crouch ? H_CROUCH : H_STAND;
-  P.eyeOff += ((P.crouch ? EYE_CROUCH : EYE_STAND) - P.eyeOff) * Math.min(1, dt * 12);
+  const dk = P.duck * P.duck * (3 - 2 * P.duck);
+  P.eyeOff = EYE_STAND + (EYE_CROUCH - EYE_STAND) * dk;
   const w = W[P.weapon];
   let maxS = w.speed;
   if (P.zoom) maxS = w.scopedSpeed || maxS;
-  if (P.crouch) maxS *= CROUCH_MUL; else if (K('ShiftLeft') || K('ShiftRight')) maxS *= WALK_MUL;
+  const walk = K('ShiftLeft') || K('ShiftRight') ? WALK_MUL : 1, duckMul = 1 + (CROUCH_MUL - 1) * P.duck;
+  maxS *= Math.min(walk, duckMul);
   if (t < P.tagUntil) maxS *= 0.45;
   P.physTime = Math.min((P.physTime || 0) + dt, .0625);
   while (P.physTime >= PHYS_STEP) {
@@ -2781,7 +2802,7 @@ function playerInput(dt, t) {
     P.physTime -= PHYS_STEP;
   }
   const hs = Math.hypot(P.vel.x, P.vel.z);
-  if (P.onGround && hs > STEP_SPEED && P.alive) { P.stepT -= dt; if (P.stepT <= 0) { P.stepT = 0.34; AU.step(0.35, 0); } } else P.stepT = 0.12;
+  if (P.onGround && hs > STEP_SPEED && P.alive) { P.stepT -= dt; if (P.stepT <= 0) { P.stepT = clamp(1.6 / hs, .27, .4); if (!(t < (P.silentUntil || 0))) AU.step(0.3, 0, stepKind(P)); } } else P.stepT = 0.12;
 }
 function selectWeapon(k) {
   if (!ORDER.includes(k) || k === P.weapon || !P.alive) return;
@@ -3007,7 +3028,7 @@ function botEquipGun(b, t) {
 }
 function botListen(b, enemy, distanceSq, t) {
   const gunshot = enemy.lastShot > 0 && t - enemy.lastShot < 240 && distanceSq < (W[botHeldWeapon(enemy)].silenced ? 121 : 324);
-  const running = distanceSq < 81 && enemy.onGround && !enemy.crouch &&
+  const running = distanceSq < 81 && enemy.onGround && !enemy.crouch && !(t < (enemy.silentUntil || 0)) &&
     (enemy.remote ? enemy.speed > STEP_SPEED : Math.hypot(enemy.vel.x, enemy.vel.z) > STEP_SPEED);
   if (gunshot || running) b.cautionUntil = Math.max(b.cautionUntil, t + 1150);
 }
@@ -3628,7 +3649,7 @@ function dmBotMove(b,dt,t,L){
   botPhysics(b, wx, wz, speed, dt, t, brake);
   if (L.tactical && (!brake || !botStable(b))) b.fireReady = false;
   if(!b.fireReady)b.shots=Math.max(0,b.shots-dt*10);
-  if(b.onGround&&Math.hypot(b.vel.x,b.vel.z)>STEP_SPEED&&t>=b.stepAt){b.stepAt=t+360;if(t>=DM.nextStepAt){const s=spat(b.pos.x,b.pos.z);if(s.v>.45){AU.step(s.v*.13,s.pan);DM.nextStepAt=t+110;}}}
+  if(b.onGround&&Math.hypot(b.vel.x,b.vel.z)>STEP_SPEED&&t>=b.stepAt){b.stepAt=t+340;if(t>=DM.nextStepAt&&!(t<(b.silentUntil||0))){const s=spat(b.pos.x,b.pos.z);if(s.v>.42){AU.step(s.v*.55,s.pan,stepKind(b));DM.nextStepAt=t+90;}}}
 }
 function dmBotFire(b,t,L){
   if(!b.alive||!b.fireReady||b.knifeOut||b.reloadEnd||!b.mag||t<b.nextFire||t<b.readyAt)return;
@@ -3688,11 +3709,12 @@ function dmEnsureRender(){
   // Operadores: Finder com viseira ciano e antena; Detector com mochila laranja e sinalizador.
   const finder=pool(boxModel([[[-.14,1.6,-.155],[.14,1.68,-.12],0x3ff4ff],[[.085,1.74,-.02],[.11,2.02,.005],0x2c3540],[[.07,2.0,-.03],[.125,2.05,.02],0x3ff4ff],[[-.14,1.58,-.12],[-.12,1.7,.1],0x2c3540]]).geometry,basicMat);
   const doctor=pool(boxModel([[[-.03,1.2,-.162],[.03,1.42,-.15],0x3dff7a],[[-.1,1.28,-.162],[.1,1.34,-.15],0x3dff7a],[[-.15,1.0,.15],[.15,1.35,.28],0xf2f2f2],[[-.03,1.1,.28],[.03,1.25,.29],0xe03030],[[-.07,1.15,.28],[.07,1.2,.29],0xe03030],[[-.24,1.36,-.13],[-.23,1.44,.13],0xf2f2f2]]).geometry,basicMat);
+  const ghost=pool(boxModel([[[-.15,1.74,-.14],[.15,1.81,.16],0x2a2238],[[-.15,1.5,.13],[.15,1.81,.17],0x2a2238],[[-.155,1.5,-.1],[-.13,1.79,.16],0x2a2238],[[.13,1.5,-.1],[.155,1.79,.16],0x2a2238],[[-.135,1.52,-.15],[.135,1.6,-.13],0xa78bfa],[[-.24,1.2,-.16],[.24,1.25,.16],0xa78bfa]]).geometry,basicMat);
   const detector=pool(boxModel([[[-.17,.95,.15],[.17,1.42,.32],0xf08a24],[[-.2,1.0,.14],[.2,1.08,.17],0x2c3540],[[-.05,1.42,.2],[.05,1.52,.28],0xff3b2a],[[-.12,1.52,.18],[.12,1.55,.3],0x9aa6ad]]).geometry,basicMat);
   const ghostMat=new THREE.MeshBasicMaterial({color:0xff3b2a,depthTest:false,depthWrite:false,transparent:true,opacity:.55});
   const ghostLegs=pool(legs.geometry,ghostMat),ghostBody=pool(body.geometry,ghostMat),ghostHead=pool(head.geometry,ghostMat);
   for(const m of [ghostLegs,ghostBody,ghostHead])m.renderOrder=10;
-  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally,finder,detector,doctor,ghostLegs,ghostBody,ghostHead};
+  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally,finder,detector,doctor,ghost,ghostLegs,ghostBody,ghostHead};
 }
 // Junta as malhas de um modelo (facas) numa só geometria com cor por vértice, para desenhar por instância.
 function meshesToGeometry(root){
@@ -3714,7 +3736,7 @@ function dmRender(t, dt = 0){
     put(r.body,b,upper);r.body.setColorAt(r.body.count-1,r.color);
     put(r.head,b,upper);if(b.helmet)put(r.helmet,b,upper);if(r.guns[held])put(r.guns[held],b,upper);
     if(t<b.safeUntil)put(r.protection,b,.025);if(ally)put(r.ally,b,upper);
-    if(b.op&&DM.mode==='team'&&ARENA.bomb){put(b.op==='finder'?r.finder:b.op==='doctor'?r.doctor:r.detector,b,upper);}
+    if(b.op&&DM.mode==='team'&&ARENA.bomb){put(b.op==='finder'?r.finder:b.op==='doctor'?r.doctor:b.op==='ghost'?r.ghost:r.detector,b,upper);}
     if(t<b.flashUntil&&W[held]&&!W[held].melee&&!W[held].silenced)put(r.flash,b,upper,1,true);
   }
   // Silhuetas vermelhas das marcações (Finder e alarme): paradas onde a pessoa estava, vistas através das paredes.
@@ -4577,6 +4599,7 @@ function bombRenderObj(t) {
 const OPS = {
   finder: { name: 'Finder', ability: 'Varredura', desc: 'Abre o minimapa e escaneia uma área de 10 m: mostra uma silhueta onde cada inimigo estava, e de novo 1 s depois.', color: '#3ff4ff' },
   doctor: { name: 'Doctor', ability: 'Estimulante', desc: 'Saca uma pistola de cura: botão esquerdo atira num aliado, botão direito aplica em você. Cura 50 de vida.', color: '#3dff7a' },
+  ghost: { name: 'Ghost', ability: 'Passos mudos', desc: 'Por 5 segundos seus passos não fazem nenhum barulho, mesmo correndo: ninguém escuta você chegar.', color: '#a78bfa' },
   detector: { name: 'Detector', ability: 'Alarme', desc: 'Coloca um alarme no chão, invisível para o inimigo de longe. Apita, revela e se destrói quando alguém chega perto.', color: '#f08a24' },
 };
 const SCAN = { radius: 5, delay: 700, tag: 1500, retag: 1000 }, GHOSTS = [], ALARM = { seen: 7, trip: 3.2, hp: 20, armMs: 1000, reveal: 4000, list: [], next: 1 };
@@ -4590,7 +4613,9 @@ function opsAssign() {
   }
 }
 // Doctor: pistola de cura estimulante. Cura 50 (até 100). Errar o dardo não gasta a carga.
-const DOCTOR = { heal: 50, range: 30 };
+const DOCTOR = { heal: 50, range: 30 }, GHOST = { ms: 5000 };
+// Ghost: passos sem barulho por 5 s (nem som para os outros, nem para a audição dos bots).
+function ghostSilence(e, t) { if (e.op !== 'ghost' || !(e.charges > 0) || !e.alive) return false; e.charges--; e.silentUntil = t + GHOST.ms; if (e === P) { opNotice('Passos mudos por 5 s'); AU.swish && AU.swish(); } return true; }
 function doctorHeal(by, target, t) {
   if (!by || !target || !target.alive || by.op !== 'doctor' || !(by.charges > 0) || target.team !== by.team || target.hp >= 100) return false;
   const before = target.hp; target.hp = Math.min(100, target.hp + DOCTOR.heal); by.charges--;
@@ -4623,7 +4648,7 @@ function doctorPutAway() {
   if (P.weapon === 'medgun') selectWeapon(back);
   ORDER.splice(ORDER.indexOf('medgun'), 1);
 }
-function opsResetRound() { for (const e of DM.actors) { e.charges = 1; e.revealUntil = 0; e.revealTeam = -1; e.opAt = 0; } alarmsClear(); SCAN.pending = SCAN.retagAt = null; GHOSTS.length = 0; }
+function opsResetRound() { for (const e of DM.actors) { e.charges = 1; e.silentUntil = 0; e.revealUntil = 0; e.revealTeam = -1; e.opAt = 0; } alarmsClear(); SCAN.pending = SCAN.retagAt = null; GHOSTS.length = 0; }
 function revealActor(e, team, t, ms) {
   // A marcação não segue a pessoa: guarda onde ela estava (posição, direção e agachamento) e mostra uma silhueta ali.
   GHOSTS.push({ x: e.pos.x, y: e.pos.y, z: e.pos.z, yaw: e.yaw, crouch: !!e.crouch, team, t0: t, until: t + ms, id: e.id });
@@ -4714,6 +4739,12 @@ function botsUseAbilities(t) {
     if (!b.opAt) b.opAt = ARENA.liveAt + 6000 + Math.random() * 14000;
     if (t < b.opAt) continue;
     const side = sideOf(b);
+    if (b.op === 'ghost') {
+      // TR: liga ao chegar perto do site; SWAT: ao voltar para o site com a bomba plantada.
+      const near = Math.hypot(b.pos.x - cx, b.pos.z - cz) < 18;
+      if (near && ((side === 't' && !BOMB.planted) || (side === 'ct' && BOMB.planted))) ghostSilence(b, t); else b.opAt = t + 1000;
+      continue;
+    }
     if (b.op === 'doctor') {
       // Cura a si mesmo ou um aliado perto (até 15 m, à vista) quando a vida cai abaixo de 50.
       const mate = DM.actors.filter(e => e.alive && e.team === b.team && e.hp < 50 && Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) < 15 && (e === b || clearLine([b.pos.x, botEyeY(b), b.pos.z], [e.pos.x, e.pos.y + 1.2, e.pos.z]))).sort((a, c) => a.hp - c.hp)[0];
@@ -4745,6 +4776,7 @@ function useAbility(t) {
   if (!bombOn() || !P.alive) return;
   if (!(P.charges > 0)) { opNotice('Habilidade já usada nesta rodada'); return; }
   if (P.op === 'doctor') { doctorToggle(t); return; }
+  if (P.op === 'ghost') { if (DM.phase === 'live' || DM.phase === 'freeze') ghostSilence(P, t); return; }
   if (P.op === 'detector') { if (!detectorPlace(P, t)) opNotice('Não dá para colocar o alarme aqui'); }
   else if (P.op === 'finder') { if (DM.phase !== 'live') opNotice('A varredura só funciona com a rodada valendo'); else if (typeof openMinimap === 'function') openMinimap(); }
 }
@@ -4815,7 +4847,7 @@ function arenaUpdateProxies(t) {
     e.speed += (moved / Math.max(.001, (t - (e.lastT || t)) / 1000) - e.speed) * .2; e.lastT = t;
     e.pos.set(s.x, s.y, s.z); e.yaw = s.yaw; e.pitch = s.pi; e.crouch = !!s.c; e.w = s.w; e.hp = s.hp; e.helmet = !!s.helmet; e.onGround = !!s.g;
     e.alive = !!s.a && !e.dead && (DM.mode !== 'team' || e.deadRound !== ARENA.r); e.safeUntil = s.sf ? t + 250 : 0;
-    if (e.alive && e.onGround && e.speed > STEP_SPEED + .2 && t >= (e.stepAt || 0)) { e.stepAt = t + 340; const a = spat(e.pos.x, e.pos.z); if (a.v > .3) AU.step(a.v * .9, a.pan); }
+    if (e.alive && e.onGround && e.speed > STEP_SPEED + .2 && t >= (e.stepAt || 0)) { e.stepAt = t + 340; const a = spat(e.pos.x, e.pos.z); if (a.v > .3) AU.step(a.v * .7, a.pan, stepKind(e)); }
   }
 }
 function arenaSend(m) { const c = ARENA.hostConn; if (c && c.open) { try { c.send(m); } catch (e) {} } }
@@ -4981,7 +5013,7 @@ function updateOpp(dt, t) {
   if (OPP.wasAir && !airborne && s.a) { const a = spat(s.x, s.z); AU.land(a.v * 1.4, a.pan); }
   OPP.wasAir = airborne;
   OPP.px = s.x; OPP.pz = s.z;
-  if (s.a && OPP.spd > STEP_SPEED + 0.1 && !airborne) { OPP.stepT -= dt; if (OPP.stepT <= 0) { OPP.stepT = 0.34; const a = spat(s.x, s.z); AU.step(a.v * 1.7, a.pan); } }
+  if (s.a && OPP.spd > STEP_SPEED + 0.1 && !airborne) { OPP.stepT -= dt; if (OPP.stepT <= 0) { OPP.stepT = 0.34; const a = spat(s.x, s.z); AU.step(a.v * 1.1, a.pan); } }
   else OPP.stepT = 0.1;
 }
 
@@ -5185,7 +5217,7 @@ function updateHUD(dt, t) {
     if (msg) { setT(el.wait, msg); setH(el.wait, false); }
   }
   if (bombOn() && P.op) {
-    setH(el.ability, !P.alive); setT(el.abName, OPS[P.op].name + ' · ' + OPS[P.op].ability); setT(el.abCharge, P.charges > 0 ? '1 carga' : 'usada');
+    setH(el.ability, !P.alive); setT(el.abName, OPS[P.op].name + ' · ' + OPS[P.op].ability); setT(el.abCharge, t < (P.silentUntil || 0) ? 'ativo · ' + Math.ceil((P.silentUntil - t) / 1000) + ' s' : P.charges > 0 ? '1 carga' : 'usada');
     el.ability.classList.toggle('used', !(P.charges > 0)); el.ability.style.borderBottom = '3px solid ' + OPS[P.op].color;
     if (MINI.open) drawMinimap(t);
   } else setH(el.ability, true);
@@ -5390,6 +5422,7 @@ function operatorSvg(id) {
   const r = (x, y, w, h, c) => { const e = document.createElementNS(NS, 'rect'); for (const [k, v] of Object.entries({ x, y, width: w, height: h, fill: c })) e.setAttribute(k, v); svg.append(e); };
   r(18, 46, 9, 28, '#555'); r(33, 46, 9, 28, '#555'); r(15, 24, 30, 24, '#4a5560'); r(20, 8, 20, 17, '#f2cfa4');
   if (id === 'finder') { r(18, 12, 24, 5, '#3ff4ff'); r(37, 0, 2, 9, '#2c3540'); r(35, 0, 6, 3, '#3ff4ff'); r(16, 11, 3, 10, '#2c3540'); }
+  else if (id === 'ghost') { r(18, 5, 24, 4, '#2a2238'); r(18, 5, 3, 20, '#2a2238'); r(39, 5, 3, 20, '#2a2238'); r(20, 18, 20, 6, '#a78bfa'); r(23, 13, 2, 2, '#111'); r(35, 13, 2, 2, '#111'); r(15, 34, 30, 3, '#a78bfa'); }
   else if (id === 'doctor') { r(28, 27, 4, 14, '#3dff7a'); r(23, 32, 14, 4, '#3dff7a'); r(23, 13, 2, 2, '#111'); r(35, 13, 2, 2, '#111'); r(20, 6, 20, 4, '#f2f2f2'); r(45, 30, 10, 12, '#f2f2f2'); r(49, 32, 2, 8, '#e03030'); r(46, 35, 8, 2, '#e03030'); }
   else { r(10, 22, 8, 22, '#f08a24'); r(42, 22, 8, 22, '#f08a24'); r(14, 18, 32, 4, '#2c3540'); r(26, 14, 8, 5, '#ff3b2a'); r(23, 13, 2, 2, '#111'); r(35, 13, 2, 2, '#111'); }
   return svg;

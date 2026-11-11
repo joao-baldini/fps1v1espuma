@@ -53,6 +53,7 @@ A habilidade fica na tecla **X**, com uma carga por rodada. Os operadores de um 
 |---|---|---|
 | Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro. Após um pulso, mostra uma silhueta vermelha parada onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |
 | Doctor | Saca uma pistola de cura estimulante: botão esquerdo atira um dardo no aliado da mira, botão direito aplica em você. Cura 50 de vida (até 100). Errar o dardo não gasta a carga; X de novo guarda a pistola. Bots curam a si ou um aliado próximo abaixo de 50 de vida | Cruz verde no peito e maleta branca com cruz vermelha nas costas |
+| Ghost | Por 5 s seus passos ficam mudos: ninguém escuta você andando ou correndo e os bots não reagem ao barulho. O HUD mostra o tempo restante. Bots Terroristas usam perto do bomb antes de plantar; bots CT usam depois que a bomba é plantada | Capuz escuro com máscara e faixa roxas |
 | Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Quem chega a 3,2 m faz ele apitar, aparece como silhueta vermelha no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
 
 ### Mapas de bomba
@@ -194,7 +195,11 @@ Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocid
 
 A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante em que a recarga termina, a munição é atualizada antes de liberar a luneta, sem precisar esperar outro quadro.
 
-Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%. A luneta usa a velocidade própria da AWP ou da Scout.
+Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%.
+
+O agachamento segue o CS: a câmera desce e sobe em cerca de 0,22 s, e a velocidade cai junto com a altura, sem pular de uma vez. Cada agachada gasta stamina; spammar C deixa a próxima bem mais lenta (até uns 0,7 s), e ela volta ao normal em cerca de 1,5 s. No ar o encolher das pernas continua instantâneo, para subir em caixas.
+
+Os passos têm duas camadas, com o baque do calcanhar e o raspar da sola, alternando pé esquerdo e direito, e um respingo na água rasa. O ritmo acompanha a velocidade. Shift e agachado continuam silenciosos. A luneta usa a velocidade própria da AWP ou da Scout.
 
 **Bunnyhop assistido** vem ligado: segure Espaço para pular novamente ao tocar o chão. Para ganhar controle no ar, solte W, alterne A/D e acompanhe o movimento com o mouse. É possível desligar a assistência e usar pulos manuais ou configurar a rodinha para pular. Nesse caso, troque armas pelas teclas 1–4 ou Q. A velocidade aérea tem limite para impedir aceleração ilimitada.
 
