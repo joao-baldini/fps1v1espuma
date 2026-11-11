@@ -1300,3 +1300,21 @@ test('XvX goes up to 8 per team: sixteen actors with distinct names spawn apart 
   assert.ok(['end', 'over', 'live', 'freeze'].includes(g.DM.phase));
   assert.ok(vm.runInContext('ARENA.r', cx) >= 1);
 });
+test('TDM: two teams on a DM map, no friendly fire, team score counts kills and ends at the target', () => {
+  const g = game({ mode: 'tdm', tdmSize: 4, dmLevel: 'dificil' }), cx = g.context;
+  cx.G.mode = 'dm'; cx.buildMap('deathmatch'); g.dmBuildNav(); Object.assign(cx, { sleeveMat: { color: { set() {} } } });
+  g.dmSetup(10000);
+  assert.equal(g.DM.actors.length, 8);
+  const teams = [0, 1].map(team => g.DM.actors.filter(e => e.team === team));
+  assert.deepEqual(teams.map(t => t.length), [4, 4]); assert.equal(g.P.team, 0);
+  // começo: cada time numa metade do mapa (z)
+  const meanZ = list => list.reduce((s, e) => s + e.pos.z, 0) / list.length;
+  assert.ok(meanZ(teams[0]) > meanZ(teams[1]));
+  const ally = teams[0].find(e => e !== g.P);
+  assert.equal(g.dmDamage(ally, 50, 'body', 'rifle', g.P, 14000), 0);
+  let t = 10000; for (; t < 10000 + 240000 && g.DM.phase !== 'over'; t += 1000 / 30) { g.tick(t); g.dmTick(1 / 30, t); }
+  const DMs = vm.runInContext('DM', cx), kills = team => teams[team].reduce((n, e) => n + vm.runInContext(`stat('${e.id}').k`, cx), 0);
+  assert.ok(DMs.teamScore[0] + DMs.teamScore[1] > 0);
+  assert.equal(DMs.teamScore[0], kills(0)); assert.equal(DMs.teamScore[1], kills(1));
+  if (g.DM.phase === 'over') assert.ok(Math.max(...DMs.teamScore) >= DMs.target || t >= DMs.endsAt);
+});

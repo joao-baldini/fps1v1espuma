@@ -414,6 +414,7 @@ button:disabled{opacity:.5;cursor:default}
       <button class="mode-card" type="button" role="radio" data-mode="2v2"><span class="mode-copy"><b>2v2</b><small>Jogo em dupla</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="xvx"><span class="mode-copy"><b>XvX</b><small>Monte seu confronto</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 2v2</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><span class="mode-copy"><b>Aimbotz</b><small>Encontre sua mira</small></span></button>
     </div>
@@ -440,6 +441,7 @@ button:disabled{opacity:.5;cursor:default}
         <div class="launch-options" id="launchOptions">
         <div class="grid2" id="dmOptions" hidden>
           <label class="fld"><span>Armas</span><select data-k="dmWeapons" aria-label="Armas do Deathmatch"><option value="pistol">Somente pistolas</option><option value="sniper">Somente precisão</option><option value="rifle">Somente rifles</option><option value="all">Tudo liberado</option></select></label>
+          <label class="fld" id="tdmSizeField"><span>Jogadores por time</span><select data-k="tdmSize" data-num="1" aria-label="Jogadores por time no TDM"><option value="2">2v2</option><option value="3">3v3</option><option value="4">4v4</option><option value="5">5v5</option><option value="6">6v6</option><option value="7">7v7</option><option value="8">8v8</option></select></label>
           <label class="fld"><span>Dificuldade</span><select data-k="dmLevel" aria-label="Dificuldade do Deathmatch"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
         </div>
         <div class="grid2" id="xvxField"><label class="fld"><span>Seu time</span><select data-k="xvx.mine" data-num="1" aria-label="Tamanho do seu time"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label><label class="fld"><span>Time inimigo</span><select data-k="xvx.foes" data-num="1" aria-label="Tamanho do time inimigo"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label></div>
@@ -628,7 +630,7 @@ function normalizeViewmodel(value) {
   return Object.fromEntries(Object.entries(VIEWMODEL_LIMITS).map(([axis,[min,max]])=>[axis,Math.round(clamp(fin(value?.[axis])?value[axis]:0,min,max)*10)/10]));
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: '1v1', teamSetup: 'versus', xvx: { mine: 1, foes: 5 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'guard', operator: 'finder',
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: '1v1', teamSetup: 'versus', xvx: { mine: 1, foes: 5 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'guard', operator: 'finder', tdmSize: 5,
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife', sniper: 'sniper' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', botHelmet: true, autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -637,7 +639,8 @@ function loadS() {
   const s = JSON.parse(JSON.stringify(DEFAULTS));
   try { const j = JSON.parse(localStorage.getItem('aimduelo.v1') || 'null'); if (j && typeof j === 'object') { Object.assign(s, j); s.ch = Object.assign({}, DEFAULTS.ch, j.ch || {}); s.loadout = Object.assign({}, DEFAULTS.loadout, j.loadout || {}); s.skins = Object.assign({}, j.skins && typeof j.skins === 'object' ? j.skins : {}); s.unlocks = Array.isArray(j.unlocks) ? j.unlocks.filter(x => typeof x === 'string') : []; } } catch (e) {}
   if (s.map === 'deathmatch') { s.mode = 'dm'; s.map = 'caixas'; } // versões antigas escolhiam o DM pelo mapa
-  if (!['1v1', '2v2', 'xvx', 'dm', 'aimbotz', 'bomb'].includes(s.mode)) s.mode = '1v1';
+  if (!['1v1', '2v2', 'xvx', 'dm', 'tdm', 'aimbotz', 'bomb'].includes(s.mode)) s.mode = '1v1';
+  s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
   if (!['guard', 'elysion', 'rotacao'].includes(s.bombMap)) s.bombMap = 'guard';
   if (!['finder', 'detector'].includes(s.operator)) s.operator = 'finder';
   if (typeof s.smoothRecoil !== 'boolean') s.smoothRecoil = true;
@@ -702,7 +705,7 @@ const DM_LABELS = {pistol:'pistolas',sniper:'precisão',rifle:'rifles',all:'tudo
 const DM_BOT_NAMES = ['donk','ZywOo','m0NESY','NiKo','KSCERATO','ropz','YEKINDAR','molodoy','coldzera'];
 // Nomes extras para times grandes (até 8v8): completam os bots além dos nove do DM.
 const TEAM_BOT_NAMES = DM_BOT_NAMES.concat(['FalleN','s1mple','device','Twistzz','sh1ro','jL','b1t','Aleksib','frozen','XANTARES','yuurih','rain']);
-const DM_DURATION=300000,DM_RESPAWN_MS=1500,DM_PROTECT_MS=1800,ACTOR_CAP=18,AIMBOTZ_MAX=12;
+const TDM_DURATION=600000,DM_DURATION=300000,DM_RESPAWN_MS=1500,DM_PROTECT_MS=1800,ACTOR_CAP=18,AIMBOTZ_MAX=12;
 function dmLoadoutOrder(loadout,category){return Object.keys(CATEGORIES).filter(slot=>slot==='knife'||category==='all'||slot===category).map(slot=>loadout[slot]);}
 function configureLoadout() {
   ORDER.length = 0;
@@ -3185,7 +3188,7 @@ function botFire(L) {
 
 /* ================= Deathmatch: dez participantes, simulação local ================= */
 const DM={mode:'dm',pool:[],active:false,phase:'idle',category:'all',level:'medio',startsAt:0,endsAt:0,bots:[],actors:[],byId:new Map(),hitboxes:[],playerTargets:[],nav:null,spawnPoints:[],lastSpawnTimes:[],render:null,scoreVersion:0,winners:[],resultReady:false,nextSoundAt:0,nextStepAt:0};
-function dmAllies(a,b){return DM.mode==='team'&&a!==b&&a.team===b.team;}
+function dmAllies(a,b){return (DM.mode==='team'||DM.tdm)&&a!==b&&a.team===b.team;}
 function dmMakeBot(index){
   return {id:'DM'+(index+1),index:index+1,name:DM_BOT_NAMES[index],pos:new V3(),vel:new V3(),yaw:0,pitch:0,h:H_STAND,crouch:false,onGround:true,hp:100,alive:false,helmet:true,w:'rifle',mag:0,reloadEnd:0,nextFire:0,physTime:0,landSpread:0,tagUntil:0,safeUntil:0,respawnAt:0,deathT:0,readyAt:0,target:null,seen:false,reactAt:0,aimHead:false,ex:0,ey:0,aimError:0,thinkAt:0,shots:0,burst:0,pauseUntil:0,strafe:1,strafeUntil:0,lastSeen:new V3(),knowsUntil:0,lastAttacker:null,path:[],pathAt:0,planAt:0,lastPos:new V3(),stuckAt:0,fireReady:false,flashUntil:0,lastSpawn:-1,color:Object.values(PCOLORS)[index%7],dmBoxes:null,stepAt:0};
 }
@@ -3431,19 +3434,32 @@ function dmRefreshTargets(){
 function dmSetup(t){
   DM.active=true;DM.category=DM_POOLS[S.dmWeapons]?S.dmWeapons:'all';DM.level=LEVELS[S.dmLevel]?S.dmLevel:'medio';DM.helmet=!!S.botHelmet;
   DM.phase='freeze';DM.startsAt=t+3000;DM.endsAt=DM.startsAt+DM_DURATION;DM.scoreVersion=0;DM.winners=[];DM.resultReady=false;DM.nextSoundAt=DM.nextStepAt=0;
-  DM.mode='dm';if(!DM.pool.length)for(let i=0;i<9;i++)DM.pool.push(dmMakeBot(i));
+  DM.mode='dm';DM.tdm=S.mode==='tdm'&&!(ARENA.net&&ARENA.kind==='dm');
+  // TDM: dois times de 2 a 8 (você + bots contra bots); DM: você e nove bots.
+  const size=clamp(S.tdmSize|0,2,TEAM_MAX),want=DM.tdm?size*2-1:9;
+  if(DM.tdm){DM.endsAt=DM.startsAt+TDM_DURATION;DM.target=size*10;DM.teamScore=[0,0];}
+  while(DM.pool.length<want){const b=dmMakeBot(DM.pool.length);b.name=TEAM_BOT_NAMES[DM.pool.length]||'Bot '+(DM.pool.length+1);DM.pool.push(b);}
   G.stats={};G.names={};G.view={m:'dm-'+Math.random().toString(36).slice(2,8),r:1,ph:'freeze',endsAt:DM.startsAt,sc:{},tg:0,rt:300,win:null,why:'',mp:MAP.id};
   P.id=G.me;P.lastSpawn=-1;
   // Online, pessoas ocupam as vagas e bots completam os dez; sozinho, são os nove bots.
   if(ARENA.net&&ARENA.kind==='dm')arenaBuildActors(dmOnlineRoster());
-  else{DM.bots=DM.pool.slice();DM.actors.length=0;DM.actors.push(P,...DM.bots);DM.byId.clear();}
+  else{DM.bots=DM.pool.slice(0,want);DM.actors.length=0;DM.actors.push(P,...DM.bots);DM.byId.clear();}
+  P.team=DM.tdm?0:-1;DM.bots.forEach((b,i)=>{b.team=DM.tdm?(i<size-1?0:1):-1;b.color=DM.tdm?TEAM_COLORS[b.team]:b.color;});
   for(const e of DM.actors){e.alive=false;e.lastSpawn=-1;e.dead=false;DM.byId.set(e.id,e);stat(e.id);if(e!==P)G.names[e.id]=e.name;}
-  DM.lastSpawnTimes.fill(-Infinity);const first=dmInitialSpawns(DM.actors.length);DM.actors.forEach((e,i)=>dmRespawn(e,t,first[i%first.length]));dmRefreshTargets();
+  if(DM.tdm)sleeveMat.color.set(TEAM_COLORS[0]);
+  DM.lastSpawnTimes.fill(-Infinity);const first=DM.tdm?tdmInitialSpawns():dmInitialSpawns(DM.actors.length);DM.actors.forEach((e,i)=>dmRespawn(e,t,first[i%first.length]));dmRefreshTargets();
+}
+// TDM: cada time começa numa metade do mapa (pontos ordenados pelo eixo z), sem repetir ponto.
+function tdmInitialSpawns(){
+  const order=DM.spawnPoints.map((p,i)=>[p.z,i]).sort((a,b)=>b[0]-a[0]).map(x=>x[1]),half=Math.floor(order.length/2);
+  const pools=[order.slice(0,half).sort(()=>Math.random()-.5),order.slice(half).sort(()=>Math.random()-.5)],used=[0,0];
+  return DM.actors.map(e=>{const team=e.team===1?1:0,list=pools[team];return list[used[team]++%list.length];});
 }
 function dmRanking(){return DM.actors.slice().sort((a,b)=>{const x=stat(a.id),y=stat(b.id);return y.k-x.k||x.d-y.d||y.hs-x.hs||a.id.localeCompare(b.id);});}
 function dmFinish(){
   if(DM.phase==='over')return;DM.phase='over';G.view.ph='over';G.view.endsAt=DM.endsAt;
   const ranked=dmRanking(),best=stat(ranked[0].id);DM.winners=ranked.filter(e=>{const s=stat(e.id);return s.k===best.k&&s.d===best.d&&s.hs===best.hs;}).map(e=>e.id);
+  if(DM.tdm){const[a,b]=DM.teamScore;DM.tdmWin=a>b?0:b>a?1:null;DM.winners=DM.actors.filter(e=>e.team===DM.tdmWin).map(e=>e.id);}
   DM.resultReady=true;DM.scoreVersion++;P.m1=P.m2=P.m1Press=P.m2Press=false;
   for(const b of DM.bots){b.fireReady=false;b.vel.set(0,0,0);}P.vel.set(0,0,0);
 }
@@ -3465,6 +3481,7 @@ function dmDamage(victim,amount,part,weapon,attacker,t){
     if(team||ARENA.net)arenaOnDeath(victim,attacker,weapon,part==='head',t);
     else{
       stat(victim.id).d++;stat(attacker.id).k++;if(part==='head')stat(attacker.id).hs++;
+      if(DM.tdm&&attacker.team!==victim.team){DM.teamScore[attacker.team===1?1:0]++;if(Math.max(...DM.teamScore)>=DM.target)DM.endsAt=t;}
       DM.scoreVersion++;addFeed(attacker.id,victim.id,weapon,part==='head');
       if(attacker===P)onMyKill(weapon);
       dmKillReward(attacker,part==='head');
@@ -3572,7 +3589,7 @@ function dmTick(dt,t){
   if(t>=DM.endsAt){dmFinish();return;}
   // Respawns valem também no freeze: quem entra na sala durante a preparação já nasce.
   for(const e of DM.actors)if(!e.alive&&t>=e.respawnAt)dmRespawn(e,t);
-  if(DM.phase==='freeze'){if(t<DM.startsAt){dmRefreshTargets();return;}DM.phase='live';G.view.ph='live';G.view.endsAt=DM.endsAt;banner('Deathmatch','5 minutos · todos contra todos','',1500);}
+  if(DM.phase==='freeze'){if(t<DM.startsAt){dmRefreshTargets();return;}DM.phase='live';G.view.ph='live';G.view.endsAt=DM.endsAt;if(DM.tdm)banner('Team Deathmatch','Primeiro time a '+DM.target+' abates · 10 minutos','',1800);else banner('Deathmatch','5 minutos · todos contra todos','',1500);}
   const L=LEVELS[DM.level];for(const b of DM.bots)dmBotMove(b,dt,t,L);
   dmRefreshTargets();for(const b of DM.bots)dmBotFire(b,t,L);
 }
@@ -4847,7 +4864,8 @@ function updateHUD(dt, t) {
   const v = G.view, w = W[P.weapon];
   setT(el.scMe, String(v.sc[G.me] || 0)); setT(el.scOp, String(G.opp ? (v.sc[G.opp] || 0) : 0));
   setT(el.nmMe, cleanName(S.name)); setT(el.nmOp, G.opp ? nameOf(G.opp) : '—');
-  if(G.mode==='dm'){const leader=dmRanking()[0];setT(el.scMe,String(stat(G.me).k));setT(el.scOp,String(stat(leader.id).k));setT(el.nmOp,'Líder · '+nameOf(leader.id));}
+  if(G.mode==='dm'&&DM.tdm){setT(el.scMe,String(DM.teamScore[0]));setT(el.scOp,String(DM.teamScore[1]));setT(el.nmMe,'Seu time');setT(el.nmOp,'Inimigos · meta '+DM.target);}
+  else if(G.mode==='dm'){const leader=dmRanking()[0];setT(el.scMe,String(stat(G.me).k));setT(el.scOp,String(stat(leader.id).k));setT(el.nmOp,'Líder · '+nameOf(leader.id));}
   if(G.mode==='team'){const mine=myTeam(),pips=(n,team)=>'●'.repeat(n)+'○'.repeat(Math.max(0,ARENA.sizes[team]-n));setT(el.scMe,String(ARENA.sc[mine]));setT(el.scOp,String(ARENA.sc[1-mine]));setT(el.nmMe,'Seu time '+pips(teamAlive(mine),0));setT(el.nmOp,pips(teamAlive(1-mine),1)+' Inimigos');}
   if (bombOn()) { const mine = myTeam(), sd = sideOf(P), pips = n => '●'.repeat(n) + '○'.repeat(Math.max(0, ARENA.sizes[0] - n)); setT(el.nmMe, SIDE_NAMES[sd] + ' ' + pips(teamAlive(mine))); setT(el.nmOp, pips(teamAlive(1 - mine)) + ' ' + SIDE_NAMES[sd === 't' ? 'ct' : 't']); }
   if (G.mode === 'aimbotz') {
@@ -4859,7 +4877,7 @@ function updateHUD(dt, t) {
   else if (v.ph === 'live') { const rem = Math.max(0, v.endsAt - t); label = 'rodada ' + v.r; time = fmtTime(rem); if (rem < 10000) cls = 'low'; }
   else if (v.ph === 'end') { label = 'fim da rodada'; time = '0:00'; }
   else if (v.ph === 'over') { label = 'fim de jogo'; time = fmtTime(Math.max(0, v.endsAt - t)); }
-  if(G.mode==='dm'){label=DM.phase==='freeze'?'prepare-se':DM.phase==='over'?'fim do DM':'deathmatch';if(DM.phase==='over')time='0:00';}
+  if(G.mode==='dm'){label=DM.phase==='freeze'?'prepare-se':DM.phase==='over'?(DM.tdm?'fim do TDM':'fim do DM'):(DM.tdm?'team deathmatch':'deathmatch');if(DM.phase==='over')time='0:00';}
   if (G.mode === 'aimbotz') { label = 'Aimbotz'; time = '∞'; }
   if (bombOn()) {
     const p = BOMB.planted;
@@ -4905,14 +4923,16 @@ function updateHUD(dt, t) {
   setH(el.fps, !S.showFps); if (S.showFps) setT(el.fps, fpsV + ' FPS');
   setH(el.netst, G.mode === 'aimbotz');
   if (G.mode === 'online') setT(el.netst, G.opp ? ('ping ' + (G.ping == null ? '…' : G.ping + ' ms')) : G.netText);
+  else if(G.mode==='dm'&&DM.tdm)setT(el.netst,'TDM '+S.tdmSize+'v'+S.tdmSize+' · bots '+LEVELS[DM.level].label+' · '+DM_LABELS[DM.category]);
   else if(G.mode==='dm')setT(el.netst,ARENA.net?'DM online · '+(ARENA.host?'você é o juiz':'jogador '+G.me)+' · '+DM.actors.filter(e=>e===P||e.remote).length+' pessoas · '+DM_LABELS[DM.category]:'DM · 9 bots · '+LEVELS[DM.level].label+' · '+DM_LABELS[DM.category]);
   else if(bombOn())setT(el.netst,'Plant the Bomb '+teamLabel()+' · '+MAP.name+' · bots '+LEVELS[DM.level].label);
   else if(G.mode==='team')setT(el.netst,teamLabel()+(ARENA.net?' online · '+(ARENA.host?'você é o juiz':'jogador '+G.me):'')+' · bots '+LEVELS[DM.level].label);
   else if (G.mode === 'bot') setT(el.netst, 'bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label + ' · ' + W[botHeldWeapon(BOT)].name + (BOT.helmet ? ' · capacete' : ' · sem capacete'));
   if(G.mode==='dm'&&DM.resultReady){
     DM.resultReady=false;el.hud.classList.add('dm-over');const mine=stat(G.me),winners=DM.winners;
-    $('dmWinner').textContent=winners.length>1?'Empate no Deathmatch':winners[0]===G.me?'Você venceu!':nameOf(winners[0])+' venceu';
-    $('dmResultInfo').textContent='5 minutos encerrados · Você: '+mine.k+' abates / '+mine.d+' mortes';
+    if(DM.tdm){$('dmWinner').textContent=DM.tdmWin==null?'Empate':DM.tdmWin===P.team?'Vitória':'Derrota';$('dmResultInfo').textContent='Seu time '+DM.teamScore[0]+' x '+DM.teamScore[1]+' inimigos · Você: '+mine.k+' abates / '+mine.d+' mortes';banner(DM.tdmWin==null?'Empate':DM.tdmWin===P.team?'Vitória':'Derrota',DM.teamScore[0]+' a '+DM.teamScore[1],DM.tdmWin===P.team?'win':DM.tdmWin==null?'':'lose',6000);}
+    else{$('dmWinner').textContent=winners.length>1?'Empate no Deathmatch':winners[0]===G.me?'Você venceu!':nameOf(winners[0])+' venceu';
+    $('dmResultInfo').textContent='5 minutos encerrados · Você: '+mine.k+' abates / '+mine.d+' mortes';}
     $('dmResult').hidden=false;showMenu(false);renderBoard();boardT=t;
     const guest=ARENA.net&&!ARENA.host;$('btnDmAgain').disabled=guest;$('btnDmAgain').textContent=guest?'Aguardando quem criou a sala':'Jogar novamente';
     if(document.pointerLockElement)document.exitPointerLock();
@@ -5253,6 +5273,7 @@ const MODE_MENU = {
   '1v1': ['Duelo 1v1', 'Enfrente um amigo ou treine contra um bot.'],
   '2v2': ['Duplas 2v2', 'Rodadas em dupla. Os bots completam as vagas.'],
   xvx: ['XvX', 'Escolha de 1 a 5 jogadores para cada time.'],
+  tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
   bomb: ['Plant the Bomb 2v2', 'Terroristas plantam, a SWAT defende. Regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
   aimbotz: ['Aimbotz', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
@@ -5320,17 +5341,17 @@ function getK(k) { return k.split('.').reduce((o, p) => o[p], S); }
 function setK(k, v) { const ps = k.split('.'); let o = S; for (let i = 0; i < ps.length - 1; i++) o = o[ps[i]]; o[ps[ps.length - 1]] = v; }
 const OUTFMT = { 'ch.alpha': v => Math.round(v * 100) + '%', scale: v => Math.round(v * 100) + '%', volume: v => Math.round(v * 100) + '%', fov: v => v + '°', zoomRatio: v => (+v).toFixed(2) };
 function syncLobbyPreview() {
-  const mode=S.mode,practice=mode==='aimbotz',dm=mode==='dm',bomb=mode==='bomb',duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?'aimbotz':dm?S.dmMap:bomb?bombMap:duelMap;
+  const mode=S.mode,practice=mode==='aimbotz',tdm=mode==='tdm',dm=mode==='dm'||tdm,bomb=mode==='bomb',duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?'aimbotz':dm?S.dmMap:bomb?bombMap:duelMap;
   const maps=practice?['aimbotz']:dm?Object.keys(MAPS).filter(k=>MAPS[k].dm):bomb?BOMB_MAPS:[...MAP_IDS,'rotacao'];
   const title=MAPS[id]?.name||'Rotação',image=$('stageImage'),source='assets/menu/large/'+id+'.webp';
   if(image.getAttribute('src')!==source){image.srcset='assets/menu/'+id+'.webp 640w, '+source+' 2048w';image.src=source;}
   $('stageTitle').textContent=title;
   $('stageDetail').textContent=practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
   $('stageCode').textContent=(practice?'PRÁTICA':dm?'DEATHMATCH':bomb?'PLANT THE BOMB':'ARENA')+' // '+String(maps.indexOf(id)+1).padStart(2,'0');
-  $('stageKind').textContent=practice?'Treino de mira':dm?'Todos contra todos':bomb?'Terroristas x SWAT':mode==='1v1'?'Duelo de precisão':'Jogo em equipe';
-  $('lobbyFormat').textContent=practice?S.aimbotzBots+' alvos':dm?'10 participantes':bomb?'2 contra 2 · Wingman':mode==='xvx'?S.xvx.mine+' contra '+S.xvx.foes:mode==='2v2'?'2 contra 2':'1 contra 1';
+  $('stageKind').textContent=practice?'Treino de mira':tdm?'Time contra time':dm?'Todos contra todos':bomb?'Terroristas x SWAT':mode==='1v1'?'Duelo de precisão':'Jogo em equipe';
+  $('lobbyFormat').textContent=practice?S.aimbotzBots+' alvos':tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':bomb?'2 contra 2 · Wingman':mode==='xvx'?S.xvx.mine+' contra '+S.xvx.foes:mode==='2v2'?'2 contra 2':'1 contra 1';
   $('lobbyGoalLabel').textContent=practice?'Treino':dm?'Duração':'Vitória';
-  $('lobbyGoal').textContent=practice?'Sem limite':dm?'5 minutos':bomb?'9 rodadas · melhor de 16':S.target+' rodadas';
+  $('lobbyGoal').textContent=practice?'Sem limite':tdm?S.tdmSize*10+' abates · 10 min':dm?'5 minutos':bomb?'9 rodadas · melhor de 16':S.target+' rodadas';
   $('profileAvatar').textContent=(String(S.name||'').trim().slice(0,1)||'J').toUpperCase();
   const mini=$('loadoutMini'),weapons=Object.values(S.loadout),key=weapons.map(k=>k+':'+skinOf(k)).join('|');
   if(mini.dataset.loadout!==key){
@@ -5346,7 +5367,7 @@ function syncInputs(except) {
   $('sensInfo').textContent = 'No Valorant isso equivale a ' + (S.sens / 3.181818).toFixed(3) + '. eDPI ' + Math.round(S.sens * S.dpi) + '.';
   $('cm360').textContent = S.dpi > 0 && S.sens > 0 ? (360 / (S.sens * 0.022 * S.dpi) * 2.54).toFixed(1) + ' cm' : '–';
   $('loadoutSummary').textContent = Object.values(S.loadout).map(k => W[k] ? W[k].name : '').join(' · ');
-  const mode=S.mode,dm=mode==='dm',bomb=mode==='bomb',duo=mode==='2v2'||mode==='xvx',xvx=mode==='xvx',practice=mode==='aimbotz',online=lobbyRoute==='online'&&!bomb;
+  const mode=S.mode,tdm=mode==='tdm',dm=mode==='dm'||tdm,bomb=mode==='bomb',duo=mode==='2v2'||mode==='xvx',xvx=mode==='xvx',practice=mode==='aimbotz',online=lobbyRoute==='online'&&!bomb&&!tdm;
   selectRadio($('modeSel'), 'mode', mode);
   selectRadio($('duelMaps'), 'map', S.map === 'rotacao' || MAP_IDS.includes(S.map) ? S.map : 'caixas');
   selectRadio($('dmMaps'), 'map', S.dmMap);
@@ -5367,17 +5388,17 @@ function syncInputs(except) {
   $('btnJoin').hidden=practice||!online;
   $('mpStatus').hidden = practice || !online || typeof Peer !== 'undefined';
   $('btnBot').hidden = dm || practice || online;
-  $('sessionRoute').hidden = practice || bomb;
+  $('sessionRoute').hidden = practice || bomb || tdm; $('tdmSizeField').hidden = !tdm;
   $('btnDm').hidden = !dm || online;
   $('btnAimbotz').hidden=!practice;
   $('teamField').hidden=!duo||!online;$('xvxField').hidden=!xvx;$('colorField').hidden=mode!=='1v1';
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
   const [title] = MODE_MENU[mode];
   $('lobbyMode').textContent = xvx ? 'Times ' + label : title;
-  $('modeInfo').textContent = bomb?'Você e um bot contra dois bots. Primeiro a 9 rodadas, troca de lado no meio, economia do CS.':practice?'Treino livre de mira, no seu ritmo.':online?'Use o mesmo código para jogar com seus amigos.':dm?'Você e nove bots. Cinco minutos de combate.':duo?'Bots completam os times que você escolher.':'Um duelo direto. Ajuste a dificuldade e entre.';
+  $('modeInfo').textContent = tdm?'Você e '+(S.tdmSize-1)+' bots contra '+S.tdmSize+' bots. Renascimento contínuo, sem fogo amigo.':bomb?'Você e um bot contra dois bots. Primeiro a 9 rodadas, troca de lado no meio, economia do CS.':practice?'Treino livre de mira, no seu ritmo.':online?'Use o mesmo código para jogar com seus amigos.':dm?'Você e nove bots. Cinco minutos de combate.':duo?'Bots completam os times que você escolher.':'Um duelo direto. Ajuste a dificuldade e entre.';
   $('btnJoin').textContent = dm ? 'Entrar no Deathmatch' : 'Entrar na sala';
   $('btnBot').textContent=bomb?'Jogar contra bots':duo?'Jogar '+label:'Iniciar duelo';
-  $('btnDm').textContent='Jogar Deathmatch';
+  $('btnDm').textContent=tdm?'Jogar TDM':'Jogar Deathmatch';
   $('roomInfo').textContent = 'Quem entrar primeiro cria a sala. Use o mesmo código para jogar junto.';
   syncLobbyPreview();
 }
