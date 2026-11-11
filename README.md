@@ -39,7 +39,7 @@ Terroristas (ataque) contra SWAT (defesa), com as regras do modo Wingman do CS. 
 
 - **Partida:** primeiro a 9 rodadas, troca de lado depois da 8ª (a economia recomeça); 8 a 8 termina empatado.
 - **Tempos:** 10 s de preparação, compra até 20 s depois do início da rodada, 1:30 de rodada, bomba de 40 s. Plantar leva 3,2 s; desarmar leva 10 s, ou 5 s com kit.
-- **Economia:** $800 iniciais e teto de $8.000. A vitória paga $3.250, ou $3.500 por bomba ou desarme. A derrota paga $1.400, mais $500 por derrota seguida, até $3.400; quem plantou e perdeu ganha mais $800. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
+- **Economia (Wingman):** $800 iniciais e teto de $8.000. A vitória paga $2.750 por eliminação ou tempo esgotado e $3.000 por desarme ou detonação. A derrota paga $2.000, $2.300, $2.600 e no máximo $2.900 por derrotas seguidas, voltando ao início quando o time vence; os Terroristas que plantaram e perderam ganham mais $600. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
 - **Loja (B):** pistolas, SMG e escopeta, rifles (AK só para Terroristas, M4 só para SWAT), precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para SWAT). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
 - **Teclas:** 1 primária, 2 pistola, 3 faca, 4 alterna granadas, 5 bomba. Plante segurando **E** no bombsite (ou o clique com a C4 na mão) e desarme segurando **E** perto da bomba. Quem carrega a bomba e morre deixa ela no chão; um Terrorista pega passando por cima.
 - **Bots:** compram conforme o dinheiro, carregam e plantam a bomba, seguram o site, desarmam, buscam a bomba caída e usam smoke, flash e HE.
@@ -51,7 +51,7 @@ A habilidade fica na tecla **X**, com uma carga por rodada. Cada time recebe um 
 
 | Operador | Habilidade | Visual |
 |---|---|---|
-| Finder | Abre o minimapa; o clique escolhe uma área de 20 m e, após um pulso, revela por 3 s os inimigos dentro dela | Viseira ciano e antena |
+| Finder | Abre o minimapa; o clique escolhe uma área de 15 m de diâmetro. Após um pulso, marca os inimigos dentro dela e marca de novo 1 s depois, onde estiverem (como o dardo do drone do Sova) | Viseira ciano e antena |
 | Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Quem chega a 3,2 m faz ele apitar, fica revelado por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
 
 ### Mapas de bomba

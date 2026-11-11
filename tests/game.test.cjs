@@ -1235,11 +1235,11 @@ test('Plant the Bomb buys follow Wingman prices, sides and limits, and round rew
   assert.equal(cx.bombBuy(g.P, 'flash', t), false); assert.equal(cx.bombBuyBlock(g.P, 'smoke', t), 'Sem dinheiro');
   g.P.money = 8000; assert.ok(cx.bombBuy(g.P, 'flash', t)); assert.ok(cx.bombBuy(g.P, 'flash', t)); assert.equal(cx.bombBuyBlock(g.P, 'flash', t), 'Limite');
   assert.ok(cx.bombBuy(g.P, 'ump', t)); assert.ok(g.ORDER.includes('ump')); assert.equal(g.P.weapon, 'ump');
-  // fim da rodada: vencedor +3500 por bomba, perdedor +1400 (+800 se plantou), teto de $8.000
+  // fim da rodada (Wingman): vencedor +3000 por bomba, perdedor +2000 (+600 se plantou), teto de $8.000
   t = step(t, 11000); assert.equal(g.DM.phase, 'live');
   const money = new Map(g.DM.actors.map(e => [e, e.money]));
   BM.plantedBy = null; cx.bombEndRound(t, BM.tTeam, 'bomb');
-  for (const e of g.DM.actors) assert.equal(e.money, Math.min(8000, money.get(e) + (e.team === BM.tTeam ? 3500 : 1400)), e.name);
+  for (const e of g.DM.actors) assert.equal(e.money, Math.min(8000, money.get(e) + (e.team === BM.tTeam ? 3000 : 2000)), e.name);
   assert.equal(A.sc[BM.tTeam], 1); assert.equal(g.DM.phase, 'end');
 });
 test('the player plants only inside the site, the bomb defuses faster with a kit, and a defuse wins for SWAT', () => {
@@ -1346,6 +1346,11 @@ test('operators: Finder reveals enemies inside a 20 m scan, Detector alarm hides
   assert.ok(cx.finderScan(g.P, 2, 2, t)); assert.equal(g.P.charges, 0); assert.equal(cx.finderScan(g.P, 2, 2, t), false);
   cx.scanTick(t + 800);
   assert.ok(foes[0].revealUntil > t + 800 && foes[0].revealTeam === g.P.team); assert.ok(!(foes[1].revealUntil > t + 800));
+  // segunda marcação 1 s depois, mesmo fora da área
+  foes[0].pos.set(20, 0, 20); const first = foes[0].revealUntil;
+  cx.scanTick(t + 1850); assert.ok(foes[0].revealUntil > first, 'segunda marca');
+  // diâmetro de 15 m: 8 m do centro já fica fora
+  g.P.charges = 1; foes[1].pos.set(10, 0, 2); foes[1].revealUntil = 0; assert.ok(cx.finderScan(g.P, 2, 2, t + 3000)); cx.scanTick(t + 3800); assert.ok(!(foes[1].revealUntil > 0));
   // Detector
   g.P.op = 'detector'; g.P.charges = 1; g.P.pos.set(0, 0, 10); g.P.yaw = 0;
   foes[0].pos.set(30, 0, 30); foes[1].pos.set(-30, 0, -30);
@@ -1372,4 +1377,21 @@ test('operators exist only in Plant the Bomb: after a bomb match, 2v2 has no abi
   assert.equal(vm.runInContext('bombOn()', cx), false);
   g.P.charges = 1; cx.useAbility(t); assert.equal(vm.runInContext('ALARM.list.length', cx), 0);
   assert.equal(vm.runInContext('SCAN.pending', cx), null);
+});
+test('Wingman loss bonus: $2,000 +$300 per consecutive loss up to $2,900, +$600 for Terrorists who planted, reset after a win', () => {
+  const { g, cx, A, BM, step } = bombWorld();
+  let t = step(10000, 11500);
+  const tTeam = BM.tTeam, ct = 1 - tTeam, pay = [];
+  for (let round = 0; round < 5; round++) {
+    for (const e of g.DM.actors) e.money = 0;
+    g.DM.phase = 'live'; BM.plantedBy = round === 1 ? 'x' : null;
+    cx.bombEndRound(t, ct, 'time');
+    pay.push(g.DM.actors.find(e => e.team === tTeam).money, g.DM.actors.find(e => e.team === ct).money);
+  }
+  assert.deepEqual(pay, [2000, 2750, 2900, 2750, 2600, 2750, 2900, 2750, 2900, 2750]);
+  for (const e of g.DM.actors) e.money = 0; g.DM.phase = 'live'; BM.plantedBy = null; cx.bombEndRound(t, tTeam, 'bomb');
+  assert.equal(g.DM.actors.find(e => e.team === tTeam).money, 3000);
+  for (const e of g.DM.actors) e.money = 0; g.DM.phase = 'live'; cx.bombEndRound(t, ct, 'defuse');
+  assert.equal(g.DM.actors.find(e => e.team === ct).money, 3000);
+  assert.equal(g.DM.actors.find(e => e.team === tTeam).money, 2000, 'bônus voltou ao início depois da vitória');
 });

@@ -401,7 +401,7 @@ button:disabled{opacity:.5;cursor:default}
   <div id="hpbox"><span class="lbl">Vida</span><b id="hp">100</b></div>
   <div id="bombbox" hidden><span id="bbMoney">$800</span><span id="bbArmor"></span><span id="bbC4" hidden>C4</span></div>
   <div id="ability" hidden><kbd>X</kbd><b id="abName"></b><span id="abCharge"></span></div>
-  <section id="minimap" hidden aria-label="Minimapa"><header><b>Varredura</b><span>escolha a área (20 m) com o clique · X ou Esc cancela</span></header><canvas id="mmCanvas" width="520" height="520"></canvas></section>
+  <section id="minimap" hidden aria-label="Minimapa"><header><b>Varredura</b><span>escolha a área (15 m) com o clique · X ou Esc cancela</span></header><canvas id="mmCanvas" width="520" height="520"></canvas></section>
   <div id="actbar" hidden><span id="actLbl">Plantando</span><i><b id="actFill"></b></i></div>
   <section id="shop" hidden aria-label="Loja"><header><b>Loja</b><span id="shopMoney"></span><span id="shopTime"></span><span id="shopHint">clique compra · botão direito vende o que foi comprado nesta rodada</span><button type="button" id="shopClose">Fechar · B</button></header><div id="shopGrid"></div></section>
   <div id="healn" aria-hidden="true"></div>
@@ -4241,8 +4241,10 @@ function teamTick(dt, t) {
 /* ---------- Plant the Bomb (Wingman): Terroristas (ataque) x SWAT (defesa) ---------- */
 // Regras do Wingman: primeiro a 9 rodadas, troca de lado depois da 8ª, 10 s de preparação, 20 s de compra,
 // 1:30 de rodada, bomba de 40 s, plantar em 3,2 s, desarmar em 10 s (5 s com kit), $800 iniciais e teto de $8.000.
+// Vitória: $2.750 (eliminação ou tempo) ou $3.000 (desarme ou detonação). Derrota: $2.000 +$300 por derrota seguida
+// (máximo $2.900); TR que plantou e perdeu ganha +$600.
 const BOMB = { half: 8, target: 9, maxRounds: 16, freezeMs: 10000, buyMs: 20000, roundMs: 90000, bombMs: 40000, plantMs: 3200, defuseMs: 10000, kitMs: 5000, endMs: 5000,
-  start: 800, max: 8000, win: { kill: 3250, bomb: 3500, defuse: 3500, time: 3250 }, lossBase: 1400, lossStep: 500, lossMax: 3400, plantTeam: 800, plantMe: 300, defuseMe: 300,
+  start: 800, max: 8000, win: { kill: 2750, bomb: 3000, defuse: 3000, time: 2750 }, lossBase: 2000, lossStep: 300, lossMax: 2900, plantTeam: 600, plantMe: 300, defuseMe: 300,
   tTeam: 0, streak: [0, 0], planted: null, dropped: null, carrier: null, roundStart: 0, plantedBy: null, beepAt: 0, gfx: null, lastWhy: '' };
 const PRICES = { usps: 200, pistol: 700, ump: 1200, bucky: 1050, rifle: 2700, m4a4: 3100, m4a1s: 2900, ssg: 1700, sniper: 4750, he: 300, flash: 200, smoke: 300, kevlar: 650, helmet: 1000, kit: 400 };
 const SIDE_ONLY = { rifle: 't', m4a4: 'ct', m4a1s: 'ct', kit: 'ct' };
@@ -4380,7 +4382,8 @@ function bombEndRound(t, win, why) {
       if (e.team === win) bombAddMoney(e, BOMB.win[why] || BOMB.win.kill);
       else bombAddMoney(e, Math.min(BOMB.lossMax, BOMB.lossBase + BOMB.lossStep * BOMB.streak[lose]) + (e.team === BOMB.tTeam && BOMB.plantedBy ? BOMB.plantTeam : 0));
     }
-    BOMB.streak[win] = Math.max(0, BOMB.streak[win] - 1); BOMB.streak[lose] = Math.min(4, BOMB.streak[lose] + 1);
+    // Wingman: o bônus sobe $300 por derrota seguida (até a 4ª) e volta ao início quando o time vence.
+    BOMB.streak[win] = 0; BOMB.streak[lose] = Math.min(3, BOMB.streak[lose] + 1);
   }
   teamPublish(t);
 }
@@ -4552,15 +4555,15 @@ function bombRenderObj(t) {
 }
 
 /* ---------- Operadores (Plant the Bomb): Finder e Detector ---------- */
-// Finder: tecla X abre o minimapa; o clique escolhe uma área de 20 m de diâmetro e, após um pulso, revela os
-// inimigos que estão dentro dela. Detector: tecla X coloca um alarme no chão; o inimigo só o enxerga de perto;
+// Finder: tecla X abre o minimapa; o clique escolhe uma área de 15 m de diâmetro e, após um pulso, marca os
+// inimigos dentro dela (e marca de novo 1 s depois). Detector: tecla X coloca um alarme no chão; o inimigo só o enxerga de perto;
 // se alguém do outro time passa muito perto ele apita, revela essa pessoa e se autodestrói; se for destruído
 // a tiro, o dono recebe o aviso. Uma carga de cada por rodada.
 const OPS = {
-  finder: { name: 'Finder', ability: 'Varredura', desc: 'Abre o minimapa e escaneia uma área de 20 m: revela os inimigos dentro dela por 3 s.', color: '#3ff4ff' },
+  finder: { name: 'Finder', ability: 'Varredura', desc: 'Abre o minimapa e escaneia uma área de 15 m: marca os inimigos dentro dela e marca de novo 1 s depois.', color: '#3ff4ff' },
   detector: { name: 'Detector', ability: 'Alarme', desc: 'Coloca um alarme no chão, invisível para o inimigo de longe. Apita, revela e se destrói quando alguém chega perto.', color: '#f08a24' },
 };
-const SCAN = { radius: 10, delay: 700, reveal: 3000 }, ALARM = { seen: 7, trip: 3.2, hp: 20, armMs: 1000, reveal: 4000, list: [], next: 1 };
+const SCAN = { radius: 7.5, delay: 700, tag: 1200, retag: 1000 }, ALARM = { seen: 7, trip: 3.2, hp: 20, armMs: 1000, reveal: 4000, list: [], next: 1 };
 const opNotice = msg => { if (typeof toast === 'function') toast(msg); };
 function opsAssign() {
   // Cada time fica com um de cada quando possível; o jogador usa o que escolheu.
@@ -4570,7 +4573,7 @@ function opsAssign() {
     for (const e of members) { if (e === P) { e.op = S.operator; continue; } e.op = next; next = next === 'finder' ? 'detector' : 'finder'; }
   }
 }
-function opsResetRound() { for (const e of DM.actors) { e.charges = 1; e.revealUntil = 0; e.revealTeam = -1; e.opAt = 0; } alarmsClear(); SCAN.pending = null; }
+function opsResetRound() { for (const e of DM.actors) { e.charges = 1; e.revealUntil = 0; e.revealTeam = -1; e.opAt = 0; } alarmsClear(); SCAN.pending = SCAN.retagAt = null; }
 function revealActor(e, team, t, ms) {
   e.revealTeam = team; e.revealUntil = Math.max(e.revealUntil || 0, t + ms);
   for (const mate of DM.bots) if (mate.alive && mate.team === team && !mate.seen) { mate.lastSeen.copy(e.pos); mate.knowsUntil = t + ms; mate.planAt = 0; }
@@ -4582,12 +4585,17 @@ function finderScan(e, x, z, t) {
   if (e.team === P.team) { const s = spat(x, z); AU.arm && AU.arm(); }
   return true;
 }
+// Duas marcações, como o dardo do drone do Sova: quem estava na área é marcado no pulso e de novo 1 s depois,
+// onde estiver (mesmo que já tenha saído da área).
 function scanTick(t) {
+  const r = SCAN.retagAt;
+  if (r && t >= r.at) { SCAN.retagAt = null; for (const e of r.list) if (e.alive) revealActor(e, r.team, t, SCAN.tag); if (r.team === P.team && r.list.some(e => e.alive)) AU.arm && AU.arm(); }
   const s = SCAN.pending; if (!s || t < s.at) return;
-  SCAN.pending = null; let found = 0;
-  for (const e of DM.actors) if (e.alive && e.team !== s.team && Math.hypot(e.pos.x - s.x, e.pos.z - s.z) <= SCAN.radius) { revealActor(e, s.team, t, SCAN.reveal); found++; }
+  SCAN.pending = null; let found = 0; const list = [];
+  for (const e of DM.actors) if (e.alive && e.team !== s.team && Math.hypot(e.pos.x - s.x, e.pos.z - s.z) <= SCAN.radius) { revealActor(e, s.team, t, SCAN.tag); list.push(e); found++; }
+  if (list.length) SCAN.retagAt = { at: t + SCAN.retag, team: s.team, list };
   SCAN.last = { x: s.x, z: s.z, t, team: s.team };
-  if (s.team === P.team) opNotice(found ? 'Varredura: ' + found + ' inimigo' + (found > 1 ? 's' : '') + ' revelado' + (found > 1 ? 's' : '') : 'Varredura: área limpa');
+  if (s.team === P.team) opNotice(found ? 'Varredura: ' + found + ' inimigo' + (found > 1 ? 's' : '') + ' marcado' + (found > 1 ? 's' : '') + ' (marca de novo em 1 s)' : 'Varredura: área limpa');
   else if (P.alive && Math.hypot(P.pos.x - s.x, P.pos.z - s.z) <= SCAN.radius) opNotice('Você foi detectado por uma varredura');
 }
 // Alarme do Detector: no chão, à frente de quem coloca (até 2,5 m), sem atravessar parede.
