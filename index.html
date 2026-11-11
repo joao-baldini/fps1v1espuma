@@ -1764,7 +1764,7 @@ function limb(group, from, to, thick, mat) {
 }
 const MUZZLE = { rifle: [0, .01, -.67], pistol: [0, .035, -.32], sniper: [0,.025,-.945], m4a4: [0,0,-.665], m4a1s: [0,.01,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.89] };
 const VM_BASE = { rifle: [.15, -.16, -.40], pistol: [.13, -.145, -.38], knife: [.005, -.11, -.38], sniper: [.15, -.16, -.38] };
-VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.rifle; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = [.005,-.11,-.38];
+VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.rifle; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
 const VM_YAW = { rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0 };
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: .95, depthWrite: false, blending: THREE.AdditiveBlending });
 const flashGeo = new THREE.PlaneGeometry(.13, .13);
@@ -1773,7 +1773,7 @@ const vmGuns = {}, vmFlash = {}, vmKnives = {};
 // Karambit: peças contínuas, curvas Bézier e eixo no centro do anel do indicador.
 // Pegada da karambit como no CS: indicador no anel, cabo atravessando o punho e garra saindo para o centro da tela, curvada para cima.
 const KH_ROT = [-1.2,-.25,-.1], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.18;
-const KARAMBIT_VIEW = { scale: 1.65, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.01,-.025], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
+const KARAMBIT_VIEW = { scale: 1.4, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.01,-.025], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
 let karambitGeo = null;
 // Karambit no mesmo estilo das armas: cor chapada com sombreamento fixo por face (tons das caixas).
 const KNIFE_FACE_SHADE = [.80,.80,.80,.80,.80,.80,.70,.70,.70,.70,.70,.70,1,1,1,1,1,1,.50,.50,.50,.50,.50,.50,.90,.90,.90,.90,.90,.90,.62,.62,.62,.62,.62,.62];
@@ -1833,9 +1833,9 @@ function buildKarambit() {
 // Butterfly no mesmo estilo das armas e da karambit: curvas contínuas com cor chapada e tom fixo por face.
 // Perfil do CS2: lâmina clip point com swedge e fio claro, tang com kicker, cabos vazados com pinos e trava.
 // Eixo: pino na origem, lâmina para -x, cabos para +x, dorso em +y.
-const BUTTERFLY_SIZE = .75, BUTTERFLY_GAP = .0085;
-// Enquadramento medido no vídeo do CS2: punho baixo à direita e lâmina apontando para a esquerda, à frente.
-const BUTTERFLY_VIEW = { scale: 1.7, right: [-.065,-.02,.06], rightRot: [.6,-.6,.1], holder: [-.075,-.012,0], holderRot: [-.4,0,.3], left: [-.30,-.06,.08], leftRot: [-.25,.2,-.05], elbows: [[.45,-.30,.25],[-.50,-.30,.22]] };
+const BUTTERFLY_SIZE = .90, BUTTERFLY_GAP = .0085;
+// Mesma mão e mesmo lugar da Deagle (bloco de pele no tamanho das armas, embaixo à direita), faca para a frente e à esquerda.
+const BUTTERFLY_VIEW = { scale: 1, right: [-.01,-.02,.02], rightRot: [0,0,0], holder: [-.035,.01,-.03], holderRot: [-.4,-.8,-.3], left: [-.24,-.17,.10], leftRot: [0,0,0], elbows: [[.16,-.33,.32],[-.30,-.40,.32]] };
 let butterflyGeo = null;
 function mergeKnifeParts(parts) {
   const p=[],n=[],c=[];
@@ -1860,7 +1860,7 @@ function butterflyGeometry() {
   // tang com kicker e choil: segura o fio longe dos cabos quando a faca fecha
   const tang=new THREE.Shape(pts([[-.034,.0205],[-.016,.0235],[.004,.0245],[.016,.019],[.021,.008],[.021,-.006],[.014,-.016],[.002,-.021],[-.010,-.025],[-.020,-.032],[-.028,-.032],[-.033,-.026],[-.034,-.020],[-.039,-.0175],[-.044,-.0185],[-.044,-.012],[-.036,.012]]));
   const bladeParts=[extrude(body,.0054,STEEL,12),extrude(bevel,.0034,EDGE_COL,12),extrude(tang,.0058,TANG,1),knifeBlock(.007,.007,.0075,-.012,.010,0,0,0x5d686e)];
-  const blade=mergeKnifeParts(bladeParts.map(g=>[g,null]));for(const g of bladeParts)g.dispose();
+  const blade=mergeKnifeParts(bladeParts.map(g=>[g,null]));for(const g of bladeParts)g.dispose();blade.scale(.8,1,1); // fechada, cabe entre os cabos
   // Cabo vazado: ponta redonda no pino, três rasgos e pinos; trava só no cabo seguro.
   const makeHandle=latch=>{
     const R=.0175,L=.196,D=.011,shape=new THREE.Shape();
@@ -1891,37 +1891,38 @@ const knifeArmA = new V3(), knifeArmB = new V3(), knifeArmDir = new V3();
 // Pose channels: hand x/y/z, pitch/yaw/roll, blade hinge, free hinge, left x/y/z/roll, finger opening, presentation at the index finger,
 // and (butterfly) the knife standing up around its pin.
 const KNIFE_REST = new Float32Array(15), knifePose = new Float32Array(15);
-// Vídeo do CS2 (0,60–1,45 s): a mão sobe com a faca fechada em pé, o cabo solto abre e dá a volta inteira enquanto
-// a lâmina passa por cima do punho e deita apontando para a esquerda, à frente.
-// Canais: mão x/y/z, inclinação/guinada/rolagem, lâmina, cabo solto, mão esquerda x/y/z/rolagem, abertura, exibição.
+// Abertura básica de balisong (vídeo do CS2, 0,60–1,45 s): a mão sobe com a faca fechada em pé e o plano da faca
+// virado para a câmera; o cabo solto cai e dá a volta inteira enquanto a lâmina gira meia volta por cima do punho;
+// os dois cabos fecham juntos na palma e o pulso vira a lâmina para a frente.
+// Canais: mão x/y/z, inclinação/guinada/rolagem, lâmina, cabo solto, mão esquerda x/y/z/rolagem, abertura, exibição, faca em pé.
 const BF_DRAW = [
-  [0,.05,-.16,.02,0,0,0,Math.PI,Math.PI,0,-.10,0,0,0,0,1.50],
-  [.10,.01,-.03,.01,0,0,0,Math.PI,Math.PI,0,-.09,0,0,0,0,1.52],
-  [.20,-.015,.03,0,0,0,0,Math.PI,Math.PI+1.0,0,-.07,0,0,0,0,1.55],
-  [.30,-.03,.055,0,0,0,0,Math.PI+.9,Math.PI+2.0,0,-.05,0,0,0,0,1.20],
-  [.40,-.035,.06,0,0,0,0,Math.PI+2.3,TAU-.3,0,-.03,0,0,0,0,0],
-  [.50,-.03,.05,0,0,0,0,TAU-.1,TAU,0,-.015,0,0,0,0,-.95],
-  [.62,-.022,.032,0,0,0,0,TAU,TAU,0,-.005,0,0,0,0,-.85],
-  [.75,-.012,.014,0,0,0,0,TAU,TAU,0,0,0,0,0,0,-.50],
-  [.88,-.002,.003,0,0,0,0,TAU,TAU,0,0,0,0,0,0,-.12],
+  [0,.03,-.20,.04,0,1.17,0,Math.PI,Math.PI,0,-.12,0,0,0,0,1.82],
+  [.10,.0,-.08,.02,0,1.17,0,Math.PI,Math.PI,0,-.10,0,0,0,0,1.82],
+  [.20,-.04,.02,0,0,1.17,0,Math.PI,Math.PI+1.0,0,-.08,0,0,0,0,1.85],
+  [.30,-.07,.05,0,0,1.17,0,Math.PI+.9,Math.PI+2.1,0,-.06,0,0,0,0,1.55],
+  [.40,-.08,.055,0,0,1.15,0,Math.PI+2.3,TAU-.3,0,-.04,0,0,0,0,.45],
+  [.50,-.07,.045,0,0,1.10,0,TAU-.1,TAU,0,-.02,0,0,0,0,-.60],
+  [.62,-.05,.03,0,0,.80,0,TAU,TAU,0,-.01,0,0,0,0,-.50],
+  [.75,-.025,.014,0,0,.35,0,TAU,TAU,0,0,0,0,0,0,-.25],
+  [.88,-.004,.003,0,0,.08,0,TAU,TAU,0,0,0,0,0,0,-.05],
   [1,0,0,0,0,0,0,TAU,TAU,0,0,0,0,0,0,0]
 ];
-// Inspeção simples (vídeo, 2–5 s): o punho sobe ao centro, a lâmina aponta para cima e o cabo solto abre em V;
-// segura a exibição, gira a lâmina uma volta e volta ao repouso.
+// Inspeção simples: o punho sobe ao centro com a faca de frente para a câmera, lâmina para cima e cabo solto aberto
+// em V; segura, fecha girando a lâmina uma volta e vira de volta para a frente.
 const BF_INSPECT = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [.12,.0,.04,0,0,0,0,0,-.40,0,-.02,0,0,0,0,-1.20],
-  [.24,.01,.07,0,0,0,0,0,-.84,0,-.04,0,0,0,0,-2.30],
-  [.66,.01,.07,0,0,0,0,0,-.84,0,-.04,0,0,0,0,-2.30],
-  [.76,.005,.045,0,0,0,0,Math.PI,-.40,0,-.03,0,0,0,0,-1.40],
-  [.86,0,.01,0,0,0,0,TAU,0,0,-.01,0,0,0,0,-.40],
-  [.94,.002,0,0,0,0,0,TAU,0,0,0,0,0,0,0,-.05],
+  [.12,-.04,.04,.01,0,.80,0,0,-.45,0,-.02,0,0,0,0,-1.0],
+  [.24,-.06,.07,.02,0,1.17,0,0,-1.0,0,-.04,0,0,0,0,-1.89],
+  [.66,-.06,.07,.02,0,1.17,0,0,-1.0,0,-.04,0,0,0,0,-1.89],
+  [.76,-.045,.05,.01,0,1.10,0,Math.PI,-.45,0,-.03,0,0,0,0,-1.2],
+  [.86,-.015,.015,0,0,.55,0,TAU,0,0,-.01,0,0,0,0,-.35],
+  [.94,0,.002,0,0,.10,0,TAU,0,0,0,0,0,0,0,-.05],
   [1,0,0,0,0,0,0,TAU,0,0,0,0,0,0,0,0]
 ];
-// Golpes da butterfly na pegada nova: corte da direita para a esquerda com a lâmina à frente, corte de volta e estocada.
-const KNIFE_SLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0],[.18,.035,.018,.01,0,.18,.05,0,0,-.02,-.06,.02,-.15],[.40,-.085,-.008,-.04,-.05,-.40,-.10,0,0,-.06,-.12,.05,-.25],[.64,-.055,-.006,-.025,-.03,-.22,-.06,0,0,-.04,-.08,.03,-.15],[1,0,0,0,0,0,0,0,0,0,0,0,0]];
-const KNIFE_BACKSLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0],[.18,-.075,.012,0,0,-.22,0,0,0,-.025,-.07,.03,-.18],[.40,.07,-.03,-.03,.05,.38,.15,0,0,-.07,-.13,.06,-.25],[.64,.035,-.02,-.02,.03,.22,.08,0,0,-.05,-.09,.03,-.15],[1,0,0,0,0,0,0,0,0,0,0,0,0]];
-const KNIFE_STAB = [[0,0,0,0,0,0,0,0,0,0,0,0,0],[.27,.025,.02,.035,.05,.25,0,0,0,-.02,-.06,.03,-.16],[.44,-.05,.035,-.13,0,-.60,0,0,0,-.05,-.12,.055,-.25],[.61,-.045,.03,-.11,0,-.50,0,0,0,-.04,-.10,.04,-.20],[1,0,0,0,0,0,0,0,0,0,0,0,0]];
+// Golpes da butterfly: corte da direita para a esquerda com a lâmina à frente, corte de volta e estocada para a frente.
+const KNIFE_SLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0],[.18,.05,.03,.02,.05,-.30,.10,0,0,-.02,-.06,.02,-.15],[.40,-.14,-.02,-.05,-.08,.55,-.15,0,0,-.06,-.12,.05,-.25],[.64,-.09,-.015,-.03,-.05,.32,-.08,0,0,-.04,-.08,.03,-.15],[1,0,0,0,0,0,0,0,0,0,0,0,0]];
+const KNIFE_BACKSLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0],[.18,-.10,.02,-.01,.05,.45,-.10,0,0,-.025,-.07,.03,-.18],[.40,.09,-.03,-.05,-.05,-.40,.15,0,0,-.07,-.13,.06,-.25],[.64,.05,-.02,-.03,-.03,-.22,.08,0,0,-.05,-.09,.03,-.15],[1,0,0,0,0,0,0,0,0,0,0,0,0]];
+const KNIFE_STAB = [[0,0,0,0,0,0,0,0,0,0,0,0,0],[.27,.02,.0,.06,.18,.0,0,0,0,-.02,-.06,.03,-.16],[.44,-.04,.04,-.17,-.12,.10,0,0,0,-.05,-.12,.055,-.25],[.61,-.035,.035,-.14,-.10,.08,0,0,0,-.04,-.10,.04,-.20],[1,0,0,0,0,0,0,0,0,0,0,0,0]];
 // Karambit (pegada do CS): puxada girando no indicador, inspeção com giro, exibição da lâmina e giro de volta.
 // Canais: mão x/y/z, inclinação/guinada/rolagem, giro no anel, (dobradiça), mão esquerda x/y/z/rolagem, dedos, exibição.
 const KARAMBIT_DRAW = [

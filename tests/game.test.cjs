@@ -739,7 +739,7 @@ test('butterfly follows the reference timing: a short draw and a stable inspecti
   const first=Array.from(g.sampleKnifeAnimation(g.P.kAnim,12000+3000*.35));
   const held=Array.from(g.sampleKnifeAnimation(g.P.kAnim,12000+3000*.65));
   assert.deepEqual(first,held);
-  assert.ok(held[14]<-2);assert.ok(Math.abs(held[7])>.5); // exibição: lâmina em pé e cabo solto aberto em V
+  assert.ok(held[14]<-1.5);assert.ok(Math.abs(held[7])>.5); // exibição: lâmina em pé e cabo solto aberto em V
   for(let i=0;i<=200;i++){
     const pose=g.sampleKnifeAnimation(g.P.kAnim,12000+3000*i/200);
     assert.ok(pose[12]>=0&&pose[12]<=1);assert.ok(pose[13]>=0&&pose[13]<=1);
