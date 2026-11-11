@@ -63,10 +63,12 @@ Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os 
 
 ### Mapas de bomba
 
-**Créditos:** os dois mapas são versões próprias, feitas por fãs, **inspiradas** em mapas de Wingman da comunidade do CS:GO: **Guard**, de **poLemin**, e **Elysion**, de **Big_SG21**. Não usam nenhum arquivo, geometria ou textura dos originais. A identidade e os nomes das áreas vêm das notas de atualização públicas do CS:GO e dos autores. Todo o crédito pelas ideias originais é deles.
+**Créditos:** **Guard**, de **poLemin**, e **Elysion**, de **Big_SG21**, convertidos dos BSPs enviados pelo usuário (ports de **Alex Road**). A geometria, os caminhos, os desníveis e as colisões vêm desses arquivos. O acabamento usa cores chapadas dos materiais originais com a grade do jogo, sem carregar as texturas ou os sons dos mapas.
 
-- **Guard (Praga):** bombsite A no cais à beira do rio, com as coberturas viradas para a ponte e para os arcos. Ponte Carlos com estátuas, torre da ponte, pit, lixeira, ladder hole, escada com meia parede e conector até o spawn da SWAT. Do lado dos Terroristas: restaurante, loja de vidro, bicicletas, caminhão e a obra. O rio tem água rasa e deixa mais lento.
-- **Elysion (39º andar):** spawn TR com a mesa da recepção, meio em dois níveis com as paredes de cascata, área externa com duas portas para o A, salão com obras de arte, bombsite A com a parede central, o letreiro ELYSION e o guarda-corpo das janelas, e a SWAT atrás da parede de vidro com o relógio.
+- **Guard:** traçado do arquivo fornecido, incluindo ponte, arcos, escadas, coberturas e escada vertical. Um bombsite A.
+- **Elysion:** recorte **Wingman**, com somente o **A** e as passagens da imagem de referência. A sala lateral continua como passagem; o segundo plant do port foi removido. A casca externa do prédio foi cortada. Spawns selecionados nas salas indicadas pela referência, usando posições do BSP.
+
+Os dados são carregados somente ao entrar nesses mapas e funcionam também abrindo `index.html` por `file://`. A navegação dos bots vem pré-calculada. Há detalhes de conversão, limites e instruções para regenerar os arquivos em [assets/maps/README.md](assets/maps/README.md).
 
 ## TDM
 

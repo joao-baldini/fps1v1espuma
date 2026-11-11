@@ -3,6 +3,14 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
+const { gunzipSync } = require('node:zlib');
+require('../assets/maps/runtime.js');
+const sourceCatalog={};vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/catalog.js'),'utf8'),sourceCatalog);
+const sourcePacked={};
+for(const id of ['guard','elysion']){
+  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:guard|elysion)=("[A-Za-z0-9+/=]+");/);
+  assert.ok(encoded,'Missing generated BSP payload: '+id);sourcePacked[id]=JSON.parse(gunzipSync(Buffer.from(JSON.parse(encoded[1]),'base64')));
+}
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 
@@ -24,7 +32,9 @@ function game(saved) {
   let clock = 10000, seed = 92741;
   const events = [], keys = new Set();
   const floor = { min: [-1000, -1, -1000], max: [1000, 0, 1000] };
+  const sourceInstances=new Map(),SourceMaps={get:id=>{if(!sourceInstances.has(id)){const map=new globalThis.SourceMaps.NativeMap(sourcePacked[id]);map.geometry=()=>({dispose(){}});sourceInstances.set(id,map);}return sourceInstances.get(id);}};
   const context = vm.createContext({
+    SOURCE_MAP_CATALOG:sourceCatalog.SOURCE_MAP_CATALOG,SourceMaps,sourceWorld:null,sourceGlassMat:null,
     performance: { now: () => clock }, localStorage: { getItem: () => saved ? JSON.stringify(saved) : null }, V3: Vec,
     boxes: [floor], ramps: [], STEP_UP: .5, AX: 30, AZ: 30, C: 1.2, WALL_H: 7,
     THREE: { Color: class {}, Mesh: class { constructor(geometry) { this.geometry = geometry; } } },
@@ -1223,6 +1233,62 @@ function bombWorld(map = 'guard', setup) {
   const step = (from, ms, each) => { let t = from; for (; t < from + ms; t += 1000 / 30) { g.tick(t); vm.runInContext(`teamTick(1/30,${t});nadesTick(1/30,${t})`, cx); if (each && each(t)) break; } return t; };
   return { g, cx, A, BM, step };
 }
+test('native maps retain BSP spawn coordinates, angles and connected floors in their selected regions',()=>{
+  const originals={guard:{t:[720.804,1248,-80,225],ct:[1108,-1984,-88,135],count:10,sites:1},elysion:{t:[-304,-1392,9616,90],ct:[-192,928,9744,270],count:27,sites:1}};
+  for(const [key,expected]of Object.entries(originals)){
+    const g=game({mode:'bomb'}),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const source=cx.sourceWorld,meta=source.meta;
+    for(const side of ['t','ct']){const p=meta[side][0],raw=[p[0]/meta.scale+meta.center[0],meta.center[1]-p[1]/meta.scale,p[3]/meta.scale+meta.center[2],p[2]*180/Math.PI+90];for(let i=0;i<4;i++)assert.ok(Math.abs(raw[i]-expected[side][i])<.00001,key+' '+side+' '+i);}
+    assert.equal(g.DM.nav.audit.spawnsConnected,expected.count);assert.equal(g.DM.nav.audit.spawnsTotal,expected.count);assert.equal(meta.sites.length,expected.sites);
+    for(const p of meta.t.concat(meta.ct)){const y=source.ground(p[0],p[1],p[3]);assert.ok(Number.isFinite(y)&&Math.abs(y-p[3])<1);assert.equal(source.overlap(p[0],y+.03,p[1],1.8,.3),false);}
+    for(const site of meta.sites){const x=(site.x0+site.x1)/2,z=(site.z0+site.z1)/2;assert.equal(cx.bombInSite(x,z,site.y0),true);assert.equal(cx.bombInSite(x,z,site.y1+1.8),false,'cannot plant from a floor above the site');}
+    assert.ok(source.mesh.opaque>0);assert.ok(source.count<40000);assert.ok(source.meta.sourceSha256.length===64);
+  }
+});
+test('Elysion keeps only Wingman A and the reference passages, with cropped geometry and original flat colours',()=>{
+  const map=sourcePacked.elysion,meta=map.meta,report=JSON.parse(readFileSync(resolve(__dirname,'../assets/maps/elysion-source.json'),'utf8'));
+  assert.deepEqual(meta.sites.map(s=>s.name),['A']);assert.equal(report.wingman.before.sites,2);
+  assert.ok(report.triangles<65000&&report.wingman.polygons<report.wingman.before.polygons*.6);
+  const positions=Buffer.from(map.mesh.position,'base64');for(let p=0;p<positions.length;p+=12)for(let axis=0;axis<3;axis++){const v=positions.readFloatLE(p+axis*4);assert.ok(v>=meta.bounds[axis]-.001&&v<=meta.bounds[axis+3]+.001);}
+  const g=game(),cx=g.context;cx.buildMap('elysion');g.dmBuildNav([]);
+  // The lounge shown at lower right is still connected, but the CSS port's B is not plantable.
+  assert.equal(cx.bombInSite(21.6321,9.1776),false);
+  const nav=g.DM.nav;assert.ok(nav.walk.some(id=>nav.x[id]>19&&nav.z[id]>7&&nav.z[id]<12));
+  assert.ok(Math.abs((meta.playBounds[2]-meta.playBounds[0])/(meta.playBounds[3]-meta.playBounds[1])-410/492)<.02);
+  const colors=new Set();const bytes=Buffer.from(map.mesh.color,'base64');for(let p=0;p<bytes.length;p+=3)colors.add(bytes.subarray(p,p+3).toString('hex'));
+  assert.ok(colors.has('f5f5f5'));assert.ok(colors.has('372e28'));assert.ok(colors.has('d6d6d6'));
+  assert.equal(report.flatColors.models,71);assert.ok(map.mesh.opaque>0);
+  const guardReport=JSON.parse(readFileSync(resolve(__dirname,'../assets/maps/guard-source.json'),'utf8'));
+  assert.ok(guardReport.flatColors.materials>200&&guardReport.flatColors.models>100);
+});
+test('actual player physics follows the native paths from T to CT and to every active bombsite',()=>{
+  for(const key of ['guard','elysion']){
+    const g=game({mode:'bomb'}),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const map=g.MAPS[key],nav=g.DM.nav,from=map.plant.t[0],targets=[map.plant.ct[0],...map.plant.sites.map(s=>[(s.x0+s.x1)/2,(s.z0+s.z1)/2,0])];
+    for(const goal of targets){const actor={pos:new Vec(from[0],cx.groundAt(from[0],from[1],from[3]),from[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
+      assert.equal(g.dmFindPath(actor,goal[0],goal[1]),true);assert.ok(actor.path.length>20);
+      for(const id of actor.path){const tx=nav.x[id],tz=nav.z[id];let frames=0;while(Math.hypot(tx-actor.pos.x,tz-actor.pos.z)>.12&&frames++<400){const dx=tx-actor.pos.x,dz=tz-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,4.5,false,1/128);}
+        assert.ok(frames<400,key+' blocked at '+id);assert.ok(actor.pos.y>-15&&Number.isFinite(actor.pos.y));
+      }
+      assert.ok(Math.hypot(actor.pos.x-goal[0],actor.pos.z-goal[1])<3.5,key+' did not reach destination');
+    }
+  }
+});
+test('native spatial ray queries match all convex hulls and keep player clips out of bullet collisions',()=>{
+  for(const key of ['guard','elysion']){
+    const g=game(),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const map=cx.sourceWorld,nav=g.DM.nav;
+    for(let i=0;i<36;i++){
+      const id=nav.walk[(i*71)%nav.walk.length],o=[nav.x[id],nav.height[id]+1.64,nav.z[id]],a=i*2.39996,d=[Math.cos(a)*.98,Math.sin(i*1.27)*.2,Math.sin(a)*.98];let brute=null;
+      for(let id=0;id<map.count;id++)if(map.masks[id]&2){const hit=map.hullRay(id,o,d,brute?brute.t:120);if(hit&&(!brute||hit.t<brute.t))brute=hit;}
+      const fast=map.ray(o,d,120);assert.equal(!!fast,!!brute,key+' ray '+i);if(fast)assert.ok(Math.abs(fast.t-brute.t)<.001,key+' ray '+i+' '+fast.t+'/'+brute.t);
+    }
+  }
+});
+test('Guard retains its vertical ladder and jumping releases the ladder',()=>{
+  const g=game(),cx=g.context;cx.buildMap('guard');const map=cx.sourceWorld,b=map.meta.ladders[0];assert.ok(b);
+  const x=(b[0]+b[3])/2,z=b[2]-.31;g.P.pos.set(x,(b[1]+b[4])/2,z);g.P.vel.set(0,0,0);g.P.h=1.8;
+  map.climb(g.P,0,1,false,.3);assert.equal(g.P.climbing,true);assert.equal(g.P.vel.y,3);
+  map.climb(g.P,0,-1,false,.3);assert.equal(g.P.vel.y,-3);
+  map.climb(g.P,0,1,true,.3);assert.equal(g.P.climbing,false);
+});
 test('Plant the Bomb buys follow Wingman prices, sides and limits, and round rewards follow the CS economy', () => {
   const { g, cx, A, BM, step } = bombWorld();
   let t = step(10000, 1000);
@@ -1354,6 +1420,8 @@ test('operators: Finder reveals enemies inside a 20 m scan, Detector alarm hides
   // diâmetro de 10 m: 6 m do centro já fica fora
   g.P.charges = 1; foes[1].pos.set(8, 0, 2); foes[1].revealUntil = 0; assert.ok(cx.finderScan(g.P, 2, 2, t + 3000)); cx.scanTick(t + 3800); assert.ok(!(foes[1].revealUntil > 0));
   // Detector
+  // Alarm timing/range is independent of map layout; use a clear floor here.
+  cx.sourceWorld=null;cx.boxes.splice(0,cx.boxes.length,g.floor);cx.ramps.length=0;
   g.P.op = 'detector'; g.P.charges = 1; g.P.pos.set(0, 0, 10); g.P.yaw = 0;
   foes[0].pos.set(30, 0, 30); foes[1].pos.set(-30, 0, -30);
   assert.ok(cx.detectorPlace(g.P, t)); const AL = vm.runInContext('ALARM', cx), a = AL.list[0];
@@ -1400,6 +1468,8 @@ test('Wingman loss bonus: $2,000 +$300 per consecutive loss up to $2,900, +$600 
 test('Doctor: left click heals the ally in the crosshair, right click heals yourself, +50 up to 100, a miss keeps the charge', () => {
   const { g, cx, step } = bombWorld();
   let t = step(10000, 11500);
+  // This ability fixture needs a clear shooting lane, independent of the map's authored walls.
+  cx.sourceWorld=null;cx.boxes.splice(0,cx.boxes.length,g.floor);cx.ramps.length=0;
   const ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team);
   g.P.op = 'doctor'; g.P.charges = 1; g.P.hp = 100;
   g.P.pos.set(0, 0, 10); g.P.yaw = 0; g.P.pitch = 0; ally.alive = true; ally.hp = 30; ally.pos.set(0, 0, 0);

@@ -647,6 +647,8 @@ button:disabled{opacity:.5;cursor:default}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="assets/maps/catalog.js"></script>
+<script src="assets/maps/runtime.js"></script>
 <script>
 (() => {
 'use strict';
@@ -930,7 +932,7 @@ function boxModel(list) {
 // Cada mapa é simétrico por rotação de 180° (B.pair espelha (x,z) em (-x,-z)), tem uma parede na frente de cada base
 // e uma cor própria. Rampas levam a lugares altos.
 const C = 1.2, WALL_H = 7, STEP_UP = 0.5;
-let AX = 16, AZ = 26, boxes = [], ramps = [], MAP = null, worldMesh = null;
+let AX = 16, AZ = 26, boxes = [], ramps = [], MAP = null, worldMesh = null, sourceWorld = null;
 const THEMES = {
   azul:    { floor: 0xeceff1, wall: 0x7fb6e0, shield: 0x6aa6d6, crate: 0xa8d8f5, crate2: 0x8cc6ee, plat: 0x94cbef, ramp: 0x9fd1f2 },
   amarelo: { floor: 0xf3f1ea, wall: 0xe3bd4f, shield: 0xd6ad3e, crate: 0xf6de86, crate2: 0xecd06a, plat: 0xefd679, ramp: 0xf2da80 },
@@ -1474,137 +1476,14 @@ function statue(B, x, z, y = 0, size = 1) {
   dR(B, x - .02 * s, y + 1.98 * s, z - .25 * s, x + .02 * s, y + 2.2 * s, z + .25 * s, 0xd9a93a);
 }
 
-// Guard (Praga, margem do rio junto à Ponte Carlos), montado com as áreas do mapa original: bombsite A no cais,
-// com as coberturas viradas para a ponte e para os arcos; torre na cabeceira, pit, lixeira, ladder hole, conector,
-// escada com meia parede e o spawn da SWAT recuado. Do lado dos Terroristas: restaurante, loja de vidro,
-// bicicletas, caminhão e a obra bloqueada. O lado norte fica 2,4 m acima do cais.
-MAPS.guard = {
-  credit: 'Inspirado em Guard (poLemin), mapa de Wingman da comunidade do CS:GO. Versão própria, feita por fãs.',
-  name: 'Guard', theme: 'praga', bomb: true, ax: 22, az: 26, spawn: { hx: 6, z0: 19, z1: 24 },
-  water: [[-22, -2, 22, 4]],
-  plant: { site: { x0: -1, z0: -8.6, x1: 13, z1: -2.6, lx: 10.5, lz: -6.2 }, t: [[-6, 22, 0], [-2.5, 23.8, 0], [1, 22, 0], [4.5, 23.8, 0], [-1, 20.5, 0]],
-    ct: [[10, -23, 3.6], [13, -21.5, 3.6], [16, -23.5, 3.6], [12, -24.8, 3.6], [15.5, -20.8, 3.6]] },
-  areas: [['Spawn TR', -12, 17, 17, 26], ['Restaurante', -22, 4, -9, 17], ['Loja', -3, 8, 9, 17], ['Bicicletas', 9, 4, 22, 8], ['Caminhão', 9, 8, 17, 17], ['Obra', 17, 8, 22, 17],
-    ['Ponte', -9, -9, -3, 8, 1.8], ['Arcos', -9, -9, -3, -2], ['Rio', -22, -2, 22, 4], ['Cais', -22, -9, -9, -2], ['Bombsite A', -3, -9, 13, -2], ['Escada', 13, -9, 22, -2],
-    ['Torre', -11, -15, -1, -9], ['Pit', -1, -15, 4, -9], ['Lixeira', -15, -18, -11, -9], ['Ladder hole', -15, -14, -12, -9], ['Varanda', 4, -15, 15, -9], ['Conector', -1, -26, 8, -15], ['Spawn CT', 8, -26, 22, -15], ['Cidade velha', -22, -26, -1, -15]],
-  build(B, K) {
-    const STONE = 0xa79b86, DARK = 0x5d564c, UP = 2.4;
-    const block = (x0, z0, x1, z1, h, col, roof) => { dmRect(B, x0, z0, x1, z1, h, col, UP); dR(B, x0 - .12, UP + h - .5, z0 - .12, x1 + .12, UP + h - .3, z1 + .12, 0xf3ead6); propRoof(B, x0, z0, x1, z1, UP + h, roof || 0xb5482f); };
-    // Lado norte elevado (cidade velha), com os recortes do pit e do ladder hole
-    dmRect(B, -22, -26, -14.2, -9, UP, K.plat); dmRect(B, -14.2, -26, -12.8, -13, UP, K.plat); dmRect(B, -12.8, -26, -1, -9, UP, K.plat);
-    dmRect(B, -1, -26, 4, -14, UP, K.plat); dmRect(B, -1, -14, 4, -9, 1.2, K.plat); dmRect(B, 4, -26, 22, -9, UP, K.plat);
-    dmStairs(B, 1.5, -14, 0, 1, 3, UP, K.ramp);                                       // degraus da rua para dentro do pit
-    dmStairs(B, -13.5, -13, 0, 1, 1.4, UP, 0x6b5b45);                               // ladder hole: passagem estreita até o cais
-    dmStairs(B, 16.5, -9, 0, 1, 3, UP, K.ramp); B.solid([14.6, 0, -9], [15, 1, -5], STONE); // escada com meia parede
-    B.solid([4, UP, -9.3], [14.6, UP + 1, -9], STONE);                               // varanda sobre o site
-    // Rio: água rasa com reflexos; cais dos dois lados
-    dR(B, -22, 0, -2, 22, .035, 4, 0x3f6f88);
-    for (let x = -21; x < 22; x += 3.1) for (const z of [-1.2, 1, 3]) dR(B, x, .035, z, x + 1.4, .04, z + .12, 0x7fb0c8);
-    dR(B, -22, 0, -2.2, 22, .3, -2, 0x8a8170); dR(B, -22, 0, 4, 22, .3, 4.2, 0x8a8170);
-    // Ponte Carlos: tabuleiro elevado, parapeitos com estátuas e lampiões, pilares no rio (passa-se pelo arco do meio)
-    B.deck([-9, 2.0, -9], [-3, UP, 8], STONE);
-    for (const x of [-9, -3.25]) B.solid([x, UP, -9], [x + .25, 3.25, 8], STONE);
-    for (const z of [-6.5, -2.5, 1.5, 5.5]) for (const x of [-8.87, -3.13]) statue(B, x, z, 3.25, .9);
-    for (const z of [-4.5, -.5, 3.5]) for (const x of [-8.87, -3.13]) { dR(B, x - .05, 3.25, z - .05, x + .05, 5.2, z + .05, 0x2c2c2c); dR(B, x - .16, 5.2, z - .16, x + .16, 5.55, z + .16, 0xf2d27a); }
-    B.solid([-9, 0, .4], [-7.6, 2.0, 1.6], STONE); B.solid([-4.4, 0, .4], [-3, 2.0, 1.6], STONE);
-    for (const x of [-9, -3.6]) dR(B, x, 0, -8.9, x + .6, 2.0, -8.3, STONE);             // arcos no cais
-    dmStairs(B, -6, 8, 0, 1, 6, UP, K.ramp);
-    // Torre da ponte (Old Town Bridge Tower): pilares, arco, telhado de ardósia e torreões
-    B.solid([-11, UP, -14], [-9, 13, -9.5], DARK); B.solid([-3, UP, -14], [-1, 13, -9.5], DARK); B.solid([-9, 5.6, -14], [-3, 13, -9.5], DARK);
-    for (let i = 0; i < 4; i++) { const q = 5.3 - i * 1.25; dR(B, -6 - q, 13 + i * 1.1, -11.75 - q * .45, -6 + q, 14.1 + i * 1.1, -11.75 + q * .45, 0x3a3e44); }
-    dR(B, -6.12, 17.4, -11.87, -5.88, 20, -11.63, 0x3a3e44); dR(B, -6.3, 19.4, -11.8, -5.7, 19.5, -11.7, 0xd9a93a);
-    for (const x of [-10.6, -1.4]) { dR(B, x - .45, 13, -10.4, x + .45, 15.6, -9.5, DARK); dR(B, x - .2, 15.6, -10.15, x + .2, 17.4, -9.75, 0x3a3e44); }
-    propPanel(B, 'z+', -9.5, -7.6, -4.4, 8.4, 10.8, 0x8d7a4a, .06); propPanel(B, 'z+', -9.5, -9, -3, 5.6, 6.0, 0x7a6f60, .08);
-    B.box(-.2, -15.2, C, C, C, K.crate, UP); B.box(1.1, -15.2, C, C, C, K.crate2, UP);    // caixas ao lado da torre
-    B.box(-12, -15.6, 1.6, 1, 1.2, 0x3f5a3a, UP); dR(B, -12.82, UP + 1.2, -16.12, -11.18, UP + 1.3, -15.08, 0x2c3a28); // lixeira
-    // Cidade velha e SWAT (todos sobre o nível elevado)
-    block(-22, -26, -15, -17, 7, 0xe8c98a); block(-12.8, -26, -1, -20, 7.5, 0xeee3c8, 0x8b3a2a); block(-1, -26, 2, -16, 6.5, 0xe4b5a5); block(5, -26, 8, -16, 6.5, 0xc9d8b5);
-    dR(B, 2, UP + 3.4, -26, 5, UP + 3.6, -16, 0xd8cdb8);                                // teto do conector
-    block(18, -26, 22, -12, 7, 0xe4b5a5); block(4, -14, 9, -12, 4, 0xe8c98a);
-    B.box(11, -17.5, 2 * C, C, C, K.crate, UP); B.box(-17, -13, C, C, 2 * C, K.crate2, UP);
-    for (let i = 0; i < 3; i++) { const q = .8 - i * .22; dR(B, -7 - q, UP + 5 - q, -19.98, -7 + q, UP + 5 + q, -19.92 + i * .02, [0x2f4f7a, 0xd9a93a, 0x2f4f7a][i]); } // relógio
-    // Bombsite A no cais: coberturas viradas para a ponte e para os arcos, barco atracado
-    siteMark(B, this.plant.site);
-    B.box(2, -6.5, 2 * C, C, C, K.crate); B.box(2, -4.2, C, C, 2 * C, K.crate2); B.box(7, -7.6, 2.4, 1, 1.05, 0x8a5a33);
-    propAwning(B, 5.8, -8.1, 8.2, -7.1, 2.2, [0xb63a2e, 0xf3ead6], 'x'); B.box(10.5, -3.6, C, C, C, K.crate); B.box(11.8, -7.8, C, C, 2 * C, K.crate2);
-    dR(B, 3, 0, -.6, 9, .55, 1.6, 0x6b4a2e); dR(B, 3.6, .55, -.3, 8.4, .65, 1.3, 0x8a6a45); dR(B, 4.2, .65, .1, 5.4, 1.4, .9, 0xf3ead6); // barco
-    // Margem sul (Terroristas): restaurante, loja de vidro, bicicletas, caminhão, obra e o spawn entre casas
-    baroque(B, -22, 8, -12, 16, 7, 0xe4b5a5);
-    for (const [x, z] of [[-11, 9.5], [-10, 11.2]]) { dmRect(B, x - .45, z - .45, x + .45, z + .45, .75, 0x6b4a2e); dR(B, x - .05, .75, z - .05, x + .05, 2.2, z + .05, 0x2c2c2c); dR(B, x - .9, 2.2, z - .9, x + .9, 2.35, z + .9, 0xb63a2e); }
-    baroque(B, 0, 9, 9, 16, 6.5, 0xeee3c8);
-    for (let x = .6; x < 8.6; x += 2) propPanel(B, 'z-', 9, x, x + 1.6, .4, 2.6, 0x9fd0e0, .05);  // vitrine da loja
-    for (let x = 10; x < 14; x += 1.2) { B.box(x, 6.4, .25, 1.1, .9, 0x2c2c2c); dR(B, x - .05, .4, 5.9, x + .05, .55, 6.9, 0x2f6aa8); }  // bicicletas
-    B.box(12, 13.5, 3, 5, 2.6, 0x7a7d70); dR(B, 10.45, .6, 10.9, 13.55, 2.75, 16.1, 0x4f6a3a);    // caminhão com lona
-    B.solid([17, 0, 8], [22, 2.2, 8.4], 0xd8a23a); B.solid([17, 0, 8], [17.4, 2.2, 16], 0xd8a23a); // obra bloqueada
-    for (let x = 17.5; x < 22; x += 1.4) dR(B, x, 2.2, 8.1, x + .7, 2.3, 8.3, 0x1c1c1c);
-    dR(B, 18, 0, 9, 21.6, 6, 15.6, 0x9aa0a6); for (let y = 1.5; y < 6; y += 1.5) dR(B, 17.9, y, 8.9, 21.7, y + .12, 15.7, 0x6b6f73);
-    baroque(B, -22, 17, -12, 26, 7, 0xc9d8b5); baroque(B, 17, 16, 22, 26, 7.5, 0xe8c98a); baroque(B, 9, 18.5, 17, 26, 6, 0xe4b5a5);
-    B.box(-8, 17.6, C, C, C, K.crate2); B.box(-1, 17.4, 2 * C, C, C, K.crate); statue(B, 6, 21, 0, 1);
-  }
-};
+// Geometry, routes, heights and spawn positions come from the supplied Source BSP files.
+for (const id of ['guard','elysion']) {
+  const data=SOURCE_MAP_CATALOG[id];
+  MAPS[id]={name:data.name,theme:id==='guard'?'praga':'elysion',bomb:true,source:id,ax:data.ax,az:data.az,
+    credit:id==='guard'?'Guard · poLemin · port de Alex Road':'Elysion · Wingman A · Big_SG21 · port de Alex Road',
+    spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
+}
 
-// Elysion (39º andar), montado com as áreas do mapa original: spawn TR com a mesa da recepção, meio em dois
-// níveis com as paredes de cascata, área externa (terraço com guarda-corpo de vidro e duas portas para o A),
-// salão principal com obras de arte e o bombsite A com a parede central, o letreiro ELYSION e o guarda-corpo das
-// janelas; a SWAT atrás de uma parede de vidro com o relógio.
-MAPS.elysion = {
-  credit: 'Inspirado em Elysion (Big_SG21), mapa de Wingman da comunidade do CS:GO. Versão própria, feita por fãs.',
-  name: 'Elysion', theme: 'elysion', bomb: true, ax: 20, az: 24, spawn: { hx: 6, z0: 19, z1: 23 },
-  plant: { site: { x0: -11, z0: -22.5, x1: 1, z1: -12, lx: -2, lz: -20.5 }, t: [[-5, 20.5, 0], [-2, 22.3, 0], [2, 20.5, 0], [5, 22.3, 0], [0, 23, 0]],
-    ct: [[13, -21.5, 3.9], [16, -19.5, 3.9], [11.5, -18.5, 3.9], [17, -22.5, 3.9], [14, -23, 3.9]] },
-  areas: [['Spawn TR', -12, 15, 20, 24], ['Área externa', -20, -24, -13, 24], ['Meio', -12, -6, 12, 15], ['Bombsite A', -13, -24, 2, -11], ['Salão', 2, -14, 20, -6],
-    ['Salão', -12, -11, 2, -6], ['Spawn CT', 9, -24, 20, -14], ['Escritórios', 12, -6, 20, 15]],
-  build(B, K) {
-    const WALL = 0xe9ecef, GLASS = 0x8fb8cf, WOOD = 0xb08a5a, H = 3.6, UP = 2.4;
-    const room = (x0, z0, x1, z1, col = WALL) => dmRect(B, x0, z0, x1, z1, H, col);
-    // Fachada de vidro com montantes e a cidade lá fora
-    for (let x = -19; x < 20; x += 2) { propPanel(B, 'z+', -24, x, x + .12, 0, 7, 0x4d5c69, .05); propPanel(B, 'z-', 24, x, x + .12, 0, 7, 0x4d5c69, .05); }
-    for (let z = -23; z < 24; z += 2) { propPanel(B, 'x+', -20, z, z + .12, 0, 7, 0x4d5c69, .05); propPanel(B, 'x-', 20, z, z + .12, 0, 7, 0x4d5c69, .05); }
-    for (const [x, z, w, d, h, c] of [[-32, -40, 10, 10, 46, 0x6f8aa0], [-12, -48, 14, 9, 60, 0x587489], [10, -44, 9, 11, 38, 0x7e98ad], [34, -30, 10, 12, 52, 0x627e94],
-      [36, 2, 9, 9, 30, 0x87a0b3], [33, 30, 11, 10, 44, 0x5f7a8f], [-35, 8, 10, 12, 36, 0x7b93a7], [-33, 34, 12, 9, 55, 0x6a8499], [4, 42, 12, 10, 34, 0x839cb0]])
-      { dR(B, x - w / 2, -20, z - d / 2, x + w / 2, h - 20, z + d / 2, c); for (let y = -16; y < h - 22; y += 3) dR(B, x - w / 2 - .05, y, z - d / 2 - .05, x + w / 2 + .05, y + .5, z + d / 2 + .05, 0xc8dbe8); }
-    // Spawn TR: recepção dos elevadores com a mesa e a luz em cima
-    for (let x = -9; x <= 7; x += 4) { propPanel(B, 'z-', 24, x, x + 2, 0, 2.6, 0xa9b2ba, .06); dR(B, x + .98, 0, 23.9, x + 1.02, 2.6, 23.95, 0x4d5c69); }
-    B.box(0, 18, 4, 1, 1.1, 0xd8dde1); dR(B, -2, 1.1, 17.5, 2, 1.18, 18.5, 0x2c3540); dR(B, -1.5, 3.3, 17.7, 1.5, 3.45, 18.3, 0xfff4c8);
-    room(-13, 17.5, -12, 24); room(12, 15, 20, 24, 0xdfe3e6);
-    // Divisória entre o interior e a área externa (x = -12), com a porta do spawn e as duas portas do A
-    room(-13, -24, -12, -16.5); room(-13, -13.5, -12, -10.5); room(-13, -7.5, -12, 15);
-    for (const z of [-16.5, -13.5, -10.5, -7.5]) dR(B, -13.05, 0, z - .06, -11.95, 2.8, z + .06, 0x4d5c69);
-    // Área externa: terraço com guarda-corpo de vidro, piso de deck, floreiras e cobertura parcial
-    dR(B, -20, 0, -24, -13, .02, 24, 0xa38866);
-    for (let z = -23; z < 24; z += 1.2) dR(B, -20, .02, z, -13, .025, z + .06, 0x8a7050);
-    for (const z of [-20, -4, 6]) { B.box(-15, z, 1.2, 2.4, .7, 0x6f7b86); dR(B, -15.5, .7, z - 1.1, -14.5, 1.6, z + 1.1, 0x4f8a43); }
-    dR(B, -20, 4.2, -2, -13, 4.4, 24, 0xd8dde1);
-    // Meio em dois níveis: piso de baixo, passarela alta no leste com escada e as paredes de cascata
-    room(-12, 12.5, -4, 15); room(4, 12.5, 12, 15);
-    dmRect(B, 5, -6, 12, 6, UP, 0xb7c0c8); dmStairs(B, 8.5, 6, 0, 1, 3, UP, K.ramp); dR(B, 4.95, UP, -6, 5.05, UP + 1, 6, GLASS);
-    for (const [x0, x1] of [[-11.9, -11.85]]) for (let z = -5; z < 11; z += .5) dR(B, x0, .3, z, x1, 3.4, z + .3, (Math.round(z * 2) & 1) ? 0x9fd8f0 : 0x6fb8e0);
-    for (let x = -11.5; x < -4.5; x += .5) dR(B, x, .3, 12.42, x + .3, 3.4, 12.47, (Math.round(x * 2) & 1) ? 0x9fd8f0 : 0x6fb8e0);
-    B.box(-6, 3, 2 * C, C, C, K.crate2); B.box(1, -2, C, C, 2 * C, K.crate); B.box(-8.5, 9, C, 2 * C, C, K.crate);
-    // Escritórios (leste): mesas e divisórias
-    room(12, -6, 13, 12.5);
-    for (const [x, z] of [[15.5, 8], [15.5, 3], [15.5, -2]]) { B.box(x, z, 2.2, 1.1, .8, WOOD); dR(B, x - 1.1, .8, z - .05, x + 1.1, 1.35, z + .05, 0x5f7f99); }
-    // Salão principal: obras de arte, quadro, sofás
-    room(-12, -6.5, -4, -6); room(4, -6.5, 12, -6);
-    for (const [z0, z1, c] of [[-13, -10, 0xd06a3a], [-9.5, -7.5, 0x3a6ad0]]) propPanel(B, 'x-', 20, z0, z1, 1, 2.8, c, .06);
-    propPanel(B, 'z+', -6.5, 5, 9, .8, 2.8, 0x2f3a45, .05); propPanel(B, 'z+', -6.5, 5.3, 8.7, 1.1, 2.5, 0xd9a93a, .06);
-    for (const [x, z] of [[6, -10], [10, -11.5]]) { B.box(x, z, 2.2, .9, .7, 0x2f3a45); dR(B, x - 1.1, .7, z + .3, x + 1.1, 1.2, z + .45, 0x2f3a45); }
-    // Bombsite A: parede central, letreiro ELYSION, guarda-corpo das janelas e a cascata da parede norte
-    siteMark(B, this.plant.site);
-    B.solid([-6, 0, -18.2], [-4.4, 2.6, -15.6], 0xd8dde1); dR(B, -6.05, 2.6, -18.25, -4.35, 2.7, -15.55, 0x2c3540);
-    signText(B, 'ELYSION', -5, 7.2, -24 + .06, .3, 0x2c3540);
-    B.solid([-12, 0, -23.7], [2, .95, -23.5], GLASS); dR(B, -12, .95, -23.75, 2, 1.02, -23.45, 0x4d5c69);
-    B.box(-9.5, -14, C, C, C, K.crate2); B.box(-1, -21, 2 * C, C, C, K.crate); B.box(-9.8, -21.5, C, C, 2 * C, K.crate); B.box(0, -13.2, C, C, C, K.crate2);
-    for (const [x, z] of [[-11, -12], [1.5, -16.5]]) { B.box(x, z, 1.1, 1.1, .9, 0x7d8b97); dR(B, x - .7, .9, z - .7, x + .7, 2.6, z + .7, 0x4f8a43); }
-    // Spawn CT: parede de vidro com porta para o salão e o relógio
-    B.solid([9, 0, -24], [9.2, H, -18.5], GLASS); B.solid([9, 0, -15.5], [9.2, H, -14], GLASS); dR(B, 9, H, -24, 20, H + .15, -14, 0xf4f6f7);
-    room(9, -14.2, 13, -14); room(16, -14.2, 20, -14);
-    for (let i = 0; i < 3; i++) { const q = .7 - i * .2; dR(B, 19.95 - i * .02, 2 - q, -19 - q, 20, 2 + q, -19 + q, [0x2c3540, 0xf3f6f8, 0x2c3540][i]); }
-    dR(B, 19.9, 1.95, -19.05, 19.93, 2.5, -18.95, 0x111111); B.box(16, -22.5, 2.4, 1, .8, WOOD);
-    // Forro sobre os ambientes internos (só visual)
-    for (const [x0, z0, x1, z1] of [[-12, 15, 12, 24], [12, -6, 20, 24], [-12, 12.5, 12, 15]]) dR(B, x0, H, z0, x1, H + .15, z1, 0xf4f6f7);
-  }
-};
 if (!MAPS[S.dmMap]?.dm) S.dmMap = 'deathmatch';
 MAPS.aimbotz = {
   name: 'Aimbotz', theme: 'azul', ax: 18, az: 14, practice: true,
@@ -1625,6 +1504,7 @@ function rampHeightAt(r, x, z) {
 function rampH(x, z) { let h = -Infinity; for (const r of ramps) { const v = rampHeightAt(r, x, z); if (v !== null && v > h) h = v; } return h; }
 function rampBlock(x, z, y) { for (const r of ramps) { const h = rampHeightAt(r, x, z); if (h !== null && y < h - STEP_UP && y + H_STAND > r.y0) return true; } return false; }
 function groundAt(x, z, belowDeck = false) {
+  if(sourceWorld)return typeof belowDeck==='number'?sourceWorld.ground(x,z,belowDeck):sourceWorld.spawnGround(x,z);
   let g = Math.max(0, rampH(x, z));
   for (const b of boxes) if (x >= b.min[0] && x <= b.max[0] && z >= b.min[2] && z <= b.max[2] && b.max[1] <= 4.5 && b.max[1] > g && !(belowDeck && b.deck)) g = b.max[1];
   return g;
@@ -1634,6 +1514,14 @@ function buildMap(id) {
   const def = MAPS[id] || MAPS.caixas, K = THEMES[def.theme];
   MAP = Object.assign({ id: MAPS[id] ? id : 'caixas' }, def);
   AX = def.ax; AZ = def.az; boxes = []; ramps = [];
+  sourceWorld=def.source?SourceMaps.get(def.source):null;
+  if(def.source){
+    if(!sourceWorld)throw new Error('Source map must be loaded before starting');
+    if(worldMesh){scene.remove(worldMesh);worldMesh.geometry.dispose();}
+    worldMesh=new THREE.Mesh(sourceWorld.geometry(THREE),[worldMat,sourceGlassMat]);scene.add(worldMesh);
+    try{clearDecals();BOT.wp=null;BOT.knowsUntil=0;}catch(e){}
+    return;
+  }
   const out = { p: [], n: [], c: [] };
   const solid = (a, b, hex, deck = false) => { addBoxTo(out, a, b, hex, false, a[1] <= 0); boxes.push({ min: a, max: b, deck }); };
   const mirrorBox = (a, b) => [[-b[0], a[1], -b[2]], [-a[0], b[1], -a[2]]];
@@ -1699,16 +1587,16 @@ function randSpawn(side) {
   return side ? [r2(-x), r2(-z), r2(yo)] : [r2(x), r2(z), r2(Math.PI + yo)];
 }
 function spawnPoint(side, spec) {
-  const s = (Array.isArray(spec) && spec.length === 3 && spec.every(fin)) ? spec : randSpawn(side);
+  const s = (Array.isArray(spec) && spec.length >= 3 && spec.length <= 4 && spec.every(fin)) ? spec : sourceWorld?MAP.plant[side?'ct':'t'][0]:randSpawn(side);
   const x = clamp(s[0], -AX + .5, AX - .5), z = clamp(s[1], -AZ + .5, AZ - .5);
-  return { x, z, y: groundAt(x, z), yaw: s[2] };
+  return { x, z, y: groundAt(x, z,fin(s[3])?s[3]:false), yaw: s[2] };
 }
 const SUN = 'normalize(vec3(0.5,1.0,0.35))';
 const worldMat = new THREE.ShaderMaterial({
   vertexColors: true, side: THREE.DoubleSide, extensions: { derivatives: true },
-  uniforms: { uFog: { value: new THREE.Color(SKY) } },
+  uniforms: { uFog: { value: new THREE.Color(SKY) },uAlpha:{value:1} },
   vertexShader: 'varying vec3 vC;varying vec3 vN;varying vec3 vW;void main(){vC=color;vN=normal;vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
-  fragmentShader: `uniform vec3 uFog;varying vec3 vC;varying vec3 vN;varying vec3 vW;
+  fragmentShader: `uniform vec3 uFog;uniform float uAlpha;varying vec3 vC;varying vec3 vN;varying vec3 vW;
 float grid(vec2 p){vec2 f=abs(fract(p-0.5)-0.5)/max(fwidth(p),vec2(1e-4));return 1.0-min(min(f.x,f.y),1.0);}
 void main(){vec3 n=normalize(vN);vec2 uv=abs(n.y)>0.5?vW.xz:(abs(n.x)>0.5?vW.zy:vW.xy);
 float g1=grid(uv*2.0);float g2=grid(uv*0.5);
@@ -1718,9 +1606,10 @@ if(abs(n.y)<0.5) l*=0.8+0.2*smoothstep(0.0,0.9,vW.y);
 vec3 col=vC*l;col*=1.0-g1*0.09;col*=1.0-g2*0.2;
 col=min(col,vec3(1.0));
 float d=length(vW-cameraPosition);col=mix(col,uFog,clamp((d-40.0)/80.0,0.0,0.3));
-gl_FragColor=vec4(col,1.0);}`,
+gl_FragColor=vec4(col,uAlpha);}`,
 });
-buildMap(S.mode === 'aimbotz' ? 'aimbotz' : S.mode === 'dm' ? S.dmMap : S.mode === 'bomb' ? (BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : S.map === 'rotacao' ? 'caixas' : S.map);
+const sourceGlassMat=worldMat.clone();sourceGlassMat.uniforms.uAlpha.value=.28;sourceGlassMat.transparent=true;sourceGlassMat.depthWrite=false;
+buildMap(S.mode === 'aimbotz' ? 'aimbotz' : S.mode === 'dm' ? S.dmMap : S.mode === 'bomb' ? 'caixas' : S.map === 'rotacao' ? 'caixas' : S.map);
 // céu em degradê, sempre centrado na câmera
 const skyGeo = new THREE.SphereGeometry(200, 24, 12);
 { const pos = skyGeo.attributes.position, cols = [], top = new THREE.Color(0x4fa3f2), hor = new THREE.Color(0xdcefff), c = new THREE.Color();
@@ -1733,7 +1622,7 @@ sky.renderOrder = -1; scene.add(sky);
 function overlap(x, y, z, h, b) {
   return x + RADIUS > b.min[0] && x - RADIUS < b.max[0] && z + RADIUS > b.min[2] && z - RADIUS < b.max[2] && y + h > b.min[1] && y < b.max[1];
 }
-function overlapAny(x, y, z, h) { for (const b of boxes) if (overlap(x, y, z, h, b)) return true; return false; }
+function overlapAny(x, y, z, h) { if(sourceWorld)return sourceWorld.overlap(x,y,z,h,RADIUS);for (const b of boxes) if (overlap(x, y, z, h, b)) return true; return false; }
 function rayBox(o, d, min, max, tmax) {
   let t0 = 0, t1 = tmax, ax = -1, sg = 0;
   for (let i = 0; i < 3; i++) {
@@ -1757,6 +1646,7 @@ function rayRamp(o, d, r, tmax) {
   return { t, n: den < 0 ? n : [-n[0], -n[1], -n[2]] };
 }
 function traceMap(o, d, tmax) {
+  if(sourceWorld)return sourceWorld.ray(o,d,tmax);
   let best = null;
   for (const b of boxes) { const h = rayBox(o, d, b.min, b.max, best ? best.t : tmax); if (h && h.ax >= 0 && (!best || h.t < best.t)) { const n = [0, 0, 0]; n[h.ax] = h.sg; best = { t: h.t, n }; } }
   for (const r of ramps) { const h = rayRamp(o, d, r, best ? best.t : tmax); if (h) best = h; }
@@ -1812,6 +1702,7 @@ function physics(e, wx, wz, maxS, jump, dt) {
     if (hs > BHOP_CAP) { e.vel.x *= BHOP_CAP / hs; e.vel.z *= BHOP_CAP / hs; }
   }
   e.vel.y -= GRAV * dt;
+  if(sourceWorld){if(e===P)sourceWorld.climb(e,wx,wz,jump,RADIUS);sourceWorld.move(e,dt,RADIUS,STEP_UP);return;}
   const p = e.pos, h = e.h;
   // degrau: no chão, sobe sozinho em bordas baixas (fim de rampa, beirada de plataforma)
   const canStep = (x, z, b) => e.onGround && b.max[1] - p.y > 0 && b.max[1] - p.y <= STEP_UP && !overlapAny(x, b.max[1] + 1e-3, z, h);
@@ -3325,13 +3216,14 @@ function dmNeighbours(nav,id,direction){
   return direction===0 ? (x>0?id-1:-1) : direction===1 ? (x<nav.w-1?id+1:-1) : direction===2 ? (z>0?id-nav.w:-1) : (z<nav.h-1?id+nav.w:-1);
 }
 // Uma grade de chão, com uma segunda altura nas células debaixo de passarelas.
-const navX = (nav,id) => nav.minX + (id % nav.w) * nav.step;
-const navZ = (nav,id) => nav.minZ + Math.floor((id % nav.plane) / nav.w) * nav.step;
+const navX = (nav,id) => nav.compact?nav.x[id]:nav.minX + (id % nav.w) * nav.step;
+const navZ = (nav,id) => nav.compact?nav.z[id]:nav.minZ + Math.floor((id % nav.plane) / nav.w) * nav.step;
 // Folga testada acima da altura de um degrau: escadas e beiradas baixas não bloqueiam a célula.
 const NAV_LIFT=.46;
 function navClear(x,y,z){return !overlapAny(x,y+NAV_LIFT,z,H_STAND-NAV_LIFT);}
 function navFree(x,y,z){return navClear(x,y,z)&&navClear(x-.12,y,z)&&navClear(x+.12,y,z)&&navClear(x,y,z-.12)&&navClear(x,y,z+.12);}
 function navStep(ax, az, y, bx, bz, layered, steps = 5) {
+  if(sourceWorld)return sourceWorld.navStep(ax,az,y,bx,bz,steps);
   for (let i = 1; i <= steps; i++) {
     const k = i / steps, x = ax + (bx - ax) * k, z = az + (bz - az) * k;
     let nextY = groundAt(x, z);
@@ -3342,6 +3234,7 @@ function navStep(ax, az, y, bx, bz, layered, steps = 5) {
   return y;
 }
 function dmBuildNav(spawnList){
+  if(sourceWorld){DM.nav=sourceWorld.buildNav(AX,AZ);DM.nav.map=MAP;DM.spawnPoints=[];DM.spawnVis=[];DM.lastSpawnTimes=[];return;}
   const step=1.4,minX=-AX+1,minZ=-AZ+1,w=Math.floor((AX*2-2)/step)+1,h=Math.floor((AZ*2-2)/step)+1;
   const plane = w * h, layered = boxes.some(b => b.deck), n = layered ? 2 * plane : plane;
   const nav={map:MAP,step,minX,minZ,w,h,plane,layered,open:new Uint8Array(n),links:new Int32Array(n*4).fill(-1),height:new Float32Array(n),seen:new Int32Array(n),parent:new Int32Array(n),queue:new Int32Array(n),stamp:0,walk:[]};
@@ -3395,6 +3288,7 @@ function dmSpawnYaw(p,others){
   return best;
 }
 function dmCell(x,z,y=groundAt(x,z)){
+  if(sourceWorld)return sourceWorld.cell(DM.nav,x,z,y);
   const n=DM.nav,cx=clamp(Math.round((x-n.minX)/n.step),0,n.w-1),cz=clamp(Math.round((z-n.minZ)/n.step),0,n.h-1),id=cz*n.w+cx;
   const layer = cell => {
     const lower = cell + n.plane;
@@ -3975,6 +3869,7 @@ function nadeGfx() {
 }
 // Ponto encostado numa caixa sólida (com folga do raio da granada) ou abaixo da superfície de uma rampa.
 function nadeBlocked(x, y, z) {
+  if(sourceWorld)return sourceWorld.overlap(x,y-.04,z,.08,.04,2);
   for (const b of boxes) if (x > b.min[0] - .04 && x < b.max[0] + .04 && y > b.min[1] - .04 && y < b.max[1] + .04 && z > b.min[2] - .04 && z < b.max[2] + .04) return true;
   return y < rampH(x, z);
 }
@@ -4236,7 +4131,7 @@ function teamApplyRound(d) {
   if ((d.ph === 'freeze' || d.ph === 'live') && ARENA.spawnKey !== key) {
     ARENA.spawnKey = key; clearDecals(); nadesClear(); P.blindUntil = 0;
     for (const e of DM.actors) {
-      const spec = Array.isArray(sd[e.id]) && sd[e.id].length === 3 && sd[e.id].every(fin) ? sd[e.id] : randSpawn(e.team);
+      const spec = Array.isArray(sd[e.id]) && sd[e.id].length >= 3 && sd[e.id].length <= 4 && sd[e.id].every(fin) ? sd[e.id] : randSpawn(e.team);
       if (e === P) { spawnSelf(0, spec); P.safeUntil = 0; }
       else {
         const sp = spawnPoint(0, spec);
@@ -4255,7 +4150,7 @@ function bombBanner(d) {
   if (d.ph === 'freeze') {
     if (ARENA.halftime) banner('Troca de lado', 'Agora você é ' + SIDE_NAMES[side] + ' · ' + a + ' a ' + b, '', 3200);
     else if (d.r === 1 && MAP.credit) banner('Rodada 1 · ' + SIDE_NAMES[side], MAP.credit, '', 3600);
-    else banner('Rodada ' + d.r + ' · ' + SIDE_NAMES[side], side === 't' ? 'Plante a bomba no bombsite A · B abre a loja' : 'Defenda o bombsite A · B abre a loja', '', 2800);
+    else {const sites=MAP.plant.sites?.length>1?'os bombsites A e B':'o bombsite A';banner('Rodada '+d.r+' · '+SIDE_NAMES[side],(side==='t'?'Plante a bomba em ':'Defenda ')+sites+' · B abre a loja','',2800);}
 
   } else if (d.ph === 'live') banner('Valendo', BOMB.carrier === G.me ? 'Você está com a bomba (tecla 5)' : '', '', 1100);
   else if (d.ph === 'end') {
@@ -4335,7 +4230,8 @@ const SIDE_COLORS = { t: 0xd9822b, ct: 0x3e6fb0 }, SIDE_NAMES = { t: 'Terrorista
 const bombOn = () => G.mode === 'team' && ARENA.bomb;
 const sideOf = e => e && e.team === BOMB.tTeam ? 't' : 'ct';
 const killReward = w => W[w]?.melee ? 1500 : w === 'he' ? 300 : w === 'sniper' ? 100 : w === 'ump' ? 600 : w === 'bucky' ? 900 : 300;
-function bombInSite(x, z) { const s = MAP.plant && MAP.plant.site; return !!s && x >= s.x0 && x <= s.x1 && z >= s.z0 && z <= s.z1; }
+function bombSiteAt(x,z,y) { return (MAP.plant?.sites||[MAP.plant?.site]).find(s=>s&&x>=s.x0&&x<=s.x1&&z>=s.z0&&z<=s.z1&&(!sourceWorld||!fin(y)||y+H_STAND>=s.y0&&y<=s.y1+.15)); }
+function bombInSite(x,z,y) { return !!bombSiteAt(x,z,y); }
 function bombResetGear(e) { e.inv = { primary: null, secondary: 'usps', armor: 0, helmet: false, kit: false }; e.nades = { he: 0, flash: 0, smoke: 0 }; }
 // Inventário em ordem de teclas: 1 primária, 2 pistola, 3 faca, 4 granadas, 5 bomba.
 function bombOrder(e) {
@@ -4440,7 +4336,7 @@ function bombNextRound(t) {
   ARENA.sd = {};
   for (const side of ['t', 'ct']) {
     const team = side === 't' ? BOMB.tTeam : 1 - BOMB.tTeam, list = MAP.plant[side].slice().sort(() => Math.random() - .5); let i = 0;
-    for (const e of DM.actors) if (e.team === team) { const [x, z, yaw] = list[i++ % list.length]; ARENA.sd[e.id] = [r2(x + (Math.random() - .5) * .6), r2(z + (Math.random() - .5) * .6), r2(yaw + (Math.random() - .5) * .3)]; }
+    for (const e of DM.actors) if (e.team === team) { const spot=list[i++ % list.length],[x,z,yaw]=spot;ARENA.sd[e.id]=sourceWorld?spot.slice():[r2(x+(Math.random()-.5)*.6),r2(z+(Math.random()-.5)*.6),r2(yaw+(Math.random()-.5)*.3)]; }
   }
   const ts = DM.actors.filter(e => e.team === BOMB.tTeam); BOMB.carrier = ts.length ? ts[Math.floor(Math.random() * ts.length)].id : null;
   teamPublish(t);
@@ -4476,8 +4372,8 @@ function bombCheck(t) {
   else if (!tAlive && !BOMB.planted) bombEndRound(t, 1 - BOMB.tTeam, 'kill');
 }
 function bombPlant(e, t) {
-  const s = MAP.plant.site;
-  BOMB.planted = { x: clamp(e.pos.x, s.x0 + .3, s.x1 - .3), y: groundAt(e.pos.x, e.pos.z), z: clamp(e.pos.z, s.z0 + .3, s.z1 - .3), t };
+  const s = bombSiteAt(e.pos.x,e.pos.z,e.pos.y)||MAP.plant.site;
+  BOMB.planted = { x: clamp(e.pos.x, s.x0 + .3, s.x1 - .3), y: groundAt(e.pos.x, e.pos.z,e.pos.y), z: clamp(e.pos.z, s.z0 + .3, s.z1 - .3), t,site:s.name||'A' };
   BOMB.plantedBy = e.id; BOMB.carrier = null; BOMB.beepAt = t; ARENA.roundEnd = t + BOMB.bombMs; bombAddMoney(e, BOMB.plantMe); e.plantUntil = 0;
   if (e === P) { ORDER.splice(ORDER.indexOf('c4'), 1); if (P.weapon === 'c4') selectWeapon(P.lastW && ORDER.includes(P.lastW) ? P.lastW : ORDER[0]); }
   banner('Bomba plantada', '40 segundos · ' + (sideOf(P) === 't' ? 'defendam a bomba' : 'desarmem a bomba (E)'), sideOf(P) === 't' ? 'win' : 'lose', 2600);
@@ -4505,7 +4401,7 @@ function bombExplode(t) {
 function bombOnDeath(victim, t) {
   if (!bombOn()) return;
   victim.plantUntil = victim.defuseUntil = 0;
-  if (BOMB.carrier === victim.id) { BOMB.carrier = null; BOMB.dropped = { x: victim.pos.x, y: groundAt(victim.pos.x, victim.pos.z), z: victim.pos.z }; if (victim === P) { const i = ORDER.indexOf('c4'); if (i >= 0) ORDER.splice(i, 1); } }
+  if (BOMB.carrier === victim.id) { BOMB.carrier = null; BOMB.dropped = { x: victim.pos.x, y: groundAt(victim.pos.x, victim.pos.z,victim.pos.y), z: victim.pos.z }; if (victim === P) { const i = ORDER.indexOf('c4'); if (i >= 0) ORDER.splice(i, 1); } }
 }
 function bombPickup(t) {
   const d = BOMB.dropped; if (!d || BOMB.planted) return;
@@ -4517,7 +4413,7 @@ function bombPickup(t) {
 function bombPlayerAction(dt, t) {
   if (!bombOn() || !P.alive || DM.phase !== 'live') { P.plantUntil = P.defuseUntil = 0; return; }
   const hold = locked && (K('KeyE') || (P.weapon === 'c4' && P.m1)), still = P.onGround && Math.hypot(P.vel.x, P.vel.z) < .6;
-  if (BOMB.carrier === P.id && !BOMB.planted && bombInSite(P.pos.x, P.pos.z) && hold && still) {
+  if (BOMB.carrier === P.id && !BOMB.planted && bombInSite(P.pos.x, P.pos.z,P.pos.y) && hold && still) {
     if (!P.plantUntil) { P.plantUntil = t + BOMB.plantMs; P.actionMs = BOMB.plantMs; AU.arm && AU.arm(); }
     if (t >= P.plantUntil) bombPlant(P, t);
   } else P.plantUntil = 0;
@@ -4541,7 +4437,7 @@ function bombSlotKey(code) {
 // com a bomba plantada, a SWAT vai desarmar e os Terroristas guardam a bomba; bomba no chão: o Terrorista mais perto busca.
 function bombRand(cx, cz, r) { const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * r; return [cx + Math.cos(a) * d, cz + Math.sin(a) * d]; }
 function bombGoalCell(b, t) {
-  const s = MAP.plant.site, side = sideOf(b), cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2, cell = (x, z) => dmCell(x, z);
+  const sites=MAP.plant.sites||[MAP.plant.site],s=sites[ARENA.r%sites.length],side=sideOf(b),cx=(s.x0+s.x1)/2,cz=(s.z0+s.z1)/2,cell=(x,z)=>dmCell(x,z);
   const p = BOMB.planted;
   if (p && !p.defused) {
     if (side === 'ct') return cell(p.x, p.z);
@@ -4571,7 +4467,7 @@ function botThrow(b, type, to, t) {
 }
 // Ações dos bots no modo bomba: granadas, pegar a bomba, plantar, desarmar.
 function bombBotsAct(dt, t) {
-  const s = MAP.plant.site, cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2;
+  const sites=MAP.plant.sites||[MAP.plant.site],s=sites[ARENA.r%sites.length],cx=(s.x0+s.x1)/2,cz=(s.z0+s.z1)/2;
   for (const b of DM.bots) {
     if (!b.alive) continue;
     const side = sideOf(b), dSite = Math.hypot(b.pos.x - cx, b.pos.z - cz);
@@ -4587,7 +4483,7 @@ function bombBotsAct(dt, t) {
     }
     if (DM.phase !== 'live') continue;
     // Plantar: portador no site, sem inimigo à vista.
-    if (side === 't' && BOMB.carrier === b.id && !BOMB.planted && bombInSite(b.pos.x, b.pos.z) && !b.seen && b.onGround) {
+    if (side === 't' && BOMB.carrier === b.id && !BOMB.planted && bombInSite(b.pos.x, b.pos.z,b.pos.y) && !b.seen && b.onGround) {
       const spot = b.plantSpot, close = !spot || Math.hypot(b.pos.x - spot[0], b.pos.z - spot[1]) < 2.2;
       if (close) { if (!b.plantUntil) { b.plantUntil = t + BOMB.plantMs; b.holdAt = b.pos.clone ? b.pos.clone() : new V3(b.pos.x, b.pos.y, b.pos.z); } }
     } else if (b.plantUntil && b.seen) b.plantUntil = 0;
@@ -4753,7 +4649,7 @@ function scanTick(t) {
 function detectorPlace(e, t) {
   if (e.op !== 'detector' || !(e.charges > 0) || !e.alive || !(DM.phase === 'live' || DM.phase === 'freeze')) return false;
   const f = dirFrom(e === P ? P.yaw : e.yaw, 0), eye = [e.pos.x, e.pos.y + .5, e.pos.z], hit = traceMap(eye, f, 2.5), d = hit ? Math.max(.4, hit.t - .35) : 2.5;
-  const x = e.pos.x + f[0] * d, z = e.pos.z + f[2] * d, y = groundAt(x, z);
+  const x = e.pos.x + f[0] * d, z = e.pos.z + f[2] * d, y = groundAt(x, z,e.pos.y);
   if (Math.abs(y - e.pos.y) > 1.2) return false;
   for (const old of ALARM.list.filter(a => a.owner === e)) alarmDestroy(old, null, true);
   opSpend(e, t); ALARM.list.push({ id: 'al' + (ALARM.next++), owner: e, team: e.team, x, y, z, hp: ALARM.hp, armedAt: t + ALARM.armMs, tripAt: 0, mesh: null, box: null });
@@ -4810,7 +4706,7 @@ function alarmsRender(t) {
 }
 // Uso das habilidades pelos bots.
 function botsUseAbilities(t) {
-  const s = MAP.plant.site, cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2;
+  const sites=MAP.plant.sites||[MAP.plant.site],s=sites[ARENA.r%sites.length],cx=(s.x0+s.x1)/2,cz=(s.z0+s.z1)/2;
   for (const b of DM.bots) {
     // Brutus liga a couraça ao entrar numa troca de tiros (vendo o inimigo ou tomando tiro).
     if (b.op === 'brutus') { if (b.alive && b.charges > 0 && DM.phase === 'live' && (b.seen || t < (b.tagUntil || 0))) brutusArmor(b, t); continue; }
@@ -5308,7 +5204,7 @@ function updateHUD(dt, t) {
   if (bombOn() && !wait) {
     let msg = '';
     if (P.alive && bombCanBuy(P, t) && !SHOP.open) msg = 'B · loja · $' + P.money + ' · compra fecha em ' + Math.ceil(Math.max(0, BOMB.roundStart + BOMB.buyMs - t) / 1000) + ' s';
-    else if (P.alive && BOMB.carrier === G.me && DM.phase === 'live') msg = bombInSite(P.pos.x, P.pos.z) ? 'No bombsite · segure E (ou o clique com a C4) para plantar' : 'Você está com a bomba · leve até o bombsite A';
+    else if (P.alive && BOMB.carrier === G.me && DM.phase === 'live') msg = bombInSite(P.pos.x, P.pos.z,P.pos.y) ? 'No bombsite · segure E (ou o clique com a C4) para plantar' : 'Você está com a bomba · leve até '+(MAP.plant.sites?.length>1?'A ou B':'o bombsite A');
     else if (P.alive && sideOf(P) === 'ct' && BOMB.planted && !BOMB.planted.defused && DM.phase === 'live') msg = 'Bomba plantada · segure E perto dela para desarmar' + (P.inv && P.inv.kit ? ' (kit: 5 s)' : ' (10 s)');
     else if (P.alive && sideOf(P) === 't' && BOMB.dropped) msg = 'A bomba caiu · pegue passando por cima';
     if (msg) { setT(el.wait, msg); setH(el.wait, false); }
@@ -5553,13 +5449,13 @@ function drawMinimap(t) {
   const x = c.getContext('2d'), X = v => (v + AX) * sc, Z = v => (v + AZ) * sc;
   x.fillStyle = '#2a3238'; x.fillRect(0, 0, w, h);
   for (const [x0, z0, x1, z1] of MAP.water || []) { x.fillStyle = '#2f5d78'; x.fillRect(X(x0), Z(z0), (x1 - x0) * sc, (z1 - z0) * sc); }
+  if(sourceWorld){const nav=DM.nav;for(const id of nav.walk){x.fillStyle=nav.height[id]>2?'#647d87':'#a3adb0';x.fillRect(X(navX(nav,id)-nav.step*.5),Z(navZ(nav,id)-nav.step*.5),nav.step*sc+.5,nav.step*sc+.5);}}
   for (const b of boxes.slice().sort((a, c2) => a.max[1] - c2.max[1])) {
     if (b.min[1] < -.5 || b.max[1] - b.min[1] < .05) continue;
     const top = b.max[1]; x.fillStyle = top > 4 ? '#0d1215' : top > 2.2 ? '#46525c' : top > 1.3 ? '#56636d' : '#6b7883';
     x.fillRect(X(b.min[0]), Z(b.min[2]), (b.max[0] - b.min[0]) * sc, (b.max[2] - b.min[2]) * sc);
   }
-  const st = MAP.plant.site; x.strokeStyle = '#e2762c'; x.lineWidth = 2; x.strokeRect(X(st.x0), Z(st.z0), (st.x1 - st.x0) * sc, (st.z1 - st.z0) * sc);
-  x.fillStyle = '#e2762c'; x.font = 'bold 20px sans-serif'; x.fillText('A', X((st.x0 + st.x1) / 2) - 6, Z((st.z0 + st.z1) / 2) + 7);
+  for(const st of MAP.plant.sites||[MAP.plant.site]){x.strokeStyle='#e2762c';x.lineWidth=2;x.strokeRect(X(st.x0),Z(st.z0),(st.x1-st.x0)*sc,(st.z1-st.z0)*sc);x.fillStyle='#e2762c';x.font='bold 20px sans-serif';x.fillText(st.name||'A',X((st.x0+st.x1)/2)-6,Z((st.z0+st.z1)/2)+7);}
   for (const e of DM.actors) {
     if (!e.alive) continue;
     const mine = e.team === P.team; if (!mine) continue;
@@ -5715,12 +5611,20 @@ function resetSession(spawn = null) {
   el.feed.replaceChildren(); clearDecals(); nadesClear(); P.blindUntil = 0;
   spawnSelf(0, spawn);
 }
-function startSession(mode, opts = {}) {
+let sessionLoadId=0;
+async function startSession(mode, opts = {}) {
+  const loadId=++sessionLoadId;
+  const map = mode === 'aimbotz' ? 'aimbotz' : mode === 'team' && S.mode === 'bomb' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
+  if(MAPS[map].source){
+    const required=opts.online||S.bombMap==='rotacao'?BOMB_MAPS:[map];
+    if(required.some(id=>!SourceMaps.get(id)))toast('Preparando '+MAPS[map].name+'…');
+    try{await Promise.all(required.map(id=>SourceMaps.load(id)));}catch(error){toast('Não foi possível abrir o mapa. Recarregue e tente novamente.');return;}
+    if(loadId!==sessionLoadId)return;
+  }
   resetRoundAudio();
   S.name = $('inName').value;
   saveS();
   AU.init();dmStop();arenaNetStop();ARENA.net=false;sleeveMat.color.set(pcolHex(S.pcol));G.mode=null;$('dmResult').hidden=true;el.hud.classList.remove('dm-over');el.hud.classList.toggle('dm',mode==='dm');el.hud.classList.toggle('bomb',mode==='team'&&S.mode==='bomb');
-  const map = mode === 'aimbotz' ? 'aimbotz' : mode === 'team' && S.mode === 'bomb' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
   buildMap(map);resetSession(mode === 'aimbotz' ? AIMBOTZ_SPAWN : null);G.mode=mode;
   el.hud.hidden = false;
   if (xrayEnabled()) toast('Raio-X ativo');
@@ -5761,6 +5665,7 @@ function startSession(mode, opts = {}) {
   setTimeout(() => { if (G.mode) banner(mode === 'bot' ? 'Treino' : 'Sala ' + NET.code, 'Clique para atirar · 1 a 4 troca a arma · Esc abre o menu', '', 3200); }, 150);
 }
 function leaveSession() {
+  sessionLoadId++;
   resetRoundAudio();
   netStop();arenaNetStop();ARENA.net=false;closeBuy();dmStop();nadesClear();sleeveMat.color.set(pcolHex(S.pcol));G.mode = null; G.opp = null; H.st = null; oppGroup.visible = false;
   if (aimbotzBoard) aimbotzBoard.mesh.visible = false;
@@ -5791,8 +5696,8 @@ const MAP_CARD_DETAILS = {
   dust2: 'Long, Meio e Túneis B',
   dmdeposito: 'Contêineres, passarelas e mirante',
   dmborgo: 'Ruelas, igreja e sacadas',
-  guard: 'Inspirado em Guard, de poLemin',
-  elysion: 'Inspirado em Elysion, de Big_SG21',
+  guard: 'Traçado original de Guard · poLemin',
+  elysion: 'Wingman · bombsite A · Big_SG21',
 };
 function mountMapCards(group, ids) {
   for (const id of ids) {

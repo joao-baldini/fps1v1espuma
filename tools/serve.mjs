@@ -9,7 +9,8 @@ http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   const menuImage = /^\/assets\/menu\/(?:large\/)?[a-z0-9-]+\.webp$/.test(pathname);
   const audio = /^\/assets\/audio\/[a-z0-9-]+\.mp3$/.test(pathname);
-  const file = menuImage || audio ? resolve(root, pathname.slice(1))
+  const mapScript = /^\/assets\/maps\/(?:runtime|catalog|guard|elysion)\.js$/.test(pathname);
+  const file = menuImage || audio || mapScript ? resolve(root, pathname.slice(1))
     : pathname === '/reference.mp4' && reference ? resolve(reference)
     : pathname === '/tools/knife-preview.html' ? resolve(root, 'tools/knife-preview.html')
     : pathname === '/' || pathname === '/index.html' ? resolve(root, 'index.html') : null;
@@ -19,7 +20,7 @@ http.createServer((req, res) => {
     const range = req.headers.range?.match(/^bytes=(\d+)-(\d*)$/);
     const start = range ? Number(range[1]) : 0, end = range?.[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
     if (start > end || start >= size) { res.writeHead(416); res.end(); return; }
-    const contentType = menuImage ? 'image/webp' : audio ? 'audio/mpeg' : video ? 'video/mp4' : 'text/html; charset=utf-8';
+    const contentType = menuImage ? 'image/webp' : audio ? 'audio/mpeg' : mapScript?'text/javascript; charset=utf-8':video ? 'video/mp4' : 'text/html; charset=utf-8';
     res.writeHead(range ? 206 : 200, { 'Content-Type': contentType, 'Content-Length': end - start + 1, 'Accept-Ranges': 'bytes', ...(range ? { 'Content-Range': `bytes ${start}-${end}/${size}` } : {}), 'Cache-Control': 'no-store' });
     createReadStream(file, { start, end }).pipe(res);
   } catch { res.writeHead(404); res.end(); }
