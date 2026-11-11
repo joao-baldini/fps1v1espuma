@@ -1,10 +1,10 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **DM** e treino de mira no **Aimbotz**. O jogo continua em um arquivo só (`index.html`), com geometria leve, áudio sintetizado, cinco arenas de duelo e dois mapas de DM. Sem modelos, texturas ou arquivos de som pesados.
+FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo e dois mapas de DM. O menu usa prévias dos mapas em WebP.
 
 ## Modos de jogo
 
-No menu, escolha o modo em **Modo de jogo**:
+Na tela **Jogar**, selecione o card de modo e o card de mapa. O painel ao lado reúne os controles da sala e o botão para jogar com bots.
 
 | Modo | Sozinho | Online |
 |---|---|---|
@@ -72,7 +72,7 @@ No 1v1 online, o oponente vê sua skin na arma em terceira pessoa e ouve o tiro 
 
 ## Equipamento
 
-Abra a aba **Armas**, ou clique em **Escolher armas, skins e bot**, antes de entrar na partida. Escolha uma arma de cada categoria e a categoria equipada ao nascer. As escolhas ficam salvas no navegador e funcionam tanto no 1v1 quanto no treino. Durante a partida, troque de arma na hora pelo arsenal (**B**).
+Abra **Armas** pela engrenagem no topo ou clique em **Editar** em **Seu equipamento**. Escolha uma arma de cada categoria e a categoria equipada ao nascer. As escolhas ficam salvas no navegador e funcionam tanto no 1v1 quanto no treino. Durante a partida, troque de arma na hora pelo arsenal (**B**).
 
 | Tecla | Categoria | Opções |
 |---|---|---|
@@ -119,15 +119,15 @@ No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
 | Arma | Corpo | Cabeça sem capacete / com | Carregador |
 |---|---|---|---|
 | AK-47 | 27 | 144 / 112 | 30 |
-| M4A4 | 33 | 132 / 92 | 30 |
-| M4A1-S | 38 | 132 / 92 | 20 |
+| M4A4 | 33 | 132 / 100 | 30 |
+| M4A1-S | 38 | 132 / 100 | 20 |
 | Desert Eagle | 40 | 212 / 198 | 7 |
 | USP-S | 35 | 140 / 71 | 12 |
 | AWP | 115 | 460 / 449 | 5 |
 | SSG 08 | 88 | 352 / 299 | 10 |
 | Karambit / Butterfly | 40 / 65 | — | — |
 
-Valores de perto. O dano no corpo da AK, Deagle e AWP foi preservado do jogo anterior.
+Valores de perto. M4A4 e M4A1-S matam com um headshot até 35 metros, inclusive com capacete. Acima dessa distância, o dano na cabeça com capacete é 92.
 
 ## Movimento e precisão
 
@@ -157,9 +157,11 @@ A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atir
 | F | Inspecionar (giros da Karambit e Butterfly) |
 | B | Arsenal: grade de armas e skins |
 | Tab | Placar |
-| Esc | Menu e configurações |
+| Esc | Menu de pausa |
 
 ## Configurações
+
+Use a engrenagem no topo do menu para abrir as abas de mouse, mira, armas, partida, vídeo e som e controles.
 
 - **Cor do boneco:** escolha antes de entrar na sala. É a cor que o oponente vê.
 
@@ -171,7 +173,7 @@ Tudo fica salvo no navegador.
 
 ## Desempenho e desenvolvimento
 
-Sem pós-processamento, sombras em tempo real ou antialiasing. O mapa e as partes estáticas das armas usam geometria agrupada; impactos e rastros são reutilizados. As animações só transformam grupos existentes. A resolução padrão não multiplica pixels por telas de DPI alto. O ajuste automático reduz a resolução quando o tempo médio de quadro sobe; o menu renderiza a 30 FPS e abas ocultas suspendem a atualização.
+Sem pós-processamento, sombras em tempo real ou antialiasing. O mapa e as partes estáticas das armas usam geometria agrupada; impactos e rastros são reutilizados. As animações só transformam grupos existentes. A resolução padrão não multiplica pixels por telas de DPI alto. O ajuste automático reduz a resolução quando o tempo médio de quadro sobe. A cena 3D é renderizada durante a partida e fica suspensa em abas ocultas.
 
 No DM e no 2v2, os outros participantes compartilham geometria por instanciamento: corpo, cabeça, capacete, nove modelos de arma (facas incluídas) e marcador de aliado, com efeitos reutilizados. A cor de cada instância é alocada com a capacidade total antes do primeiro desenho; antes dessa correção o buffer ficava vazio e a GPU descartava os bots, que ficavam invisíveis. A navegação é uma grade 2,5D: cada célula guarda a altura do chão e só liga vizinhas sem degrau maior que um passo, então os bots sobem escadas, rampas e plataformas. A malha é calculada uma vez por mapa e reutiliza buffers de busca; a percepção dos bots é distribuída ao longo dos quadros. Áudio e passos simultâneos têm limite próprio para evitar picos.
 

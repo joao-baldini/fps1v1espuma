@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Layout: mapa 3D ocupa a tela toda; menu é um console acoplado à esquerda sobre o mapa vivo; HUD preso às bordas como no CS */
+/* O jogo ocupa a tela inteira, com o menu e o HUD sobre a cena. */
 :root{
   --ink:#121418; --raise:#1c1f25; --field:#101216; --line:#30343c; --text:#ecebe7; --muted:#9ba0a8;
   --dev:#e2862f; --dev-hi:#f19a45; --dev-deep:#b5642a; --enemy:#ff6a55; --ally:#5fd3ff; --bad:#ff5a4a; --good:#6ad685;
@@ -23,19 +23,88 @@ body{background:var(--ink);color:var(--text);font:15px/1.45 var(--body);overflow
 canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
 
 /* ---------- menu ---------- */
-#menu{position:fixed;inset:0 auto 0 0;width:min(560px,100%);overflow-y:auto;z-index:20;
-  background:linear-gradient(90deg,rgba(13,15,19,.97),rgba(13,15,19,.93) 88%,rgba(13,15,19,.86));
-  border-right:1px solid var(--line);
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
-  padding-block:calc(28px + env(safe-area-inset-top,0px)) calc(28px + env(safe-area-inset-bottom,0px))}
-#menu .inner{display:flex;flex-direction:column;gap:18px;max-width:500px;margin-inline:auto}
-.brand h1{font:800 clamp(52px,9vw,76px)/.86 var(--display);margin:0;letter-spacing:-.01em}
-.brand h1 span{color:var(--dev)}
-.brand p{margin:10px 0 0;color:var(--muted);max-width:44ch}
-.spec{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.spec b{font:600 13px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border:1px solid var(--line);border-radius:3px;color:var(--text);background:var(--field)}
-.spec b em{font-style:normal;color:var(--dev)}
-.card{background:var(--raise);border:1px solid var(--line);border-radius:6px;padding:16px;display:grid;gap:14px}
+#menu{position:fixed;inset:0;overflow-y:auto;z-index:20;--accent:#f4a457;--menu-edge:#3d4651;--menu-panel:#181e26;
+  background:linear-gradient(180deg,rgba(14,20,28,.70),rgba(13,17,23,.90) 58%,#0d1117 100%),url("assets/menu/fundo.webp") center 34%/cover fixed #151c24}
+#menu.in-session{background:linear-gradient(105deg,rgba(10,14,19,.88),rgba(10,14,19,.55));backdrop-filter:blur(8px)}
+.lobby-width{width:min(1380px,calc(100% - clamp(32px,7vw,112px)));margin-inline:auto}
+.lobby-header{position:sticky;top:0;z-index:2;padding-top:env(safe-area-inset-top,0px);background:#10151dea;border-bottom:1px solid #ffffff1b;backdrop-filter:blur(12px)}
+.lobby-header .lobby-width{min-height:68px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:11px;font:800 26px/1 var(--display);letter-spacing:.06em;color:#fff;text-transform:uppercase;white-space:nowrap}
+.brand strong{color:var(--accent)}
+.brand-mark{width:34px;height:34px;display:grid;place-items:center;border:1px solid #f4a45766;background:#f4a45715;color:var(--accent);font:600 24px/1 var(--body)}
+.lobby-header-actions{display:flex;align-items:center;gap:12px}
+.lobby-profile{display:grid;gap:4px;padding-left:14px;border-left:1px solid #ffffff20}
+.lobby-profile span{font:600 10px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:#aeb8c3}
+.lobby-profile input[type=text]{padding:0;width:clamp(84px,12vw,154px);font-size:15px;background:transparent;border:0;color:#f1f2f4}
+.header-button{background:#ffffff08;border-color:#ffffff24}
+.icon-button{padding:0;display:grid;place-items:center;width:42px;height:42px;border:1px solid #ffffff26;background:#ffffff09;font:400 24px/1 "Segoe UI Symbol",system-ui,sans-serif;text-transform:none;letter-spacing:0}
+.icon-button:hover,.icon-button[aria-expanded=true]{border-color:var(--accent);color:var(--accent);background:#f4a45717}
+.lobby-main{padding-block:clamp(24px,3.5vh,42px) max(36px,env(safe-area-inset-bottom,0px))}
+.lobby-main h1{margin:0 0 18px;font:800 clamp(43px,4.7vw,64px)/.94 var(--display);letter-spacing:.025em;text-transform:uppercase}
+.lobby-main h1::after{content:"";display:block;width:46px;height:3px;margin-top:11px;background:var(--accent)}
+.lobby-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,325px);align-items:start;gap:24px;margin-top:24px}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+.section-head h2{margin:0;font:700 26px/1 var(--display);text-transform:uppercase;letter-spacing:.055em}
+.section-head p{margin:0;color:#bdc6d0;font-size:13px}
+.map-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.map-grid.dm-maps{grid-template-columns:repeat(2,minmax(0,1fr))}
+.map-card{position:relative;display:flex;align-items:flex-end;isolation:isolate;overflow:hidden;width:100%;min-width:0;aspect-ratio:1.76;min-height:130px;padding:14px;text-align:left;border:1px solid #7b879580;border-radius:4px;background:#293647;color:#fff;letter-spacing:0;text-transform:none}
+.map-card::after{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(180deg,#0b101633 0%,#0c10151a 35%,#0a0e15ee 100%)}
+.map-art{position:absolute;inset:0;z-index:-2;display:flex;overflow:hidden;transition:transform .18s ease,filter .18s ease;filter:saturate(.8) brightness(.87)}
+.map-art img{width:100%;height:100%;object-fit:cover;min-width:0}
+.map-art.multi img{width:33.333%;border-right:1px solid #131924}
+.map-card:hover .map-art{transform:scale(1.035);filter:saturate(1) brightness(1)}
+.map-card:hover{border-color:#bfc7d0;background:#293647}
+.map-card[aria-checked=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.map-card[aria-checked=true] .map-art{filter:saturate(1) brightness(1)}
+.map-check{position:absolute;top:10px;right:10px;width:21px;height:21px;display:grid;place-items:center;border:1px solid #e8edf395;border-radius:2px;background:#10151cbf;color:transparent;font:800 15px/1 system-ui,sans-serif}
+.map-card[aria-checked=true] .map-check{background:var(--accent);border-color:var(--accent);color:#18110a}
+.map-copy{display:grid;gap:4px;min-width:0;max-width:100%}
+.map-copy b{font:800 clamp(23px,2.5vw,31px)/.95 var(--display);text-shadow:0 1px 3px #0009}
+.map-copy small{font:500 13px/1.18 var(--body);color:#d5dde6}
+.dm-maps .map-card{aspect-ratio:1.56}
+.practice-map{aspect-ratio:2.4;min-height:180px;max-height:370px}
+.lobby-launch{display:grid;gap:15px;padding:19px;border:1px solid #ffffff21;border-top:2px solid #f4a457bd;border-radius:4px;background:linear-gradient(160deg,#202832,#161d25 62%);box-shadow:0 12px 36px #0003}
+.lobby-launch h2{margin:0 0 5px;font:800 34px/1 var(--display);letter-spacing:.02em}
+.lobby-launch .fld>span{color:#c5cdd7}
+.lobby-launch #modeInfo{font-size:14px;color:#c2ccd6}
+.lobby-launch #roomInfo{font-size:12px}
+.lobby-launch .room-code{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:5px}
+.room-code input{width:100%;font:600 16px/1 var(--body);letter-spacing:.07em}
+.room-code button{padding-inline:8px;font-size:13px;background:#ffffff08}
+.lobby-launch .grid2{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lobby-launch select{width:100%;padding:8px 7px}
+.lobby-actions{display:grid;gap:8px}
+.lobby-actions button{width:100%;text-align:center}
+.lobby-actions button:not(.primary){background:#ffffff09}
+.lobby-actions button:not(.primary):hover{background:#ffffff14}
+#menu button.primary{background:var(--accent);border-color:var(--accent);color:#211307}
+#menu button.primary:hover{background:#ffb975}
+.lobby-equipment{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:11px;border-top:1px solid #ffffff1c}
+.lobby-equipment div{min-width:0;display:grid;gap:4px}
+.lobby-equipment small{font-size:12px;color:#b3beca}
+.lobby-equipment button{padding:7px 9px;font-size:13px;background:#ffffff08}
+.lobby-pause{width:min(410px,calc(100% - 36px));margin:clamp(48px,17vh,170px) auto 30px;padding:26px;display:grid;gap:13px;background:var(--menu-panel);border:1px solid var(--menu-edge);border-top:2px solid var(--accent);border-radius:4px;box-shadow:0 18px 58px #0006}
+.lobby-pause h2{margin:0;font:800 41px/1 var(--display);text-transform:uppercase}
+.lobby-pause .row>*{min-width:0}
+.lobby-pause #pauseInfo{margin:0 0 5px;color:#bbc5d0;font-size:14px}
+.lobby-main .touchnote{margin-bottom:16px}
+.settings-dialog{width:min(980px,calc(100% - 36px));max-height:calc(100dvh - 48px);padding:0;border:1px solid #505c69;border-top:2px solid var(--accent);border-radius:6px;background:#191f28;color:var(--text);box-shadow:0 26px 100px #000b;overflow:hidden}
+.settings-dialog[open]{display:flex;flex-direction:column}
+.settings-dialog::backdrop{background:#060a11b3;backdrop-filter:blur(5px)}
+.settings-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:19px 24px;background:#202831;border-bottom:1px solid #ffffff16}
+.settings-header h2{margin:0;font:800 clamp(28px,4vw,39px)/1 var(--display);text-transform:uppercase;letter-spacing:.03em}
+.settings-layout{display:grid;grid-template-columns:176px minmax(0,1fr);min-height:min(440px,50dvh);overflow:hidden}
+.settings-content{padding:22px 25px;overflow:auto;min-height:0}
+.settings-content .tab{align-content:start}
+.settings-content .fld>span,.settings-content .sl>span:first-child{color:#c5cfda}
+.settings-content .xprev{height:125px}
+.settings-content select{width:100%}
+.tabs{display:flex;flex-direction:column;gap:4px;padding:12px 8px;background:#121820;border-right:1px solid #ffffff16}
+.tabs button{border:1px solid transparent;border-left:2px solid transparent;border-radius:3px;padding:12px 10px;color:#b9c4d0;font-size:16px;text-align:left;white-space:nowrap}
+.tabs button[aria-selected=true]{color:#fff;border-left-color:var(--accent);background:#f4a4571c}
+.tabs button:hover{background:#ffffff0a;color:#fff}
+.tab{display:grid;gap:14px}
 .fld{display:grid;gap:6px;min-width:0}
 .fld>span,.lbl{font:600 12px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .fld small,.note{color:var(--muted);font-size:13px;margin:0}
@@ -53,14 +122,6 @@ button.primary:hover{background:var(--dev-hi)}
 button.danger{color:#ff9a8f}
 button:disabled{opacity:.5;cursor:default}
 .wide{flex:1 1 auto}
-.pausehead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.pausehead b{font:700 26px/1 var(--display);text-transform:uppercase;letter-spacing:.04em}
-.pausehead span{color:var(--muted);font-size:14px}
-.tabs{display:flex;gap:2px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
-.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 10px 9px;color:var(--muted);font-size:15px}
-.tabs button[aria-selected=true]{color:var(--text);border-bottom-color:var(--dev)}
-.tabs button:hover{background:transparent;color:var(--text)}
-.tab{display:grid;gap:14px}
 .sl{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
 .sl>span:first-child{font:600 12px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .sl output{font:600 15px/1 var(--display);font-variant-numeric:tabular-nums;color:var(--text)}
@@ -68,14 +129,25 @@ button:disabled{opacity:.5;cursor:default}
 .chk{display:flex;gap:10px;align-items:center;font-size:15px}
 .chks{display:flex;gap:18px;flex-wrap:wrap}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
-.modes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.modes button[data-mode=aimbotz] b{font-size:23px}
-@media (max-width:560px){.modes{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.modes button{display:grid;gap:4px;justify-items:center;padding:12px 6px;background:var(--field)}
-.modes button b{font:800 26px/1 var(--display);letter-spacing:.02em}
-.modes button small{font:600 12px/1 var(--display);letter-spacing:.12em;color:var(--muted)}
-.modes button[aria-checked=true]{border-color:var(--dev);background:#2a2119}
-.modes button[aria-checked=true] b{color:var(--dev)}
+.modes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.mode-card{position:relative;isolation:isolate;overflow:hidden;min-height:102px;display:grid;align-content:end;gap:5px;padding:13px 14px;text-align:left;border:1px solid #ffffff35;background:#171d25}
+.mode-card::before{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(83deg,#151a22f5 5%,#141923c7 49%,#1a20294d),var(--mode-art) center 54%/cover;filter:saturate(.65);transition:filter .18s ease}
+.mode-card[data-mode="1v1"]{--mode-art:url("assets/menu/caixas.webp")}
+.mode-card[data-mode="2v2"]{--mode-art:url("assets/menu/ponte.webp")}
+.mode-card[data-mode=xvx]{--mode-art:url("assets/menu/fortes.webp")}
+.mode-card[data-mode=dm]{--mode-art:url("assets/menu/dust2.webp")}
+.mode-card[data-mode=aimbotz]{--mode-art:url("assets/menu/aimbotz.webp")}
+.mode-card b{font:800 clamp(23px,2.45vw,34px)/.95 var(--display);letter-spacing:.025em;color:#f5f7fb}
+.mode-card small{font:600 13px/1.1 var(--body);letter-spacing:0;text-transform:none;color:#c6d0da}
+.mode-card:hover{border-color:#b1bdca}
+.mode-card:hover::before,.mode-card[aria-checked=true]::before{filter:saturate(1)}
+.mode-card[aria-checked=true]{border-color:var(--accent);box-shadow:inset 0 -3px var(--accent)}
+.mode-card[aria-checked=true] b{color:#ffbc83}
+@media (max-width:1050px){.lobby-layout{gap:17px;grid-template-columns:minmax(0,1fr) minmax(250px,290px)}.map-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.lobby-layout{grid-template-columns:1fr}.modes{grid-template-columns:repeat(3,minmax(0,1fr))}.mode-card{min-height:82px}.mode-card[data-mode=dm]{grid-column:span 2}.settings-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:8px;border-right:0;border-bottom:1px solid #ffffff16}.tabs button{border-left:0;border-bottom:2px solid transparent;text-align:center;padding:9px 5px;white-space:normal;font-size:15px}.tabs button[aria-selected=true]{border-bottom-color:var(--accent)}.settings-content{padding:16px}.settings-header{padding:14px 16px}}
+@media (max-width:450px){.lobby-header-actions{gap:7px}.lobby-profile{padding-left:7px}.lobby-profile input[type=text]{width:70px}.brand{gap:6px;font-size:20px}.brand-mark{width:27px;height:27px;font-size:18px}.header-button{padding-inline:6px;font-size:13px}.icon-button{width:36px;height:36px}.mode-card{padding:9px}.mode-card b{font-size:21px}.mode-card small{font-size:11px}.map-card{min-height:104px;padding:9px}.map-copy small{font-size:11px}.section-head{align-items:start}.section-head p{max-width:55%;text-align:right}.lobby-width{width:calc(100% - 24px)}}
+@media (max-width:360px){.lobby-header .lobby-width{gap:8px}.brand-mark{display:none}.lobby-profile input[type=text]{width:56px}.mode-card[data-mode=aimbotz] b{font-size:18px}}
+@media (prefers-reduced-motion:reduce){.mode-card::before,.map-art{transition:none}}
 .xprev{height:150px;border-radius:6px;position:relative;overflow:hidden;border:1px solid var(--line);
   background:
     linear-gradient(rgba(0,0,0,.22) 1px,transparent 1px) 0 0/48px 48px,
@@ -188,7 +260,6 @@ button:disabled{opacity:.5;cursor:default}
 #dmResult p{margin:0 0 12px;color:var(--muted)}
 #hud.dm #board{top:58%;max-height:70vh;overflow:auto;pointer-events:auto}
 #hud.dm-over #topbar{display:none}
-.dm-roster{font-size:12px;color:var(--muted);line-height:1.6}
 #killban{position:absolute;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:5px;opacity:0}
 #killban .hex{width:60px;height:68px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--kb2,#d9a93a);display:grid;place-items:center}
 #killban .hex i{width:50px;height:57px;clip-path:inherit;background:var(--kb1,#f2eadb);display:grid;place-items:center;box-shadow:inset 0 0 14px var(--kb3,#5ff6ff)}
@@ -237,71 +308,88 @@ button:disabled{opacity:.5;cursor:default}
 <div id="vcursor" hidden></div>
 
 <div id="menu">
- <div class="inner">
-  <header class="brand">
-    <h1>aim<span>_</span>duelo</h1>
-    <p>Duelo 1v1, times 2v2 ou XvX (até 5 contra 5) e Deathmatch com 10 jogadores, sozinho com bots ou numa sala com amigos. Escolha armas e skins e treine sua mira, contra-strafe e bunnyhop.</p>
-    <div class="spec"><b>Arsenal <em>CS2</em></b><b>Mouse <em>bruto</em></b><b>Geometria <em>leve</em></b><b>Freeze <em>3 s</em></b></div>
+  <header class="lobby-header">
+    <div class="lobby-width">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">⊕</span><span>aim<strong>_</strong>duelo</span></div>
+      <div class="lobby-header-actions">
+        <button class="header-button" id="btnMenuArsenal" type="button">Arsenal</button>
+        <label class="lobby-profile"><span>Apelido</span><input id="inName" type="text" maxlength="16" data-k="name" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+        <button class="icon-button" id="btnSettings" type="button" aria-label="Configurações" title="Configurações" aria-haspopup="dialog" aria-controls="settingsDialog" aria-expanded="false">⚙</button>
+      </div>
+    </div>
   </header>
 
-  <div id="touchnote" class="touchnote" hidden>Este jogo precisa de teclado e mouse. Abra no computador.</div>
-
-  <section id="playSec" class="card" aria-label="Jogar">
-    <label class="fld"><span>Apelido</span><input id="inName" type="text" maxlength="16" data-k="name" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
-    <div class="fld"><span id="modeLbl">Modo de jogo</span><div class="modes" id="modeSel" role="radiogroup" aria-labelledby="modeLbl">
-      <button type="button" role="radio" data-mode="1v1"><b>1v1</b><small>Duelo</small></button>
-      <button type="button" role="radio" data-mode="2v2"><b>2v2</b><small>Times</small></button>
-      <button type="button" role="radio" data-mode="xvx"><b>XvX</b><small>1v5, 2v5…</small></button>
-      <button type="button" role="radio" data-mode="dm"><b>DM</b><small>10 jogadores</small></button>
-      <button type="button" role="radio" data-mode="aimbotz"><b>Aimbotz</b><small>Treino de mira</small></button>
-    </div><small id="modeInfo"></small></div>
-    <label class="fld" id="mapField"><span>Mapa</span><select id="inMap" data-k="map">
-      <option value="caixas">Caixas · azul</option><option value="patio">Pátio · amarelo (praça elevada)</option><option value="torres">Torres · verde (torres com rampa)</option>
-      <option value="ponte">Ponte · roxo (ponte no meio)</option><option value="fortes">Fortes · laranja (bases elevadas)</option><option value="rotacao">Rotação · troca a cada rodada</option>
-    </select><small id="mapInfo">Vale o mapa de quem criou a sala.</small></label>
-    <div id="dmOptions" class="fld" hidden>
-      <label class="fld"><span>Mapa do Deathmatch</span><select data-k="dmMap"><option value="deathmatch">Medina</option><option value="dust2">Dust II</option></select></label>
-      <div class="grid2">
-        <label class="fld"><span>Armas do Deathmatch</span><select data-k="dmWeapons" aria-label="Armas do Deathmatch"><option value="pistol">Somente pistolas</option><option value="sniper">Somente precisão</option><option value="rifle">Somente rifles</option><option value="all">Tudo liberado</option></select></label>
-        <label class="fld"><span>Dificuldade do Deathmatch</span><select data-k="dmLevel" aria-label="Dificuldade do Deathmatch"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
-      </div>
-      <p class="note">5 minutos · 10 participantes · todos contra todos · respawn automático. Abate recarrega a arma; abate com tiro na cabeça cura 50. A categoria limita as armas de todos; a faca continua disponível. Em salas, vale o mapa escolhido por quem cria e os bots completam as vagas.</p>
-      <p class="dm-roster">donk · ZywOo · m0NESY · NiKo · KSCERATO · ropz · YEKINDAR · molodoy · coldzera</p>
-      <button id="btnDm" class="primary" type="button">Jogar DM com bots · 5 minutos</button>
+  <main id="playSec" class="lobby-main lobby-width" aria-labelledby="lobbyTitle">
+    <div id="touchnote" class="touchnote" hidden>Este jogo precisa de teclado e mouse. Abra no computador.</div>
+    <h1 id="lobbyTitle">Jogar</h1>
+    <div class="modes" id="modeSel" role="radiogroup" aria-label="Modo de jogo">
+      <button class="mode-card" type="button" role="radio" data-mode="1v1"><b>1v1</b><small>Duelo</small></button>
+      <button class="mode-card" type="button" role="radio" data-mode="2v2"><b>2v2</b><small>Duplas</small></button>
+      <button class="mode-card" type="button" role="radio" data-mode="xvx"><b>XvX</b><small>Times de 1 a 5</small></button>
+      <button class="mode-card" type="button" role="radio" data-mode="dm"><b>Deathmatch</b><small>Todos contra todos</small></button>
+      <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><b>Aimbotz</b><small>Treino de mira</small></button>
     </div>
-    <div class="fld" id="colorField"><span>Cor do seu boneco</span><div class="sw" id="pcolors"></div><small>É nessa cor que o oponente vai te ver no 1v1.</small></div>
-    <div class="fld" id="roomField">
-      <span>Código da sala</span>
-      <div class="row"><input id="inRoom" type="text" maxlength="20" data-k="room" autocomplete="off" spellcheck="false"><button id="btnGen" type="button">Novo</button><button id="btnCopy" type="button">Copiar</button></div>
-      <small id="roomInfo">Vocês dois digitam o mesmo código. Quem entrar primeiro cria a sala.</small>
-    </div>
-    <div class="grid2" id="xvxField"><label class="fld"><span>Seu time</span><select data-k="xvx.mine" data-num="1" aria-label="Tamanho do seu time"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label><label class="fld"><span>Time inimigo</span><select data-k="xvx.foes" data-num="1" aria-label="Tamanho do time inimigo"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label></div>
-    <label class="fld" id="teamField"><span>Times na sala</span><select data-k="teamSetup" aria-label="Times na sala 2v2"><option value="versus">Pessoas em lados opostos · bots completam os times</option><option value="coop">Pessoas no mesmo time contra bots</option></select></label>
-    <div class="fld" id="equipmentField"><span>Seu equipamento</span><small id="loadoutSummary"></small><button id="btnLoadout" type="button">Escolher armas, skins e bot</button></div>
-    <button id="btnAimbotz" class="primary" type="button" hidden>Jogar Aimbotz</button>
-    <button id="btnJoin" class="primary" type="button">Entrar na sala 1v1</button>
-    <div class="row" id="duelBotControls"><select id="inBot" data-k="botLevel" aria-label="Dificuldade do bot"><option value="facil">Bot fácil</option><option value="medio">Bot médio</option><option value="dificil">Bot difícil</option></select><button id="btnBot" class="wide" type="button">Treinar contra bot</button></div>
-    <p id="mpStatus" class="note">Verificando conexão…</p>
-  </section>
+    <div class="lobby-layout">
+      <section id="mapField" aria-labelledby="mapTitle">
+        <header class="section-head"><h2 id="mapTitle">Mapas</h2><p id="mapInfo">Vale o mapa de quem criou a sala.</p></header>
+        <div class="map-grid" id="duelMaps" role="radiogroup" aria-labelledby="mapTitle"></div>
+        <div class="map-grid dm-maps" id="dmMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
+        <article class="map-card practice-map" id="practiceMap" hidden>
+          <span class="map-art"><img src="assets/menu/aimbotz.webp" width="640" height="388" alt=""></span>
+          <span class="map-copy"><b>Arena Aimbotz</b><small>Alvos fixos com respawn imediato</small></span>
+        </article>
+      </section>
 
-  <section id="pauseSec" class="card" hidden aria-label="Pausa">
-    <div class="pausehead"><b>Pausado</b><span id="pauseInfo"></span></div>
+      <aside class="lobby-launch" aria-labelledby="lobbyMode">
+        <header><h2 id="lobbyMode">Duelo 1v1</h2><p class="note" id="modeInfo"></p></header>
+        <div class="grid2" id="dmOptions" hidden>
+          <label class="fld"><span>Armas</span><select data-k="dmWeapons" aria-label="Armas do Deathmatch"><option value="pistol">Somente pistolas</option><option value="sniper">Somente precisão</option><option value="rifle">Somente rifles</option><option value="all">Tudo liberado</option></select></label>
+          <label class="fld"><span>Dificuldade</span><select data-k="dmLevel" aria-label="Dificuldade do Deathmatch"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
+        </div>
+        <div class="grid2" id="xvxField"><label class="fld"><span>Seu time</span><select data-k="xvx.mine" data-num="1" aria-label="Tamanho do seu time"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label><label class="fld"><span>Time inimigo</span><select data-k="xvx.foes" data-num="1" aria-label="Tamanho do time inimigo"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label></div>
+        <label class="fld" id="teamField"><span>Times na sala</span><select data-k="teamSetup" aria-label="Times na sala"><option value="versus">Pessoas em lados opostos</option><option value="coop">Pessoas no mesmo time</option></select></label>
+        <label class="fld" id="duelBotControls"><span>Dificuldade do bot</span><select id="inBot" data-k="botLevel" aria-label="Dificuldade do bot"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
+        <div class="fld" id="roomField">
+          <span id="roomLabel">Código da sala</span>
+          <div class="room-code"><input id="inRoom" aria-labelledby="roomLabel" type="text" maxlength="20" data-k="room" autocomplete="off" spellcheck="false"><button id="btnGen" type="button">Novo</button><button id="btnCopy" type="button">Copiar</button></div>
+          <small id="roomInfo"></small>
+        </div>
+        <div class="lobby-actions">
+          <button id="btnJoin" class="primary" type="button">Entrar na sala 1v1</button>
+          <button id="btnBot" type="button">Treinar contra bot</button>
+          <button id="btnDm" type="button" hidden>Jogar DM com bots</button>
+          <button id="btnAimbotz" class="primary" type="button" hidden>Jogar Aimbotz</button>
+        </div>
+        <p id="mpStatus" class="warn" hidden></p>
+        <div class="lobby-equipment" id="equipmentField"><div><span class="lbl">Seu equipamento</span><small id="loadoutSummary"></small></div><button id="btnLoadout" aria-label="Editar equipamento" type="button">Editar</button></div>
+      </aside>
+    </div>
+  </main>
+
+  <section id="pauseSec" class="lobby-pause" hidden aria-labelledby="pauseTitle">
+    <h2 id="pauseTitle">Pausado</h2><p id="pauseInfo"></p>
     <button id="btnResume" class="primary" type="button">Voltar ao jogo</button>
     <button id="btnDmBoard" type="button" hidden>Ver placar do Deathmatch</button>
     <div class="row"><button id="btnFull" class="wide" type="button">Tela cheia</button><button id="btnLeave" class="wide danger" type="button">Sair da partida</button></div>
     <p class="note" id="pauseNote">A partida continua enquanto o menu está aberto.</p>
   </section>
 
-  <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="armas" aria-selected="true" type="button">Armas</button>
-    <button role="tab" data-tab="mira" aria-selected="false" type="button">Mira</button>
-    <button role="tab" data-tab="mouse" aria-selected="false" type="button">Mouse</button>
-    <button role="tab" data-tab="partida" aria-selected="false" type="button">Partida</button>
-    <button role="tab" data-tab="video" aria-selected="false" type="button">Vídeo e som</button>
-    <button role="tab" data-tab="ctrl" aria-selected="false" type="button">Controles</button>
-  </nav>
-
-  <section class="tab card" data-pane="armas">
+  <dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+    <header class="settings-header">
+      <h2 id="settingsTitle">Configurações</h2>
+      <button class="icon-button" type="button" id="btnSettingsClose" aria-label="Fechar configurações" title="Fechar">×</button>
+    </header>
+    <div class="settings-layout">
+      <nav class="tabs" id="settingsTabs" role="tablist" aria-label="Configurações do jogo">
+        <button role="tab" data-tab="mouse" aria-selected="true" type="button">Mouse</button>
+        <button role="tab" data-tab="mira" aria-selected="false" type="button">Mira</button>
+        <button role="tab" data-tab="armas" aria-selected="false" type="button">Armas</button>
+        <button role="tab" data-tab="partida" aria-selected="false" type="button">Partida</button>
+        <button role="tab" data-tab="video" aria-selected="false" type="button">Vídeo e som</button>
+        <button role="tab" data-tab="ctrl" aria-selected="false" type="button">Controles</button>
+      </nav>
+      <div class="settings-content" id="settingsContent">
+  <section class="tab" data-pane="armas" hidden>
     <p class="note">Monte seu equipamento antes de jogar. Durante a partida, aperte <b>B</b> para abrir o arsenal e trocar de arma na hora.</p>
     <button id="btnArsenal" type="button">Abrir arsenal · armas e skins</button>
     <div class="fld"><span>Código de skin</span><div class="row"><input id="skinCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Código de skin" placeholder="Digite o código"><button id="btnSkinCode" type="button">Desbloquear</button></div><small id="skinCodeMsg">A AK-47 Sublime só aparece para quem tem o código.</small></div>
@@ -314,6 +402,7 @@ button:disabled{opacity:.5;cursor:default}
       <label class="fld"><span>Arma do bot</span><select data-k="botWeapon" aria-label="Arma do bot"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S</option><option value="pistol">Desert Eagle</option><option value="usps">USP-S</option><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
     </div>
     <label class="chk"><input type="checkbox" data-k="botHelmet">Bot com capacete</label>
+    <div class="fld" id="colorField"><span>Cor do seu boneco no 1v1</span><div class="sw" id="pcolors"></div></div>
     <p class="note">USP-S: um HS de perto mata sem capacete; com capacete, é preciso mais de um. No DM, esta proteção vale para os nove bots; suas armas são sorteadas na categoria da partida. A escolha individual de arma do bot vale no treino 1v1.</p>
     <label class="chk"><input type="checkbox" data-k="autoBhop">Bunnyhop assistido · segure Espaço</label>
     <label class="chk"><input type="checkbox" data-k="wheelJump">Pular com a rodinha do mouse</label>
@@ -345,7 +434,7 @@ button:disabled{opacity:.5;cursor:default}
     <div class="row"><button id="btnChReset" type="button">Restaurar mira padrão</button></div>
   </section>
 
-  <section class="tab" data-pane="mouse" hidden>
+  <section class="tab" data-pane="mouse">
     <div class="sl"><span>Sensibilidade (escala do CS)</span><input id="sensNum" type="number" min="0.05" max="10" step="0.01" data-k="sens" aria-label="Sensibilidade"><input id="sensRange" type="range" min="0.1" max="8" step="0.01" data-k="sens" aria-label="Sensibilidade"></div>
     <p class="note" id="sensInfo"></p>
     <div class="grid2">
@@ -393,7 +482,9 @@ button:disabled{opacity:.5;cursor:default}
       <dt>Esc</dt><dd>Menu e configurações</dd>
     </dl>
   </section>
- </div>
+      </div>
+    </div>
+  </dialog>
 </div>
 <div id="toast" hidden></div>
 
@@ -444,9 +535,9 @@ const W = {
   sniper: { name: 'AWP', dmg: 115, mult: { head: 4, body: 1, leg: .75 }, rof: 1460, mag: 5, res: 30, reload: 3600, speed: 5.08, auto: false,
             base: .0004, noscope: .07, move: .14, air: .3, shotSpread: 0, recover: 6, kickP: .054, kickY: .011, scope: true, scopedSpeed: 2.54, helmetPen: .975, draw: 1000, snd: 'sniper' },
   m4a4: { name: 'M4A4', dmg: 33, mult: { head: 4, body: 1, leg: .75 }, rof: 90, mag: 30, res: 90, reload: 3100, speed: 5.715, auto: true,
-    base: .0014, move: .065, air: .22, shotSpread: .0028, recover: 7, pattern: true, recoilScale: .69, helmetPen: .7, draw: 550, snd: 'm4a4' },
+    base: .0014, move: .065, air: .22, shotSpread: .0028, recover: 7, pattern: true, recoilScale: .69, helmetPen: .7, headshotKillRange: 35, draw: 550, snd: 'm4a4' },
   m4a1s: { name: 'M4A1-S', dmg: 38, mult: { head: 3.475, body: 1, leg: .75 }, rof: 100, mag: 20, res: 80, reload: 3100, speed: 5.715, auto: true,
-    base: .0011, move: .06, air: .21, shotSpread: .0021, recover: 8, pattern: true, recoilScale: .53, helmetPen: .7, silenced: true, draw: 550, snd: 'm4a1s' },
+    base: .0011, move: .06, air: .21, shotSpread: .0021, recover: 8, pattern: true, recoilScale: .53, helmetPen: .7, headshotKillRange: 35, silenced: true, draw: 550, snd: 'm4a1s' },
   usps: { name: 'USP-S', dmg: 35, mult: { head: 4, body: 1, leg: .75 }, rof: 170, mag: 12, res: 24, reload: 2200, speed: 6.096, auto: false,
     base: .0015, move: .055, air: .18, shotSpread: .009, recover: 9, kickP: .015, kickY: .0043, helmetPen: .505, rangeModifier: .91, silenced: true, draw: 550, snd: 'usps' },
   ssg: { name: 'SSG 08', dmg: 88, mult: { head: 4, body: 1, leg: .75 }, rof: 1250, mag: 10, res: 90, reload: 3700, speed: 5.842, auto: false,
@@ -470,7 +561,8 @@ function configureLoadout() {
 configureLoadout();
 function damageFor(w, part, helmet, distance = 0) {
   const falloff = Math.pow(w.rangeModifier || 1, distance / 12.7);
-  return Math.max(1, Math.round(w.dmg * w.mult[part] * falloff * (part === 'head' && helmet ? w.helmetPen || 1 : 1)));
+  const minimum = part === 'head' && distance <= w.headshotKillRange ? 100 : 1;
+  return Math.max(minimum, Math.round(w.dmg * w.mult[part] * falloff * (part === 'head' && helmet ? w.helmetPen || 1 : 1)));
 }
 // padrão de recuo do rifle: [sobe, lado] por tiro (rad)
 const PAT = [[0,0],[.016,.001],[.02,.002],[.024,-.002],[.026,.003],[.026,.004],[.024,.002],[.02,-.004],[.016,-.012],[.012,-.016],[.008,-.014],[.006,-.01],[.004,.008],[.004,.014],[.003,.016],[.003,.012],[.002,.006],[.002,-.008],[.002,-.014],[.002,-.016],[.002,-.012],[.001,-.004],[.001,.008],[.001,.012],[.001,.01],[.001,.004],[.001,-.006],[.001,-.01],[.001,-.008],[.001,0]];
@@ -3605,7 +3697,7 @@ function buyEquip(k) {
 }
 function buySkin(k, id) {
   if (!skinFits(k, id)) return;
-  if (!skinUnlocked(id)) { toast('A skin ' + SKINS[id].name + ' é bloqueada. Digite o código em Esc → Armas → Código de skin.'); return; }
+  if (!skinUnlocked(id)) { toast('Digite o código de ' + SKINS[id].name + ' em Configurações → Armas → Código de skin.'); return; }
   S.skins = Object.assign({}, S.skins, { [k]: id }); if (id === 'padrao') delete S.skins[k];
   saveS(); applyVmSkins(); renderBuy();
   if (G.mode === 'online') netSend({ t: 'sk', sk: mySkins() });
@@ -3686,10 +3778,13 @@ canvas.addEventListener('click', () => { if (G.mode && !locked&&!(G.mode==='dm'&
 function showMenu(on) {
   if(on&&G.mode==='dm')DM.showBoard=false;
   $('menu').hidden = !on;
+  $('menu').classList.toggle('in-session', !!G.mode);
+  if (!on && $('settingsDialog').open) $('settingsDialog').close();
   $('playSec').hidden = !!G.mode;
   $('pauseSec').hidden = !G.mode;
+  $('inName').readOnly = !!G.mode;
   $('btnDmBoard').hidden=G.mode!=='dm';
-  $('pauseNote').hidden = $('btnArsenal').disabled = G.mode === 'aimbotz';
+  $('pauseNote').hidden = $('btnMenuArsenal').disabled = $('btnArsenal').disabled = G.mode === 'aimbotz';
   if (G.mode === 'aimbotz') $('pauseInfo').textContent = 'Aimbotz · ' + S.aimbotzBots + ' bots';
   else if (G.mode) $('pauseInfo').textContent = (G.mode === 'online' ? 'Sala ' + NET.code + (G.opp ? ' · contra ' + nameOf(G.opp) : ' · esperando oponente') : G.mode==='dm'?(ARENA.net?'Sala DM '+ARENA.code:'Deathmatch · 9 bots '+LEVELS[DM.level].label)+' · '+DM_LABELS[DM.category]+' · o tempo continua no menu':G.mode==='team'?(ARENA.net?'Sala '+teamLabel()+' '+ARENA.code+(ARENA.host?' · '+arenaHumans().length+'/'+arenaCapacity()+' pessoas':''):teamLabel()+' com bots '+LEVELS[DM.level].label):'Treino contra bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label) + ' · ' + MAP.name;
 }
@@ -3752,6 +3847,67 @@ function leaveSession() {
 }
 
 /* ================= Menu e configurações ================= */
+const MODE_MENU = {
+  '1v1': ['Duelo 1v1', 'Enfrente um amigo ou treine contra um bot.'],
+  '2v2': ['Duplas 2v2', 'Rodadas em dupla. Os bots completam as vagas.'],
+  xvx: ['XvX', 'Escolha de 1 a 5 jogadores para cada time.'],
+  dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
+  aimbotz: ['Aimbotz', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
+};
+const MAP_CARD_DETAILS = {
+  caixas: 'Arena aberta com caixas',
+  patio: 'Praça elevada e rampas',
+  torres: 'Torres e posições altas',
+  ponte: 'Travessia por cima e por baixo',
+  fortes: 'Bases elevadas e muro central',
+  rotacao: 'Um mapa diferente a cada rodada',
+  deathmatch: 'Becos, túneis e plataformas',
+  dust2: 'Long, Meio e Túneis B',
+};
+function mountMapCards(group, ids) {
+  for (const id of ids) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'map-card'; button.dataset.map = id;
+    button.setAttribute('role', 'radio');
+    const art = document.createElement('span');
+    art.className = id === 'rotacao' ? 'map-art multi' : 'map-art';
+    for (const source of id === 'rotacao' ? ['patio', 'ponte', 'torres'] : [id]) {
+      const image = document.createElement('img');
+      image.src = 'assets/menu/' + source + '.webp'; image.alt = ''; image.decoding = 'async';
+      image.width = 640; image.height = 388;
+      art.append(image);
+    }
+    const check = document.createElement('span');
+    check.className = 'map-check'; check.textContent = '✓'; check.setAttribute('aria-hidden', 'true');
+    const copy = document.createElement('span'), title = document.createElement('b'), detail = document.createElement('small');
+    copy.className = 'map-copy';
+    title.textContent = MAPS[id]?.name || 'Rotação'; detail.textContent = MAP_CARD_DETAILS[id];
+    copy.append(title, detail); button.append(art, check, copy); group.append(button);
+  }
+}
+function selectRadio(group, key, value) {
+  for (const button of group.querySelectorAll('[role="radio"]')) {
+    const selected = button.dataset[key] === value;
+    button.setAttribute('aria-checked', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  }
+}
+function bindChoices(group, activate) {
+  const buttons = [...group.querySelectorAll('button')];
+  group.addEventListener('click', e => { const button = e.target.closest('button'); if (buttons.includes(button)) activate(button); });
+  group.addEventListener('keydown', e => {
+    const index = buttons.indexOf(e.target.closest('button'));
+    if (index < 0) return;
+    const move = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 };
+    const step = move[e.key];
+    const next = e.key === 'Home' ? buttons[0] : e.key === 'End' ? buttons.at(-1) : step && buttons[(index + step + buttons.length) % buttons.length];
+    if (!next) return;
+    e.preventDefault(); next.click(); next.focus();
+  });
+}
+mountMapCards($('duelMaps'), [...MAP_IDS, 'rotacao']);
+mountMapCards($('dmMaps'), Object.keys(MAPS).filter(id => MAPS[id].dm));
+
 function getK(k) { return k.split('.').reduce((o, p) => o[p], S); }
 function setK(k, v) { const ps = k.split('.'); let o = S; for (let i = 0; i < ps.length - 1; i++) o = o[ps[i]]; o[ps[ps.length - 1]] = v; }
 const OUTFMT = { 'ch.alpha': v => Math.round(v * 100) + '%', scale: v => Math.round(v * 100) + '%', volume: v => Math.round(v * 100) + '%', fov: v => v + '°', zoomRatio: v => (+v).toFixed(2) };
@@ -3764,17 +3920,29 @@ function syncInputs(except) {
   $('cm360').textContent = S.dpi > 0 && S.sens > 0 ? (360 / (S.sens * 0.022 * S.dpi) * 2.54).toFixed(1) + ' cm' : '–';
   $('loadoutSummary').textContent = Object.values(S.loadout).map(k => W[k] ? W[k].name : '').join(' · ');
   const mode=S.mode,dm=mode==='dm',duo=mode==='2v2'||mode==='xvx',xvx=mode==='xvx',practice=mode==='aimbotz';
-  document.querySelectorAll('#modeSel button').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.mode===mode)));
+  selectRadio($('modeSel'), 'mode', mode);
+  selectRadio($('duelMaps'), 'map', S.map === 'rotacao' || MAP_IDS.includes(S.map) ? S.map : 'caixas');
+  selectRadio($('dmMaps'), 'map', S.dmMap);
+  $('duelMaps').hidden = dm || practice;
+  $('dmMaps').hidden = !dm;
+  $('practiceMap').hidden = !practice;
+  $('mapTitle').textContent = practice ? 'Arena' : 'Mapas';
+  $('mapInfo').hidden = practice;
   $('dmOptions').hidden=!dm;
-  for(const id of ['mapField','duelBotControls'])$(id).hidden=dm||practice;
-  for(const id of ['roomField','equipmentField','btnJoin','mpStatus'])$(id).hidden=practice;
+  $('duelBotControls').hidden = dm || practice;
+  for(const id of ['roomField','equipmentField','btnJoin'])$(id).hidden=practice;
+  $('mpStatus').hidden = practice || typeof Peer !== 'undefined';
+  $('btnBot').hidden = dm || practice;
+  $('btnDm').hidden = !dm;
   $('btnAimbotz').hidden=!practice;
   $('teamField').hidden=!duo;$('xvxField').hidden=!xvx;$('colorField').hidden=mode!=='1v1';
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
-  $('modeInfo').textContent=practice?'Treino livre com bots que renascem na hora.':dm?'Todos contra todos por 5 minutos, com respawn. Sozinho com 9 bots ou numa sala com amigos.':xvx?'Times de tamanhos livres em rodadas, de 1 a 5 de cada lado (1v5, 2v5, 3v3…). Bots completam as vagas.':duo?'Dois contra dois em rodadas. Sozinho: você e um bot contra dois bots. Online: até 4 pessoas na sala, bots completam as vagas.':'Duelo em rodadas contra outra pessoa ou contra um bot.';
-  $('btnJoin').textContent=dm?'Entrar na sala de DM':duo?'Entrar na sala '+label:'Entrar na sala 1v1';$('btnBot').textContent=duo?'Jogar '+label+' com bots':'Treinar contra bot';
-  $('roomInfo').textContent=dm?'Todos digitam o mesmo código. Quem entrar primeiro cria a sala e vira o juiz; bots completam os 10.':duo?'Todos digitam o mesmo código. Quem entrar primeiro cria a sala e vira o juiz.':'Vocês dois digitam o mesmo código. Quem entrar primeiro cria a sala.';
-  $('mapInfo').textContent='Vale o mapa escolhido por quem cria a sala. Rotação alterna os cinco mapas de duelo.';
+  const [title, description] = MODE_MENU[mode];
+  $('lobbyMode').textContent = xvx ? 'Times ' + label : title;
+  $('modeInfo').textContent = description;
+  $('btnJoin').textContent = dm ? 'Entrar na sala de DM' : 'Entrar na sala';
+  $('btnBot').textContent=duo?'Jogar '+label+' com bots':'Treinar contra bot';
+  $('roomInfo').textContent = 'Quem entrar primeiro cria a sala. Use o mesmo código para jogar junto.';
 }
 let effectiveScale = clamp(S.scale, .3, 1), perfTime = 0, perfFrames = 0, perfChange = 0;
 function setRenderScale(scale) {
@@ -3808,13 +3976,43 @@ $('swatches').addEventListener('click', e => { const b = e.target.closest('butto
   box.addEventListener('click', e => { const b = e.target.closest('button[data-pcol]'); if (!b) return; S.pcol = b.dataset.pcol; saveS(); sleeveMat.color.set(pcolHex(S.pcol)); syncInputs(); });
 }
 $('btnChReset').addEventListener('click', () => { S.ch = Object.assign({}, DEFAULTS.ch); saveS(); syncInputs(); applySettings(); });
-function selectTab(b) {
-  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
-  document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== b.dataset.tab; });
+const settingsDialog = $('settingsDialog'), settingsTabs = $('settingsTabs');
+const settingsButtons = [...settingsTabs.querySelectorAll('[data-tab]')];
+for (const tab of settingsButtons) {
+  const name = tab.dataset.tab, panel = settingsDialog.querySelector('[data-pane="' + name + '"]');
+  tab.id = 'settings-tab-' + name;
+  panel.id = 'settings-pane-' + name;
+  tab.setAttribute('aria-controls', panel.id);
+  panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', tab.id);
 }
-document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => selectTab(b)));
-$('btnLoadout').addEventListener('click', () => { const b = document.querySelector('[data-tab="armas"]'); selectTab(b); b.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
-$('btnArsenal').addEventListener('click', () => openBuy(false));
+function selectTab(tab) {
+  for (const button of settingsButtons) {
+    const selected = button === tab;
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+    $(button.getAttribute('aria-controls')).hidden = !selected;
+  }
+  $('settingsContent').scrollTop = 0;
+}
+function openSettings(name) {
+  const tab = settingsButtons.find(button => name ? button.dataset.tab === name : button.getAttribute('aria-selected') === 'true');
+  selectTab(tab);
+  if (!settingsDialog.open) settingsDialog.showModal();
+  $('btnSettings').setAttribute('aria-expanded', 'true'); tab.focus();
+}
+function openMenuArsenal() {
+  if (settingsDialog.open) settingsDialog.close();
+  openBuy(false);
+}
+selectTab(settingsButtons[0]);
+bindChoices(settingsTabs, selectTab);
+$('btnSettings').addEventListener('click', () => openSettings());
+$('btnSettingsClose').addEventListener('click', () => settingsDialog.close());
+settingsDialog.addEventListener('click', e => { if (e.target === settingsDialog) settingsDialog.close(); });
+settingsDialog.addEventListener('close', () => $('btnSettings').setAttribute('aria-expanded', String(settingsDialog.open)));
+$('btnLoadout').addEventListener('click', () => openSettings('armas'));
+$('btnArsenal').addEventListener('click', openMenuArsenal);
+$('btnMenuArsenal').addEventListener('click', openMenuArsenal);
 function trySkinCode() {
   const input = $('skinCode'), opened = unlockSkinCode(input.value);
   if (opened.length) { input.value = ''; applyVmSkins(); if (G.mode === 'online') netSend({ t: 'sk', sk: mySkins() }); $('skinCodeMsg').textContent = 'Desbloqueada: ' + opened.map(id => 'AK-47 ' + SKINS[id].name).join(', ') + '. Escolha no arsenal (B).'; toast('Skin desbloqueada: ' + opened.map(id => SKINS[id].name).join(', ')); if (BUY.open) renderBuy(); }
@@ -3836,7 +4034,13 @@ $('btnJoin').addEventListener('click', () => {
   if (S.mode === 'dm') startSession('dm', { online: true }); else if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: true }); else startSession('online');
 });
 $('btnBot').addEventListener('click', () => { if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: false }); else startSession('bot'); });
-$('modeSel').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (!b) return; S.mode = b.dataset.mode; saveS(); syncInputs(); applySettings(); });
+function selectLobbyOption(key, value) {
+  if (S[key] === value) return;
+  S[key] = value; saveS(); syncInputs($('inName')); applySettings();
+}
+bindChoices($('modeSel'), button => selectLobbyOption('mode', button.dataset.mode));
+bindChoices($('duelMaps'), button => selectLobbyOption('map', button.dataset.map));
+bindChoices($('dmMaps'), button => selectLobbyOption('dmMap', button.dataset.map));
 $('btnDm').addEventListener('click',()=>startSession('dm',{online:false}));
 $('btnAimbotz').addEventListener('click', () => startSession('aimbotz'));
 $('btnDmAgain').addEventListener('click',()=>{
@@ -3854,9 +4058,7 @@ $('btnFull').addEventListener('click', () => {
   const go = d.requestFullscreen ? d.requestFullscreen() : null;
   if (go && go.then) go.then(() => { try { navigator.keyboard && navigator.keyboard.lock && navigator.keyboard.lock().catch(() => {}); } catch (e) {} lock(); }).catch(() => toast('O navegador não deixou abrir em tela cheia. Use F11.'));
 });
-$('mpStatus').textContent = (typeof Peer !== 'undefined')
-  ? 'Conexão direta entre os dois navegadores (WebRTC). Funciona em redes diferentes na maioria dos casos.'
-  : 'A biblioteca de rede não carregou. O treino com bot funciona; recarregue para jogar online.';
+$('mpStatus').textContent = 'O online está indisponível. Recarregue a página para tentar de novo.';
 if (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches) $('touchnote').hidden = false;
 
 /* ================= Loop ================= */
@@ -3869,11 +4071,6 @@ function resize() {
 addEventListener('resize', resize);
 
 function updateFx(t) { for (const tr of tracers) if (tr.l.visible && t > tr.until) tr.l.visible = false; }
-function idleCam(t) {
-  const a = t * 0.00005;
-  const dust = MAP.id === 'dust2', radius = dust ? 33 : 30;
-  camera.position.set(Math.sin(a) * radius, dust ? 57 : 11, Math.cos(a) * radius); camera.lookAt(0, 1, 0);
-}
 function renderWorld() {
   const seeThroughWalls = G.mode && xrayEnabled();
   renderer.clear();
@@ -3886,38 +4083,33 @@ function renderWorld() {
     camera.layers.enable(0);
   }
 }
-let last = now(), idleLast = 0;
+let last = now();
 function frame() {
   requestAnimationFrame(frame);
-  const t = now(), frameMs = t - last; let dt = Math.min(frameMs / 1000, .0625); last = t;
-  if (document.hidden) return;
-  if (!G.mode && t - idleLast < 1000 / 30) return;
-  idleLast = t;
-  if (G.mode) {
-    playerInput(dt, t);
-    if(G.mode==='dm'){
-      if(ARENA.net&&!ARENA.host)dmGuestTick(dt,t);else{if(ARENA.net)arenaUpdateProxies(t);dmTick(dt,t);}
-      if(ARENA.net)arenaNetTick(t);
+  const t = now(), frameMs = t - last, dt = Math.min(frameMs / 1000, .0625); last = t;
+  if (document.hidden || !G.mode) return;
+  playerInput(dt, t);
+  if (G.mode === 'dm') {
+    if(ARENA.net&&!ARENA.host)dmGuestTick(dt,t);else{if(ARENA.net)arenaUpdateProxies(t);dmTick(dt,t);}
+    if(ARENA.net)arenaNetTick(t);
+  } else if (G.mode === 'team') teamTick(dt, t);
+  else if (G.mode === 'bot') botUpdate(dt, t);
+  if (G.host) hostTick(t);
+  netTick(t);
+  if(G.mode==='dm'||G.mode==='team'||G.mode==='aimbotz')dmRender(t,dt);else updateOpp(dt, t);
+  updateWeapon(dt, t);
+  updateCamera(dt, t);
+  updateVM(dt, t);
+  updateHUD(dt, t);
+  if (locked && S.adaptiveScale && frameMs < 100) {
+    perfTime += frameMs; perfFrames++;
+    if (perfTime > 1800 && t - perfChange > 2500) {
+      const avg = perfTime / perfFrames;
+      if (avg > 23 && effectiveScale > .4) { setRenderScale(effectiveScale - .1); perfChange = t; }
+      else if (avg < 15 && effectiveScale < S.scale) { setRenderScale(effectiveScale + .05); perfChange = t; }
+      perfTime = perfFrames = 0;
     }
-    else if(G.mode==='team')teamTick(dt,t);
-    else if (G.mode === 'bot') botUpdate(dt, t);
-    if (G.host) hostTick(t);
-    netTick(t);
-    if(G.mode==='dm'||G.mode==='team'||G.mode==='aimbotz')dmRender(t,dt);else updateOpp(dt, t);
-    updateWeapon(dt, t);
-    updateCamera(dt, t);
-    updateVM(dt, t);
-    updateHUD(dt, t);
-    if (locked && S.adaptiveScale && frameMs < 100) {
-      perfTime += frameMs; perfFrames++;
-      if (perfTime > 1800 && t - perfChange > 2500) {
-        const avg = perfTime / perfFrames;
-        if (avg > 23 && effectiveScale > .4) { setRenderScale(effectiveScale - .1); perfChange = t; }
-        else if (avg < 15 && effectiveScale < S.scale) { setRenderScale(effectiveScale + .05); perfChange = t; }
-        perfTime = perfFrames = 0;
-      }
-    }
-  } else idleCam(t);
+  }
   updateFx(t);
   sky.position.copy(camera.position);
   renderWorld();

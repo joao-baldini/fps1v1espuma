@@ -284,9 +284,17 @@ test('USP-S HS kills an unhelmeted target at close range and survives with a hel
   assert.equal(g.damageFor(g.W.sniper, 'body', false), 115);
 });
 
-test('M4s need more than one helmeted headshot; AK, Deagle and Scout retain lethal HS', () => {
+test('M4s kill with one headshot through helmets up to 35 meters', () => {
   const g = game();
-  for (const key of ['m4a4', 'm4a1s']) assert.ok(g.damageFor(g.W[key], 'head', true) < 100);
+  for (const key of ['m4a4', 'm4a1s']) {
+    const w = g.W[key];
+    for (const distance of [0, 10, 34.99, 35]) {
+      for (const helmet of [false, true]) assert.ok(g.damageFor(w, 'head', helmet, distance) >= 100);
+      assert.equal(g.damageFor(w, 'body', true, distance), w.dmg);
+      assert.equal(g.damageFor(w, 'leg', true, distance), Math.round(w.dmg * .75));
+    }
+    for (const distance of [35.01, 50, 100]) assert.ok(g.damageFor(w, 'head', true, distance) < 100);
+  }
   for (const key of ['rifle', 'pistol', 'ssg']) assert.ok(g.damageFor(g.W[key], 'head', true) >= 100);
 });
 
