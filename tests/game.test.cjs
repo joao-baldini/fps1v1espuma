@@ -1346,11 +1346,13 @@ test('operators: Finder reveals enemies inside a 20 m scan, Detector alarm hides
   assert.ok(cx.finderScan(g.P, 2, 2, t)); assert.equal(g.P.charges, 0); assert.equal(cx.finderScan(g.P, 2, 2, t), false);
   cx.scanTick(t + 800);
   assert.ok(foes[0].revealUntil > t + 800 && foes[0].revealTeam === g.P.team); assert.ok(!(foes[1].revealUntil > t + 800));
-  // segunda marcação 1 s depois, mesmo fora da área
-  foes[0].pos.set(20, 0, 20); const first = foes[0].revealUntil;
-  cx.scanTick(t + 1850); assert.ok(foes[0].revealUntil > first, 'segunda marca');
-  // diâmetro de 15 m: 8 m do centro já fica fora
-  g.P.charges = 1; foes[1].pos.set(10, 0, 2); foes[1].revealUntil = 0; assert.ok(cx.finderScan(g.P, 2, 2, t + 3000)); cx.scanTick(t + 3800); assert.ok(!(foes[1].revealUntil > 0));
+  // a marcação é uma silhueta parada onde a pessoa estava, não segue
+  const GH = vm.runInContext('GHOSTS', cx); assert.equal(GH.length, 1); assert.deepEqual([GH[0].x, GH[0].z], [0, 0]);
+  foes[0].pos.set(20, 0, 20); assert.deepEqual([GH[0].x, GH[0].z], [0, 0]);
+  // segunda marcação 1 s depois: nova silhueta onde ela estiver agora
+  cx.scanTick(t + 1850); assert.equal(GH.length, 2); assert.deepEqual([GH[1].x, GH[1].z], [20, 20]);
+  // diâmetro de 10 m: 6 m do centro já fica fora
+  g.P.charges = 1; foes[1].pos.set(8, 0, 2); foes[1].revealUntil = 0; assert.ok(cx.finderScan(g.P, 2, 2, t + 3000)); cx.scanTick(t + 3800); assert.ok(!(foes[1].revealUntil > 0));
   // Detector
   g.P.op = 'detector'; g.P.charges = 1; g.P.pos.set(0, 0, 10); g.P.yaw = 0;
   foes[0].pos.set(30, 0, 30); foes[1].pos.set(-30, 0, -30);

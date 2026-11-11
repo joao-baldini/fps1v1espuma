@@ -51,8 +51,8 @@ A habilidade fica na tecla **X**, com uma carga por rodada. Cada time recebe um 
 
 | Operador | Habilidade | Visual |
 |---|---|---|
-| Finder | Abre o minimapa; o clique escolhe uma área de 15 m de diâmetro. Após um pulso, marca os inimigos dentro dela e marca de novo 1 s depois, onde estiverem (como o dardo do drone do Sova) | Viseira ciano e antena |
-| Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Quem chega a 3,2 m faz ele apitar, fica revelado por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
+| Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro. Após um pulso, mostra uma silhueta vermelha parada onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |
+| Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Quem chega a 3,2 m faz ele apitar, aparece como silhueta vermelha no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
 
 ### Mapas de bomba
 
