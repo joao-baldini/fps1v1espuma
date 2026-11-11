@@ -1,6 +1,6 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo e quatro mapas de DM. O menu usa prévias dos mapas em WebP.
+FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **Plant the Bomb**, **TDM**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM e dois mapas de bomba. O menu usa prévias dos mapas em WebP.
 
 ## Modos de jogo
 
@@ -10,7 +10,9 @@ Na tela **Jogar**, escolha o modo e selecione a arena na faixa de mapas. O mapa 
 |---|---|---|
 | 1v1 | Treinar contra bot (fácil, médio ou difícil) | Sala com o mesmo código para duas pessoas |
 | 2v2 | Você e um bot aliado contra dois bots | Sala para até 4 pessoas; bots completam as vagas |
-| XvX | Times de 1 a 5 de cada lado (1v5, 2v5, 3v3…), completados por bots | Sala para até 10 pessoas, no tamanho escolhido por quem cria |
+| XvX | Times de 1 a 8 de cada lado (1v5, 3v3, 8v8…), completados por bots | Sala para até 16 pessoas, no tamanho escolhido por quem cria |
+| Plant the Bomb | Você e um bot (Terroristas ou SWAT) contra dois bots, regras do Wingman | — |
+| TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
 | Aimbotz | Treino livre de mira com 1 a 12 bots | — |
 
@@ -26,10 +28,52 @@ Sem parceiro? Use **Treinar contra bot** no 1v1 ou **Jogar 2v2 com bots**.
 
 ## 2v2 e XvX
 
-No **XvX**, escolha o tamanho de **Seu time** e do **Time inimigo** (1 a 5 cada); o resto funciona como no 2v2. Rodadas de dois contra dois nos mapas de duelo, com as mesmas regras do 1v1: 3 s de freeze, primeiro a N rodadas, sem respawn dentro da rodada. A rodada acaba quando um time inteiro morre; se o tempo acabar, vence o time com mais vida somada. Não há fogo amigo: tiros param no aliado sem causar dano. Aliados aparecem em azul, com um marcador sobre a cabeça; inimigos em vermelho. O placar no topo mostra quantos de cada time estão vivos.
+No **XvX**, escolha o tamanho de **Seu time** e do **Time inimigo** (1 a 8 cada); o resto funciona como no 2v2. Rodadas de dois contra dois nos mapas de duelo, com as mesmas regras do 1v1: 3 s de freeze, primeiro a N rodadas, sem respawn dentro da rodada. A rodada acaba quando um time inteiro morre; se o tempo acabar, vence o time com mais vida somada. Não há fogo amigo: tiros param no aliado sem causar dano. Aliados aparecem em azul, com um marcador sobre a cabeça; inimigos em vermelho. O placar no topo mostra quantos de cada time estão vivos.
 
 - **Com bots:** você e um bot aliado contra dois bots, na dificuldade escolhida. Os bots sorteiam uma arma a cada rodada, passam a posição de inimigos vistos para o aliado e saem para caçar depois de alguns segundos.
 - **Online:** quem cria a sala vira o juiz: roda os bots, a rodada e o placar e retransmite tudo para as outras pessoas (até 4 por sala no 2v2; no XvX, até o total das duas equipes). Em **Times na sala 2v2**, escolha *pessoas em lados opostos* (cada uma com um bot aliado) ou *pessoas no mesmo time contra bots*. Quando alguém entra ou sai, começa uma partida nova e um bot assume a vaga livre. Cada pessoa controla o próprio movimento e a própria vida, como no 1v1.
+
+## Plant the Bomb (Wingman)
+
+Terroristas (ataque) contra SWAT (defesa), com as regras do modo Wingman do CS. Antes da partida você escolhe um **operador**.
+
+- **Partida:** primeiro a 9 rodadas, troca de lado depois da 8ª (a economia recomeça); 8 a 8 termina empatado.
+- **Tempos:** 10 s de preparação, compra até 20 s depois do início da rodada, 1:30 de rodada, bomba de 40 s. Plantar leva 3,2 s; desarmar leva 10 s, ou 5 s com kit.
+- **Economia:** $800 iniciais e teto de $8.000. A vitória paga $3.250, ou $3.500 por bomba ou desarme. A derrota paga $1.400, mais $500 por derrota seguida, até $3.400; quem plantou e perdeu ganha mais $800. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
+- **Loja (B):** pistolas, SMG e escopeta, rifles (AK só para Terroristas, M4 só para SWAT), precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para SWAT). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
+- **Teclas:** 1 primária, 2 pistola, 3 faca, 4 alterna granadas, 5 bomba. Plante segurando **E** no bombsite (ou o clique com a C4 na mão) e desarme segurando **E** perto da bomba. Quem carrega a bomba e morre deixa ela no chão; um Terrorista pega passando por cima.
+- **Bots:** compram conforme o dinheiro, carregam e plantam a bomba, seguram o site, desarmam, buscam a bomba caída e usam smoke, flash e HE.
+- **HUD:** dinheiro, colete, C4, barra de plantar/desarmar, relógio da bomba e o nome da área onde você está.
+
+### Operadores
+
+A habilidade fica na tecla **X**, com uma carga por rodada. Cada time recebe um de cada.
+
+| Operador | Habilidade | Visual |
+|---|---|---|
+| Finder | Abre o minimapa; o clique escolhe uma área de 20 m e, após um pulso, revela por 3 s os inimigos dentro dela | Viseira ciano e antena |
+| Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Quem chega a 3,2 m faz ele apitar, fica revelado por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
+
+### Mapas de bomba
+
+Os sites com o radar oficial não estavam acessíveis; as áreas vêm das notas de atualização do CS:GO e do autor de cada mapa.
+
+- **Guard (Praga):** bombsite A no cais à beira do rio, com as coberturas viradas para a ponte e para os arcos. Ponte Carlos com estátuas, torre da ponte, pit, lixeira, ladder hole, escada com meia parede e conector até o spawn da SWAT. Do lado dos Terroristas: restaurante, loja de vidro, bicicletas, caminhão e a obra. O rio tem água rasa e deixa mais lento.
+- **Elysion (39º andar):** spawn TR com a mesa da recepção, meio em dois níveis com as paredes de cascata, área externa com duas portas para o A, salão com obras de arte, bombsite A com a parede central, o letreiro ELYSION e o guarda-corpo das janelas, e a SWAT atrás da parede de vidro com o relógio.
+
+## TDM
+
+Dois times de 2 a 8 (você e bots contra bots) nos mapas de DM, com renascimento contínuo e sem fogo amigo. Cada time começa numa metade do mapa e quem morre renasce longe dos inimigos. Vence o primeiro time a chegar a 10 abates por jogador, ou o que tiver mais abates ao fim de 10 minutos.
+
+## Armas novas e granadas
+
+- **UMP-45:** submetralhadora automática, precisa em movimento, perde dano com a distância.
+- **Bucky:** escopeta com 12 chumbos por disparo; o dano soma por vítima. Letal de perto e fraca de longe.
+- **HE:** explode em 1,6 s, até 98 de dano caindo com a distância (7 m), só com linha de visão.
+- **Flash:** cega por até 3,6 s quem olha para ela; de lado cega menos, de costas quase nada.
+- **Smoke:** estoura ao parar, nuvem de 3,2 m por 18 s que bloqueia a visão dos bots e a flash.
+
+Clique esquerdo lança a granada longe; o direito joga perto. As granadas quicam nas paredes e no chão. UMP-45 e Bucky entram no slot primário em todos os modos; as granadas são compradas no Plant the Bomb.
 
 ## Deathmatch
 
@@ -64,7 +108,7 @@ O apelido exato `KQLY` ativa o aimbot para armas de fogo em todos os modos. Cada
 
 A AWP padrão usa um estampido sintetizado mais grave, mantendo o estilo do jogo. Os headshots padrão também são sintetizados, com um toque metálico para capacete. As skins mantêm seus sons. Os MP3 do experimento ficam guardados em [assets/audio](assets/audio/README.md), sem carregar ou tocar durante o jogo.
 
-O **Arsenal** é uma tela própria, acessível pelo topo do menu ou por **Editar equipamento**. Escolha o slot de rifle, pistola, faca ou precisão à esquerda. À direita, cada card mostra uma combinação de arma e skin: um clique equipa as duas juntas. O contorno cobre e a indicação **Equipada** confirmam a escolha; os slots mostram seu equipamento atual. As escolhas ficam salvas no navegador.
+O **Arsenal** é uma tela própria, acessível pelo topo do menu ou por **Editar equipamento**. Escolha o slot de rifle, pistola, faca ou precisão à esquerda. À direita, cada card mostra uma arma com a skin que ela usa: um clique equipa a arma e abre logo abaixo uma barra com as skins dela. O contorno cobre e a indicação **Equipada** confirmam a escolha; os slots mostram seu equipamento atual. As escolhas ficam salvas no navegador.
 
 Durante a partida, **B** abre a mesma tela com um cursor próprio; **1–4** alternam os slots, a rodinha rola o inventário e **B** volta ao jogo. **Esc** libera o mouse e abre a pausa. Os comandos de movimento e tiro ficam suspensos enquanto você escolhe. No DM, as categorias não permitidas ficam desativadas. O relógio da partida continua.
 
@@ -144,6 +188,8 @@ No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
 Valores de perto. M4A4 e M4A1-S matam com um headshot até 35 metros, inclusive com capacete. Acima dessa distância, o dano na cabeça com capacete é 92.
 
 ## Movimento e precisão
+
+Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocidade da arma. Andando de scope (100 u/s na AWP) o tiro sai torto; parado, com contra-strafe ou andando devagar com Shift ele volta a ser preciso, e agachado ajuda. Logo depois de abrir o scope, o tiro ainda carrega parte da imprecisão sem scope por cerca de 0,22 s.
 
 A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante em que a recarga termina, a munição é atualizada antes de liberar a luneta, sem precisar esperar outro quadro.
 
