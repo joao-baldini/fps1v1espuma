@@ -1361,3 +1361,15 @@ test('operators: Finder reveals enemies inside a 20 m scan, Detector alarm hides
   g.P.charges = 1; foes[0].pos.set(30, 0, 30); assert.ok(cx.detectorPlace(g.P, t + 2000));
   const b = AL.list[0]; assert.ok(cx.alarmDamage(b.id, 25, foes[0])); assert.equal(AL.list.length, 0);
 });
+test('operators exist only in Plant the Bomb: after a bomb match, 2v2 has no ability, alarms or operator gear', () => {
+  const { g, cx, step } = bombWorld();
+  let t = step(10000, 11500);
+  assert.ok(g.DM.actors.every(e => e.op));
+  g.S.mode = '2v2'; cx.MAP_IDS = ['caixas']; cx.buildMap('caixas'); vm.runInContext('dmBuildNav([])', cx);
+  Object.assign(cx, { pickMap: () => 'caixas', randSpawn: side => side ? [0, -20, 0] : [0, 20, Math.PI] });
+  vm.runInContext(`teamSetup(${t},false)`, cx); t = step(t, 2000);
+  assert.equal(vm.runInContext('ARENA.bomb', cx), false);
+  assert.equal(vm.runInContext('bombOn()', cx), false);
+  g.P.charges = 1; cx.useAbility(t); assert.equal(vm.runInContext('ALARM.list.length', cx), 0);
+  assert.equal(vm.runInContext('SCAN.pending', cx), null);
+});
