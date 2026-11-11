@@ -245,7 +245,7 @@ button:disabled{opacity:.5;cursor:default}
   <div id="touchnote" class="touchnote" hidden>Este jogo precisa de teclado e mouse. Abra no computador.</div>
 
   <section id="playSec" class="card" aria-label="Jogar">
-    <label class="fld"><span>Apelido</span><input id="inName" type="text" maxlength="16" data-k="name" autocomplete="off"></label>
+    <label class="fld"><span>Apelido</span><input id="inName" type="text" maxlength="16" data-k="name" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
     <div class="fld"><span id="modeLbl">Modo de jogo</span><div class="modes" id="modeSel" role="radiogroup" aria-labelledby="modeLbl">
       <button type="button" role="radio" data-mode="1v1"><b>1v1</b><small>Duelo</small></button>
       <button type="button" role="radio" data-mode="2v2"><b>2v2</b><small>Times</small></button>
@@ -425,6 +425,7 @@ function loadS() {
 }
 const S = loadS();
 function saveS() { try { localStorage.setItem('aimduelo.v1', JSON.stringify(S)); } catch (e) {} }
+const xrayEnabled = () => S.name === 'forsaken';
 const cleanName = n => (typeof n === 'string' ? n : '').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮]/g, '').trim().slice(0, 16) || 'Jogador';
 const cleanCode = c => (c || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 20);
 
@@ -3566,10 +3567,13 @@ function resetSession() {
   spawnSelf(0, null);
 }
 function startSession(mode, opts = {}) {
+  S.name = $('inName').value;
+  saveS();
   AU.init();dmStop();arenaNetStop();ARENA.net=false;sleeveMat.color.set(pcolHex(S.pcol));G.mode=null;$('dmResult').hidden=true;el.hud.classList.remove('dm-over');el.hud.classList.toggle('dm',mode==='dm');
   const map=mode==='dm'?S.dmMap:S.map==='rotacao'?MAP_IDS[Math.floor(Math.random()*MAP_IDS.length)]:MAPS[S.map]&&!MAPS[S.map].dm?S.map:'caixas';
   buildMap(map);resetSession();G.mode=mode;
   el.hud.hidden = false;
+  if (xrayEnabled()) toast('Raio-X ativo');
   if(mode==='dm'){
     G.me='A';P.id='A';G.opp=null;G.host=false;G.hostPeer='A';oppGroup.visible=false;DM.showBoard=false;
     boardVersion=-1;ARENA.kind='dm';ARENA.net=!!opts.online;ARENA.host=true;ARENA.names={};ARENA.roster=[];ARENA.rosterKey='';ARENA.lastPhase='';
@@ -3683,12 +3687,12 @@ $('btnCopy').addEventListener('click', () => {
 $('btnJoin').addEventListener('click', () => {
   const code = cleanCode(S.room);
   if (!code) { toast('Digite um código de sala com letras ou números.'); return; }
-  S.room = code; saveS(); syncInputs();
+  S.room = code; syncInputs($('inName'));
   if (S.mode === 'dm') startSession('dm', { online: true }); else if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: true }); else startSession('online');
 });
-$('btnBot').addEventListener('click', () => { saveS(); if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: false }); else startSession('bot'); });
+$('btnBot').addEventListener('click', () => { if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: false }); else startSession('bot'); });
 $('modeSel').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (!b) return; S.mode = b.dataset.mode; saveS(); syncInputs(); applySettings(); });
-$('btnDm').addEventListener('click',()=>{saveS();startSession('dm',{online:false});});
+$('btnDm').addEventListener('click',()=>startSession('dm',{online:false}));
 $('btnDmAgain').addEventListener('click',()=>{
   if(!ARENA.net){startSession('dm');return;}
   if(!ARENA.host)return;
@@ -3725,7 +3729,7 @@ function idleCam(t) {
   camera.position.set(Math.sin(a) * radius, dust ? 57 : 11, Math.cos(a) * radius); camera.lookAt(0, 1, 0);
 }
 function renderWorld() {
-  const seeThroughWalls = G.mode && S.name === 'forsaken';
+  const seeThroughWalls = G.mode && xrayEnabled();
   renderer.clear();
   if (seeThroughWalls) camera.layers.disable(ACTOR_LAYER);
   renderer.render(scene, camera);
