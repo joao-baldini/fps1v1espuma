@@ -11,7 +11,7 @@ Na tela **Jogar**, escolha o modo e selecione a arena na faixa de mapas. O mapa 
 | 1v1 | Treinar contra bot (fácil, médio ou difícil) | Sala com o mesmo código para duas pessoas |
 | 2v2 | Você e um bot aliado contra dois bots | Sala para até 4 pessoas; bots completam as vagas |
 | XvX | Times de 1 a 8 de cada lado (1v5, 3v3, 8v8…), completados por bots | Sala para até 16 pessoas, no tamanho escolhido por quem cria |
-| Plant the Bomb | Você e um bot (Terroristas ou SWAT) contra dois bots, regras do Wingman | — |
+| Plant the Bomb | Você e um bot (Atacantes ou Defensores) contra dois bots, regras do Wingman | — |
 | TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
 | Aimbotz | Treino livre de mira com 1 a 12 bots | — |
@@ -35,13 +35,15 @@ No **XvX**, escolha o tamanho de **Seu time** e do **Time inimigo** (1 a 8 cada)
 
 ## Plant the Bomb (Wingman)
 
-Terroristas (ataque) contra SWAT (defesa), com as regras do modo Wingman do CS. Antes da partida você escolhe um **operador**.
+Atacantes contra Defensores, com as regras do modo Wingman do CS. Antes da partida você escolhe um **operador**.
+
+Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu, igual nos dois times. Quem é quem fica pelos contornos, como no Valorant. Os aliados aparecem através das paredes com o corpo inteiro preenchido em azul-água e uma borda mais forte. Os inimigos têm um contorno fino, que não atravessa paredes. Por padrão ele é vermelho, e em **Configurações → Vídeo → Contorno dos inimigos** dá para trocar para amarelo ou roxo. A mesma cor vale para as silhuetas e os pontos no minimapa do Finder e do Detector. Os contornos também valem no 1v1, 2v2, XvX, TDM e DM: o aliado azul-água só existe onde há time.
 
 - **Partida:** primeiro a 9 rodadas, troca de lado depois da 8ª (a economia recomeça); 8 a 8 termina empatado.
 - **Tempos:** 10 s de preparação, compra até 20 s depois do início da rodada, 1:30 de rodada, bomba de 40 s. Plantar leva 3,2 s; desarmar leva 10 s, ou 5 s com kit.
-- **Economia (Wingman):** $800 iniciais e teto de $8.000. A vitória paga $2.750 por eliminação ou tempo esgotado e $3.000 por desarme ou detonação. A derrota paga $2.000, $2.300, $2.600 e no máximo $2.900 por derrotas seguidas, voltando ao início quando o time vence; os Terroristas que plantaram e perderam ganham mais $600. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
-- **Loja (B):** pistolas, SMG e escopeta, rifles (AK só para Terroristas, M4 só para SWAT), precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para SWAT). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
-- **Teclas:** 1 primária, 2 pistola, 3 faca, 4 alterna granadas, 5 bomba. Plante segurando **E** no bombsite (ou o clique com a C4 na mão) e desarme segurando **E** perto da bomba. Quem carrega a bomba e morre deixa ela no chão; um Terrorista pega passando por cima.
+- **Economia (Wingman):** $800 iniciais e teto de $8.000. A vitória paga $2.750 por eliminação ou tempo esgotado e $3.000 por desarme ou detonação. A derrota paga $2.000, $2.300, $2.600 e no máximo $2.900 por derrotas seguidas, voltando ao início quando o time vence; os Atacantes que plantaram e perderam ganham mais $600. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
+- **Loja (B):** pistolas, SMG e escopeta, rifles (AK só para Atacantes, M4 só para Defensores), precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para Defensores). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
+- **Teclas:** 1 primária, 2 pistola, 3 faca, 4 alterna granadas, 5 bomba. Plante segurando **E** no bombsite (ou o clique com a C4 na mão) e desarme segurando **E** perto da bomba. Quem carrega a bomba e morre deixa ela no chão; um Atacante pega passando por cima.
 - **Bots:** compram conforme o dinheiro, carregam e plantam a bomba, seguram o site, desarmam, buscam a bomba caída e usam smoke, flash e HE.
 - **HUD:** dinheiro, colete, C4, barra de plantar/desarmar, relógio da bomba e o nome da área onde você está.
 
@@ -55,11 +57,11 @@ Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os 
 
 | Operador | Habilidade | Visual |
 |---|---|---|
-| Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro. Após um pulso, mostra uma silhueta vermelha parada onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |
+| Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro. Após um pulso, mostra uma silhueta parada (na cor do contorno inimigo) onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |
 | Doctor | Saca uma pistola de cura estimulante: botão esquerdo atira um dardo no aliado da mira, botão direito aplica em você. Cura 50 de vida (até 100). Errar o dardo não gasta a carga; X de novo guarda a pistola. Bots curam a si ou um aliado próximo abaixo de 50 de vida | Cruz verde no peito e maleta branca com cruz vermelha nas costas |
-| Ghost | Por 5 s seus passos ficam mudos: ninguém escuta você andando ou correndo e os bots não reagem ao barulho. O HUD mostra o tempo restante. Bots Terroristas usam perto do bomb antes de plantar; bots CT usam depois que a bomba é plantada | Capuz escuro com máscara e faixa roxas |
+| Ghost | Por 5 s seus passos ficam mudos: ninguém escuta você andando ou correndo e os bots não reagem ao barulho. O HUD mostra o tempo restante. Bots Atacantes usam perto do bomb antes de plantar; bots Defensores usam depois que a bomba é plantada | Capuz escuro com máscara e faixa roxas |
 | Brutus | Couraça: por 5 s recebe 10% menos dano, exceto de headshots. Bots ligam ao entrar numa troca de tiros | Ombreiras amarelas, placa no peito com divisa e protetor de queixo |
-| Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Só um alarme por vez: colocar outro desfaz o anterior. Quem chega a 3,2 m faz ele apitar, aparece como silhueta vermelha no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
+| Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Só um alarme por vez: colocar outro desfaz o anterior. Quem chega a 3,2 m faz ele apitar, aparece como silhueta (na cor do contorno inimigo) no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
 
 ### Mapas de bomba
 

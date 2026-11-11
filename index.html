@@ -617,6 +617,8 @@ button:disabled{opacity:.5;cursor:default}
     <label class="sl"><span>Campo de visão (horizontal 4:3, CS = 90)</span><output data-out="fov"></output><input id="fov" type="range" min="70" max="110" step="1" data-k="fov"></label>
     <label class="sl"><span>Escala de resolução</span><output data-out="scale"></output><input id="scale" type="range" min="0.4" max="1" step="0.05" data-k="scale"></label>
     <label class="sl"><span>Volume</span><output data-out="volume"></output><input id="volume" type="range" min="0" max="1" step="0.05" data-k="volume"></label>
+    <label class="fld"><span>Contorno dos inimigos</span><select data-k="enemyOutline" aria-label="Cor do contorno dos inimigos"><option value="vermelho">Vermelho (padrão)</option><option value="amarelo">Amarelo</option><option value="roxo">Roxo</option></select></label>
+    <p class="note">Também muda a cor das marcações do Finder e do Detector. Aliados aparecem através das paredes em azul-água.</p>
     <label class="chk"><input id="showFps" type="checkbox" data-k="showFps">Mostrar FPS</label>
     <label class="chk"><input type="checkbox" data-k="adaptiveScale">Ajustar resolução automaticamente para manter a fluidez</label>
     <p class="note">PC fraco: baixe a escala de resolução para 70% ou menos.</p>
@@ -669,7 +671,7 @@ function normalizeViewmodel(value) {
   return Object.fromEntries(Object.entries(VIEWMODEL_LIMITS).map(([axis,[min,max]])=>[axis,Math.round(clamp(fin(value?.[axis])?value[axis]:0,min,max)*10)/10]));
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: '1v1', teamSetup: 'versus', xvx: { mine: 1, foes: 5 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'guard', operator: 'finder', tdmSize: 5,
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: '1v1', teamSetup: 'versus', xvx: { mine: 1, foes: 5 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'guard', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho',
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife', sniper: 'sniper' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', botHelmet: true, autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -682,6 +684,7 @@ function loadS() {
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
   if (!['guard', 'elysion', 'rotacao'].includes(s.bombMap)) s.bombMap = 'guard';
   if (!['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(s.operator)) s.operator = 'finder';
+  if (!['vermelho', 'amarelo', 'roxo'].includes(s.enemyOutline)) s.enemyOutline = 'vermelho';
   if (typeof s.smoothRecoil !== 'boolean') s.smoothRecoil = true;
   if (typeof s.aimbotzInfiniteAmmo !== 'boolean') s.aimbotzInfiniteAmmo = false;
   s.viewmodel = normalizeViewmodel(s.viewmodel);
@@ -2392,6 +2395,18 @@ function setOppSkins(map) {
 }
 const oppFlash = new THREE.Mesh(flashGeo, flashMat); oppFlash.position.set(.16, 1.26, -.68); oppFlash.visible = false; oppUpper.add(oppFlash);
 oppGroup.add(oppLegs, oppUpper); oppGroup.visible = false; scene.add(oppGroup);
+// Contorno do inimigo (cor da preferência): cópia de cada peça um pouco maior, desenhada só pelo lado de dentro.
+const OUTLINE_COLORS = { vermelho: 0xff3b3b, amarelo: 0xf5e94a, roxo: 0xc04bff }, ALLY_XRAY = 0x3ff5e0;
+const outlineHex = () => OUTLINE_COLORS[S.enemyOutline] ?? OUTLINE_COLORS.vermelho;
+const oppHullMat = new THREE.MeshBasicMaterial({ color: OUTLINE_COLORS.vermelho, side: THREE.BackSide });
+function hullGeometry(geo) {
+  geo.computeBoundingBox(); const c = new THREE.Vector3(), size = new THREE.Vector3(); geo.boundingBox.getCenter(c); geo.boundingBox.getSize(size);
+  const g = geo.clone().translate(-c.x, -c.y, -c.z); g.userData.c = c; g.userData.s = size; return g;
+}
+for (const part of [oppLegs, oppUpper.children[0], oppUpper.children[1], oppHelmet]) {
+  const g = hullGeometry(part.geometry), m = new THREE.Mesh(g, oppHullMat), w = .022;
+  m.position.copy(g.userData.c); m.scale.set(1 + 2 * w / g.userData.s.x, 1 + 2 * w / g.userData.s.y, 1 + 2 * w / g.userData.s.z); part.add(m);
+}
 oppGroup.traverse(object => object.layers.set(ACTOR_LAYER));
 function setOppColor(k) { oppTint.color.set(pcolHex(k)); }
 
@@ -3650,10 +3665,21 @@ function dmEnsureRender(){
   // Brutus: ombreiras amarelas, placa no peito com divisa, protetor de queixo e faixa amarela na testa.
   const brutus=pool(boxModel([[[-.34,1.33,-.17],[-.2,1.49,.17],0xfacc15],[[.2,1.33,-.17],[.34,1.49,.17],0xfacc15],[[-.21,1.04,-.19],[.21,1.37,-.16],0x3a3f45],[[-.13,1.21,-.2],[.13,1.27,-.185],0xfacc15],[[-.145,1.5,-.17],[.145,1.57,-.14],0x3a3f45],[[-.157,1.69,-.162],[.157,1.73,.162],0xfacc15]]).geometry,basicMat);
   const detector=pool(boxModel([[[-.17,.95,.15],[.17,1.42,.32],0xf08a24],[[-.2,1.0,.14],[.2,1.08,.17],0x2c3540],[[-.05,1.42,.2],[.05,1.52,.28],0xff3b2a],[[-.12,1.52,.18],[.12,1.55,.3],0x9aa6ad]]).geometry,basicMat);
-  const ghostMat=new THREE.MeshBasicMaterial({color:0xff3b2a,depthTest:false,depthWrite:false,transparent:true,opacity:.55});
+  const ghostMat=new THREE.MeshBasicMaterial({color:outlineHex(),depthTest:false,depthWrite:false,transparent:true,opacity:.55});
   const ghostLegs=pool(legs.geometry,ghostMat),ghostBody=pool(body.geometry,ghostMat),ghostHead=pool(head.geometry,ghostMat);
   for(const m of [ghostLegs,ghostBody,ghostHead])m.renderOrder=10;
-  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally,finder,detector,doctor,ghost,brutus,ghostLegs,ghostBody,ghostHead};
+  // Contornos estilo Valorant. As peças visíveis gravam 3 no stencil. Aliado atrás da parede: preenchimento azul-água (só onde
+  // algo está na frente: depthFunc Greater) que grava 2, e o contorno mais forte por fora dele. Inimigo: contorno fino normal.
+  const sol=[legs,body,head,helmet,...Object.values(guns),finder,doctor,ghost,brutus,detector];
+  for(const m of sol){const mt=m.material;mt.stencilWrite=true;mt.stencilRef=3;mt.stencilFunc=THREE.AlwaysStencilFunc;mt.stencilZPass=THREE.ReplaceStencilOp;}
+  const parts=[legs,body,head,helmet],hull=parts.map(m=>hullGeometry(m.geometry));
+  const enemyHull=hull.map(g=>pool(g,new THREE.MeshBasicMaterial({color:outlineHex(),side:THREE.BackSide})));
+  const fillMat=new THREE.MeshBasicMaterial({color:ALLY_XRAY,transparent:true,opacity:.42,depthWrite:false,depthFunc:THREE.GreaterDepth,stencilWrite:true,stencilRef:2,stencilFunc:THREE.GreaterStencilFunc,stencilZPass:THREE.ReplaceStencilOp});
+  const allyFill=parts.map(m=>pool(m.geometry,fillMat));
+  const edgeMat=new THREE.MeshBasicMaterial({color:0x8ffff4,transparent:true,opacity:.95,side:THREE.BackSide,depthWrite:false,depthFunc:THREE.GreaterDepth,stencilWrite:true,stencilRef:1,stencilFunc:THREE.GreaterStencilFunc});
+  const allyEdge=hull.map(g=>pool(g,edgeMat));
+  for(const m of allyFill)m.renderOrder=20;for(const m of allyEdge)m.renderOrder=21;
+  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally,finder,detector,doctor,ghost,brutus,ghostLegs,ghostBody,ghostHead,ghostMats:[ghostLegs,ghostBody,ghostHead].map(m=>m.material),enemyHull,allyFill,allyEdge};
 }
 // Junta as malhas de um modelo (facas) numa só geometria com cor por vértice, para desenhar por instância.
 function meshesToGeometry(root){
@@ -3663,6 +3689,16 @@ function meshesToGeometry(root){
 }
 function dmRender(t, dt = 0){
   const r=DM.render;if(!r)return;for(const mesh of r.meshes){mesh.count=0;mesh.visible=true;}
+  // Contorno: cópia centrada da peça, esticada w metros para cada lado (w cresce com a distância para manter a espessura na tela).
+  function putHull(mesh,b,offset,scaleY,w){const u=mesh.geometry.userData,c=u.c,sz=u.s,d=r.dummy,sn=Math.sin(b.yaw),cs=Math.cos(b.yaw);
+    d.position.set(b.pos.x+c.x*cs+c.z*sn,b.pos.y+offset+c.y*scaleY,b.pos.z-c.x*sn+c.z*cs);d.rotation.set(0,b.yaw,0,'YXZ');
+    d.scale.set(1+2*w/sz.x,scaleY+2*w/sz.y,1+2*w/sz.z);d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
+  // Aliado: preenchimento e contorno azul-água só onde há parede na frente. Inimigo: contorno fino da cor escolhida.
+  function putOutline(b,ally,bob,upper,sy){
+    const dist=Math.hypot(b.pos.x-camera.position.x,b.pos.y+1-camera.position.y,b.pos.z-camera.position.z),edge=ally?r.allyEdge:r.enemyHull;
+    const w=ally?clamp(dist*.0065,.014,.3):clamp(dist*.0032,.007,.16),parts=b.helmet?4:3;
+    for(let i=0;i<parts;i++){const off=i?upper:bob,y=i?1:sy;if(ally)put(r.allyFill[i],b,off,y);putHull(edge[i],b,off,y,w);}
+  }
   function put(mesh,b,offset=0,scaleY=1,flash=false){const d=r.dummy;d.position.set(b.pos.x,b.pos.y+offset,b.pos.z);d.rotation.set(0,b.yaw,0,'YXZ');d.scale.set(1,scaleY,1);if(flash){d.position.x+=Math.cos(b.yaw)*.16-Math.sin(b.yaw)*.7;d.position.y+=1.26;d.position.z-=Math.sin(b.yaw)*.16+Math.cos(b.yaw)*.7;d.rotation.z=t*.1;}d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
   for(const b of DM.actors){
     if(b===P||!b.alive)continue;
@@ -3670,10 +3706,13 @@ function dmRender(t, dt = 0){
     const crouch = b.crouch ? 1 : 0, previous = b.crouchK ?? crouch;
     b.crouchK = dt > 0 ? previous + (crouch - previous) * Math.min(1, dt * 18) : crouch;
     const drop = TUCK * b.crouchK, upper = bob - drop, held = botHeldWeapon(b);
-    r.color.set(DM.mode==='team'?(ARENA.bomb?b.color:ally?TEAM_COLORS[0]:TEAM_COLORS[1]):b.color);
-    put(r.legs,b,bob,1-drop/.81);r.legs.setColorAt(r.legs.count-1,r.color);
+    // Plant the Bomb: sem uniforme de lado; a roupa é a do operador.
+    const fit=DM.mode==='team'&&ARENA.bomb&&OPS[b.op]?OPS[b.op].outfit:null;
+    r.color.set(fit?fit[0]:DM.mode==='team'?(ally?TEAM_COLORS[0]:TEAM_COLORS[1]):b.color);
+    put(r.legs,b,bob,1-drop/.81);if(fit)r.color.set(fit[1]);r.legs.setColorAt(r.legs.count-1,r.color);if(fit)r.color.set(fit[0]);
     put(r.body,b,upper);r.body.setColorAt(r.body.count-1,r.color);
     put(r.head,b,upper);if(b.helmet)put(r.helmet,b,upper);if(r.guns[held])put(r.guns[held],b,upper);
+    if(r.enemyHull)putOutline(b,ally,bob,upper,1-drop/.81);
     if(t<b.safeUntil)put(r.protection,b,.025);if(ally)put(r.ally,b,upper);
     if(b.op&&DM.mode==='team'&&ARENA.bomb){put(b.op==='finder'?r.finder:b.op==='doctor'?r.doctor:b.op==='ghost'?r.ghost:b.op==='brutus'?r.brutus:r.detector,b,upper);}
     if(t<b.flashUntil&&W[held]&&!W[held].melee&&!W[held].silenced)put(r.flash,b,upper,1,true);
@@ -4144,11 +4183,11 @@ function teamApplyRound(d) {
   }
   if (prev !== next) { ARENA.shownPhase = next; teamBanner(d); }
 }
-const BOMB_WHY = { kill: ['Terroristas eliminados', 'SWAT eliminada'], bomb: ['Bomba explodiu', 'Bomba explodiu'], defuse: ['Bomba desarmada', 'Bomba desarmada'], time: ['Tempo esgotado', 'Tempo esgotado'] };
+const BOMB_WHY = { kill: ['Atacantes eliminados', 'Defensores eliminados'], bomb: ['Bomba explodiu', 'Bomba explodiu'], defuse: ['Bomba desarmada', 'Bomba desarmada'], time: ['Tempo esgotado', 'Tempo esgotado'] };
 function bombBanner(d) {
   const mine = myTeam(), a = ARENA.sc[mine], b = ARENA.sc[1 - mine], side = sideOf(P);
   if (d.ph === 'freeze') {
-    if (ARENA.halftime) banner('Troca de lado', 'Agora você é ' + SIDE_NAMES[side] + ' · ' + a + ' a ' + b, '', 3200);
+    if (ARENA.halftime) banner('Troca de lado', 'Agora você está nos ' + SIDE_NAMES[side] + ' · ' + a + ' a ' + b, '', 3200);
     else if (d.r === 1 && MAP.credit) banner('Rodada 1 · ' + SIDE_NAMES[side], MAP.credit, '', 3600);
     else {const sites=MAP.plant.sites?.length>1?'os bombsites A e B':'o bombsite A';banner('Rodada '+d.r+' · '+SIDE_NAMES[side],(side==='t'?'Plante a bomba em ':'Defenda ')+sites+' · B abre a loja','',2800);}
 
@@ -4215,7 +4254,7 @@ function teamTick(dt, t) {
   if (ARENA.net) arenaNetTick(t);
 }
 
-/* ---------- Plant the Bomb (Wingman): Terroristas (ataque) x SWAT (defesa) ---------- */
+/* ---------- Plant the Bomb (Wingman): Atacantes x Defensores ---------- */
 // Regras do Wingman: primeiro a 9 rodadas, troca de lado depois da 8ª, 10 s de preparação, 20 s de compra,
 // 1:30 de rodada, bomba de 40 s, plantar em 3,2 s, desarmar em 10 s (5 s com kit), $800 iniciais e teto de $8.000.
 // Vitória: $2.750 (eliminação ou tempo) ou $3.000 (desarme ou detonação). Derrota: $2.000 +$300 por derrota seguida
@@ -4226,7 +4265,7 @@ const BOMB = { half: 8, target: 9, maxRounds: 16, freezeMs: 10000, buyMs: 20000,
 const PRICES = { usps: 200, pistol: 700, ump: 1200, bucky: 1050, rifle: 2700, m4a4: 3100, m4a1s: 2900, ssg: 1700, sniper: 4750, he: 300, flash: 200, smoke: 300, kevlar: 650, helmet: 1000, kit: 400 };
 const SIDE_ONLY = { rifle: 't', m4a4: 'ct', m4a1s: 'ct', kit: 'ct' };
 const NADE_MAX = { he: 1, flash: 2, smoke: 1 };
-const SIDE_COLORS = { t: 0xd9822b, ct: 0x3e6fb0 }, SIDE_NAMES = { t: 'Terroristas', ct: 'SWAT' };
+const SIDE_NAMES = { t: 'Atacantes', ct: 'Defensores' };
 const bombOn = () => G.mode === 'team' && ARENA.bomb;
 const sideOf = e => e && e.team === BOMB.tTeam ? 't' : 'ct';
 const killReward = w => W[w]?.melee ? 1500 : w === 'he' ? 300 : w === 'sniper' ? 100 : w === 'ump' ? 600 : w === 'bucky' ? 900 : 300;
@@ -4269,7 +4308,7 @@ function bombPrice(e, item) {
 // Motivo de não poder comprar (ou '' se pode).
 function bombBuyBlock(e, item, t) {
   const side = sideOf(e);
-  if (SIDE_ONLY[item] && SIDE_ONLY[item] !== side) return side === 't' ? 'Só SWAT' : 'Só Terroristas';
+  if (SIDE_ONLY[item] && SIDE_ONLY[item] !== side) return side === 't' ? 'Só Defensores' : 'Só Atacantes';
   if (item === 'kevlar' && e.inv.armor >= 100) return 'Já tem';
   if (item === 'helmet' && e.inv.helmet) return 'Já tem';
   if (item === 'kit' && e.inv.kit) return 'Já tem';
@@ -4332,7 +4371,7 @@ function bombNextRound(t) {
     for (const e of DM.actors) { e.money = BOMB.start; bombResetGear(e); e.aliveEnd = false; }
   } else ARENA.halftime = false;
   BOMB.planted = BOMB.dropped = null; BOMB.plantedBy = null; BOMB.beepAt = 0; bombClearGfx(); opsResetRound();
-  for (const e of DM.actors) { if (!e.aliveEnd || !e.inv) bombResetGear(e); e.aliveEnd = false; e.plantUntil = e.defuseUntil = 0; e.color = SIDE_COLORS[sideOf(e)]; }
+  for (const e of DM.actors) { if (!e.aliveEnd || !e.inv) bombResetGear(e); e.aliveEnd = false; e.plantUntil = e.defuseUntil = 0; }
   ARENA.sd = {};
   for (const side of ['t', 'ct']) {
     const team = side === 't' ? BOMB.tTeam : 1 - BOMB.tTeam, list = MAP.plant[side].slice().sort(() => Math.random() - .5); let i = 0;
@@ -4343,9 +4382,9 @@ function bombNextRound(t) {
 }
 // Depois do nascimento (teamApplyRound): aplica inventários, cores e a compra dos bots.
 function bombAfterSpawn(t) {
-  sleeveMat.color.set(SIDE_COLORS[sideOf(P)]);
+  sleeveMat.color.set(OPS[P.op] ? OPS[P.op].outfit[0] : 0x4a5560);
   for (const e of DM.actors) {
-    e.color = SIDE_COLORS[sideOf(e)]; bombEquip(e, t, true);
+    bombEquip(e, t, true);
     if (e !== P && !e.remote) { e.plantSpot = null; e.holdSpot = null; e.nadeUsed = {}; bombBotBuy(e, t); bombEquip(e, t, true); }
   }
   bombEquip(P, t, true);
@@ -4538,13 +4577,14 @@ function bombRenderObj(t) {
 // se alguém do outro time passa muito perto ele apita, revela essa pessoa e se autodestrói; se for destruído
 // a tiro, o dono recebe o aviso. Cada habilidade recarrega 45 s depois de usada e volta pronta a cada rodada.
 const OPS = {
-  finder: { name: 'Finder', ability: 'Varredura', desc: 'Abre o minimapa e escaneia uma área de 10 m: mostra uma silhueta onde cada inimigo estava, e de novo 1 s depois.', color: '#3ff4ff' },
-  doctor: { name: 'Doctor', ability: 'Estimulante', desc: 'Saca uma pistola de cura: botão esquerdo atira num aliado, botão direito aplica em você. Cura 50 de vida.', color: '#3dff7a' },
-  ghost: { name: 'Ghost', ability: 'Passos mudos', desc: 'Por 5 segundos seus passos não fazem nenhum barulho, mesmo correndo: ninguém escuta você chegar.', color: '#a78bfa' },
-  brutus: { name: 'Brutus', ability: 'Couraça', desc: 'Por 5 segundos recebe 10% menos dano, exceto de headshots. Solta uma gargalhada ao ativar.', color: '#facc15' },
-  detector: { name: 'Detector', ability: 'Alarme', desc: 'Coloca um alarme no chão, invisível para o inimigo de longe. Apita, revela e se destrói quando alguém chega perto.', color: '#f08a24' },
+  finder: { name: 'Finder', ability: 'Varredura', desc: 'Abre o minimapa e escaneia uma área de 10 m: mostra uma silhueta onde cada inimigo estava, e de novo 1 s depois.', color: '#3ff4ff', outfit: [0x2f6f7a, 0xa6b4bc] },
+  doctor: { name: 'Doctor', ability: 'Estimulante', desc: 'Saca uma pistola de cura: botão esquerdo atira num aliado, botão direito aplica em você. Cura 50 de vida.', color: '#3dff7a', outfit: [0xe6ecef, 0xc4d2d8] },
+  ghost: { name: 'Ghost', ability: 'Passos mudos', desc: 'Por 5 segundos seus passos não fazem nenhum barulho, mesmo correndo: ninguém escuta você chegar.', color: '#a78bfa', outfit: [0x3a2f55, 0x8a80a8] },
+  brutus: { name: 'Brutus', ability: 'Couraça', desc: 'Por 5 segundos recebe 10% menos dano, exceto de headshots. Solta uma gargalhada ao ativar.', color: '#facc15', outfit: [0x4c525b, 0xa3a9b0] },
+  detector: { name: 'Detector', ability: 'Alarme', desc: 'Coloca um alarme no chão, invisível para o inimigo de longe. Apita, revela e se destrói quando alguém chega perto.', color: '#f08a24', outfit: [0x5a6642, 0xb4b48c] },
 };
 const SCAN = { radius: 5, delay: 700, tag: 1500, retag: 1000 }, GHOSTS = [], ALARM = { seen: 7, trip: 3.2, hp: 20, armMs: 1000, reveal: 4000, list: [], next: 1 };
+// outfit: [roupa, calça] do operador, igual para os dois lados.
 const opNotice = msg => { if (typeof toast === 'function') toast(msg); };
 function opsAssign() {
   // Operadores diferentes dentro de cada time; o jogador usa o que escolheu e os bots sorteiam os restantes.
@@ -5415,7 +5455,8 @@ function renderShop(t) {
 function operatorSvg(id) {
   const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 60 76'); svg.setAttribute('aria-hidden', 'true');
   const r = (x, y, w, h, c) => { const e = document.createElementNS(NS, 'rect'); for (const [k, v] of Object.entries({ x, y, width: w, height: h, fill: c })) e.setAttribute(k, v); svg.append(e); };
-  r(18, 46, 9, 28, '#555'); r(33, 46, 9, 28, '#555'); r(15, 24, 30, 24, '#4a5560'); r(20, 8, 20, 17, '#f2cfa4');
+  const fit = OPS[id].outfit, hex = n => '#' + n.toString(16).padStart(6, '0'), dark = n => hex(((n >> 16 & 255) / 2.6 << 16) | ((n >> 8 & 255) / 2.6 << 8) | ((n & 255) / 2.6));
+  r(18, 46, 9, 28, dark(fit[1])); r(33, 46, 9, 28, dark(fit[1])); r(15, 24, 30, 24, hex(fit[0])); r(20, 8, 20, 17, '#f2cfa4');
   if (id === 'finder') { r(18, 12, 24, 5, '#3ff4ff'); r(37, 0, 2, 9, '#2c3540'); r(35, 0, 6, 3, '#3ff4ff'); r(16, 11, 3, 10, '#2c3540'); }
   else if (id === 'brutus') { r(19, 26, 22, 16, '#3a3f45'); r(9, 22, 10, 10, '#facc15'); r(41, 22, 10, 10, '#facc15'); r(24, 32, 12, 3, '#facc15'); r(20, 9, 20, 3, '#facc15'); r(21, 20, 18, 5, '#3a3f45'); r(23, 14, 2, 2, '#111'); r(35, 14, 2, 2, '#111'); }
   else if (id === 'ghost') { r(18, 5, 24, 4, '#2a2238'); r(18, 5, 3, 20, '#2a2238'); r(39, 5, 3, 20, '#2a2238'); r(20, 18, 20, 6, '#a78bfa'); r(23, 13, 2, 2, '#111'); r(35, 13, 2, 2, '#111'); r(15, 34, 30, 3, '#a78bfa'); }
@@ -5459,10 +5500,10 @@ function drawMinimap(t) {
   for (const e of DM.actors) {
     if (!e.alive) continue;
     const mine = e.team === P.team; if (!mine) continue;
-    x.fillStyle = e === P ? '#ffffff' : mine ? '#5fd3ff' : '#ff3b2a'; x.beginPath(); x.arc(X(e.pos.x), Z(e.pos.z), e === P ? 6 : 5, 0, TAU); x.fill();
+    x.fillStyle = e === P ? '#ffffff' : mine ? '#3ff5e0' : '#' + outlineHex().toString(16).padStart(6, '0'); x.beginPath(); x.arc(X(e.pos.x), Z(e.pos.z), e === P ? 6 : 5, 0, TAU); x.fill();
     if (e === P) { x.strokeStyle = '#fff'; x.beginPath(); x.moveTo(X(e.pos.x), Z(e.pos.z)); x.lineTo(X(e.pos.x - Math.sin(P.yaw) * 2.5), Z(e.pos.z - Math.cos(P.yaw) * 2.5)); x.stroke(); }
   }
-  for (const g of GHOSTS) if (g.team === P.team && t < g.until) { x.fillStyle = '#ff3b2a'; x.beginPath(); x.arc(X(g.x), Z(g.z), 5, 0, TAU); x.fill(); }
+  for (const g of GHOSTS) if (g.team === P.team && t < g.until) { x.fillStyle = '#' + outlineHex().toString(16).padStart(6, '0'); x.beginPath(); x.arc(X(g.x), Z(g.z), 5, 0, TAU); x.fill(); }
   const at = minimapWorld(BUY.x, BUY.y);
   if (at) { x.strokeStyle = '#3ff4ff'; x.lineWidth = 2; x.beginPath(); x.arc(X(at[0]), Z(at[1]), SCAN.radius * sc, 0, TAU); x.stroke(); x.fillStyle = 'rgba(63,244,255,.12)'; x.fill(); }
 }
@@ -5681,7 +5722,7 @@ const MODE_MENU = {
   '2v2': ['Duplas 2v2', 'Rodadas em dupla. Os bots completam as vagas.'],
   xvx: ['XvX', 'Escolha de 1 a 5 jogadores para cada time.'],
   tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
-  bomb: ['Plant the Bomb 2v2', 'Terroristas plantam, a SWAT defende. Regras do Wingman.'],
+  bomb: ['Plant the Bomb 2v2', 'Atacantes plantam, Defensores defendem. Regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
   aimbotz: ['Aimbotz', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
 };
@@ -5755,7 +5796,7 @@ function syncLobbyPreview() {
   $('stageTitle').textContent=title;
   $('stageDetail').textContent=MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
   $('stageCode').textContent=(practice?'PRÁTICA':dm?'DEATHMATCH':bomb?'PLANT THE BOMB':'ARENA')+' // '+String(maps.indexOf(id)+1).padStart(2,'0');
-  $('stageKind').textContent=practice?'Treino de mira':tdm?'Time contra time':dm?'Todos contra todos':bomb?'Terroristas x SWAT':mode==='1v1'?'Duelo de precisão':'Jogo em equipe';
+  $('stageKind').textContent=practice?'Treino de mira':tdm?'Time contra time':dm?'Todos contra todos':bomb?'Atacantes x Defensores':mode==='1v1'?'Duelo de precisão':'Jogo em equipe';
   $('lobbyFormat').textContent=practice?S.aimbotzBots+' alvos':tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':bomb?'2 contra 2 · Wingman':mode==='xvx'?S.xvx.mine+' contra '+S.xvx.foes:mode==='2v2'?'2 contra 2':'1 contra 1';
   $('lobbyGoalLabel').textContent=practice?'Treino':dm?'Duração':'Vitória';
   $('lobbyGoal').textContent=practice?'Sem limite':tdm?S.tdmSize*10+' abates · 10 min':dm?'5 minutos':bomb?'9 rodadas · melhor de 16':S.target+' rodadas';
@@ -5943,7 +5984,14 @@ function resize() {
 addEventListener('resize', resize);
 
 function updateFx(t) { for (const tr of tracers) if (tr.l.visible && t > tr.until) tr.l.visible = false; }
+// Cor do contorno (preferência): contorno dos inimigos (DM, times, bomba e 1v1) e silhuetas das marcações.
+let outlineSynced = '';
+function syncOutline() {
+  if (outlineSynced === S.enemyOutline) return; outlineSynced = S.enemyOutline; const hex = outlineHex(), r = DM.render;
+  oppHullMat.color.set(hex); if (r && r.enemyHull) { for (const m of r.enemyHull) m.material.color.set(hex); for (const m of r.ghostMats) m.color.set(hex); }
+}
 function renderWorld() {
+  syncOutline();
   const seeThroughWalls = G.mode && xrayEnabled();
   renderer.clear();
   if (seeThroughWalls) camera.layers.disable(ACTOR_LAYER);

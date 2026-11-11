@@ -1295,7 +1295,7 @@ test('Plant the Bomb buys follow Wingman prices, sides and limits, and round rew
   assert.equal(A.bomb, true); assert.equal(g.DM.phase, 'freeze');
   assert.equal(g.P.money, 800); for (const e of g.DM.bots) assert.ok(e.money <= 800 && e.money >= 0, String(e.money));
   const side = vm.runInContext('sideOf(P)', cx), rifle = side === 't' ? 'm4a4' : 'rifle';
-  assert.equal(cx.bombBuyBlock(g.P, rifle, t), side === 't' ? 'Só SWAT' : 'Só Terroristas');
+  assert.equal(cx.bombBuyBlock(g.P, rifle, t), side === 't' ? 'Só Defensores' : 'Só Atacantes');
   assert.equal(cx.bombBuy(g.P, 'kevlar', t), true); assert.equal(g.P.money, 150); assert.equal(g.P.inv.armor, 100);
   assert.equal(cx.bombBuyBlock(g.P, 'kevlar', t), 'Já tem');
   assert.equal(cx.bombBuy(g.P, 'flash', t), false); assert.equal(cx.bombBuyBlock(g.P, 'smoke', t), 'Sem dinheiro');
@@ -1545,4 +1545,13 @@ test('Brutus: 10% less damage for 5 s except headshots, then back to normal', ()
   // Bot Brutus liga ao entrar em combate.
   const bot = g.DM.bots.find(b => b.team === foe.team); bot.op = 'brutus'; bot.charges = 1; bot.alive = true; bot.seen = true;
   vm.runInContext(`botsUseAbilities(${t + 5200})`, cx); assert.ok(bot.toughUntil > t + 5200);
+});
+test('Plant the Bomb sides are Atacantes and Defensores, outfits follow the operator, and the enemy outline setting is validated', () => {
+  const { g, cx } = bombWorld();
+  const names = vm.runInContext('SIDE_NAMES', cx); assert.deepEqual(JSON.parse(JSON.stringify(names)), { t: 'Atacantes', ct: 'Defensores' });
+  const ops = vm.runInContext('OPS', cx);
+  const tops = Object.values(ops).map(o => o.outfit[0]); assert.equal(new Set(tops).size, tops.length, 'cada operador tem a sua roupa');
+  for (const o of Object.values(ops)) assert.equal(o.outfit.length, 2);
+  assert.equal(vm.runInContext('typeof SIDE_COLORS', cx), 'undefined', 'sem uniforme de lado');
+  assert.equal(vm.runInContext('S.enemyOutline', cx), 'vermelho');
 });
