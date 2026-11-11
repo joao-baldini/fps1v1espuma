@@ -1274,3 +1274,15 @@ test('a short bot match plays rounds with plants or eliminations, swaps sides at
   assert.notEqual(sides[0], sides[2], 'não trocou de lado');
   assert.ok(reasons.size >= 1); assert.ok([...reasons].every(r => ['kill', 'time', 'bomb', 'defuse'].includes(r)), [...reasons].join());
 });
+test('AWP accuracy follows CS: precise only when (almost) still, wild while moving scoped, quickscope needs a moment', () => {
+  const g = game(), w = g.W.sniper, e = { vel: { x: 0, z: 0 }, onGround: true, crouch: false, landSpread: 0 };
+  const at = (speed, zoomed, crouch = false) => { e.vel.x = speed; e.crouch = crouch; return g.inaccuracy(e, w, zoomed, 0); };
+  assert.ok(at(0, true) < .001);
+  assert.ok(at(w.scopedSpeed, true) > .15, 'andando de scope deveria errar');
+  assert.ok(at(w.speed * .52 * .5, true) < .001, 'andando devagar (shift) de scope continua preciso');
+  assert.ok(at(0, true, true) < at(0, true));
+  assert.ok(at(0, false) >= w.noscope);
+  // tiro logo depois de abrir o scope: ainda carrega parte da imprecisão sem scope
+  g.spawnSelf(0, [0, 0, 0]); g.selectWeapon('sniper'); g.P.drawEnd = 0; g.P.nextFire = 0;
+  g.context.toggleScope(20000); assert.equal(g.P.zoomAt, 20000);
+});
