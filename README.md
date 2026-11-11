@@ -103,10 +103,10 @@ Os cinco mapas de duelo são simétricos (girados 180°), com chão branco e uma
 | Ponte | roxo | Ponte elevada no meio; dá para passar por baixo |
 | Fortes | laranja | Cada base fica num forte elevado, com duas rampas descendo e um muro alto no meio |
 | Rotação | — | Fila com os 5 mapas em ordem aleatória; quando a fila acaba, embaralha de novo |
-| Medina | areia | Mapa exclusivo do DM: assimétrico, dois sites elevados com escadas, meio com portas, túneis, longa e passarela |
-| Dust II | areia | Recriação simplificada para DM com Long e Pit, Short sobre a passagem do CT, Meio com Xbox, Túneis B em dois níveis e caixas nos bombsites |
-| Depósito | concreto | DM próprio no clima industrial do Cache: galpões, contêineres de 2,6 m, passarela a 1,2 m no oeste, mirante a 2,4 m no nordeste, passarela elevada no meio com duas escadas e um caminhão em que dá para subir |
-| Borgo | terracota | DM próprio no clima de vila italiana do Inferno: ruelas e arcos, igreja, corredor estreito a oeste, sacadas de apartamento a 2,4 m no leste com escadas nas duas pontas, terraço baixo e fonte na praça |
+| Medina | areia | Mapa exclusivo do DM, no clima da Mirage: assimétrico, dois sites elevados com escadas, meio com portas e arco mourisco, túneis, longa e passarela. Caixas de fogo, toldos listrados do mercado, cúpulas azuis, faixas de azulejo e palmeiras |
+| Dust II | areia | Recriação simplificada para DM com Long e Pit, Short sobre a passagem do CT, Meio com Xbox, Túneis B em dois níveis e caixas nos bombsites. Portas azuis do Long, portas de madeira do meio e do B, carro verde e o grafite do pato |
+| Depósito | concreto | DM próprio no clima industrial do Cache: galpões, contêineres de 2,6 m, passarela a 1,2 m no oeste, mirante a 2,4 m no nordeste, passarela elevada no meio com duas escadas e um caminhão em que dá para subir. Chaminé listrada ao fundo, portas de enrolar verdes, contêineres coloridos com nervuras, cabine do caminhão, empilhadeira e faixas de alerta amarelo e preto |
+| Borgo | terracota | DM próprio no clima de vila italiana do Inferno: ruelas e arcos, igreja, corredor estreito a oeste, sacadas de apartamento a 2,4 m no leste com escadas nas duas pontas, terraço baixo e fonte na praça. Igreja com torre do sino e rosácea, galpão de feno de madeira com fardos, telhados de telha, varais nas ruelas, venezianas verdes e vasos de barro |
 
 No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
 

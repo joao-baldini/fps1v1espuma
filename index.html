@@ -830,6 +830,15 @@ MAPS.deathmatch = {
     // Túneis e conector baixo
     B.box(-20.5,-1,C,2*C,C,K.crate);B.box(-18,8,C,C,2*C,K.crate2);B.box(-22.6,11,C,C,C,K.crate);B.box(-12.5,8.6,2*C,C,C,K.crate);
     B.box(-14.5,13.5,C,C,C,K.crate2);B.box(7.5,-1.2,C,C,C,K.crate2);
+    // Identidade (clima do Mirage): caixas de fogo, arcos mouriscos, toldos de mercado, cúpulas de azulejo, palmeiras.
+    propFirebox(B,14.6,-12.0);propFirebox(B,-19.5,-16.2);
+    const arch=(x0,x1,z0,z1,y0,col=0xe9d5aa)=>{const w=(x1-x0)/2,cx=(x0+x1)/2;for(let i=0;i<4;i++){const o=w*(1-i*.22);dR(B,x0,y0+i*.4,z0,cx-o+w*.0,y0+(i+1)*.4,z1,col);dR(B,cx+o,y0+i*.4,z0,x1,y0+(i+1)*.4,z1,col);}dR(B,x0,y0+1.6,z0,x1,5,z1,col);dR(B,x0,4.75,z0-.05,x1,5.05,z1+.05,0x2f6fb0);};
+    arch(-1.2,1.2,-10.5,-9.5,3.0);arch(-21,-19,-7,-6,2.9);
+    propAwning(B,-9,-4,-7.6,4,2.9,[0xc0392b,0xf2ede0],'z');propAwning(B,2.6,-15,4,-6,2.9,[0x2f6fb3,0xf2ede0],'z');propAwning(B,-11,9.6,-4,11,2.9,[0xe0a32e,0xf2ede0],'x');
+    propDome(B,-6.5,-15,2.3,5,0x2e7fa8);propDome(B,10.5,7,3,5,0x2e7fa8);propDome(B,3.5,17.2,1.6,5,0x2e7fa8);
+    propTiles(B,'x+',10,-15.5,-4.5,0,.8,[0x2f6fb3,0xf2ede0,0x3a9fb5]);propTiles(B,'z-',11,-11,-4,0,.8,[0x2f6fb3,0xf2ede0,0x3a9fb5]);propTiles(B,'x+',-9,-5.5,5.5,0,.8,[0x2f6fb3,0xf2ede0,0x3a9fb5]);
+    for(const z of [-13,-8])propPanel(B,'x-',4,z-.6,z+.6,1.6,3.0,0x2b4f6e);for(const x of [7.5,12])propPanel(B,'z-',3,x-.6,x+.6,1.6,3,0x2b4f6e);
+    propPalm(B,23,16.5);propPalm(B,-23,-15.8);propPalm(B,8,-23,5.4);
   }
 };
 // Dust II: norte no topo da planta de referência. A malha usa apenas sólidos e rampas do jogo.
@@ -954,6 +963,19 @@ MAPS.dust2 = {
     crate(-23.4, -25.4, bPlat + 1.35, 1.2, 1.55, .95);
     crate(-27.2, -22.6, bPlat, 1.55, 2.3, 1.45);
     crate(-29.4, -18.1, b, 1.6, 1.6, 2.05);
+
+    // Identidade: portas azuis da Long, portas de madeira do Meio e do B, carro na Long e o ganso pintado no A.
+    const leaf = (x0, z0, x1, z1, y, h, col, trim) => { dR(B, x0, y, z0, x1, y + h, z1, col); const alongZ = z1 - z0 > x1 - x0;
+      for (const f of [.3, .62]) alongZ ? dR(B, x0 - .02, y + h * f, z0 + .08, x1 + .02, y + h * f + .09, z1 - .08, trim) : dR(B, x0 + .08, y + h * f, z0 - .02, x1 - .08, y + h * f + .09, z1 + .02, trim); };
+    leaf(12.3, 8.45, 12.4, 9.5, long, 2.8, 0x2f6aa8, 0x6f9ccc); leaf(14.05, 8.8, 14.15, 9.85, long, 2.8, 0x2f6aa8, 0x6f9ccc);
+    dR(B, 12.3, long + 2.85, 8.3, 14.15, long + 3.05, 8.95, 0x2f6aa8);
+    leaf(-3.5, -10.25, -3.4, -9.3, mid, 2.7, 0x7a5232, 0x5a3b22); leaf(-1.85, -9.9, -1.75, -8.95, mid, 2.7, 0x7a5232, 0x5a3b22);
+    leaf(-17.2, -19.6, -16.25, -19.5, mid, 2.8, 0x7a5232, 0x5a3b22); leaf(-17.2, -17.55, -16.25, -17.45, mid, 2.8, 0x7a5232, 0x5a3b22);
+    B.solid([24, long, -12], [25.8, long + .9, -8], 0x3d6b52); B.solid([24.15, long + .9, -11.2], [25.65, long + 1.5, -8.8], 0x355e48);
+    dR(B, 24.1, long + .95, -11.25, 25.7, long + 1.45, -11.15, 0x22303a); dR(B, 24.1, long + .95, -8.85, 25.7, long + 1.45, -8.75, 0x22303a);
+    for (const x of [23.95, 25.8]) for (const z of [-11.3, -8.8]) dR(B, x, long, z - .35, x + .07, long + .55, z + .35, 0x1d1d1d);
+    const goose = ['..XX....', '.XXXX...', '..XX....', '..XXXXX.', '.XXXXXXX', '..XXXXX.'];
+    goose.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === 'X') dR(B, 23.4 + c * .32, 6.6 - (r + 1) * .32, -34.98, 23.4 + (c + 1) * .32, 6.6 - r * .32, -34.94, 0xf2f0ea); }));
     crate(-21.25, -12.3, b, 2.65, 1.5, 1.1);
     crate(-29.9, -28.8, bPlat, 1.55, 1.5, 1.25);
 
@@ -1004,6 +1026,75 @@ function buildDust2Walls(B, color, ax, az, footprint) {
   }
   for (const [a, b] of walls) B.solid(a, b, color);
 }
+// ---------- Peças de identidade dos mapas (blocos no estilo do jogo) ----------
+// deco = só visual; solid/box = com colisão. Troncos e torres passam de 4,5 m para não virarem "chão".
+const dR=(B,x0,y0,z0,x1,y1,z1,c)=>B.deco([Math.min(x0,x1),Math.min(y0,y1),Math.min(z0,z1)],[Math.max(x0,x1),Math.max(y0,y1),Math.max(z0,z1)],c);
+function propPalm(B,x,z,h=6){
+  B.solid([x-.22,0,z-.22],[x+.22,h,z+.22],0x8a6a43);
+  for(let i=0;i<4;i++)dR(B,x-.27,i*1.4+.7,z-.27,x+.27,i*1.4+.85,z+.27,0x6b5032);
+  const leaf=[0x4f8f3a,0x3e7a2f];
+  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1],[.7,.7],[-.7,.7],[.7,-.7],[-.7,-.7]])for(let k=0;k<3;k++){
+    const d=.35+k*.75,y=h-.05-k*.32-(dx&&dz?.15:0),cx=x+dx*d,cz=z+dz*d,w=dx&&dz?.32:(k===2?.42:.55);
+    dR(B,cx-(dz&&!dx?w:.45),y-.12,cz-(dx&&!dz?w:.45),cx+(dz&&!dx?w:.45),y,cz+(dx&&!dz?w:.45),leaf[k%2]);
+  }
+  dR(B,x-.32,h-.1,z-.32,x+.32,h+.18,z+.32,0x4f8f3a);
+}
+// Caixa de fogo: caixote de madeira com braseiro de ferro e chamas.
+function propFirebox(B,x,z){
+  B.box(x,z,1.4,1.4,1.1,0x8a5a2e);
+  for(const dz of [-.45,.45])dR(B,x-.72,0,z+dz-.06,x+.72,1.1,z+dz+.06,0x4a3626);
+  dR(B,x-.48,1.1,z-.48,x+.48,1.42,z+.48,0x2e2a28);dR(B,x-.4,1.42,z-.4,x+.4,1.48,z+.4,0x7a2a12);
+  for(const [fx,fz,h,c] of [[0,0,.85,0xff7a1a],[-.2,.12,.6,0xffa52a],[.18,-.15,.7,0xff8d1f],[.05,.2,.45,0xffd23a],[-.12,-.18,.4,0xffd23a],[.2,.18,.35,0xffe27a]])
+    dR(B,x+fx-.13,1.48,z+fz-.13,x+fx+.13,1.48+h,z+fz+.13,c);
+}
+// Toldo listrado de mercado preso a uma parede (axis 'x' = listras ao longo de x).
+function propAwning(B,x0,z0,x1,z1,y,cols,axis){
+  const n=Math.max(2,Math.round((axis==='x'?x1-x0:z1-z0)/.6));
+  for(let i=0;i<n;i++){const a=i/n,b=(i+1)/n,c=cols[i%cols.length];
+    if(axis==='x')dR(B,x0+(x1-x0)*a,y,z0,x0+(x1-x0)*b,y+.12,z1,c);else dR(B,x0,y,z0+(z1-z0)*a,x1,y+.12,z0+(z1-z0)*b,c);}
+}
+function propDome(B,cx,cz,r,y,col,top=0xd9a93a){
+  for(let i=0;i<4;i++){const q=r*(1-i*.24);dR(B,cx-q,y+i*.45,cz-q,cx+q,y+(i+1)*.45,cz+q,i%2?col:0x4a9fc9);}
+  dR(B,cx-.15,y+1.8,cz-.15,cx+.15,y+2.6,cz+.15,top);
+}
+// Faixa de azulejos (quadrados alternados) numa face de parede; face: 'x+','x-','z+','z-' com a coordenada da parede.
+function propTiles(B,face,c,a0,a1,y0,y1,cols,sz=.4){
+  const s=face[1]==='+'?1:-1;
+  for(let a=a0,i=0;a<a1-.01;a+=sz,i++)for(let y=y0,j=0;y<y1-.01;y+=sz,j++){const col=cols[(i+j)%cols.length],a2=Math.min(a1,a+sz),y2=Math.min(y1,y+sz);
+    if(face[0]==='x')dR(B,c,y,a,c+s*.04,y2,a2,col);else dR(B,a,y,c,a2,y2,c+s*.04,col);}
+}
+function propPanel(B,face,c,a0,a1,y0,y1,col,depth=.05){const s=face[1]==='+'?1:-1;if(face[0]==='x')dR(B,c,y0,a0,c+s*depth,y1,a1,col);else dR(B,a0,y0,c,a1,y1,c+s*depth,col);}
+// Porta de enrolar de galpão: painel com nervuras horizontais.
+function propRollDoor(B,face,c,a0,a1,h,col,rib){propPanel(B,face,c,a0,a1,0,h,col,.05);for(let y=.3;y<h;y+=.35)propPanel(B,face,c,a0+.05,a1-.05,y,y+.07,rib,.08);propPanel(B,face,c,a0-.12,a1+.12,h,h+.25,0x5d6661,.12);}
+function propSmokestack(B,x,z,h,w){
+  dR(B,x-w*.75,0,z-w*.75,x+w*.75,3,z+w*.75,0x8c8f8a);
+  for(let y=3,i=0;y<h;y+=3,i++)dR(B,x-w/2,y,z-w/2,x+w/2,Math.min(h,y+3),z+w/2,i%2?0xf1efe8:0xc23b2b);
+  dR(B,x-w*.6,h,z-w*.6,x+w*.6,h+.6,z+w*.6,0x3b3d3c);
+}
+function propContainer(B,x0,z0,x1,z1,h,col,y=0){
+  B.solid([x0,y,z0],[x1,y+h,z1],col);
+  const dark=((col>>16&255)*.72<<16)|((col>>8&255)*.72<<8)|((col&255)*.72|0),longX=x1-x0>z1-z0;
+  if(longX){for(let x=x0+.3;x<x1-.2;x+=.45)for(const z of [z0-.04,z1])dR(B,x,y+.1,z,x+.12,y+h-.1,z+.04,dark);
+    for(const x of [x0-.04,x1])for(let z=z0+.35;z<z1-.2;z+=.5)dR(B,x,y+.15,z,x+.04,y+h-.15,z+.06,0x9aa09c);}
+  else{for(let z=z0+.3;z<z1-.2;z+=.45)for(const x of [x0-.04,x1])dR(B,x,y+.1,z,x+.04,y+h-.1,z+.12,dark);
+    for(const z of [z0-.04,z1])for(let x=x0+.35;x<x1-.2;x+=.5)dR(B,x,y+.15,z,x+.06,y+h-.15,z+.04,0x9aa09c);}
+}
+// Faixa de perigo amarela e preta numa face (para bordas de plataforma).
+function propHazard(B,face,c,a0,a1,y0,y1){const s=face[1]==='+'?1:-1;for(let a=a0,i=0;a<a1-.01;a+=.4,i++){const col=i%2?0x1f1f1f:0xe2b62a,a2=Math.min(a1,a+.4);if(face[0]==='x')dR(B,c,y0,a,c+s*.05,y1,a2,col);else dR(B,a,y0,c,a2,y1,c+s*.05,col);}}
+// Telhado de telhas em três degraus sobre um prédio (cumeeira ao longo do eixo mais longo).
+function propRoof(B,x0,z0,x1,z1,y,col=0xb0583a){
+  const alongX=x1-x0>=z1-z0,half=(alongX?z1-z0:x1-x0)/2+.25;
+  for(let i=0;i<3;i++){const k=i*.3*half;
+    if(alongX)dR(B,x0-.25,y+i*.4,z0-.25+k,x1+.25,y+(i+1)*.4,z1+.25-k,i%2?col:0x9c4a30);
+    else dR(B,x0-.25+k,y+i*.4,z0-.25,x1+.25-k,y+(i+1)*.4,z1+.25,i%2?col:0x9c4a30);}
+}
+function propShutters(B,face,c,a,y,col=0x3f7a4a){propPanel(B,face,c,a-.55,a+.55,y,y+1.1,0x3a2c22,.04);propPanel(B,face,c,a-.95,a-.55,y,y+1.1,col,.07);propPanel(B,face,c,a+.55,a+.95,y,y+1.1,col,.07);}
+function propHay(B,x,z,w,d,h){B.box(x,z,w,d,h,0xd9b54a);for(let i=1;i<3;i++){const yy=h*i/3;dR(B,x-w/2-.03,yy-.04,z-d/2-.03,x+w/2+.03,yy+.04,z+d/2+.03,0xb08a2c);}}
+function propLaundry(B,x0,z0,x1,z1,y){
+  dR(B,x0,y,z0-.02,x1,y+.03,z1+.02,0x3b3b3b);
+  const cols=[0xf2f0ea,0xc0392b,0x2f6fb3,0xe8c64a,0x6aa84f];const L=Math.hypot(x1-x0,z1-z0);
+  for(let i=0;i*1.1+.6<L;i++){const t=(i*1.1+.6)/L,x=x0+(x1-x0)*t,z=z0+(z1-z0)*t;dR(B,x-.3,y-.8,z-.03,x+.3,y,z+.03,cols[i%cols.length]);}
+}
 // Escada de degraus de 0,4 m (o passo sobe sozinho): começa na beirada de uma plataforma de altura `top`
 // e desce para fora na direção (dx, dz), com largura w.
 function dmStairs(B,x,z,dx,dz,w,top,col){for(let i=1;i*.4<top-.01;i++){const c=(i-.5)*.8;B.box(x+dx*c,z+dz*c,dx?.8:w,dz?.8:w,Math.round((top-i*.4)*100)/100,col);}}
@@ -1024,9 +1115,8 @@ MAPS.dmdeposito = {
     bld(-14,-24,-7,-16);       // depósito noroeste
     bld(15,15,24,24,K.wall);   // canto sudeste
     // contêineres de 2,6 m: cobertura alta, sem subir
-    dmRect(B,-3,-14.2,3,-11.8,CT,K.crate);dmRect(B,-1.2,3,1.2,9,CT,K.crate2);dmRect(B,-2,13.8,4,16.2,CT,K.crate);
-    dmRect(B,-21.2,-3,-18.8,3,CT,K.crate2);dmRect(B,17.8,-2,20.2,4,CT,K.crate);dmRect(B,17.8,4,20.2,10,CT,K.crate2);
-    dmRect(B,-12,19.8,-6,22.2,CT,K.crate2);dmRect(B,7.8,17,10.2,23,CT,K.crate);dmRect(B,-19.2,-21,-16.8,-17,CT,K.crate);
+    for(const [x0,z0,x1,z1,col] of [[-3,-14.2,3,-11.8,K.crate],[-1.2,3,1.2,9,K.crate2],[-2,13.8,4,16.2,0x3f6f9a],[-21.2,-3,-18.8,3,K.crate2],[17.8,-2,20.2,4,K.crate],
+      [17.8,4,20.2,10,K.crate2],[-12,19.8,-6,22.2,0x3f6f9a],[7.8,17,10.2,23,K.crate],[-19.2,-21,-16.8,-17,0xd08a2e]])propContainer(B,x0,z0,x1,z1,CT,col);
     // partes elevadas
     dmRect(B,-24,-16,-20,-6,1.2,K.plat);dmStairs(B,-20,-7.2,1,0,2,1.2,K.ramp);                 // passarela oeste
     dmRect(B,17,-24,24,-15,2.4,K.plat);dmStairs(B,19.5,-15,0,1,2.4,2.4,K.ramp);                // mirante nordeste
@@ -1037,6 +1127,18 @@ MAPS.dmdeposito = {
     B.box(-14,-9.5,C,2*C,C,K.crate);B.box(-9,8.6,2*C,C,C,K.crate2);B.box(12.5,-5.5,2*C,C,C,K.crate);B.box(1.5,-17.5,C,C,C,K.crate2);
     B.box(-21.5,9,C,C,C,K.crate);B.box(15,9,C,2*C,C,K.crate2);B.box(5.5,13.5,C,C,C,K.crate);B.box(-6,-13,C,C,C,K.crate2);
     B.box(22.6,-4,1.8,1.2,2*C,K.crate);B.box(0,-20.5,C,C,2*C,K.crate2);B.box(-14,4.5,C,C,2*C,K.crate);B.box(-18,-12.5,C,C,2*C,K.crate2);B.box(4,18.5,C,C,2*C,K.crate2);
+    // Identidade (clima do Cache): chaminé listrada ao fundo, portas de enrolar nos galpões, cabine do caminhão,
+    // empilhadeira, faixas de perigo nas bordas elevadas, parede quadriculada e janelas de escritório.
+    propSmokestack(B,32,-31,34,3.2);dR(B,27,0,-36,37,6,-29,0x7d827d);
+    propRollDoor(B,'z-',8,-15.2,-11.4,3.4,0x4f7a43,0x3f6234);propRollDoor(B,'z-',8,-10.6,-6.8,3.4,0x4f7a43,0x3f6234);
+    propRollDoor(B,'x+',-5,-6.5,-2.5,3.2,0x4f7a43,0x3f6234);propRollDoor(B,'z+',-16,-12.8,-8.2,3.2,0x4f7a43,0x3f6234);
+    propPanel(B,'z-',8,-16,-6,4.2,4.6,0xe2b62a);propPanel(B,'x+',-5,-8,1,4.2,4.6,0xe2b62a);
+    B.box(17.8,-9,1.6,2.4,2.5,0x3b6fa8);dR(B,18.6,1.4,-9.9,18.66,2.3,-8.1,0x24323c);dR(B,16.9,1.5,-10.25,18.7,2.2,-10.19,0x24323c);
+    for(const x of [10,12.5,15,17.8])for(const z of [-10.32,-7.68])dR(B,x-.45,0,z-.06,x+.45,.75,z+.06,0x1d1d1d);
+    B.box(15,-5.3,1.2,1.6,1.1,0xe0b52c);dR(B,14.45,1.1,-6.1,15.55,1.25,-4.5,0x2d2d2d);dR(B,14.5,0,-6.3,14.62,2.6,-6.1,0x3a3a3a);dR(B,15.38,0,-6.3,15.5,2.6,-6.1,0x3a3a3a);dR(B,14.5,.2,-7.2,15.5,.28,-6.3,0x7a7a7a);
+    propHazard(B,'x+',-20,-16,-7.2,.75,1.2);propHazard(B,'z+',-15,17,19.5-1.2,1.95,2.4);propHazard(B,'z+',-15,20.7,24,1.95,2.4);propHazard(B,'x+',-1.5,-7,0,.75,1.2);
+    for(let z=-6;z<6;z+=.8)for(let y=0;y<3.2;y+=.8)dR(B,-23.98,y,z,-23.94,y+.8,z+.8,((z+6)/.8+y/.8)%2<1?0x1e1e1e:0xf0f0ee);
+    for(let x=7;x<13.5;x+=1.6)propPanel(B,'z+',-13,x,x+1.1,1.6,2.8,0x5f8399);propPanel(B,'x-',6,-19,-15,3.4,4.4,0xe2b62a);
   }
 };
 // Borgo: vila italiana com ruelas, igreja, corredor estreito a oeste, sacadas a 2,4 m no leste (dois acessos)
@@ -1054,7 +1156,7 @@ MAPS.dmborgo = {
     bld(-12,3,-4,9);             // casas do corredor
     bld(-24,12,-18,24,K.wall);   // sudoeste
     bld(2,-14,10,-6);            // quarteirão norte
-    bld(4,0,10,8);               // quarteirão leste
+    bld(4,0,10,8,0x7a5232);      // galpão de feno (madeira)
     bld(14,-24,24,-18);          // sobrado nordeste
     bld(-3,16,6,24);             // sobrados do sul
     // arcos: muros com vãos de 2,4 m
@@ -1068,10 +1170,28 @@ MAPS.dmborgo = {
     dmRect(B,-4,-9,1,-5,1.2,K.plat);dmStairs(B,1,-7,1,0,2,1.2,K.ramp);dmStairs(B,-1.5,-5,0,1,2,1.2,K.ramp);
     B.box(0,1,2.2,2.2,.9,K.crate2);                                                           // fonte
     // caixotes e carroças
-    B.box(-16,-14,2*C,C,C,K.crate);B.box(-20.5,-15,C,C,2*C,K.crate2);B.box(-14.5,15,C,C,C,K.crate);B.box(-15.5,0,C,2*C,C,K.crate2);
+    propHay(B,-16,-14,2*C,C,C);B.box(-20.5,-15,C,C,2*C,K.crate2);propHay(B,-14.5,15,C,C,C);B.box(-15.5,0,C,2*C,C,K.crate2);
     B.box(13,-14,C,2*C,C,K.crate);B.box(14.5,8,2*C,C,C,K.crate2);B.box(9,12,C,C,C,K.crate);B.box(2,11,2*C,C,C,K.crate);
     B.box(-6,13,C,C,C,K.crate2);B.box(-1,-18.5,2*C,C,C,K.crate);B.box(16,19,C,C,2*C,K.crate2);B.box(7,-16.5,C,C,C,K.crate);
     B.box(5,-19.5,2,2,H,K.wall);B.box(-15.5,14.8,3,1,H,K.wall);B.box(3,-2.5,C,C,C,K.crate);B.box(13,16,C,C,2*C,K.crate);
+    // Identidade (clima do Inferno): igreja com torre do sino, telhados de telha, galpão de feno, fardos,
+    // varais nas ruelas, venezianas verdes, fonte com água e vasos de barro.
+    B.solid([-9,5,-21.5],[-6.4,9.6,-18.9],0xd9b98a);
+    for(const [x,z] of [[-9,-21.5],[-6.8,-21.5],[-9,-19.3],[-6.8,-19.3]])B.solid([x,9.6,z],[x+.4,11.4,z+.4],0xd9b98a);
+    dR(B,-8.1,9.9,-20.6,-7.3,10.9,-19.8,0xb8862b);dR(B,-7.85,10.9,-20.35,-7.55,11.2,-20.05,0x6b4b1e);
+    for(let i=0;i<3;i++){const q=1.5-i*.45;dR(B,-7.7-q,11.4+i*.45,-20.2-q,-7.7+q,11.85+i*.45,-20.2+q,i%2?0xb0583a:0x9c4a30);}
+    dR(B,-7.8,12.75,-20.3,-7.6,13.6,-20.1,0x3a3a3a);dR(B,-8.15,13.15,-20.25,-7.25,13.3,-20.15,0x3a3a3a);
+    propPanel(B,'z+',-17,-11.2,-8.8,0,3.2,0x5a3b22,.06);for(const x of [-10.6,-9.4])dR(B,x-.04,.3,-16.94,x+.04,2.9,-16.88,0x3a2616);
+    for(let i=0;i<4;i++){const q=.85-i*.2;dR(B,-10-q,4.15-q,-16.98,-10+q,4.15+q,-16.92+i*.02,[0x7a5a3a,0xb03a2e,0x2f6fb3,0xe0b52c][i]);} // rosácea
+    for(const [x0,z0,x1,z1] of [[-14,-24,-6,-17],[-24,-10,-18,4],[-12,-11,-5,-4],[-12,3,-4,9],[-24,12,-18,24],[2,-14,10,-6],[14,-24,24,-18],[-3,16,6,24]])propRoof(B,x0,z0,x1,z1,5);
+    propRoof(B,4,0,10,8,5,0x8b3a2a);
+    propPanel(B,'x-',4,1,7,0,3.6,0x8a5d36,.06);for(const z of [1.1,4.05])dR(B,3.9,.1,z,3.95,3.5,z+2.85,0x6a4528);dR(B,3.88,1.6,1,3.93,1.9,7,0xf2ede0);dR(B,3.88,0,3.98,3.93,3.6,4.02,0x3a2616);
+    propPanel(B,'x-',4,3.2,4.8,4.0,4.8,0x2a1d14,.06);propHay(B,2.8,6.6,1.2,1.4,.9);
+    propLaundry(B,-18,-7,-12,-7,3.9);propLaundry(B,10.2,-9.8,18,-9.8,4.0);propLaundry(B,-12,11,-4,11,3.8);
+    for(const [f,c,a,y] of [['x+',-18,-6,2.4],['x+',-18,-1,2.4],['z-',3,-9,2.6],['z-',3,-6,2.6],['x+',10,-11,2.4],['z+',-4,-9,2.4],['x-',-12,-8,2.4],['z-',16,1.5,2.6],['x+',-18,18,2.4]])propShutters(B,f,c,a,y);
+    dR(B,-.95,.9,.05,.95,.95,1.95,0x4a90c8);dR(B,-.2,0,.8,.2,1.7,1.2,0xd9c7a2);dR(B,-.45,1.6,.55,.45,1.75,1.45,0xd9c7a2);
+    for(const [x,z] of [[-17.6,-3],[-11.6,-12],[9.6,-5.6],[17.6,13],[-3.6,15.6],[1.6,-13.6]])dR(B,x-.25,0,z-.25,x+.25,.55,z+.25,0xb0583a);
+    for(let z=-11.6;z<12;z+=1.6)dR(B,17.9,2.4,z,18.05,3.4,z+.12,0x6a4528);dR(B,17.88,3.3,-12,18.06,3.42,12,0x6a4528);
   }
 };
 if (!MAPS[S.dmMap]?.dm) S.dmMap = 'deathmatch';
@@ -1132,6 +1252,7 @@ function buildMap(id) {
   const B = {
     solid,
     ramp,
+    deco: (a, b, hex) => addBoxTo(out, a, b, hex, false, false), // só visual: sem colisão, sem bloquear tiro
     deck: (a, b, col) => solid(a, b, col, true),
     box: (x, z, w, d, h, col, y0 = 0) => solid([x - w / 2, y0, z - d / 2], [x + w / 2, y0 + h, z + d / 2], col),
     pair: (x, z, w, d, h, col, y0 = 0) => { B.box(x, z, w, d, h, col, y0); B.box(-x, -z, w, d, h, col, y0); },
