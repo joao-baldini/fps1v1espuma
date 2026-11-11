@@ -587,13 +587,13 @@ test('butterfly follows the reference timing: a short draw and a stable inspecti
   const g = game({ loadout:{knife:'butterfly'},startSlot:'knife' });g.spawnSelf(0);
   assert.equal(g.P.kAnim.duration,800);
   g.P.drawEnd=0;g.tick(12000);g.inspect();
-  assert.equal(g.P.kAnim.duration,4200);
-  const first=Array.from(g.sampleKnifeAnimation(g.P.kAnim,12000+4200*.35));
-  const held=Array.from(g.sampleKnifeAnimation(g.P.kAnim,12000+4200*.65));
+  assert.equal(g.P.kAnim.duration,3000);
+  const first=Array.from(g.sampleKnifeAnimation(g.P.kAnim,12000+3000*.35));
+  const held=Array.from(g.sampleKnifeAnimation(g.P.kAnim,12000+3000*.65));
   assert.deepEqual(first,held);
-  assert.equal(held[12],1);assert.equal(held[13],1);
+  assert.ok(held[14]<-2);assert.ok(Math.abs(held[7])>.5); // exibição: lâmina em pé e cabo solto aberto em V
   for(let i=0;i<=200;i++){
-    const pose=g.sampleKnifeAnimation(g.P.kAnim,12000+4200*i/200);
+    const pose=g.sampleKnifeAnimation(g.P.kAnim,12000+3000*i/200);
     assert.ok(pose[12]>=0&&pose[12]<=1);assert.ok(pose[13]>=0&&pose[13]<=1);
   }
 });
