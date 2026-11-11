@@ -442,7 +442,7 @@ button:disabled{opacity:.5;cursor:default}
           <label class="fld"><span>Armas</span><select data-k="dmWeapons" aria-label="Armas do Deathmatch"><option value="pistol">Somente pistolas</option><option value="sniper">Somente precisão</option><option value="rifle">Somente rifles</option><option value="all">Tudo liberado</option></select></label>
           <label class="fld"><span>Dificuldade</span><select data-k="dmLevel" aria-label="Dificuldade do Deathmatch"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
         </div>
-        <div class="grid2" id="xvxField"><label class="fld"><span>Seu time</span><select data-k="xvx.mine" data-num="1" aria-label="Tamanho do seu time"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label><label class="fld"><span>Time inimigo</span><select data-k="xvx.foes" data-num="1" aria-label="Tamanho do time inimigo"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label></div>
+        <div class="grid2" id="xvxField"><label class="fld"><span>Seu time</span><select data-k="xvx.mine" data-num="1" aria-label="Tamanho do seu time"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label><label class="fld"><span>Time inimigo</span><select data-k="xvx.foes" data-num="1" aria-label="Tamanho do time inimigo"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label></div>
         <label class="fld" id="teamField"><span>Times na sala</span><select data-k="teamSetup" aria-label="Times na sala"><option value="versus">Pessoas em lados opostos</option><option value="coop">Pessoas no mesmo time</option></select></label>
         <label class="fld" id="duelBotControls"><span>Dificuldade do bot</span><select id="inBot" data-k="botLevel" aria-label="Dificuldade do bot"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
         <div class="fld" id="roomField" hidden>
@@ -643,7 +643,7 @@ function loadS() {
   if (typeof s.smoothRecoil !== 'boolean') s.smoothRecoil = true;
   if (typeof s.aimbotzInfiniteAmmo !== 'boolean') s.aimbotzInfiniteAmmo = false;
   s.viewmodel = normalizeViewmodel(s.viewmodel);
-  s.xvx = { mine: clamp(+((s.xvx || {}).mine) || 1, 1, 5), foes: clamp(+((s.xvx || {}).foes) || 5, 1, 5) };
+  s.xvx = { mine: clamp(+((s.xvx || {}).mine) || 1, 1, 8), foes: clamp(+((s.xvx || {}).foes) || 5, 1, 8) };
   if (!s.room) s.room = genCode();
   return s;
 }
@@ -700,7 +700,9 @@ const ALL_WEAPONS = Object.keys(W), ORDER = [];
 const DM_POOLS = {pistol:['pistol','usps'],sniper:['sniper','ssg'],rifle:['rifle','m4a4','m4a1s'],all:['rifle','m4a4','m4a1s','ump','pistol','usps','sniper','ssg']};
 const DM_LABELS = {pistol:'pistolas',sniper:'precisão',rifle:'rifles',all:'tudo liberado'};
 const DM_BOT_NAMES = ['donk','ZywOo','m0NESY','NiKo','KSCERATO','ropz','YEKINDAR','molodoy','coldzera'];
-const DM_DURATION=300000,DM_RESPAWN_MS=1500,DM_PROTECT_MS=1800,ACTOR_CAP=12;
+// Nomes extras para times grandes (até 8v8): completam os bots além dos nove do DM.
+const TEAM_BOT_NAMES = DM_BOT_NAMES.concat(['FalleN','s1mple','device','Twistzz','sh1ro','jL','b1t','Aleksib','frozen','XANTARES','yuurih','rain']);
+const DM_DURATION=300000,DM_RESPAWN_MS=1500,DM_PROTECT_MS=1800,ACTOR_CAP=18,AIMBOTZ_MAX=12;
 function dmLoadoutOrder(loadout,category){return Object.keys(CATEGORIES).filter(slot=>slot==='knife'||category==='all'||slot===category).map(slot=>loadout[slot]);}
 function configureLoadout() {
   ORDER.length = 0;
@@ -3662,7 +3664,7 @@ function aimbotzSpawnSpot(previous = null, preferred = null) {
 
 function aimbotzSetBots(value) {
   const count = Number(value);
-  S.aimbotzBots = fin(count) ? clamp(Math.round(count), 1, ACTOR_CAP) : DEFAULTS.aimbotzBots;
+  S.aimbotzBots = fin(count) ? clamp(Math.round(count), 1, AIMBOTZ_MAX) : DEFAULTS.aimbotzBots;
   while (DM.actors.length > S.aimbotzBots + 1) DM.byId.delete(DM.actors.pop().id);
   for (let i = DM.actors.length - 1; i < S.aimbotzBots; i++) {
     const [x, z] = aimbotzSpawnSpot(null, AIMBOTZ_TARGETS[i]);
@@ -3757,7 +3759,7 @@ function aimbotzDrawBoard() {
   ctx.fillText(S.aimbotzBots, 352, 130);
   for (const b of AIMBOTZ_BUTTONS) {
     const chosen = b.infinite ? S.aimbotzInfiniteAmmo : b.weapon === S.aimbotzWeapon;
-    const atLimit = b.count === -1 && S.aimbotzBots === 1 || b.count === 1 && S.aimbotzBots === ACTOR_CAP;
+    const atLimit = b.count === -1 && S.aimbotzBots === 1 || b.count === 1 && S.aimbotzBots === AIMBOTZ_MAX;
     aimbotzPaintButton(ctx,b,chosen,b.infinite?'MUNIÇÃO SEM RECARGA · '+(chosen?'LIGADA':'DESLIGADA'):b.label,atLimit);
   }
   texture.needsUpdate = true;
@@ -3945,7 +3947,7 @@ function afterThrow(t) {
 // Usa o mesmo motor de atores do DM (bots, navegação, hitboxes, render instanciado).
 // Online, quem cria a sala é o juiz: recebe o estado de cada pessoa, simula os bots que completam as vagas
 // e retransmite tudo. Cada pessoa controla o próprio movimento e a própria vida, como no 1v1.
-const HUMAN_SLOTS = 'ABCDEFGHIJ'.split(''), TEAM_COLORS = [0x3e8ed6, 0xe0523a], TEAM_MAX = 5;
+const HUMAN_SLOTS = 'ABCDEFGHIJKLMNOP'.split(''), TEAM_COLORS = [0x3e8ed6, 0xe0523a], TEAM_MAX = 8;
 const ARENA = { kind: 'team', net: false, host: true, code: '', peer: null, conns: new Map(), hostConn: null, order: [], names: {}, netText: '', retryT: 0,
   setup: 'versus', sizes: [2, 2], m: '', r: 0, sc: [0, 0], tg: 10, rt: 60, roundEnd: 0, liveAt: 0, win: null, why: '', sd: {}, mp: null, side: [0, 1],
   roster: [], rosterKey: '', startAt: 0, spawnKey: '', lastBeat: 0, lastSnap: 0, lastPhase: '', killSeen: new Set() };
@@ -3963,7 +3965,7 @@ function arenaMakeProxy(id, index) {
 function teamRoster() {
   const sizes = ARENA.sizes, teams = [[], []];
   arenaHumans().forEach((id, i) => { let t = ARENA.setup === 'coop' ? 0 : i % 2; if (teams[t].length >= sizes[t]) t = 1 - t; if (teams[t].length < sizes[t]) teams[t].push(id); });
-  const pros = DM_BOT_NAMES.slice().sort(() => Math.random() - .5).filter(n => !ARENA.roster.some(r => r[2] === n)), rows = []; let bot = 0;
+  const pros = TEAM_BOT_NAMES.slice().sort(() => Math.random() - .5).filter(n => !ARENA.roster.some(r => r[2] === n)), rows = []; let bot = 0;
   for (const team of [0, 1]) {
     for (const id of teams[team]) rows.push([id, team, id === G.me ? cleanName(S.name) : (ARENA.names[id] || 'Jogador ' + id), 'human']);
     for (let n = teams[team].length; n < sizes[team]; n++) { const id = 'X' + (++bot), prev = ARENA.roster.find(r => r[0] === id && r[3] === 'bot'); rows.push([id, team, prev ? prev[2] : pros.shift() || 'Bot ' + bot, 'bot']); }
@@ -3991,7 +3993,7 @@ function arenaBuildActors(roster) {
 function teamSetup(t, online) {
   DM.mode = 'team'; DM.active = true; DM.phase = 'freeze'; DM.category = 'all'; DM.level = LEVELS[S.botLevel] ? S.botLevel : 'medio'; DM.helmet = !!S.botHelmet;
   DM.startsAt = 0; DM.endsAt = Infinity; DM.scoreVersion = 0; DM.nextSoundAt = DM.nextStepAt = 0; DM.spawnPoints = []; DM.spawnVis = []; DM.lastSpawnTimes = [];
-  ARENA.kind = 'team'; ARENA.net = online; ARENA.m = ''; ARENA.r = 0; ARENA.sc = [0, 0]; ARENA.spawnKey = ''; ARENA.killSeen.clear(); ARENA.mp = MAP.id; ARENA.win = null;
+  ARENA.kind = 'team'; ARENA.net = online; ARENA.m = ''; ARENA.r = 0; ARENA.sc = [0, 0]; ARENA.spawnKey = ''; ARENA.shownPhase = ''; ARENA.killSeen.clear(); ARENA.mp = MAP.id; ARENA.win = null;
   ARENA.setup = S.teamSetup === 'coop' ? 'coop' : 'versus'; ARENA.startAt = online ? Infinity : t + 800; ARENA.rosterKey = '';
   ARENA.bomb = S.mode === 'bomb' && !online; if (ARENA.bomb) ARENA.setup = 'coop';
   ARENA.sizes = S.mode === 'xvx' ? [clamp(S.xvx.mine | 0, 1, TEAM_MAX), clamp(S.xvx.foes | 0, 1, TEAM_MAX)] : [2, 2];
@@ -4049,12 +4051,13 @@ function teamCheck(t) {
   if (!a || !b) teamEndRound(t, a ? 0 : b ? 1 : null, 'kill');
 }
 function rosterValid(roster, team) {
-  return Array.isArray(roster) && roster.length >= 2 && roster.length <= 10 && roster.every(r => Array.isArray(r) && typeof r[0] === 'string' && r[0].length <= 4 && (team ? r[1] === 0 || r[1] === 1 : r[1] === -1));
+  return Array.isArray(roster) && roster.length >= 2 && roster.length <= 16 && roster.every(r => Array.isArray(r) && typeof r[0] === 'string' && r[0].length <= 4 && (team ? r[1] === 0 || r[1] === 1 : r[1] === -1));
 }
 // Aplica o estado da rodada (no juiz e em quem entrou): nascimento, placar, mapa e avisos.
 function teamApplyRound(d) {
   if (!d || typeof d.m !== 'string' || !fin(d.r) || typeof d.ph !== 'string') return;
-  const prev = ARENA.m + ':' + ARENA.r + ':' + DM.phase, t = now();
+  // No juiz a fase já mudou antes de publicar; por isso a última fase anunciada fica guardada à parte.
+  const prev = ARENA.shownPhase || '', t = now(), next = d.m + ':' + d.r + ':' + d.ph;
   if (d.m !== ARENA.m) { G.stats = {}; ARENA.killSeen.clear(); DM.scoreVersion++; }
   if (!ARENA.host) {
     if (MAP_IDS.includes(d.mp) && d.mp !== MAP.id) buildMap(d.mp);
@@ -4065,7 +4068,7 @@ function teamApplyRound(d) {
   }
   ARENA.m = d.m; ARENA.r = d.r; DM.phase = d.ph; ARENA.roundEnd = t + (fin(d.ms) ? d.ms : 0);
   ARENA.sc = Array.isArray(d.sc) ? [d.sc[0] | 0, d.sc[1] | 0] : [0, 0]; ARENA.tg = d.tg || 10; ARENA.rt = d.rt || 60; ARENA.win = d.win === 0 || d.win === 1 ? d.win : null; ARENA.why = d.why || '';
-  if (d.ph === 'live' && !prev.endsWith(':live')) ARENA.liveAt = t;
+  if (d.ph === 'live' && prev !== next) ARENA.liveAt = t;
   const v = G.view; v.m = d.m; v.r = d.r; v.ph = d.ph; v.endsAt = ARENA.roundEnd; v.tg = ARENA.tg; v.mp = MAP.id;
   const key = d.m + ':' + d.r, sd = d.sd && typeof d.sd === 'object' ? d.sd : {};
   if ((d.ph === 'freeze' || d.ph === 'live') && ARENA.spawnKey !== key) {
@@ -4082,7 +4085,7 @@ function teamApplyRound(d) {
     }
     if (ARENA.bomb) bombAfterSpawn(t);
   }
-  if (prev !== d.m + ':' + d.r + ':' + d.ph) teamBanner(d);
+  if (prev !== next) { ARENA.shownPhase = next; teamBanner(d); }
 }
 const BOMB_WHY = { kill: ['Terroristas eliminados', 'SWAT eliminada'], bomb: ['Bomba explodiu', 'Bomba explodiu'], defuse: ['Bomba desarmada', 'Bomba desarmada'], time: ['Tempo esgotado', 'Tempo esgotado'] };
 function bombBanner(d) {
@@ -4845,7 +4848,7 @@ function updateHUD(dt, t) {
   setT(el.scMe, String(v.sc[G.me] || 0)); setT(el.scOp, String(G.opp ? (v.sc[G.opp] || 0) : 0));
   setT(el.nmMe, cleanName(S.name)); setT(el.nmOp, G.opp ? nameOf(G.opp) : '—');
   if(G.mode==='dm'){const leader=dmRanking()[0];setT(el.scMe,String(stat(G.me).k));setT(el.scOp,String(stat(leader.id).k));setT(el.nmOp,'Líder · '+nameOf(leader.id));}
-  if(G.mode==='team'){const mine=myTeam(),pips=n=>'●'.repeat(n)+'○'.repeat(Math.max(0,2-n));setT(el.scMe,String(ARENA.sc[mine]));setT(el.scOp,String(ARENA.sc[1-mine]));setT(el.nmMe,'Seu time '+pips(teamAlive(mine)));setT(el.nmOp,pips(teamAlive(1-mine))+' Inimigos');}
+  if(G.mode==='team'){const mine=myTeam(),pips=(n,team)=>'●'.repeat(n)+'○'.repeat(Math.max(0,ARENA.sizes[team]-n));setT(el.scMe,String(ARENA.sc[mine]));setT(el.scOp,String(ARENA.sc[1-mine]));setT(el.nmMe,'Seu time '+pips(teamAlive(mine),0));setT(el.nmOp,pips(teamAlive(1-mine),1)+' Inimigos');}
   if (bombOn()) { const mine = myTeam(), sd = sideOf(P), pips = n => '●'.repeat(n) + '○'.repeat(Math.max(0, ARENA.sizes[0] - n)); setT(el.nmMe, SIDE_NAMES[sd] + ' ' + pips(teamAlive(mine))); setT(el.nmOp, pips(teamAlive(1 - mine)) + ' ' + SIDE_NAMES[sd === 't' ? 'ct' : 't']); }
   if (G.mode === 'aimbotz') {
     setT(el.nmMe, 'Abates'); setT(el.scMe, String(stat(G.me).k));

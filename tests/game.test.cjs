@@ -1286,3 +1286,17 @@ test('AWP accuracy follows CS: precise only when (almost) still, wild while movi
   g.spawnSelf(0, [0, 0, 0]); g.selectWeapon('sniper'); g.P.drawEnd = 0; g.P.nextFire = 0;
   g.context.toggleScope(20000); assert.equal(g.P.zoomAt, 20000);
 });
+test('XvX goes up to 8 per team: sixteen actors with distinct names spawn apart and rounds still finish', () => {
+  const g = game({ mode: 'xvx', xvx: { mine: 8, foes: 8 }, target: 1, roundTime: 60 }), cx = g.context;
+  assert.deepEqual(JSON.parse(JSON.stringify(g.S.xvx)), { mine: 8, foes: 8 });
+  cx.G.mode = 'team'; cx.buildMap('caixas'); vm.runInContext('dmBuildNav([])', cx);
+  Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } }, pickMap: () => 'caixas',
+    randSpawn: side => { const sp = cx.MAP.spawn, x = (Math.random() * 2 - 1) * sp.hx, z = -(sp.z0 + Math.random() * (sp.z1 - sp.z0)); return side ? [-x, -z, 0] : [x, z, Math.PI]; } });
+  g.tick(10000); vm.runInContext('teamSetup(10000,false)', cx);
+  let t = 10000; for (; t < 10000 + 120000 && g.DM.phase !== 'over'; t += 1000 / 30) { g.tick(t); vm.runInContext(`teamTick(1/30,${t})`, cx); }
+  assert.equal(g.DM.actors.length, 16);
+  assert.equal(new Set(g.DM.actors.map(e => e.name)).size, 16);
+  assert.deepEqual(Array.from(vm.runInContext('ARENA.sizes', cx)), [8, 8]);
+  assert.ok(['end', 'over', 'live', 'freeze'].includes(g.DM.phase));
+  assert.ok(vm.runInContext('ARENA.r', cx) >= 1);
+});
