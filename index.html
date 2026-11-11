@@ -292,6 +292,7 @@ button:disabled{opacity:.5;cursor:default}
 #dmgn.head{color:#ffe066}
 #dmgdir{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}
 #dmgdir i{position:absolute;left:-60px;top:-150px;width:120px;height:14px;border-radius:50% 50% 0 0/100% 100% 0 0;background:radial-gradient(ellipse at 50% 100%,rgba(255,60,40,.9),rgba(255,60,40,0) 70%)}
+#loc{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));font:700 13px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:#e9eef2;text-shadow:0 1px 2px #000}
 #bombbox{position:absolute;bottom:calc(64px + env(safe-area-inset-bottom,0px));left:max(16px,env(safe-area-inset-left,0px));display:flex;gap:6px;font:700 15px/1 var(--display)}
 #bombbox span{background:rgba(12,14,18,.72);padding:6px 10px;color:#fff}#bbMoney{color:#7dff9a!important}#bbC4{background:#c0392b!important;letter-spacing:.08em}
 #actbar{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;font:700 14px/1 var(--display);color:#fff;text-shadow:0 1px 2px #000}
@@ -392,6 +393,7 @@ button:disabled{opacity:.5;cursor:default}
   <div id="healn" aria-hidden="true"></div>
   <div id="ammobox"><span class="lbl" id="wname">AK-47</span><b id="ammo">30</b><span id="res">/ 90</span></div>
   <div id="fps"></div>
+  <div id="loc"></div>
   <div id="netst"></div>
   <div id="board" hidden><div id="boardRows"></div><button id="btnBoardBack" type="button" hidden>Voltar ao menu</button></div>
   <div id="deadmsg" hidden></div>
@@ -1438,103 +1440,133 @@ function statue(B, x, z, y = 0, size = 1) {
   dR(B, x - .02 * s, y + 1.98 * s, z - .25 * s, x + .02 * s, y + 2.2 * s, z + .25 * s, 0xd9a93a);
 }
 
-// Guard: Praga. Rio com água rasa (anda devagar), ponte de pedra elevada com estátuas, torre gótica na
-// cabeceira norte (passa-se pelo arco) e o bombsite A na praça da Cidade Velha, com a torre do relógio.
+// Guard (Praga, margem do rio junto à Ponte Carlos), montado com as áreas do mapa original: bombsite A no cais,
+// com as coberturas viradas para a ponte e para os arcos; torre na cabeceira, pit, lixeira, ladder hole, conector,
+// escada com meia parede e o spawn da SWAT recuado. Do lado dos Terroristas: restaurante, loja de vidro,
+// bicicletas, caminhão e a obra bloqueada. O lado norte fica 2,4 m acima do cais.
 MAPS.guard = {
-  name: 'Guard', theme: 'praga', bomb: true, ax: 20, az: 26, spawn: { hx: 6, z0: 19, z1: 24 },
-  water: [[-20, -4.5, 20, 4.5]],
-  plant: { site: { x0: -4, z0: -24, x1: 10, z1: -15, lx: 6.5, lz: -18 }, t: [[-5, 21.5, 0], [-2, 23.5, 0], [1.5, 21.5, 0], [4, 23.5, 0], [0, 24.6, 0]],
-    ct: [[-17, -21, 2.4], [-14.5, -23.5, 2.4], [-17.5, -24.5, 2.4], [-14, -20.5, 2.4], [-16, -22.8, 2.4]] },
+  name: 'Guard', theme: 'praga', bomb: true, ax: 22, az: 26, spawn: { hx: 6, z0: 19, z1: 24 },
+  water: [[-22, -2, 22, 4]],
+  plant: { site: { x0: -1, z0: -8.6, x1: 13, z1: -2.6, lx: 10.5, lz: -6.2 }, t: [[-6, 22, 0], [-2.5, 23.8, 0], [1, 22, 0], [4.5, 23.8, 0], [-1, 20.5, 0]],
+    ct: [[10, -23, 3.6], [13, -21.5, 3.6], [16, -23.5, 3.6], [12, -24.8, 3.6], [15.5, -20.8, 3.6]] },
+  areas: [['Spawn TR', -12, 17, 17, 26], ['Restaurante', -22, 4, -9, 17], ['Loja', -3, 8, 9, 17], ['Bicicletas', 9, 4, 22, 8], ['Caminhão', 9, 8, 17, 17], ['Obra', 17, 8, 22, 17],
+    ['Ponte', -9, -9, -3, 8, 1.8], ['Arcos', -9, -9, -3, -2], ['Rio', -22, -2, 22, 4], ['Cais', -22, -9, -9, -2], ['Bombsite A', -3, -9, 13, -2], ['Escada', 13, -9, 22, -2],
+    ['Torre', -11, -15, -1, -9], ['Pit', -1, -15, 4, -9], ['Lixeira', -15, -18, -11, -9], ['Ladder hole', -15, -14, -12, -9], ['Varanda', 4, -15, 15, -9], ['Conector', -1, -26, 8, -15], ['Spawn CT', 8, -26, 22, -15], ['Cidade velha', -22, -26, -1, -15]],
   build(B, K) {
-    const STONE = 0xa79b86, DARK = 0x5d564c;
-    // rio: água rasa com reflexos claros
-    dR(B, -20, 0, -4.5, 20, .035, 4.5, 0x3f6f88);
-    for (let x = -19; x < 20; x += 3.1) for (const z of [-2.6, .4, 3]) dR(B, x, .035, z, x + 1.4, .04, z + .12, 0x7fb0c8);
-    dR(B, -20, 0, 4.5, 20, .3, 4.75, 0x8a8170); dR(B, -20, 0, -4.75, 20, .3, -4.5, 0x8a8170);       // beiradas do cais
-    // Ponte: tabuleiro elevado (passa-se por baixo, dentro do rio), parapeitos, estátuas e lampiões
-    B.deck([-3, 2.0, -6.5], [3, 2.4, 6.5], STONE);
-    for (const x of [-3, 2.75]) B.solid([x, 2.4, -6.5], [x + .25, 3.25, 6.5], STONE);
-    for (const z of [-4.2, -.7, 2.8]) for (const x of [-2.87, 2.87]) statue(B, x, z, 3.25, .9);
-    for (const z of [-2.4, 1, 4.6]) for (const x of [-2.87, 2.87]) { dR(B, x - .05, 3.25, z - .05, x + .05, 5.2, z + .05, 0x2c2c2c); dR(B, x - .16, 5.2, z - .16, x + .16, 5.55, z + .16, 0xf2d27a); }
-    for (const z of [-4.5, 4.5]) { dR(B, -3.2, 0, z - .5, -2.4, 2.0, z + .5, STONE); dR(B, 2.4, 0, z - .5, 3.2, 2.0, z + .5, STONE); }  // pilares nas margens
-    dmStairs(B, 0, 6.5, 0, 1, 6, 2.4, K.ramp); dmStairs(B, 0, -6.5, 0, -1, 6, 2.4, K.ramp);
-    // Torre gótica da ponte: dois pilares, arco de passagem, telhado de ardósia íngreme e torreões
-    B.solid([-5, 0, -13.5], [-2.5, 11, -10.5], DARK); B.solid([2.5, 0, -13.5], [5, 11, -10.5], DARK); B.solid([-2.5, 3.6, -13.5], [2.5, 11, -10.5], DARK);
-    for (let i = 0; i < 4; i++) { const q = 5.3 - i * 1.25; dR(B, -q, 11 + i * 1.1, -12 - q * .4, q, 12.1 + i * 1.1, -12 + q * .4, 0x3a3e44); }
-    dR(B, -.12, 15.4, -12.12, .12, 18, -11.88, 0x3a3e44); dR(B, -.3, 17.4, -12.05, .3, 17.5, -11.95, 0xd9a93a);
-    for (const x of [-4.6, 4.6]) { dR(B, x - .45, 11, -10.95, x + .45, 13.6, -10.05, DARK); dR(B, x - .2, 13.6, -10.7, x + .2, 15.4, -10.3, 0x3a3e44); }
-    for (const x of [-3.8, 3.8]) propPanel(B, 'z+', -10.5, x - .35, x + .35, 5, 7.6, 0x26221e, .06);
-    propPanel(B, 'z+', -10.5, -1.6, 1.6, 6.4, 8.8, 0x8d7a4a, .06); propPanel(B, 'z+', -10.5, -2.7, 2.7, 3.6, 4.0, 0x7a6f60, .08);
-    // Margem norte (SWAT): quarteirões colados ao rio; o cais leste (x 11..16) é a saída de quem atravessa a água
-    baroque(B, -20, -12, -3, -4.5, 7, 0xe8c98a); baroque(B, 3, -12, 11, -4.5, 6.5, 0xe4b5a5); baroque(B, 16, -12, 20, -4.5, 7, 0xc9d8b5);
-    dmStairs(B, 13.5, -4.6, 0, 1, 4.6, .8, K.ramp);
-    // Praça da Cidade Velha: prefeitura com a torre do relógio astronômico, prédio leste e o bombsite A
-    baroque(B, -12, -26, -6, -17, 8, 0xeee3c8, 0x8b3a2a);
-    B.solid([-10.4, 0, -21], [-7.6, 15, -18.6], 0x8f8372); for (let i = 0; i < 3; i++) { const q = 1.6 - i * .45; dR(B, -9 - q, 15 + i, -19.8 - q, -9 + q, 16 + i, -19.8 + q, 0x3a3e44); }
-    for (let i = 0; i < 3; i++) { const q = .9 - i * .25; dR(B, -9 - q, 11 - q, -18.58, -9 + q, 11 + q, -18.5 + i * .02, [0x2f4f7a, 0xd9a93a, 0x2f4f7a][i]); }   // relógio astronômico
-    dR(B, -9.05, 10.3, -18.46, -8.95, 11.8, -18.44, 0x111111);
-    baroque(B, 12, -26, 20, -16, 8, 0xe8c98a);
+    const STONE = 0xa79b86, DARK = 0x5d564c, UP = 2.4;
+    const block = (x0, z0, x1, z1, h, col, roof) => { dmRect(B, x0, z0, x1, z1, h, col, UP); dR(B, x0 - .12, UP + h - .5, z0 - .12, x1 + .12, UP + h - .3, z1 + .12, 0xf3ead6); propRoof(B, x0, z0, x1, z1, UP + h, roof || 0xb5482f); };
+    // Lado norte elevado (cidade velha), com os recortes do pit e do ladder hole
+    dmRect(B, -22, -26, -14.2, -9, UP, K.plat); dmRect(B, -14.2, -26, -12.8, -13, UP, K.plat); dmRect(B, -12.8, -26, -1, -9, UP, K.plat);
+    dmRect(B, -1, -26, 4, -14, UP, K.plat); dmRect(B, -1, -14, 4, -9, 1.2, K.plat); dmRect(B, 4, -26, 22, -9, UP, K.plat);
+    dmStairs(B, 1.5, -14, 0, 1, 3, UP, K.ramp);                                       // degraus da rua para dentro do pit
+    dmStairs(B, -13.5, -13, 0, 1, 1.4, UP, 0x6b5b45);                               // ladder hole: passagem estreita até o cais
+    dmStairs(B, 16.5, -9, 0, 1, 3, UP, K.ramp); B.solid([14.6, 0, -9], [15, 1, -5], STONE); // escada com meia parede
+    B.solid([4, UP, -9.3], [14.6, UP + 1, -9], STONE);                               // varanda sobre o site
+    // Rio: água rasa com reflexos; cais dos dois lados
+    dR(B, -22, 0, -2, 22, .035, 4, 0x3f6f88);
+    for (let x = -21; x < 22; x += 3.1) for (const z of [-1.2, 1, 3]) dR(B, x, .035, z, x + 1.4, .04, z + .12, 0x7fb0c8);
+    dR(B, -22, 0, -2.2, 22, .3, -2, 0x8a8170); dR(B, -22, 0, 4, 22, .3, 4.2, 0x8a8170);
+    // Ponte Carlos: tabuleiro elevado, parapeitos com estátuas e lampiões, pilares no rio (passa-se pelo arco do meio)
+    B.deck([-9, 2.0, -9], [-3, UP, 8], STONE);
+    for (const x of [-9, -3.25]) B.solid([x, UP, -9], [x + .25, 3.25, 8], STONE);
+    for (const z of [-6.5, -2.5, 1.5, 5.5]) for (const x of [-8.87, -3.13]) statue(B, x, z, 3.25, .9);
+    for (const z of [-4.5, -.5, 3.5]) for (const x of [-8.87, -3.13]) { dR(B, x - .05, 3.25, z - .05, x + .05, 5.2, z + .05, 0x2c2c2c); dR(B, x - .16, 5.2, z - .16, x + .16, 5.55, z + .16, 0xf2d27a); }
+    B.solid([-9, 0, .4], [-7.6, 2.0, 1.6], STONE); B.solid([-4.4, 0, .4], [-3, 2.0, 1.6], STONE);
+    for (const x of [-9, -3.6]) dR(B, x, 0, -8.9, x + .6, 2.0, -8.3, STONE);             // arcos no cais
+    dmStairs(B, -6, 8, 0, 1, 6, UP, K.ramp);
+    // Torre da ponte (Old Town Bridge Tower): pilares, arco, telhado de ardósia e torreões
+    B.solid([-11, UP, -14], [-9, 13, -9.5], DARK); B.solid([-3, UP, -14], [-1, 13, -9.5], DARK); B.solid([-9, 5.6, -14], [-3, 13, -9.5], DARK);
+    for (let i = 0; i < 4; i++) { const q = 5.3 - i * 1.25; dR(B, -6 - q, 13 + i * 1.1, -11.75 - q * .45, -6 + q, 14.1 + i * 1.1, -11.75 + q * .45, 0x3a3e44); }
+    dR(B, -6.12, 17.4, -11.87, -5.88, 20, -11.63, 0x3a3e44); dR(B, -6.3, 19.4, -11.8, -5.7, 19.5, -11.7, 0xd9a93a);
+    for (const x of [-10.6, -1.4]) { dR(B, x - .45, 13, -10.4, x + .45, 15.6, -9.5, DARK); dR(B, x - .2, 15.6, -10.15, x + .2, 17.4, -9.75, 0x3a3e44); }
+    propPanel(B, 'z+', -9.5, -7.6, -4.4, 8.4, 10.8, 0x8d7a4a, .06); propPanel(B, 'z+', -9.5, -9, -3, 5.6, 6.0, 0x7a6f60, .08);
+    B.box(-.2, -15.2, C, C, C, K.crate, UP); B.box(1.1, -15.2, C, C, C, K.crate2, UP);    // caixas ao lado da torre
+    B.box(-12, -15.6, 1.6, 1, 1.2, 0x3f5a3a, UP); dR(B, -12.82, UP + 1.2, -16.12, -11.18, UP + 1.3, -15.08, 0x2c3a28); // lixeira
+    // Cidade velha e SWAT (todos sobre o nível elevado)
+    block(-22, -26, -15, -17, 7, 0xe8c98a); block(-12.8, -26, -1, -20, 7.5, 0xeee3c8, 0x8b3a2a); block(-1, -26, 2, -16, 6.5, 0xe4b5a5); block(5, -26, 8, -16, 6.5, 0xc9d8b5);
+    dR(B, 2, UP + 3.4, -26, 5, UP + 3.6, -16, 0xd8cdb8);                                // teto do conector
+    block(18, -26, 22, -12, 7, 0xe4b5a5); block(4, -14, 9, -12, 4, 0xe8c98a);
+    B.box(11, -17.5, 2 * C, C, C, K.crate, UP); B.box(-17, -13, C, C, 2 * C, K.crate2, UP);
+    for (let i = 0; i < 3; i++) { const q = .8 - i * .22; dR(B, -7 - q, UP + 5 - q, -19.98, -7 + q, UP + 5 + q, -19.92 + i * .02, [0x2f4f7a, 0xd9a93a, 0x2f4f7a][i]); } // relógio
+    // Bombsite A no cais: coberturas viradas para a ponte e para os arcos, barco atracado
     siteMark(B, this.plant.site);
-    statue(B, 2, -19.5, 0, 1.35);                                                   // estátua central do site
-    B.box(-1.5, -16.6, 2.6, 1, 1.05, 0x8a5a33); for (const x of [-2.7, -.3]) dR(B, x - .06, 1.05, -17.05, x + .06, 2.3, -16.95, 0x5a3a22);
-    propAwning(B, -2.9, -17.3, -.1, -16, 2.3, [0xb63a2e, 0xf3ead6], 'x');           // barraca de mercado
-    B.box(7.5, -22.5, C, C, C, K.crate); B.box(6.3, -22.5, C, C, C, K.crate2); B.box(8.6, -17.2, 2 * C, C, C, K.crate);
-    B.box(-2.5, -22.6, 1.3, 1.3, .8, 0x7d6a55); dR(B, -2.7, .8, -22.8, -2.3, 2.6, -22.4, 0x5a4a35); dR(B, -3.4, 2.2, -23.5, -1.6, 3.4, -21.7, 0x4f8a43);
-    // Margem sul (Terroristas): quarteirões ao longo do rio, beco leste até a água e o spawn entre casas
-    baroque(B, -20, 4.5, -6, 14, 7.5, 0xe4b5a5); baroque(B, 6, 4.5, 9, 12, 6, 0xeee3c8); baroque(B, 13, 4.5, 20, 13, 7, 0xe8c98a);
-    baroque(B, -20, 16, -11, 26, 7, 0xc9d8b5); baroque(B, 13, 15.5, 20, 26, 7.5, 0xe4b5a5); baroque(B, 6, 19.5, 10, 26, 6, 0xe8c98a);
-    B.box(-7.5, 16.5, C, C, C, K.crate2); B.box(10.5, 14, C, 2 * C, C, K.crate); B.box(-4, 15.2, 2 * C, C, C, K.crate); B.box(4.5, 15.6, C, C, 2 * C, K.crate2);
-    statue(B, -9, 21, 0, 1);
+    B.box(2, -6.5, 2 * C, C, C, K.crate); B.box(2, -4.2, C, C, 2 * C, K.crate2); B.box(7, -7.6, 2.4, 1, 1.05, 0x8a5a33);
+    propAwning(B, 5.8, -8.1, 8.2, -7.1, 2.2, [0xb63a2e, 0xf3ead6], 'x'); B.box(10.5, -3.6, C, C, C, K.crate); B.box(11.8, -7.8, C, C, 2 * C, K.crate2);
+    dR(B, 3, 0, -.6, 9, .55, 1.6, 0x6b4a2e); dR(B, 3.6, .55, -.3, 8.4, .65, 1.3, 0x8a6a45); dR(B, 4.2, .65, .1, 5.4, 1.4, .9, 0xf3ead6); // barco
+    // Margem sul (Terroristas): restaurante, loja de vidro, bicicletas, caminhão, obra e o spawn entre casas
+    baroque(B, -22, 8, -12, 16, 7, 0xe4b5a5);
+    for (const [x, z] of [[-11, 9.5], [-10, 11.2]]) { dmRect(B, x - .45, z - .45, x + .45, z + .45, .75, 0x6b4a2e); dR(B, x - .05, .75, z - .05, x + .05, 2.2, z + .05, 0x2c2c2c); dR(B, x - .9, 2.2, z - .9, x + .9, 2.35, z + .9, 0xb63a2e); }
+    baroque(B, 0, 9, 9, 16, 6.5, 0xeee3c8);
+    for (let x = .6; x < 8.6; x += 2) propPanel(B, 'z-', 9, x, x + 1.6, .4, 2.6, 0x9fd0e0, .05);  // vitrine da loja
+    for (let x = 10; x < 14; x += 1.2) { B.box(x, 6.4, .25, 1.1, .9, 0x2c2c2c); dR(B, x - .05, .4, 5.9, x + .05, .55, 6.9, 0x2f6aa8); }  // bicicletas
+    B.box(12, 13.5, 3, 5, 2.6, 0x7a7d70); dR(B, 10.45, .6, 10.9, 13.55, 2.75, 16.1, 0x4f6a3a);    // caminhão com lona
+    B.solid([17, 0, 8], [22, 2.2, 8.4], 0xd8a23a); B.solid([17, 0, 8], [17.4, 2.2, 16], 0xd8a23a); // obra bloqueada
+    for (let x = 17.5; x < 22; x += 1.4) dR(B, x, 2.2, 8.1, x + .7, 2.3, 8.3, 0x1c1c1c);
+    dR(B, 18, 0, 9, 21.6, 6, 15.6, 0x9aa0a6); for (let y = 1.5; y < 6; y += 1.5) dR(B, 17.9, y, 8.9, 21.7, y + .12, 15.7, 0x6b6f73);
+    baroque(B, -22, 17, -12, 26, 7, 0xc9d8b5); baroque(B, 17, 16, 22, 26, 7.5, 0xe8c98a); baroque(B, 9, 18.5, 17, 26, 6, 0xe4b5a5);
+    B.box(-8, 17.6, C, C, C, K.crate2); B.box(-1, 17.4, 2 * C, C, C, K.crate); statue(B, 6, 21, 0, 1);
   }
 };
 
-// Elysion: 39º andar de um arranha-céu. Saguão dos elevadores (Terroristas), corredor do meio com a recepção,
-// escritório aberto a leste e o salão principal com a cascata, o balcão e o letreiro: bombsite A. SWAT na diretoria.
+// Elysion (39º andar), montado com as áreas do mapa original: spawn TR com a mesa da recepção, meio em dois
+// níveis com as paredes de cascata, área externa (terraço com guarda-corpo de vidro e duas portas para o A),
+// salão principal com obras de arte e o bombsite A com a parede central, o letreiro ELYSION e o guarda-corpo das
+// janelas; a SWAT atrás de uma parede de vidro com o relógio.
 MAPS.elysion = {
-  name: 'Elysion', theme: 'elysion', bomb: true, ax: 18, az: 24, spawn: { hx: 6, z0: 19, z1: 23 },
-  plant: { site: { x0: -6, z0: -22, x1: 7, z1: -11, lx: 4.5, lz: -16 }, t: [[-5, 20.5, 0], [-2, 22.3, 0], [2, 20.5, 0], [5, 22.3, 0], [0, 23, 0]],
-    ct: [[12.5, -21.5, 3.6], [15, -19.5, 3.6], [11, -19, 3.6], [15.5, -22.5, 3.6], [13, -23, 3.6]] },
+  name: 'Elysion', theme: 'elysion', bomb: true, ax: 20, az: 24, spawn: { hx: 6, z0: 19, z1: 23 },
+  plant: { site: { x0: -11, z0: -22.5, x1: 1, z1: -12, lx: -2, lz: -20.5 }, t: [[-5, 20.5, 0], [-2, 22.3, 0], [2, 20.5, 0], [5, 22.3, 0], [0, 23, 0]],
+    ct: [[13, -21.5, 3.9], [16, -19.5, 3.9], [11.5, -18.5, 3.9], [17, -22.5, 3.9], [14, -23, 3.9]] },
+  areas: [['Spawn TR', -12, 15, 20, 24], ['Área externa', -20, -24, -13, 24], ['Meio', -12, -6, 12, 15], ['Bombsite A', -13, -24, 2, -11], ['Salão', 2, -14, 20, -6],
+    ['Salão', -12, -11, 2, -6], ['Spawn CT', 9, -24, 20, -14], ['Escritórios', 12, -6, 20, 15]],
   build(B, K) {
-    const WALL = 0xe9ecef, GLASS = 0x8fb8cf, WOOD = 0xb08a5a, H = 3.6;
+    const WALL = 0xe9ecef, GLASS = 0x8fb8cf, WOOD = 0xb08a5a, H = 3.6, UP = 2.4;
     const room = (x0, z0, x1, z1, col = WALL) => dmRect(B, x0, z0, x1, z1, H, col);
-    // Fachada de vidro: montantes nas paredes do andar e a cidade lá fora
-    for (let x = -17; x < 18; x += 2) { propPanel(B, 'z+', -24, x, x + .12, 0, 7, 0x4d5c69, .05); propPanel(B, 'z-', 24, x, x + .12, 0, 7, 0x4d5c69, .05); }
-    for (let z = -23; z < 24; z += 2) { propPanel(B, 'x+', -18, z, z + .12, 0, 7, 0x4d5c69, .05); propPanel(B, 'x-', 18, z, z + .12, 0, 7, 0x4d5c69, .05); }
-    for (const [x, z, w, d, h, c] of [[-30, -40, 10, 10, 46, 0x6f8aa0], [-12, -48, 14, 9, 60, 0x587489], [10, -44, 9, 11, 38, 0x7e98ad], [32, -30, 10, 12, 52, 0x627e94],
-      [34, 2, 9, 9, 30, 0x87a0b3], [31, 30, 11, 10, 44, 0x5f7a8f], [-33, 8, 10, 12, 36, 0x7b93a7], [-31, 34, 12, 9, 55, 0x6a8499], [4, 42, 12, 10, 34, 0x839cb0]])
+    // Fachada de vidro com montantes e a cidade lá fora
+    for (let x = -19; x < 20; x += 2) { propPanel(B, 'z+', -24, x, x + .12, 0, 7, 0x4d5c69, .05); propPanel(B, 'z-', 24, x, x + .12, 0, 7, 0x4d5c69, .05); }
+    for (let z = -23; z < 24; z += 2) { propPanel(B, 'x+', -20, z, z + .12, 0, 7, 0x4d5c69, .05); propPanel(B, 'x-', 20, z, z + .12, 0, 7, 0x4d5c69, .05); }
+    for (const [x, z, w, d, h, c] of [[-32, -40, 10, 10, 46, 0x6f8aa0], [-12, -48, 14, 9, 60, 0x587489], [10, -44, 9, 11, 38, 0x7e98ad], [34, -30, 10, 12, 52, 0x627e94],
+      [36, 2, 9, 9, 30, 0x87a0b3], [33, 30, 11, 10, 44, 0x5f7a8f], [-35, 8, 10, 12, 36, 0x7b93a7], [-33, 34, 12, 9, 55, 0x6a8499], [4, 42, 12, 10, 34, 0x839cb0]])
       { dR(B, x - w / 2, -20, z - d / 2, x + w / 2, h - 20, z + d / 2, c); for (let y = -16; y < h - 22; y += 3) dR(B, x - w / 2 - .05, y, z - d / 2 - .05, x + w / 2 + .05, y + .5, z + d / 2 + .05, 0xc8dbe8); }
-    // Saguão dos elevadores (sul): portas metálicas e o letreiro do andar
-    for (let x = -7; x <= 5; x += 4) { propPanel(B, 'z-', 24, x, x + 2, 0, 2.6, 0xa9b2ba, .06); dR(B, x + .98, 0, 23.9, x + 1.02, 2.6, 23.95, 0x4d5c69); }
-    signText(B, 'ELYSION', 0, 4.4, 23.85 - .04, .14, 0x2c3540);
-    room(-18, 12, -9, 24); room(9, 12, 18, 24, 0xdfe3e6);
-    // Corredor do meio até a recepção; salas de reunião dos dois lados com vidro
-    room(-9, 3, -2.5, 16); room(2.5, 10, 6, 16);
-    for (const z of [5, 8]) { propPanel(B, 'x+', -2.5, z, z + 2, .9, 2.6, GLASS, .04); }
-    // Escritório aberto (leste): mesas, divisórias baixas e plantas
-    for (const [x, z] of [[8.5, 8], [12.5, 8], [8.5, 4], [12.5, 4], [15.5, 6]]) { B.box(x, z, 2.2, 1.1, .8, WOOD); dR(B, x - 1.1, .8, z - .05, x + 1.1, 1.35, z + .05, 0x5f7f99); }
-    B.box(10.5, 11.6, 1, 1, 1.2, 0x7d8b97); dR(B, 10.1, 1.2, 11.2, 10.9, 2.4, 12, 0x4f8a43);
-    room(6, -2, 11, 2.5); room(16, -6, 18, 2.5);
-    // Recepção do meio (área aberta), ligada ao salão pelo sul
-    room(-18, -4, -10, 3); B.box(-5, -1, 2 * C, C, C, K.crate2); B.box(3, 0, C, C, 2 * C, K.crate); dR(B, -1, 0, -2.6, 1, .45, -1.6, 0x56616b);
-    // Salão principal (bombsite A): cascata na parede norte, espelho d'água, balcão da recepção e o letreiro
-    room(-6, -6.5, -2.5, -4); room(6, -6.5, 10, -4);
-    dmRect(B, -6, -24, 4, -22.2, .5, 0x3e4a55); dR(B, -5.8, .5, -23.9, 3.8, .55, -22.4, 0x5aa8d0);
-    for (let x = -5.6; x < 3.8; x += .5) dR(B, x, .5, -23.98, x + .3, 6.4, -23.93, (Math.round(x * 2) & 1) ? 0x9fd8f0 : 0x6fb8e0);
-    dR(B, -6.2, 6.4, -24, 4.2, 6.8, -23.6, 0x2c3540);
-    B.box(.5, -14, 5, 1, 1.1, 0xd8dde1); dR(B, -2.05, 1.1, -14.55, 3.05, 1.18, -13.45, 0x2c3540); B.box(-2.4, -13.2, 1, 2.4, 1.1, 0xd8dde1);
-    signText(B, 'ELYSION', -1, 9.6, -24 + .06, .32, 0xf3f6f8);
-    for (const [x, z] of [[-4.6, -18.2], [5.6, -19.6]]) { B.box(x, z, 2.2, .9, .7, 0x2f3a45); dR(B, x - 1.1, .7, z + .3, x + 1.1, 1.2, z + .45, 0x2f3a45); }
-    for (const [x, z] of [[6.2, -12], [-5.5, -11.5], [8.5, -22.5]]) { B.box(x, z, 1.1, 1.1, .9, 0x7d8b97); dR(B, x - .7, .9, z - .7, x + .7, 2.6, z + .7, 0x4f8a43); }
+    // Spawn TR: recepção dos elevadores com a mesa e a luz em cima
+    for (let x = -9; x <= 7; x += 4) { propPanel(B, 'z-', 24, x, x + 2, 0, 2.6, 0xa9b2ba, .06); dR(B, x + .98, 0, 23.9, x + 1.02, 2.6, 23.95, 0x4d5c69); }
+    B.box(0, 18, 4, 1, 1.1, 0xd8dde1); dR(B, -2, 1.1, 17.5, 2, 1.18, 18.5, 0x2c3540); dR(B, -1.5, 3.3, 17.7, 1.5, 3.45, 18.3, 0xfff4c8);
+    room(-13, 17.5, -12, 24); room(12, 15, 20, 24, 0xdfe3e6);
+    // Divisória entre o interior e a área externa (x = -12), com a porta do spawn e as duas portas do A
+    room(-13, -24, -12, -16.5); room(-13, -13.5, -12, -10.5); room(-13, -7.5, -12, 15);
+    for (const z of [-16.5, -13.5, -10.5, -7.5]) dR(B, -13.05, 0, z - .06, -11.95, 2.8, z + .06, 0x4d5c69);
+    // Área externa: terraço com guarda-corpo de vidro, piso de deck, floreiras e cobertura parcial
+    dR(B, -20, 0, -24, -13, .02, 24, 0xa38866);
+    for (let z = -23; z < 24; z += 1.2) dR(B, -20, .02, z, -13, .025, z + .06, 0x8a7050);
+    for (const z of [-20, -4, 6]) { B.box(-15, z, 1.2, 2.4, .7, 0x6f7b86); dR(B, -15.5, .7, z - 1.1, -14.5, 1.6, z + 1.1, 0x4f8a43); }
+    dR(B, -20, 4.2, -2, -13, 4.4, 24, 0xd8dde1);
+    // Meio em dois níveis: piso de baixo, passarela alta no leste com escada e as paredes de cascata
+    room(-12, 12.5, -4, 15); room(4, 12.5, 12, 15);
+    dmRect(B, 5, -6, 12, 6, UP, 0xb7c0c8); dmStairs(B, 8.5, 6, 0, 1, 3, UP, K.ramp); dR(B, 4.95, UP, -6, 5.05, UP + 1, 6, GLASS);
+    for (const [x0, x1] of [[-11.9, -11.85]]) for (let z = -5; z < 11; z += .5) dR(B, x0, .3, z, x1, 3.4, z + .3, (Math.round(z * 2) & 1) ? 0x9fd8f0 : 0x6fb8e0);
+    for (let x = -11.5; x < -4.5; x += .5) dR(B, x, .3, 12.42, x + .3, 3.4, 12.47, (Math.round(x * 2) & 1) ? 0x9fd8f0 : 0x6fb8e0);
+    B.box(-6, 3, 2 * C, C, C, K.crate2); B.box(1, -2, C, C, 2 * C, K.crate); B.box(-8.5, 9, C, 2 * C, C, K.crate);
+    // Escritórios (leste): mesas e divisórias
+    room(12, -6, 13, 12.5);
+    for (const [x, z] of [[15.5, 8], [15.5, 3], [15.5, -2]]) { B.box(x, z, 2.2, 1.1, .8, WOOD); dR(B, x - 1.1, .8, z - .05, x + 1.1, 1.35, z + .05, 0x5f7f99); }
+    // Salão principal: obras de arte, quadro, sofás
+    room(-12, -6.5, -4, -6); room(4, -6.5, 12, -6);
+    for (const [z0, z1, c] of [[-13, -10, 0xd06a3a], [-9.5, -7.5, 0x3a6ad0]]) propPanel(B, 'x-', 20, z0, z1, 1, 2.8, c, .06);
+    propPanel(B, 'z+', -6.5, 5, 9, .8, 2.8, 0x2f3a45, .05); propPanel(B, 'z+', -6.5, 5.3, 8.7, 1.1, 2.5, 0xd9a93a, .06);
+    for (const [x, z] of [[6, -10], [10, -11.5]]) { B.box(x, z, 2.2, .9, .7, 0x2f3a45); dR(B, x - 1.1, .7, z + .3, x + 1.1, 1.2, z + .45, 0x2f3a45); }
+    // Bombsite A: parede central, letreiro ELYSION, guarda-corpo das janelas e a cascata da parede norte
     siteMark(B, this.plant.site);
-    // Mezanino oeste a 2,4 m com escada pelo sul e guarda-corpo de vidro
-    dmRect(B, -18, -22, -11, -8, 2.4, 0xb7c0c8); dmStairs(B, -14.5, -8, 0, 1, 3, 2.4, K.ramp);
-    dR(B, -11.05, 2.4, -22, -10.95, 3.4, -9, GLASS); dR(B, -11.1, 3.35, -22, -10.9, 3.45, -9, 0x4d5c69);
-    B.box(-15.5, -19, 2 * C, C, C, K.crate2);
-    // Diretoria (SWAT, nordeste): divisória com porta para o salão e saída para o corredor leste
-    room(10, -17, 13.5, -15.6); room(16, -17, 18, -15.6); B.box(15.5, -23, 2.4, 1, .8, WOOD);
-    room(10, -11, 11.5, -6.5); B.box(14, -9, C, C, C, K.crate);
-    // Forro nos ambientes fechados (só visual)
-    for (const [x0, z0, x1, z1] of [[-9, 16, 9, 24], [-2.5, 3, 2.5, 16], [6, -6, 18, 16]]) dR(B, x0, H, z0, x1, H + .15, z1, 0xf4f6f7);
+    B.solid([-6, 0, -18.2], [-4.4, 2.6, -15.6], 0xd8dde1); dR(B, -6.05, 2.6, -18.25, -4.35, 2.7, -15.55, 0x2c3540);
+    signText(B, 'ELYSION', -5, 7.2, -24 + .06, .3, 0x2c3540);
+    B.solid([-12, 0, -23.7], [2, .95, -23.5], GLASS); dR(B, -12, .95, -23.75, 2, 1.02, -23.45, 0x4d5c69);
+    B.box(-9.5, -14, C, C, C, K.crate2); B.box(-1, -21, 2 * C, C, C, K.crate); B.box(-9.8, -21.5, C, C, 2 * C, K.crate); B.box(0, -13.2, C, C, C, K.crate2);
+    for (const [x, z] of [[-11, -12], [1.5, -16.5]]) { B.box(x, z, 1.1, 1.1, .9, 0x7d8b97); dR(B, x - .7, .9, z - .7, x + .7, 2.6, z + .7, 0x4f8a43); }
+    // Spawn CT: parede de vidro com porta para o salão e o relógio
+    B.solid([9, 0, -24], [9.2, H, -18.5], GLASS); B.solid([9, 0, -15.5], [9.2, H, -14], GLASS); dR(B, 9, H, -24, 20, H + .15, -14, 0xf4f6f7);
+    room(9, -14.2, 13, -14); room(16, -14.2, 20, -14);
+    for (let i = 0; i < 3; i++) { const q = .7 - i * .2; dR(B, 19.95 - i * .02, 2 - q, -19 - q, 20, 2 + q, -19 + q, [0x2c3540, 0xf3f6f8, 0x2c3540][i]); }
+    dR(B, 19.9, 1.95, -19.05, 19.93, 2.5, -18.95, 0x111111); B.box(16, -22.5, 2.4, 1, .8, WOOD);
+    // Forro sobre os ambientes internos (só visual)
+    for (const [x0, z0, x1, z1] of [[-12, 15, 12, 24], [12, -6, 20, 24], [-12, 12.5, 12, 15]]) dR(B, x0, H, z0, x1, H + .15, z1, 0xf4f6f7);
   }
 };
 if (!MAPS[S.dmMap]?.dm) S.dmMap = 'deathmatch';
@@ -4779,7 +4811,7 @@ function updateVM(dt, t) {
 }
 
 /* ================= HUD ================= */
-const el = { bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
+const el = { loc: $('loc'), bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
   scMe: $('scMe'), scOp: $('scOp'), nmMe: $('nmMe'), nmOp: $('nmOp'), clock: $('clock'), clockT: $('clockT'), clockL: $('clockL'),
   wait: $('waitline'), banner: $('banner'), bH: $('bH'), bP: $('bP'), feed: $('feed'), hpbox: $('hpbox'), hp: $('hp'),
   wname: $('wname'), ammo: $('ammo'), res: $('res'), fps: $('fps'), netst: $('netst'), board: $('board'), dead: $('deadmsg') };
@@ -4883,8 +4915,14 @@ function updateNadeHUD(t) {
   if (el.blind._o !== blind) { el.blind._o = blind; el.blind.style.opacity = blind; }
   if (el.smoke._o !== fog) { el.smoke._o = fog; el.smoke.style.opacity = fog; }
 }
+// Nome da área onde o jogador está (callouts do mapa, como no CS).
+function areaName(x, y, z) {
+  for (const a of MAP.areas || []) if (x >= a[1] && x <= a[3] && z >= a[2] && z <= a[4] && (a[5] == null || y >= a[5])) return a[0];
+  return '';
+}
 function updateHUD(dt, t) {
   updateNadeHUD(t);
+  setT(el.loc, P.alive && MAP.areas ? areaName(P.pos.x, P.pos.y, P.pos.z) : '');
   const v = G.view, w = W[P.weapon];
   setT(el.scMe, String(v.sc[G.me] || 0)); setT(el.scOp, String(G.opp ? (v.sc[G.opp] || 0) : 0));
   setT(el.nmMe, cleanName(S.name)); setT(el.nmOp, G.opp ? nameOf(G.opp) : '—');
