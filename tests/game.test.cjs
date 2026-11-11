@@ -1332,3 +1332,32 @@ test('Plant the Bomb shop sells back what was bought this round for the full pri
   t = step(t, 30000); // passou o tempo de compra
   assert.equal(cx.bombSell(g.P, 'kevlar', t), false);
 });
+test('operators: Finder reveals enemies inside a 20 m scan, Detector alarm hides from far enemies, trips, reveals and breaks', () => {
+  const { g, cx, A, BM, step } = bombWorld();
+  let t = step(10000, 11500);
+  assert.equal(g.DM.phase, 'live');
+  const foes = g.DM.actors.filter(e => e.team !== g.P.team), ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team);
+  for (const e of g.DM.actors) if (e !== g.P) { e.alive = true; }
+  assert.ok(g.DM.actors.every(e => e.op === 'finder' || e.op === 'detector'));
+  assert.notEqual(ally.op, g.P.op);
+  // Finder
+  g.P.op = 'finder'; g.P.charges = 1; g.P.alive = true;
+  foes[0].pos.set(0, 0, 0); foes[1].pos.set(30, 0, 0);
+  assert.ok(cx.finderScan(g.P, 2, 2, t)); assert.equal(g.P.charges, 0); assert.equal(cx.finderScan(g.P, 2, 2, t), false);
+  cx.scanTick(t + 800);
+  assert.ok(foes[0].revealUntil > t + 800 && foes[0].revealTeam === g.P.team); assert.ok(!(foes[1].revealUntil > t + 800));
+  // Detector
+  g.P.op = 'detector'; g.P.charges = 1; g.P.pos.set(0, 0, 10); g.P.yaw = 0;
+  foes[0].pos.set(30, 0, 30); foes[1].pos.set(-30, 0, -30);
+  assert.ok(cx.detectorPlace(g.P, t)); const AL = vm.runInContext('ALARM', cx), a = AL.list[0];
+  assert.ok(a && Math.hypot(a.x - 0, a.z - 10) <= 2.6);
+  assert.equal(cx.alarmVisibleTo(a, foes[0]), false);
+  foes[0].pos.set(a.x + 5, 0, a.z); assert.equal(cx.alarmVisibleTo(a, foes[0]), true);
+  cx.alarmsTick(t + 500); assert.equal(a.tripAt, 0, 'ainda armando');
+  foes[0].pos.set(a.x + 1.5, 0, a.z); cx.alarmsTick(t + 1200);
+  assert.ok(a.tripAt > 0); assert.ok(foes[0].revealUntil >= t + 1200 + 4000 - 1);
+  cx.alarmsTick(t + 1900); assert.equal(AL.list.length, 0, 'autodestruição');
+  // destruído a tiro
+  g.P.charges = 1; foes[0].pos.set(30, 0, 30); assert.ok(cx.detectorPlace(g.P, t + 2000));
+  const b = AL.list[0]; assert.ok(cx.alarmDamage(b.id, 25, foes[0])); assert.equal(AL.list.length, 0);
+});

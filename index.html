@@ -293,6 +293,18 @@ button:disabled{opacity:.5;cursor:default}
 #dmgdir{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}
 #dmgdir i{position:absolute;left:-60px;top:-150px;width:120px;height:14px;border-radius:50% 50% 0 0/100% 100% 0 0;background:radial-gradient(ellipse at 50% 100%,rgba(255,60,40,.9),rgba(255,60,40,0) 70%)}
 #loc{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));font:700 13px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:#e9eef2;text-shadow:0 1px 2px #000}
+#ability{position:absolute;bottom:calc(64px + env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:8px;align-items:center;background:rgba(12,14,18,.72);padding:6px 10px;font:700 14px/1 var(--display);color:#fff}
+#ability kbd{background:#fff;color:#111;padding:2px 6px;font:700 12px/1 var(--display)}#ability.used{opacity:.5}
+#minimap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(12,14,18,.94);padding:12px;z-index:21;color:#fff}
+#minimap header{display:flex;gap:12px;align-items:baseline;margin-bottom:8px;font:700 16px/1 var(--display)}#minimap header span{font:500 12px/1.2 var(--body);color:#aab2ba}#mmCanvas{display:block;max-width:80vw;max-height:72vh}
+#opPick{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(8,10,12,.92);color:#fff}
+#opPick .op-wrap{width:min(860px,92vw);display:grid;gap:12px}#opPick h2{font:700 42px/1 var(--display);text-transform:uppercase;margin:0}#opPick p{margin:0;color:#aab2ba}
+.op-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.op-card{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;text-align:left;padding:16px;background:#121a1c;border:1px solid #ffffff22;color:#fff;text-transform:none;letter-spacing:0}
+.op-card:hover,.op-card:focus-visible{border-color:var(--op);box-shadow:inset 0 -3px 0 var(--op)}.op-card b{font:700 26px/1 var(--display);text-transform:uppercase;color:var(--op)}
+.op-card small{display:block;margin-top:6px;font:500 13px/1.35 var(--body);color:#c9d2d8}.op-card em{display:block;font:700 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;color:#aab2ba;font-style:normal}
+.op-card svg{width:120px;height:150px}#opBack{justify-self:start}
+@media (max-width:640px){.op-cards{grid-template-columns:1fr}}
 #bombbox{position:absolute;bottom:calc(64px + env(safe-area-inset-bottom,0px));left:max(16px,env(safe-area-inset-left,0px));display:flex;gap:6px;font:700 15px/1 var(--display)}
 #bombbox span{background:rgba(12,14,18,.72);padding:6px 10px;color:#fff}#bbMoney{color:#7dff9a!important}#bbC4{background:#c0392b!important;letter-spacing:.08em}
 #actbar{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;font:700 14px/1 var(--display);color:#fff;text-shadow:0 1px 2px #000}
@@ -388,6 +400,8 @@ button:disabled{opacity:.5;cursor:default}
   <div id="feed"></div>
   <div id="hpbox"><span class="lbl">Vida</span><b id="hp">100</b></div>
   <div id="bombbox" hidden><span id="bbMoney">$800</span><span id="bbArmor"></span><span id="bbC4" hidden>C4</span></div>
+  <div id="ability" hidden><kbd>X</kbd><b id="abName"></b><span id="abCharge"></span></div>
+  <section id="minimap" hidden aria-label="Minimapa"><header><b>Varredura</b><span>escolha a área (20 m) com o clique · X ou Esc cancela</span></header><canvas id="mmCanvas" width="520" height="520"></canvas></section>
   <div id="actbar" hidden><span id="actLbl">Plantando</span><i><b id="actFill"></b></i></div>
   <section id="shop" hidden aria-label="Loja"><header><b>Loja</b><span id="shopMoney"></span><span id="shopTime"></span><span id="shopHint">clique compra · botão direito vende o que foi comprado nesta rodada</span><button type="button" id="shopClose">Fechar · B</button></header><div id="shopGrid"></div></section>
   <div id="healn" aria-hidden="true"></div>
@@ -402,6 +416,7 @@ button:disabled{opacity:.5;cursor:default}
 <section id="dmResult" hidden aria-label="Resultado do Deathmatch"><h2 id="dmWinner"></h2><p id="dmResultInfo"></p><div class="row"><button id="btnDmAgain" class="primary wide" type="button">Jogar novamente</button><button id="btnDmMenu" class="wide" type="button">Voltar ao menu</button></div></section>
 
 <div id="vcursor" hidden></div>
+<section id="opPick" hidden aria-labelledby="opTitle"><div class="op-wrap"><span class="eyebrow">Plant the Bomb</span><h2 id="opTitle">Escolha seu operador</h2><p>A habilidade fica na tecla X e recarrega a cada rodada.</p><div class="op-cards" id="opCards"></div><button type="button" id="opBack">Voltar</button></div></section>
 
 <div id="menu">
   <header class="lobby-header">
@@ -2906,6 +2921,7 @@ function dealDamage(dmg, part, wkey, actorId) {
   const v = G.view;
   if (G.mode === 'aimbotz') { aimbotzHit(dmg, part, wkey, actorId); return; }
   if(G.mode==='dm'||G.mode==='team'){
+    if(typeof actorId==='string'&&actorId.startsWith('al')){alarmDamage(actorId,dmg,P);return;}
     const victim=DM.byId.get(actorId);if(!victim||!dmDamage(victim,dmg,part,wkey,P,now()))return;
     AU.hit(part==='head',!!victim.helmet,skinOf(wkey));dmgNumber(dmg,part==='head');if(victim.alive)hitmark(part==='head'?'head':'');return;
   }
@@ -3469,6 +3485,7 @@ function dmUpdateHitboxes(e){
 function dmRefreshTargets(){
   DM.hitboxes.length=DM.playerTargets.length=0;
   for(const e of DM.actors)if(e.alive){dmUpdateHitboxes(e);for(const b of e.dmBoxes){DM.hitboxes.push(b);if(e!==P)DM.playerTargets.push(b);}}
+  if(DM.mode==='team'&&ARENA.bomb&&ALARM.list.length)alarmTargets(DM.playerTargets);
 }
 function dmSetup(t){
   DM.active=true;DM.category=DM_POOLS[S.dmWeapons]?S.dmWeapons:'all';DM.level=LEVELS[S.dmLevel]?S.dmLevel:'medio';DM.helmet=!!S.botHelmet;
@@ -3657,7 +3674,11 @@ function dmEnsureRender(){
   const ally=pool(new THREE.ConeGeometry(.1,.17,4).rotateX(Math.PI).translate(0,2.12,0),new THREE.MeshBasicMaterial({color:0x5fd3ff}));
   const protection=pool(new THREE.RingGeometry(.42,.46,20).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x8eefff,transparent:true,opacity:.7,side:THREE.DoubleSide,depthWrite:false}));
   const flash=pool(flashGeo,flashMat);
-  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally};
+  // Operadores: Finder com viseira ciano e antena; Detector com mochila laranja e sinalizador.
+  const finder=pool(boxModel([[[-.14,1.6,-.155],[.14,1.68,-.12],0x3ff4ff],[[.085,1.74,-.02],[.11,2.02,.005],0x2c3540],[[.07,2.0,-.03],[.125,2.05,.02],0x3ff4ff],[[-.14,1.58,-.12],[-.12,1.7,.1],0x2c3540]]).geometry,basicMat);
+  const detector=pool(boxModel([[[-.17,.95,.15],[.17,1.42,.32],0xf08a24],[[-.2,1.0,.14],[.2,1.08,.17],0x2c3540],[[-.05,1.42,.2],[.05,1.52,.28],0xff3b2a],[[-.12,1.52,.18],[.12,1.55,.3],0x9aa6ad]]).geometry,basicMat);
+  const reveal=pool(new THREE.OctahedronGeometry(.13,0).translate(0,2.25,0),new THREE.MeshBasicMaterial({color:0xff3b2a,depthTest:false,transparent:true,opacity:.95}));reveal.renderOrder=10;
+  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally,finder,detector,reveal};
 }
 // Junta as malhas de um modelo (facas) numa só geometria com cor por vértice, para desenhar por instância.
 function meshesToGeometry(root){
@@ -3679,6 +3700,7 @@ function dmRender(t, dt = 0){
     put(r.body,b,upper);r.body.setColorAt(r.body.count-1,r.color);
     put(r.head,b,upper);if(b.helmet)put(r.helmet,b,upper);if(r.guns[held])put(r.guns[held],b,upper);
     if(t<b.safeUntil)put(r.protection,b,.025);if(ally)put(r.ally,b,upper);
+    if(b.op&&DM.mode==='team'&&ARENA.bomb){put(b.op==='finder'?r.finder:r.detector,b,upper);if(!ally&&b.revealTeam===P.team&&t<b.revealUntil)put(r.reveal,b,upper);}
     if(t<b.flashUntil&&W[held]&&!W[held].melee&&!W[held].silenced)put(r.flash,b,upper,1,true);
   }
   for(const mesh of r.meshes){if(mesh.count)mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.visible=mesh.count>0;}
@@ -4149,7 +4171,7 @@ function bombBanner(d) {
   if (d.ph === 'freeze') {
     if (ARENA.halftime) banner('Troca de lado', 'Agora você é ' + SIDE_NAMES[side] + ' · ' + a + ' a ' + b, '', 3200);
     else banner('Rodada ' + d.r + ' · ' + SIDE_NAMES[side], side === 't' ? 'Plante a bomba no bombsite A · B abre a loja' : 'Defenda o bombsite A · B abre a loja', '', 2800);
-    AU.round();
+
   } else if (d.ph === 'live') banner('Valendo', BOMB.carrier === G.me ? 'Você está com a bomba (tecla 5)' : '', '', 1100);
   else if (d.ph === 'end') {
     const why = BOMB_WHY[ARENA.why] || ['Fim da rodada', 'Fim da rodada'], text = ARENA.why === 'kill' ? (ARENA.win === BOMB.tTeam ? why[1] : why[0]) : why[0];
@@ -4317,7 +4339,7 @@ function bombNewMatch(t) {
   ARENA.m = Math.random().toString(36).slice(2, 8); ARENA.r = 0; ARENA.sc = [0, 0]; ARENA.tg = BOMB.target; ARENA.rt = BOMB.roundMs / 1000; G.stats = {}; DM.scoreVersion++;
   arenaBuildActors(teamRoster()); BOMB.tTeam = Math.random() < .5 ? 0 : 1; BOMB.streak = [0, 0];
   for (const e of DM.actors) { e.money = BOMB.start; bombResetGear(e); e.aliveEnd = false; }
-  bombNextRound(t);
+  opsAssign(); bombNextRound(t);
 }
 function bombNextRound(t) {
   ARENA.r++; DM.phase = 'freeze'; ARENA.roundEnd = t + BOMB.freezeMs; ARENA.win = null; ARENA.why = ''; BOMB.roundStart = t;
@@ -4326,7 +4348,7 @@ function bombNextRound(t) {
     BOMB.tTeam = 1 - BOMB.tTeam; BOMB.streak = [0, 0]; ARENA.halftime = true;
     for (const e of DM.actors) { e.money = BOMB.start; bombResetGear(e); e.aliveEnd = false; }
   } else ARENA.halftime = false;
-  BOMB.planted = BOMB.dropped = null; BOMB.plantedBy = null; BOMB.beepAt = 0; bombClearGfx();
+  BOMB.planted = BOMB.dropped = null; BOMB.plantedBy = null; BOMB.beepAt = 0; bombClearGfx(); opsResetRound();
   for (const e of DM.actors) { if (!e.aliveEnd || !e.inv) bombResetGear(e); e.aliveEnd = false; e.plantUntil = e.defuseUntil = 0; e.color = SIDE_COLORS[sideOf(e)]; }
   ARENA.sd = {};
   for (const side of ['t', 'ct']) {
@@ -4505,7 +4527,7 @@ function bombTick(dt, t) {
   } else if (DM.phase === 'over' && t >= ARENA.roundEnd) bombNewMatch(t);
   const L = LEVELS[DM.level] || LEVELS.medio;
   if (DM.phase === 'live') for (const b of DM.bots) dmBotMove(b, dt, t, L);
-  bombPickup(t); bombPlayerAction(dt, t); bombBotsAct(dt, t);
+  bombPickup(t); bombPlayerAction(dt, t); bombBotsAct(dt, t); botsUseAbilities(t); scanTick(t); alarmsTick(t);
   dmRefreshTargets();
   if (DM.phase === 'live') { for (const b of DM.bots) if (!b.plantUntil && !b.defuseUntil) dmBotFire(b, t, L); bombCheck(t); }
   bombRenderObj(t);
@@ -4524,6 +4546,137 @@ function bombRenderObj(t) {
   }
   const g = BOMB.gfx; g.group.visible = true; g.group.position.set(at.x, at.y, at.z);
   g.led.visible = !BOMB.planted || BOMB.planted.defused ? false : (t % Math.max(160, BOMB.beepAt - t + 200)) < 120;
+}
+
+/* ---------- Operadores (Plant the Bomb): Finder e Detector ---------- */
+// Finder: tecla X abre o minimapa; o clique escolhe uma área de 20 m de diâmetro e, após um pulso, revela os
+// inimigos que estão dentro dela. Detector: tecla X coloca um alarme no chão; o inimigo só o enxerga de perto;
+// se alguém do outro time passa muito perto ele apita, revela essa pessoa e se autodestrói; se for destruído
+// a tiro, o dono recebe o aviso. Uma carga de cada por rodada.
+const OPS = {
+  finder: { name: 'Finder', ability: 'Varredura', desc: 'Abre o minimapa e escaneia uma área de 20 m: revela os inimigos dentro dela por 3 s.', color: '#3ff4ff' },
+  detector: { name: 'Detector', ability: 'Alarme', desc: 'Coloca um alarme no chão, invisível para o inimigo de longe. Apita, revela e se destrói quando alguém chega perto.', color: '#f08a24' },
+};
+const SCAN = { radius: 10, delay: 700, reveal: 3000 }, ALARM = { seen: 7, trip: 3.2, hp: 20, armMs: 1000, reveal: 4000, list: [], next: 1 };
+const opNotice = msg => { if (typeof toast === 'function') toast(msg); };
+function opsAssign() {
+  // Cada time fica com um de cada quando possível; o jogador usa o que escolheu.
+  for (const team of [0, 1]) {
+    const members = DM.actors.filter(e => e.team === team), mine = members.includes(P) ? S.operator : null;
+    let next = mine === 'finder' ? 'detector' : 'finder';
+    for (const e of members) { if (e === P) { e.op = S.operator; continue; } e.op = next; next = next === 'finder' ? 'detector' : 'finder'; }
+  }
+}
+function opsResetRound() { for (const e of DM.actors) { e.charges = 1; e.revealUntil = 0; e.revealTeam = -1; e.opAt = 0; } alarmsClear(); SCAN.pending = null; }
+function revealActor(e, team, t, ms) {
+  e.revealTeam = team; e.revealUntil = Math.max(e.revealUntil || 0, t + ms);
+  for (const mate of DM.bots) if (mate.alive && mate.team === team && !mate.seen) { mate.lastSeen.copy(e.pos); mate.knowsUntil = t + ms; mate.planAt = 0; }
+}
+// Varredura do Finder: pulso no ponto (x, z); revela quem do outro time estiver dentro do círculo quando o pulso chega.
+function finderScan(e, x, z, t) {
+  if (e.op !== 'finder' || !(e.charges > 0) || !e.alive || DM.phase !== 'live') return false;
+  e.charges--; SCAN.pending = { by: e, team: e.team, x, z, at: t + SCAN.delay };
+  if (e.team === P.team) { const s = spat(x, z); AU.arm && AU.arm(); }
+  return true;
+}
+function scanTick(t) {
+  const s = SCAN.pending; if (!s || t < s.at) return;
+  SCAN.pending = null; let found = 0;
+  for (const e of DM.actors) if (e.alive && e.team !== s.team && Math.hypot(e.pos.x - s.x, e.pos.z - s.z) <= SCAN.radius) { revealActor(e, s.team, t, SCAN.reveal); found++; }
+  SCAN.last = { x: s.x, z: s.z, t, team: s.team };
+  if (s.team === P.team) opNotice(found ? 'Varredura: ' + found + ' inimigo' + (found > 1 ? 's' : '') + ' revelado' + (found > 1 ? 's' : '') : 'Varredura: área limpa');
+  else if (P.alive && Math.hypot(P.pos.x - s.x, P.pos.z - s.z) <= SCAN.radius) opNotice('Você foi detectado por uma varredura');
+}
+// Alarme do Detector: no chão, à frente de quem coloca (até 2,5 m), sem atravessar parede.
+function detectorPlace(e, t) {
+  if (e.op !== 'detector' || !(e.charges > 0) || !e.alive || !(DM.phase === 'live' || DM.phase === 'freeze')) return false;
+  const f = dirFrom(e === P ? P.yaw : e.yaw, 0), eye = [e.pos.x, e.pos.y + .5, e.pos.z], hit = traceMap(eye, f, 2.5), d = hit ? Math.max(.4, hit.t - .35) : 2.5;
+  const x = e.pos.x + f[0] * d, z = e.pos.z + f[2] * d, y = groundAt(x, z);
+  if (Math.abs(y - e.pos.y) > 1.2) return false;
+  e.charges--; ALARM.list.push({ id: 'al' + (ALARM.next++), owner: e, team: e.team, x, y, z, hp: ALARM.hp, armedAt: t + ALARM.armMs, tripAt: 0, mesh: null, box: null });
+  if (e === P) AU.arm && AU.arm();
+  return true;
+}
+function alarmVisibleTo(a, viewer) { return a.team === viewer.team || Math.hypot(viewer.pos.x - a.x, viewer.pos.z - a.z) <= ALARM.seen; }
+function alarmDestroy(a, by) {
+  const i = ALARM.list.indexOf(a); if (i < 0) return; ALARM.list.splice(i, 1);
+  if (a.mesh) scene.remove(a.mesh);
+  const s = spat(a.x, a.z); AU.clink && AU.clink(s.v, s.pan); nadeFx(a.x, a.y + .2, a.z, a.tripAt ? 0xff5a2a : 0xffd27a, .8, 220, now());
+  if (!a.tripAt && a.team === P.team) opNotice(a.owner === P ? 'Seu alarme foi destruído' : 'O alarme do seu time foi destruído');
+  if (by === P) hitmark('');
+}
+function alarmDamage(id, dmg, by) { const a = ALARM.list.find(x => x.id === id); if (!a) return false; a.hp -= dmg; if (a.hp <= 0) alarmDestroy(a, by); return true; }
+function alarmsClear() { for (const a of ALARM.list) if (a.mesh) scene.remove(a.mesh); ALARM.list.length = 0; }
+function alarmsTick(t) {
+  for (const a of ALARM.list.slice()) {
+    if (a.tripAt) { if (t >= a.tripAt + 600) alarmDestroy(a, null); continue; }
+    if (t < a.armedAt) continue;
+    for (const e of DM.actors) {
+      if (!e.alive || e.team === a.team || Math.hypot(e.pos.x - a.x, e.pos.z - a.z) > ALARM.trip || !clearLine([a.x, a.y + .3, a.z], [e.pos.x, e.pos.y + 1.2, e.pos.z])) continue;
+      a.tripAt = t; revealActor(e, a.team, t, ALARM.reveal);
+      const s = spat(a.x, a.z); AU.beep && AU.beep(Math.max(.6, s.v), s.pan, true);
+      if (a.team === P.team) opNotice('Alarme disparou: ' + (typeof nameOf === 'function' ? nameOf(e.id) : e.name) + ' revelado');
+      else if (e === P) opNotice('Você ativou um alarme inimigo e foi revelado');
+      break;
+    }
+  }
+  alarmsRender(t);
+}
+// Alvos dos alarmes para os tiros do jogador (só os que ele enxerga).
+function alarmTargets(out) {
+  for (const a of ALARM.list) {
+    if (a.team === P.team || !alarmVisibleTo(a, P)) continue;
+    if (!a.box) a.box = { min: [0, 0, 0], max: [0, 0, 0], part: 'body', actor: a.id };
+    a.box.min[0] = a.x - .18; a.box.min[1] = a.y; a.box.min[2] = a.z - .18; a.box.max[0] = a.x + .18; a.box.max[1] = a.y + .32; a.box.max[2] = a.z + .18;
+    out.push(a.box);
+  }
+}
+function alarmsRender(t) {
+  if (!THREE.BoxGeometry) return;
+  for (const a of ALARM.list) {
+    if (!a.mesh) {
+      const g = new THREE.Group(), add = (w, h, d, x, y, z, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color: c })); m.position.set(x, y, z); g.add(m); return m; };
+      add(.34, .14, .34, 0, .07, 0, 0x2c3540); add(.26, .1, .26, 0, .19, 0, a.team === P.team ? 0xf08a24 : 0xd9822b); a.led = add(.08, .06, .08, 0, .27, 0, 0xff3b2a);
+      g.position.set(a.x, a.y, a.z); scene.add(g); a.mesh = g;
+    }
+    a.mesh.visible = alarmVisibleTo(a, P);
+    a.led.visible = t < a.armedAt ? (t % 300) < 150 : a.tripAt ? (t % 120) < 60 : (t % 1400) < 160;
+  }
+}
+// Uso das habilidades pelos bots.
+function botsUseAbilities(t) {
+  const s = MAP.plant.site, cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2;
+  for (const b of DM.bots) {
+    if (!b.alive || !(b.charges > 0) || DM.phase !== 'live' || b.seen) continue;
+    if (!b.opAt) b.opAt = ARENA.liveAt + 6000 + Math.random() * 14000;
+    if (t < b.opAt) continue;
+    const side = sideOf(b);
+    if (b.op === 'finder') {
+      // TR: escaneia o site antes de entrar; SWAT: escaneia o caminho entre o spawn TR e o site.
+      const tsp = MAP.plant.t[0], k = side === 't' ? 0 : .5, x = cx + (tsp[0] - cx) * k, z = cz + (tsp[1] - cz) * k;
+      finderScan(b, x + (Math.random() - .5) * 4, z + (Math.random() - .5) * 4, t);
+    } else if (b.op === 'detector') {
+      // SWAT: alarme no caminho de entrada perto do site; TR: depois de plantar, vigiando a bomba.
+      if (side === 'ct' && Math.hypot(b.pos.x - cx, b.pos.z - cz) < 9) detectorPlace(b, t);
+      else if (side === 't' && BOMB.planted && Math.hypot(b.pos.x - BOMB.planted.x, b.pos.z - BOMB.planted.z) < 7) detectorPlace(b, t);
+      else b.opAt = t + 1500;
+    }
+  }
+  // Bots destroem alarmes inimigos que enxergam de perto (atirando neles).
+  for (const a of ALARM.list.slice()) for (const b of DM.bots) {
+    if (!b.alive || b.team === a.team || b.seen || !alarmVisibleTo(a, b)) continue;
+    const eye = [b.pos.x, botEyeY(b), b.pos.z];
+    if (!clearLine(eye, [a.x, a.y + .2, a.z])) continue;
+    if (!b.alarmAt) { b.alarmAt = t + 700; continue; }
+    if (t >= b.alarmAt) { b.alarmAt = 0; tracer([eye[0], eye[1] - .1, eye[2]], [a.x, a.y + .2, a.z], 55); const s = spat(b.pos.x, b.pos.z); AU.shot(W[b.w].snd, s.v * .48, s.pan); alarmDestroy(a, b); break; }
+  }
+}
+// Tecla X do jogador.
+function useAbility(t) {
+  if (!bombOn() || !P.alive) return;
+  if (!(P.charges > 0)) { opNotice('Habilidade já usada nesta rodada'); return; }
+  if (P.op === 'detector') { if (!detectorPlace(P, t)) opNotice('Não dá para colocar o alarme aqui'); }
+  else if (P.op === 'finder') { if (DM.phase !== 'live') opNotice('A varredura só funciona com a rodada valendo'); else if (typeof openMinimap === 'function') openMinimap(); }
 }
 
 /* ---------- DM online ---------- */
@@ -4811,7 +4964,7 @@ function updateVM(dt, t) {
 }
 
 /* ================= HUD ================= */
-const el = { loc: $('loc'), bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
+const el = { ability: $('ability'), abName: $('abName'), abCharge: $('abCharge'), loc: $('loc'), bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
   scMe: $('scMe'), scOp: $('scOp'), nmMe: $('nmMe'), nmOp: $('nmOp'), clock: $('clock'), clockT: $('clockT'), clockL: $('clockL'),
   wait: $('waitline'), banner: $('banner'), bH: $('bH'), bP: $('bP'), feed: $('feed'), hpbox: $('hpbox'), hp: $('hp'),
   wname: $('wname'), ammo: $('ammo'), res: $('res'), fps: $('fps'), netst: $('netst'), board: $('board'), dead: $('deadmsg') };
@@ -4961,6 +5114,11 @@ function updateHUD(dt, t) {
     else if (P.alive && sideOf(P) === 't' && BOMB.dropped) msg = 'A bomba caiu · pegue passando por cima';
     if (msg) { setT(el.wait, msg); setH(el.wait, false); }
   }
+  if (bombOn() && P.op) {
+    setH(el.ability, !P.alive); setT(el.abName, OPS[P.op].name + ' · ' + OPS[P.op].ability); setT(el.abCharge, P.charges > 0 ? '1 carga' : 'usada');
+    el.ability.classList.toggle('used', !(P.charges > 0)); el.ability.style.borderBottom = '3px solid ' + OPS[P.op].color;
+    if (MINI.open) drawMinimap(t);
+  } else setH(el.ability, true);
   if (bombOn()) {
     setH(el.bombbox, false); setT(el.bbMoney, '$' + (P.money || 0)); setT(el.bbArmor, P.alive && P.armor > 0 ? (P.helmet ? 'Colete + capacete ' : 'Colete ') + P.armor : ''); setH(el.bbArmor, !(P.alive && P.armor > 0)); setH(el.bbC4, BOMB.carrier !== G.me);
     const busy = P.plantUntil || P.defuseUntil;
@@ -5155,6 +5313,57 @@ function renderShop(t) {
     grid.append(col);
   }
 }
+// Escolha de operador antes da partida de Plant the Bomb.
+function operatorSvg(id) {
+  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 60 76'); svg.setAttribute('aria-hidden', 'true');
+  const r = (x, y, w, h, c) => { const e = document.createElementNS(NS, 'rect'); for (const [k, v] of Object.entries({ x, y, width: w, height: h, fill: c })) e.setAttribute(k, v); svg.append(e); };
+  r(18, 46, 9, 28, '#555'); r(33, 46, 9, 28, '#555'); r(15, 24, 30, 24, '#4a5560'); r(20, 8, 20, 17, '#f2cfa4');
+  if (id === 'finder') { r(18, 12, 24, 5, '#3ff4ff'); r(37, 0, 2, 9, '#2c3540'); r(35, 0, 6, 3, '#3ff4ff'); r(16, 11, 3, 10, '#2c3540'); }
+  else { r(10, 22, 8, 22, '#f08a24'); r(42, 22, 8, 22, '#f08a24'); r(14, 18, 32, 4, '#2c3540'); r(26, 14, 8, 5, '#ff3b2a'); r(23, 13, 2, 2, '#111'); r(35, 13, 2, 2, '#111'); }
+  return svg;
+}
+function openOpPick() {
+  const box = $('opCards'); box.replaceChildren();
+  for (const [id, o] of Object.entries(OPS)) {
+    const b = document.createElement('button'), copy = document.createElement('span'), em = document.createElement('em'), name = document.createElement('b'), d = document.createElement('small');
+    b.type = 'button'; b.className = 'op-card'; b.style.setProperty('--op', o.color); em.textContent = 'X · ' + o.ability; name.textContent = o.name; d.textContent = o.desc;
+    copy.append(em, name, d); b.append(operatorSvg(id), copy);
+    b.addEventListener('click', () => { S.operator = id; saveS(); $('opPick').hidden = true; startSession('team', { online: false }); });
+    box.append(b);
+  }
+  $('opPick').hidden = false; box.querySelector('button').focus();
+}
+$('opBack').addEventListener('click', () => { $('opPick').hidden = true; });
+// Minimapa do Finder: desenho de cima do mapa, com o círculo da varredura seguindo a mira virtual.
+const MINI = { open: false };
+function openMinimap() { if (MINI.open || !bombOn()) return; MINI.open = true; $('minimap').hidden = false; P.m1 = P.m2 = P.m1Press = P.m2Press = false; keys.clear(); BUY.x = innerWidth / 2; BUY.y = innerHeight / 2; $('vcursor').hidden = false; moveVCursor(); drawMinimap(now()); }
+function closeMinimap() { if (!MINI.open) return; MINI.open = false; $('minimap').hidden = true; $('vcursor').hidden = !BUY.open && !SHOP.open; }
+function minimapWorld(px, py) {
+  const c = $('mmCanvas'), r = c.getBoundingClientRect(), sc = c.width / (2 * AX), x = (px - r.left) / r.width * c.width / sc - AX, z = (py - r.top) / r.height * c.height / sc - AZ;
+  return px >= r.left && px <= r.right && py >= r.top && py <= r.bottom ? [x, z] : null;
+}
+function drawMinimap(t) {
+  const c = $('mmCanvas'), sc = 520 / (2 * Math.max(AX, AZ)), w = Math.round(2 * AX * sc), h = Math.round(2 * AZ * sc);
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const x = c.getContext('2d'), X = v => (v + AX) * sc, Z = v => (v + AZ) * sc;
+  x.fillStyle = '#2a3238'; x.fillRect(0, 0, w, h);
+  for (const [x0, z0, x1, z1] of MAP.water || []) { x.fillStyle = '#2f5d78'; x.fillRect(X(x0), Z(z0), (x1 - x0) * sc, (z1 - z0) * sc); }
+  for (const b of boxes.slice().sort((a, c2) => a.max[1] - c2.max[1])) {
+    if (b.min[1] < -.5 || b.max[1] - b.min[1] < .05) continue;
+    const top = b.max[1]; x.fillStyle = top > 4 ? '#0d1215' : top > 2.2 ? '#46525c' : top > 1.3 ? '#56636d' : '#6b7883';
+    x.fillRect(X(b.min[0]), Z(b.min[2]), (b.max[0] - b.min[0]) * sc, (b.max[2] - b.min[2]) * sc);
+  }
+  const st = MAP.plant.site; x.strokeStyle = '#e2762c'; x.lineWidth = 2; x.strokeRect(X(st.x0), Z(st.z0), (st.x1 - st.x0) * sc, (st.z1 - st.z0) * sc);
+  x.fillStyle = '#e2762c'; x.font = 'bold 20px sans-serif'; x.fillText('A', X((st.x0 + st.x1) / 2) - 6, Z((st.z0 + st.z1) / 2) + 7);
+  for (const e of DM.actors) {
+    if (!e.alive) continue;
+    const mine = e.team === P.team, shown = mine || (e.revealTeam === P.team && t < e.revealUntil); if (!shown) continue;
+    x.fillStyle = e === P ? '#ffffff' : mine ? '#5fd3ff' : '#ff3b2a'; x.beginPath(); x.arc(X(e.pos.x), Z(e.pos.z), e === P ? 6 : 5, 0, TAU); x.fill();
+    if (e === P) { x.strokeStyle = '#fff'; x.beginPath(); x.moveTo(X(e.pos.x), Z(e.pos.z)); x.lineTo(X(e.pos.x - Math.sin(P.yaw) * 2.5), Z(e.pos.z - Math.cos(P.yaw) * 2.5)); x.stroke(); }
+  }
+  const at = minimapWorld(BUY.x, BUY.y);
+  if (at) { x.strokeStyle = '#3ff4ff'; x.lineWidth = 2; x.beginPath(); x.arc(X(at[0]), Z(at[1]), SCAN.radius * sc, 0, TAU); x.stroke(); x.fillStyle = 'rgba(63,244,255,.12)'; x.fill(); }
+}
 function moveVCursor() {
   $('vcursor').style.transform='translate('+BUY.x+'px,'+BUY.y+'px)';
   const element=document.elementFromPoint(BUY.x,BUY.y),target=element&&element.closest(SHOP.open?'#shop button':'#menu.arsenal-open button');
@@ -5213,13 +5422,14 @@ document.addEventListener('mousemove', e => {
   if (!locked) return;
   const dx = e.movementX || 0, dy = e.movementY || 0;
   if (Math.abs(dx) > 900 || Math.abs(dy) > 900) return; // descarta pulos espúrios do pointer lock
-  if (BUY.open || SHOP.open) { BUY.x = clamp(BUY.x + dx, 0, innerWidth - 2); BUY.y = clamp(BUY.y + dy, 0, innerHeight - 2); moveVCursor(); return; }
+  if (BUY.open || SHOP.open || MINI.open) { BUY.x = clamp(BUY.x + dx, 0, innerWidth - 2); BUY.y = clamp(BUY.y + dy, 0, innerHeight - 2); moveVCursor(); if (MINI.open) drawMinimap(now()); return; }
   const k = sensK();
   P.swayX = clamp(P.swayX + dx, -400, 400); P.swayY = clamp(P.swayY + dy, -400, 400);
   P.yaw -= dx * k; P.pitch = clamp(P.pitch - dy * k, -89 * DEG, 89 * DEG);
 });
 document.addEventListener('mousedown', e => {
   if (!locked) return;
+  if (MINI.open) { if (e.button === 0) { const at = minimapWorld(BUY.x, BUY.y); if (at && finderScan(P, at[0], at[1], now())) closeMinimap(); } else closeMinimap(); return; }
   if (SHOP.open) { if (BUY.hover && e.button === 0) BUY.hover.click(); else if (BUY.hover && e.button === 2 && BUY.hover.dataset.item && bombSell(P, BUY.hover.dataset.item, now())) { renderShop(now()); moveVCursor(); } return; }
   if (BUY.open) { if (e.button === 0 && BUY.hover) BUY.hover.click(); return; }
   if (e.button === 0) {
@@ -5248,9 +5458,11 @@ document.addEventListener('keydown', e => {
   if (e.repeat) return;
   if (BUY.open) { if (SLOT[e.code]) selectBuySlot(SLOT[e.code]); else if (e.code==='KeyB') closeBuy(); return; }
   if (SHOP.open) { if (e.code === 'KeyB' || e.code === 'Escape') closeShop(); return; }
+  if (MINI.open) { if (e.code === 'KeyX' || e.code === 'Escape') closeMinimap(); return; }
   keys.add(e.code);
   if (bombOn() && /^Digit[1-5]$/.test(e.code)) bombSlotKey(e.code);
   else if (bombOn() && e.code === 'KeyB') openShop();
+  else if (bombOn() && e.code === 'KeyX') useAbility(now());
   else if (SLOT[e.code]) selectWeapon(G.mode==='aimbotz'?(SLOT[e.code]==='knife'?S.loadout.knife:S.aimbotzWeapon):(P.loadout||S.loadout)[SLOT[e.code]]);
   else if (e.code === 'Space') P.jumpUntil = now() + 100;
   else if (e.code === 'KeyQ') selectWeapon(P.lastW);
@@ -5271,7 +5483,7 @@ function lockFailed() { if (!locked && G.mode&&!(G.mode==='dm'&&DM.phase==='over
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
   if (locked) { showMenu(false); if (BUY.open) { $('vcursor').hidden = false; moveVCursor(); } }
-  else { if (BUY.inGame) closeBuy(); closeShop(); keys.clear(); P.m1 = P.m2 = P.m1Press = P.m2Press = false; P.jumpUntil = 0; if (G.mode&&!(G.mode==='dm'&&DM.phase==='over')) showMenu(true); }
+  else { if (BUY.inGame) closeBuy(); closeShop(); closeMinimap(); keys.clear(); P.m1 = P.m2 = P.m1Press = P.m2Press = false; P.jumpUntil = 0; if (G.mode&&!(G.mode==='dm'&&DM.phase==='over')) showMenu(true); }
 });
 document.addEventListener('pointerlockerror', () => lockFailed());
 canvas.addEventListener('click', () => { if (G.mode && !locked&&!(G.mode==='dm'&&DM.phase==='over')) lock(); });
@@ -5579,7 +5791,7 @@ $('btnJoin').addEventListener('click', () => {
   if (S.mode === 'dm') startSession('dm', { online: true }); else if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: true }); else startSession('online');
 });
 $('btnBot').addEventListener('click', () => { if (S.mode === 'bomb') startBomb(); else if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: false }); else startSession('bot'); });
-function startBomb() { startSession('team', { online: false }); }
+function startBomb() { openOpPick(); }
 function selectLobbyOption(key, value) {
   if (S[key] === value) return;
   S[key] = value; saveS(); syncInputs($('inName')); applySettings();
