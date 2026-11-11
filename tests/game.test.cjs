@@ -665,7 +665,7 @@ test('karambit transitions into its idle motion without snapping at animation co
 
 test('a karambit attack interrupts inspection at the current pose and keeps the grip closed', () => {
   const g=game({startSlot:'knife'});g.spawnSelf(0);g.P.drawEnd=0;g.tick(12000);g.inspect();
-  assert.equal(g.P.kAnim.duration,2800);
+  assert.equal(g.P.kAnim.duration,3000); // tempo da inspeção no vídeo do CS2
   const before=Array.from(g.sampleKnifeAnimation(g.P.kAnim,13000));g.shoot(13000,true);
   const after=Array.from(g.sampleKnifeAnimation(g.P.kAnim,13000));
   for(let i=0;i<before.length;i++)assert.ok(Math.abs(i===6||i===7 ? Math.sin(before[i]-after[i]) : before[i]-after[i])<2e-6);

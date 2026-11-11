@@ -1498,48 +1498,45 @@ const vmGuns = {}, vmFlash = {}, vmKnives = {};
 // Karambit: peças contínuas, curvas Bézier e eixo no centro do anel do indicador.
 // Pegada da karambit como no CS: indicador no anel, cabo atravessando o punho e garra saindo para o centro da tela, curvada para cima.
 const KH_ROT = [-1.2,-.25,-.1], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.18;
-const KARAMBIT_VIEW = { scale: 1.65, right: [.04,-.005,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.004,0], elbows: [[.42,-.24,.12],[-.42,-.24,.12]] };
+const KARAMBIT_VIEW = { scale: 1.65, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.004,0], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
 let karambitGeo = null;
-// Karambit no perfil do CS: anel grande de aço no pomo, cabo preto com guarda e sulcos para os dedos,
-// parafusos aparentes e lâmina em garra com bisel no fio côncavo e swedge perto da ponta.
+// Karambit no mesmo estilo das armas: blocos de cor chapada com sombreamento fixo por face.
+// Perfil do CS: anel grande no pomo, cabo com guarda, lâmina em garra (segmentos que seguem a curva) com fio claro.
 // Eixo: centro do anel na origem (gira no indicador), cabo para +x, ponta da garra para +y.
-const karambitMat = new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, specular: 0x8a979f, shininess: 60 });
+const KNIFE_FACE_SHADE = [.80,.80,.80,.80,.80,.80,.70,.70,.70,.70,.70,.70,1,1,1,1,1,1,.50,.50,.50,.50,.50,.50,.90,.90,.90,.90,.90,.90,.62,.62,.62,.62,.62,.62];
+function knifeBlock(w,h,d,x,y,z,rz,hex){
+  const g=new THREE.BoxGeometry(w,h,d).toNonIndexed(),c=new THREE.Color(hex),col=[];
+  for(let i=0;i<g.attributes.position.count;i++){const k=KNIFE_FACE_SHADE[i];col.push(c.r*k,c.g*k,c.b*k);}
+  g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.rotateZ(rz);g.translate(x,y,z);return g;
+}
 function karambitGeometry() {
   if (karambitGeo) return karambitGeo;
-  const bez = (p, t) => { const u = 1 - t; return [u*u*u*p[0][0] + 3*u*u*t*p[1][0] + 3*u*t*t*p[2][0] + t*t*t*p[3][0], u*u*u*p[0][1] + 3*u*u*t*p[1][1] + 3*u*t*t*p[2][1] + t*t*t*p[3][1]]; };
-  const SPINE = [[.104,-.0135],[.162,-.021],[.194,.012],[.179,.083]], EDGE = [[.109,.0125],[.143,.007],[.169,.031],[.179,.083]];
-  const positions = [], colors = [], N = 16, THICK = .0028;
-  const tri = (a, b, c, color) => { const col = new THREE.Color(color); for (const v of [a, b, c]) { positions.push(...v); colors.push(col.r, col.g, col.b); } };
-  const quad = (a, b, c, d, color) => { tri(a, b, c, color); tri(a, c, d, color); };
-  const ring = (i, side) => {
-    const t = i / N, sp = bez(SPINE, t), ed = bez(EDGE, t), k = Math.max(0, (t - .55) / .45), mix = f => [ed[0] + (sp[0] - ed[0]) * f, ed[1] + (sp[1] - ed[1]) * f];
-    const r = mix(.45), sw = mix(1 - .32 * k), th = THICK * (1 - .55 * t * t);
-    return [[ed[0], ed[1], side * .0004], [r[0], r[1], side * th], [sw[0], sw[1], side * th], [sp[0], sp[1], side * Math.max(.0006, th - .0022 * k)]];
-  };
-  for (let i = 0; i < N; i++) for (const side of [1, -1]) {
-    const a = ring(i, side), b = ring(i + 1, side);
-    quad(a[0], b[0], b[1], a[1], 0xc8d1d6); quad(a[1], b[1], b[2], a[2], 0x95a1a8); quad(a[2], b[2], b[3], a[3], 0xd9e0e4);
-    if (side === 1) { const c = ring(i, -1), d = ring(i + 1, -1); quad(a[3], b[3], d[3], c[3], 0x4c5860); quad(a[0], b[0], d[0], c[0], 0xeef2f4); }
+  const bez=(p,t)=>{const u=1-t;return [u*u*u*p[0][0]+3*u*u*t*p[1][0]+3*u*t*t*p[2][0]+t*t*t*p[3][0],u*u*u*p[0][1]+3*u*u*t*p[1][1]+3*u*t*t*p[2][1]+t*t*t*p[3][1]];};
+  const SPINE=[[.104,-.0135],[.162,-.021],[.194,.012],[.179,.083]],EDGE=[[.109,.0125],[.143,.007],[.169,.031],[.179,.083]];
+  const parts=[],STEEL=0xaeb8bf,EDGE_COL=0xe3e9ec,RING=0x8d9aa2,GRIP=0x2a2f33;
+  // anel em oito blocos
+  for(let i=0;i<8;i++){const a=i/8*TAU;parts.push(knifeBlock(.0105,.0215,.0055,Math.cos(a)*.0205,Math.sin(a)*.0205,0,a,RING));}
+  parts.push(knifeBlock(.016,.019,.0065,.031,0,0,0,0x75828a));                 // pescoço
+  parts.push(knifeBlock(.066,.022,.014,.069,-.002,0,-.03,GRIP));                // cabo
+  parts.push(knifeBlock(.010,.012,.015,.100,.017,0,0,GRIP));                   // guarda
+  parts.push(knifeBlock(.009,.030,.010,.106,0,0,0,RING));                      // bolster
+  for(const x of [.052,.082])parts.push(knifeBlock(.006,.006,.0165,x,-.002,0,0,0xb4bec4)); // parafusos
+  // lâmina: oito segmentos entre dorso e fio, mais um filete claro no fio côncavo
+  const N=8;
+  for(let i=0;i<N;i++){
+    const t0=i/N,t1=(i+1)/N,s0=bez(SPINE,t0),s1=bez(SPINE,t1),e0=bez(EDGE,t0),e1=bez(EDGE,t1);
+    const m0=[(s0[0]+e0[0])/2,(s0[1]+e0[1])/2],m1=[(s1[0]+e1[0])/2,(s1[1]+e1[1])/2],len=Math.hypot(m1[0]-m0[0],m1[1]-m0[1])*1.15,ang=Math.atan2(m1[1]-m0[1],m1[0]-m0[0]);
+    const wide=Math.max(.005,(Math.hypot(s0[0]-e0[0],s0[1]-e0[1])+Math.hypot(s1[0]-e1[0],s1[1]-e1[1]))/2*1.2),cx=(m0[0]+m1[0])/2,cy=(m0[1]+m1[1])/2,th=.0052-.002*t0;
+    parts.push(knifeBlock(len,wide,th,cx,cy,0,ang,STEEL));
+    const nx=-Math.sin(ang),ny=Math.cos(ang);   // lado côncavo (fio) fica em +normal
+    parts.push(knifeBlock(len,Math.max(.002,wide*.28),th*.7,cx+nx*wide*.38,cy+ny*wide*.38,0,ang,EDGE_COL));
   }
-  { const a = ring(0, 1), b = ring(0, -1); for (let j = 0; j < 3; j++) quad(a[j], a[j + 1], b[j + 1], b[j], 0x6d7980); }
-  const steel = new THREE.BufferGeometry(); steel.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); steel.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); steel.computeVertexNormals();
-  // Anel de aço achatado com o pescoço que liga ao cabo.
-  const ringShape = new THREE.Shape(); ringShape.absarc(0, 0, .0255, 0, TAU, false);
-  const hole = new THREE.Path(); hole.absarc(0, 0, .0165, 0, TAU, true); ringShape.holes.push(hole);
-  const ringGeo = new THREE.ExtrudeGeometry(ringShape, { depth: .0052, bevelEnabled: true, bevelThickness: .0008, bevelSize: .0008, bevelSegments: 1, curveSegments: 22 }); ringGeo.translate(0, 0, -.0026);
-  const neck = new THREE.ExtrudeGeometry(knifeShape([[.020,-.0105],[.036,-.0095],[.036,.0105],[.020,.0115],[.024,0]]), { depth: .0062, bevelEnabled: false }); neck.translate(0, 0, -.0031);
-  // Cabo: lombada lisa embaixo, sulcos para os dedos em cima e guarda alta junto da lâmina.
-  const grip = new THREE.ExtrudeGeometry(knifeShape([[.034,-.0105],[.060,-.0118],[.085,-.0132],[.104,-.0150],[.110,-.0120],[.110,.0105],[.107,.0225],[.100,.0245],[.096,.0150],[.090,.0105],[.082,.0125],[.074,.0102],[.066,.0124],[.058,.0101],[.050,.0122],[.042,.0110],[.034,.0105]]),
-    { depth: .0135, bevelEnabled: true, bevelThickness: .0012, bevelSize: .0012, bevelSegments: 1, curveSegments: 1 }); grip.translate(0, 0, -.00675);
-  const bolster = new THREE.ExtrudeGeometry(knifeShape([[.101,-.0152],[.112,-.0136],[.112,.0128],[.101,.0118]]), { depth: .0094, bevelEnabled: false }); bolster.translate(0, 0, -.0047);
-  const bolts = [.050, .080].map(x => new THREE.CylinderGeometry(.0034, .0034, .0172, 10).rotateX(Math.PI / 2).translate(x, -.0008, 0));
-  karambitGeo = mergeKnifeParts([[steel, null], [ringGeo, 0x8d9aa2], [neck, 0x75828a], [grip, 0x22272b], [bolster, 0x8d9aa2], ...bolts.map(b => [b, 0xb4bec4])]);
-  karambitGeo.computeBoundingSphere();
-  for (const g of [steel, ringGeo, neck, grip, bolster, ...bolts]) g.dispose();
+  karambitGeo=mergeKnifeParts(parts.map(g=>[g,null]));karambitGeo.computeBoundingSphere();
+  for(const g of parts)g.dispose();
   return karambitGeo;
 }
 function buildKarambit() {
-  const knife = new THREE.Group(); knife.add(new THREE.Mesh(karambitGeometry(), karambitMat)); return knife;
+  const knife = new THREE.Group(); knife.add(new THREE.Mesh(karambitGeometry(), basicMat)); return knife;
 }
 // Butterfly no estilo do CS2: lâmina clip point com swedge e kicker no tang, cabos vazados, pinos e trava.
 // Desenhada num eixo reto (lâmina para -x, cabos para +x, dorso em +y) e inclinada para a pegada já calibrada.
@@ -1667,22 +1664,27 @@ const KARAMBIT_DRAW = [
   [.92,0,.004,0,0,0,0,TAU,0,0,0,0,0,0,0],
   [1,0,0,0,0,0,0,TAU,0,0,0,0,0,0,0]
 ];
+// Inspeção medida no vídeo do CS2 (3,0 s): levanta o punho (0–0,25 s), a faca vira no indicador com a lâmina
+// passando por cima (0,25–0,7 s), exibição com o punho em pé e a garra pendurada curvando para a esquerda
+// (0,85–2,1 s) e volta girando ao repouso.
 const KARAMBIT_INSPECT = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [.08,-.005,.02,-.005,0.7,.05,-.10,.6,0,0,0,0,0,.45,0],
-  [.22,-.012,.035,-.01,1.0,.08,-.18,TAU-.4,0,0,0,0,0,.60,.1],
-  [.30,-.03,.05,-.015,1.05,.14,0,TAU,0,0,0,0,0,.30,.15],
-  [.36,-.045,.065,-.02,1.0,.18,.25,TAU,0,0,0,0,0,.15,.25],
-  [.68,-.045,.065,-.02,1.0,.18,.25,TAU,0,0,0,0,0,.15,.25],
-  [.76,-.012,.035,-.01,0.85,.08,.1,TAU+.9,0,0,0,0,0,.55,.1],
-  [.90,-.004,.01,-.003,0.3,.02,-.05,TAU*2-.15,0,0,0,0,0,.25,0],
-  [1,0,0,0,0,0,0,TAU*2,0,0,0,0,0,0,0]
+  [.033,0,.03,0,.30,0,.10,0,0,0,0,0,0,0,0],
+  [.083,-.02,.12,-.02,1.0,-.2,.20,.8,0,0,0,0,0,0,0],
+  [.13,-.03,.16,-.02,1.1,-.2,.15,Math.PI/2,0,0,0,0,0,0,0],
+  [.18,-.035,.17,0,1.25,-.35,.08,2.4,0,0,0,0,0,0,0],
+  [.23,-.035,.18,.02,1.45,-.5,.03,3.6,0,0,0,0,0,0,0],
+  [.28,-.035,.19,.04,1.6,-.6,0,TAU-1.271,0,0,0,0,0,0,0],
+  [.70,-.035,.19,.04,1.6,-.6,0,TAU-1.271,0,0,0,0,0,0,0],
+  [.78,-.02,.10,.02,1.0,-.3,.10,5.9,0,0,0,0,0,0,0],
+  [.90,0,.02,0,.25,0,0,TAU-.05,0,0,0,0,0,0,0],
+  [1,0,0,0,0,0,0,TAU,0,0,0,0,0,0,0]
 ];
 const KARAMBIT_SLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.16,.02,.02,.02,.05,-.15,-.20,0,0,0,0,0,0,0,0],[.36,-.24,.04,-.14,-.25,.45,.70,0,0,0,0,0,0,0,0],[.62,-.14,0,-.07,-.13,.22,.36,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
 const KARAMBIT_BACKSLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.16,-.05,.025,.02,.04,.18,.26,0,0,0,0,0,0,0,0],[.36,.10,-.06,-.14,-.22,-.45,-.70,0,0,0,0,0,0,0,0],[.62,.05,-.035,-.07,-.11,-.22,-.34,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
 const KARAMBIT_STAB = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.25,.03,.06,.05,.30,-.10,-.15,0,0,0,0,0,0,0,0],[.44,-.13,.02,-.30,-.32,.22,.42,0,0,0,0,0,0,0,0],[.65,-.09,0,-.19,-.20,.14,.26,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
 const KARAMBIT_CLIPS = {draw:KARAMBIT_DRAW,inspect:KARAMBIT_INSPECT,slash:KARAMBIT_SLASH,backslash:KARAMBIT_BACKSLASH,stab:KARAMBIT_STAB};
-const KARAMBIT_DURATIONS = {inspect:2800,slash:430,backslash:430,stab:850};
+const KARAMBIT_DURATIONS = {inspect:3000,slash:430,backslash:430,stab:850};
 const knifeIdlePose = new Float32Array(14);
 const KNIFE_CLIPS = { draw: BF_DRAW, inspect: BF_INSPECT, slash: KNIFE_SLASH, backslash: KNIFE_BACKSLASH, stab: KNIFE_STAB };
 const KNIFE_DURATIONS = { inspect: 4200, slash: 430, backslash: 430, stab: 850 };
