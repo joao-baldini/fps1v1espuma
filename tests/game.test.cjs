@@ -407,7 +407,7 @@ test('Aimbotz board controls match their visible positions and select only guns 
       g.selectWeapon(b.weapon);assert.equal(g.P.weapon,b.weapon);
     }
   }
-  assert.equal(buttons.filter(b => b.weapon).length, Object.values(g.W).filter(w=>!w.melee&&!w.grenade).length);
+  assert.equal(buttons.filter(b => b.weapon).length, Object.values(g.W).filter(w=>!w.melee&&!w.grenade&&!w.bomb).length);
   assert.ok(buttons.every(b=>!b.weapon||!g.W[b.weapon].melee));
   for(const invalid of ['knife','butterfly','invalid']){cx.aimbotzEquip(invalid);assert.equal(g.S.aimbotzWeapon,'rifle');assert.equal(g.ORDER.length,2);}
   assert.equal(cx.aimbotzButtonAt(from, [0, 0, -1]), null);
@@ -418,7 +418,7 @@ test('Aimbotz infinite magazines cancel a reload, keep every gun full, and stay 
   assert.equal(cx.infiniteMagazine(),false);
   g.P.ammo.rifle.mag=0;cx.startReload(11000);assert.ok(g.P.reloadEnd>11000);
   cx.aimbotzSetInfiniteAmmo(true);assert.equal(g.P.reloadEnd,0);
-  for(const weapon of Object.keys(g.W).filter(k=>!g.W[k].melee&&!g.W[k].grenade)){
+  for(const weapon of Object.keys(g.W).filter(k=>!g.W[k].melee&&!g.W[k].grenade&&!g.W[k].bomb)){
     cx.aimbotzEquip(weapon);const w=g.W[weapon];
     for(let n=0;n<w.mag*3;n++){
       g.shoot(15000+n*w.rof,false);assert.equal(g.P.ammo[weapon].mag,w.mag);assert.equal(g.P.nextFire,15000+(n+1)*w.rof);
@@ -754,7 +754,7 @@ test('collisions still block walls, land on boxes, and climb ramps', () => {
 
 test('all seven bot weapons use the selected ammo, reload time, fire rate and damage identity', () => {
   const g = game();
-  for (const key of Object.keys(g.W).filter(k => !g.W[k].melee && !g.W[k].grenade)) {
+  for (const key of Object.keys(g.W).filter(k => !g.W[k].melee && !g.W[k].grenade && !g.W[k].bomb)) {
     g.context.G.view.ph = 'freeze';
     g.S.botWeapon = key; g.S.botHelmet = false; g.botSpawn(1);
     assert.equal(g.BOT.w, key); assert.equal(g.BOT.helmet, false);
@@ -1210,4 +1210,67 @@ test('throwing the last grenade switches back to a gun and removes the grenade s
   assert.equal(g.P.nades.he, 0); assert.equal(vm.runInContext('NADE.list.length', cx), 1);
   g.updateWeapon(0, 30500);
   assert.notEqual(g.P.weapon, 'he'); assert.ok(!g.ORDER.includes('he')); assert.ok(g.ORDER.includes(g.P.weapon));
+});
+
+function bombWorld(map = 'guard', setup) {
+  const g = game({ mode: 'bomb' }), cx = g.context;
+  cx.G.mode = 'team'; cx.buildMap(map); vm.runInContext('dmBuildNav([])', cx);
+  Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } } });
+  cx.G.mode = 'team'; cx.G.opp = null; g.S.mode = 'bomb'; g.S.botLevel = 'dificil';
+  if (setup) vm.runInContext(setup, cx);
+  g.tick(10000); vm.runInContext('teamSetup(10000,false)', cx);
+  const A = vm.runInContext('ARENA', cx), BM = vm.runInContext('BOMB', cx);
+  const step = (from, ms, each) => { let t = from; for (; t < from + ms; t += 1000 / 30) { g.tick(t); vm.runInContext(`teamTick(1/30,${t});nadesTick(1/30,${t})`, cx); if (each && each(t)) break; } return t; };
+  return { g, cx, A, BM, step };
+}
+test('Plant the Bomb buys follow Wingman prices, sides and limits, and round rewards follow the CS economy', () => {
+  const { g, cx, A, BM, step } = bombWorld();
+  let t = step(10000, 1000);
+  assert.equal(A.bomb, true); assert.equal(g.DM.phase, 'freeze');
+  assert.equal(g.P.money, 800); for (const e of g.DM.bots) assert.ok(e.money <= 800 && e.money >= 0, String(e.money));
+  const side = vm.runInContext('sideOf(P)', cx), rifle = side === 't' ? 'm4a4' : 'rifle';
+  assert.equal(cx.bombBuyBlock(g.P, rifle, t), side === 't' ? 'Só SWAT' : 'Só Terroristas');
+  assert.equal(cx.bombBuy(g.P, 'kevlar', t), true); assert.equal(g.P.money, 150); assert.equal(g.P.inv.armor, 100);
+  assert.equal(cx.bombBuyBlock(g.P, 'kevlar', t), 'Já tem');
+  assert.equal(cx.bombBuy(g.P, 'flash', t), false); assert.equal(cx.bombBuyBlock(g.P, 'smoke', t), 'Sem dinheiro');
+  g.P.money = 8000; assert.ok(cx.bombBuy(g.P, 'flash', t)); assert.ok(cx.bombBuy(g.P, 'flash', t)); assert.equal(cx.bombBuyBlock(g.P, 'flash', t), 'Limite');
+  assert.ok(cx.bombBuy(g.P, 'ump', t)); assert.ok(g.ORDER.includes('ump')); assert.equal(g.P.weapon, 'ump');
+  // fim da rodada: vencedor +3500 por bomba, perdedor +1400 (+800 se plantou), teto de $8.000
+  t = step(t, 11000); assert.equal(g.DM.phase, 'live');
+  const money = new Map(g.DM.actors.map(e => [e, e.money]));
+  BM.plantedBy = null; cx.bombEndRound(t, BM.tTeam, 'bomb');
+  for (const e of g.DM.actors) assert.equal(e.money, Math.min(8000, money.get(e) + (e.team === BM.tTeam ? 3500 : 1400)), e.name);
+  assert.equal(A.sc[BM.tTeam], 1); assert.equal(g.DM.phase, 'end');
+});
+test('the player plants only inside the site, the bomb defuses faster with a kit, and a defuse wins for SWAT', () => {
+  const { g, cx, A, BM, step } = bombWorld();
+  let t = step(10000, 11500);
+  const s = vm.runInContext('MAP.plant.site', cx);
+  for (const e of g.DM.bots) { e.alive = false; e.respawnAt = Infinity; }
+  BM.tTeam = g.P.team; BM.carrier = g.P.id; cx.bombEquip(g.P, t, false); g.keys.add('KeyE');
+  g.P.pos.set(0, 0, 20); g.P.vel.set(0, 0, 0); cx.bombPlayerAction(1 / 30, t); assert.equal(g.P.plantUntil, 0);
+  // um inimigo vivo para a rodada não acabar por eliminação
+  const foe = g.DM.actors.find(e => e.team !== g.P.team); foe.alive = true; foe.pos.set(-18, 0, 20);
+  g.P.pos.set((s.x0 + s.x1) / 2, 0, (s.z0 + s.z1) / 2); cx.bombPlayerAction(1 / 30, t); assert.ok(g.P.plantUntil > t, JSON.stringify({alive:g.P.alive,ph:g.DM.phase,c:BM.carrier,id:g.P.id,ins:cx.bombInSite(g.P.pos.x,g.P.pos.z),g:g.P.onGround,v:[g.P.vel.x,g.P.vel.z],on:vm.runInContext("bombOn()",cx),pl:!!BM.planted}));
+  cx.bombPlayerAction(1 / 30, t + 3300); assert.ok(BM.planted); assert.ok(!g.ORDER.includes('c4'));
+  assert.equal(A.roundEnd, BM.planted.t + 40000);
+  // troca: o jogador vira SWAT com kit e desarma em 5 s
+  BM.tTeam = 1 - g.P.team; g.P.inv.kit = true; foe.alive = true;
+  cx.bombPlayerAction(1 / 30, t + 4000); assert.equal(g.P.defuseUntil, t + 4000 + 5000);
+  cx.bombPlayerAction(1 / 30, t + 9100); assert.equal(g.DM.phase, 'end'); assert.equal(A.why, 'defuse'); assert.equal(A.win, g.P.team);
+});
+test('a short bot match plays rounds with plants or eliminations, swaps sides at the half and ends at the target', () => {
+  const { g, cx, A, BM, step } = bombWorld('guard', 'BOMB.half=2;BOMB.target=3;BOMB.maxRounds=4;');
+  const sides = [], reasons = new Set(); let plants = 0, lastRound = 0;
+  let t = step(10000, 900000, t => {
+    if (A.r !== lastRound) { lastRound = A.r; sides.push(BM.tTeam); }
+    if (BM.planted && !BM.planted.counted) { BM.planted.counted = true; plants++; }
+    if (g.DM.phase === 'end') reasons.add(A.why);
+    if (A.m) for (const e of g.DM.actors) assert.ok(e.money >= 0 && e.money <= 8000, e.name + ' ' + e.money);
+    return g.DM.phase === 'over';
+  });
+  assert.equal(g.DM.phase, 'over', 'partida não terminou');
+  assert.ok(Math.max(...A.sc) === 3 || A.r === 4, JSON.stringify(A.sc));
+  assert.notEqual(sides[0], sides[2], 'não trocou de lado');
+  assert.ok(reasons.size >= 1); assert.ok([...reasons].every(r => ['kill', 'time', 'bomb', 'defuse'].includes(r)), [...reasons].join());
 });
