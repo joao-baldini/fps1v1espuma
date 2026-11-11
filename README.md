@@ -4,7 +4,7 @@ FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **DM*
 
 ## Modos de jogo
 
-Na tela **Jogar**, selecione o card de modo e o card de mapa. O painel ao lado reúne os controles da sala e o botão para jogar com bots.
+Na tela **Jogar**, escolha o modo e selecione a arena na faixa de mapas. O mapa escolhido aparece em destaque. No painel da partida, escolha **Contra bots** ou **Com amigos** e ajuste as opções antes de iniciar. O Aimbotz entra direto no treino. A engrenagem abre as configurações; o equipamento mostra as silhuetas das armas escolhidas.
 
 | Modo | Sozinho | Online |
 |---|---|---|
@@ -17,7 +17,7 @@ Na tela **Jogar**, selecione o card de modo e o card de mapa. O painel ao lado r
 ## Como jogar com seu parceiro
 
 1. Abra o jogo pelo GitHub Pages (ou abra o `index.html` direto no Chrome).
-2. Escolha **1v1** ou **2v2**. Todos digitam o **mesmo código de sala** e clicam em **Entrar na sala**.
+2. Escolha **1v1** ou **2v2** e **Com amigos**. Todos digitam o **mesmo código de sala** e clicam em **Entrar na sala**.
 3. Quem entrar primeiro cria a sala e vira o juiz das rodadas. Quando o segundo conecta, a partida começa sozinha.
 
 A conexão é direta entre os dois navegadores (WebRTC via PeerJS). O servidor público do PeerJS só faz o pareamento; o jogo em si não passa por servidor. Algumas redes corporativas bloqueiam conexão direta. Se não conectar em 15 segundos, testem fora da VPN ou em outra rede.
@@ -50,7 +50,13 @@ Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e
 
 ## Aimbotz
 
-Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos. Vire para o quadro atrás do ponto inicial, mire e clique em **−** ou **+** para mudar a quantidade de bots, ou no nome da arma para equipá-la. A reserva de munição é ilimitada, com a recarga normal de cada arma.
+Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos.
+
+Vire para os dois quadros atrás do ponto inicial e mire e clique nos controles. No quadro **Aimbotz**, **− / +** muda a quantidade de bots e os nomes escolhem uma das sete armas de fogo. Você sempre mantém a faca do seu equipamento, sem opção de faca no quadro: **1** puxa a arma escolhida, **3** puxa a faca e **Q** alterna entre elas. A rodinha também alterna, caso não esteja configurada para pular. **2 / 4** também voltam à arma de treino.
+
+A reserva é ilimitada. Por padrão, os carregadores e as recargas continuam normais. Ative **Munição sem recarga** no quadro para manter o carregador cheio: o HUD mostra **∞**, e uma recarga em andamento é encerrada. Isso preserva a cadência, o recuo e as regras de luneta e vale somente no Aimbotz.
+
+O quadro separado **Viewmodel** muda a posição da arma em tempo real. **X** move para esquerda/direita (−2 a 2,5), **Y** para trás/frente (−2 a 2) e **Z** para baixo/cima (−2 a 2). Os botões usam passos de 0,5; **Preferências → Posição da arma** permite digitar valores de 0,1 em 0,1. As duas telas compartilham a mesma preferência, salva no navegador e aplicada em todos os modos. **Restaurar padrão** zera os três valores e recupera a posição anterior do jogo. É uma transformação do modelo em primeira pessoa, sem mudar a câmera, a mira, os tiros ou o modelo dos adversários.
 
 ## Arsenal (tecla B) e skins
 
@@ -58,9 +64,11 @@ O apelido exato `KQLY` ativa o aimbot para armas de fogo em todos os modos. Cada
 
 A AWP padrão usa um estampido sintetizado mais grave, mantendo o estilo do jogo. Os headshots padrão também são sintetizados, com um toque metálico para capacete. As skins mantêm seus sons. Os MP3 do experimento ficam guardados em [assets/audio](assets/audio/README.md), sem carregar ou tocar durante o jogo.
 
-Durante a partida, aperte **B** para abrir o arsenal: uma grade com as armas por categoria (pistolas, rifles, precisão, facas), no estilo do Valorant. O mouse continua travado e move um cursor próprio; clique numa arma para equipá-la na hora (ela passa a valer também nas próximas rodadas). Você continua podendo andar com o arsenal aberto. **B** ou **Esc** fecha. No DM, as armas fora da categoria da partida ficam desativadas. Fora da partida, use **Abrir arsenal** na aba **Armas**.
+O **Arsenal** é uma tela própria, acessível pelo topo do menu ou por **Editar equipamento**. Escolha o slot de rifle, pistola, faca ou precisão à esquerda. À direita, cada card mostra uma combinação de arma e skin: um clique equipa as duas juntas. O contorno cobre e a indicação **Equipada** confirmam a escolha; os slots mostram seu equipamento atual. As escolhas ficam salvas no navegador.
 
-Na parte de baixo do arsenal ficam as skins da arma em foco: a última arma em que você clicou (passar o mouse por cima não muda o foco, então dá para trocar de skin com calma). Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de tom a cada abate seguido, como no Valorant, e o quinto vira finalização; um emblema com a contagem aparece no HUD. A sequência zera quando você morre ou renasce. Clicar numa skin toca uma prévia dos sons.
+Durante a partida, **B** abre a mesma tela com um cursor próprio; **1–4** alternam os slots, a rodinha rola o inventário e **B** volta ao jogo. **Esc** libera o mouse e abre a pausa. Os comandos de movimento e tiro ficam suspensos enquanto você escolhe. No DM, as categorias não permitidas ficam desativadas. O relógio da partida continua.
+
+Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de tom a cada abate seguido, como no Valorant, e o quinto vira finalização; um emblema com a contagem aparece no HUD. A sequência zera quando você morre ou renasce. Equipar no inventário toca apenas uma confirmação discreta.
 
 | Skin | Armas | Visual | Sons |
 |---|---|---|---|
@@ -76,16 +84,16 @@ No 1v1 online, o oponente vê sua skin na arma em terceira pessoa e ouve o tiro 
 
 ## Equipamento
 
-Abra **Armas** pela engrenagem no topo ou clique em **Editar** em **Seu equipamento**. Escolha uma arma de cada categoria e a categoria equipada ao nascer. As escolhas ficam salvas no navegador e funcionam tanto no 1v1 quanto no treino. Durante a partida, troque de arma na hora pelo arsenal (**B**).
+Abra **Arsenal** no topo ou clique em **Editar equipamento**. Escolha uma combinação de arma e skin para cada slot. Em **Configurações → Armas**, escolha a categoria equipada ao nascer. As escolhas funcionam em todos os modos; o DM respeita a categoria permitida pela partida.
 
 | Tecla | Categoria | Opções |
 |---|---|---|
 | 1 | Rifle | AK-47, M4A4, M4A1-S com silenciador |
 | 2 | Pistola | Desert Eagle, USP-S com silenciador |
 | 3 | Faca | Karambit, Butterfly |
+| 4 | Precisão | AWP, SSG 08 (Scout) |
 
 As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão em bloco de pele, sem luva, e manga em bloco na cor do boneco (nos times, na cor do time). Com faca, como no CS, aparece só a mão direita.
-| 4 | Precisão | AWP, SSG 08 (Scout) |
 
 O bot pode usar qualquer uma das sete armas de fogo, com sua própria cadência, carregador e recarga. Também é possível escolher se ele tem capacete: a proteção aparece no personagem e reduz apenas o dano na cabeça. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância. Os jogadores usam capacete no 1v1.
 
@@ -169,19 +177,24 @@ A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atir
 
 ## Configurações
 
-Use a engrenagem no topo do menu para abrir as abas de mouse, mira, armas, partida, vídeo e som e controles.
+Use a engrenagem no topo do menu para abrir as abas de mouse, mira, armas, partida, preferências, vídeo e som e controles.
 
 - **Cor do boneco:** escolha antes de entrar na sala. É a cor que o oponente vê.
 
 - **Mira:** estilo estático ou dinâmico, cor, tamanho, espessura, espaço, contorno, ponto central, formato T, opacidade.
 - **Mouse:** sensibilidade na escala do CS (mostra o equivalente no Valorant e os cm/360 pelo seu DPI) e sensibilidade da luneta.
+- **Preferências:** **Suavizar tremor dos disparos** vem ligado e preserva o tremor leve anterior. Desligar aumenta o recuo visual da câmera de 45% para 70% do recuo calculado; precisão, dano e trajetórias das balas não mudam. A opção é própria deste jogo. A separação entre movimento da câmera e trajetória também aparece nas [notas oficiais do CS2 de 21 de abril de 2026](https://store.steampowered.com/news/posts/?appids=730&enddate=1777070707).
 - **Vídeo:** FOV (horizontal 4:3, CS = 90), escala de resolução, ajuste automático de resolução e contador de FPS.
 
 Tudo fica salvo no navegador.
 
+O killfeed identifica headshots com um ícone vetorial de cabeça e projétil, com descrição acessível, no lugar do texto **HS**. Nos últimos três segundos de preparação há um tick curto por segundo, e o fim da rodada tem um aviso de dois tons. Os sons seguem o volume geral; retransmissões online e pequenas correções de relógio não repetem os avisos. Ao voltar de uma aba oculta, os ticks perdidos não são reproduzidos em sequência.
+
+A luneta da AWP e da Scout só abre quando a arma está pronta para disparar: após a puxada, a recarga e o intervalo entre tiros. A AWP mantém dez balas por carregador.
+
 ## Desempenho e desenvolvimento
 
-Sem pós-processamento, sombras em tempo real ou antialiasing. O mapa e as partes estáticas das armas usam geometria agrupada; impactos e rastros são reutilizados. As animações só transformam grupos existentes. A resolução padrão não multiplica pixels por telas de DPI alto. O ajuste automático reduz a resolução quando o tempo médio de quadro sobe. A cena 3D é renderizada durante a partida e fica suspensa em abas ocultas.
+Sem pós-processamento, sombras em tempo real ou antialiasing durante o jogo. O mapa e as partes estáticas das armas usam geometria agrupada; impactos e rastros são reutilizados. As animações só transformam grupos existentes. A resolução padrão não multiplica pixels por telas de DPI alto. O ajuste automático reduz a resolução quando o tempo médio de quadro sobe. A cena 3D é renderizada durante a partida e fica suspensa em abas ocultas. O menu usa imagens WebP estáticas, SVG e CSS, sem reconstruir o mapa 3D a cada seleção. As prévias grandes foram renderizadas separadamente em **2048 × 768 com antialiasing**; `srcset` permite usar as miniaturas de 640 pixels em telas menores. A arena é construída ao iniciar a partida.
 
 No DM e no 2v2, os outros participantes compartilham geometria por instanciamento: corpo, cabeça, capacete, nove modelos de arma (facas incluídas) e marcador de aliado, com efeitos reutilizados. A cor de cada instância é alocada com a capacidade total antes do primeiro desenho; antes dessa correção o buffer ficava vazio e a GPU descartava os bots, que ficavam invisíveis. A navegação é uma grade 2,5D: cada célula guarda a altura do chão e só liga vizinhas sem degrau maior que um passo, então os bots sobem escadas, rampas e plataformas. A malha é calculada uma vez por mapa e reutiliza buffers de busca; a percepção dos bots é distribuída ao longo dos quadros. Áudio e passos simultâneos têm limite próprio para evitar picos.
 

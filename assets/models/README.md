@@ -1,7 +1,7 @@
-# Referência da M4A4
+# Modelos das armas
 
-`m4a4_lowpoly.glb` é o modelo enviado pelo usuário. Suas 64 peças e 1.024 triângulos são convertidos em dados estáticos dentro de `index.html` por `node tools/import-m4a4.mjs`.
+`m4a4_lowpoly.glb` é o modelo enviado pelo usuário e fica arquivado como referência. Ele não é carregado pelo jogo.
 
-A conversão ajusta eixos, escala e posição para a mão do jogador, preserva as cores e arredonda coordenadas a cinco casas decimais. O jogo reúne todas as faces em uma só malha, com sombras de cor por vértice, sem carregar o GLB, texturas ou um leitor de glTF durante a partida. As skins reutilizam a geometria com outras cores. A mesma forma aparece em primeira pessoa, nos oponentes e no instanciamento de DM/times.
+A M4A4 e a M4A1-S usam o mesmo corpo simples de nove blocos, 25% mais largo e 8% mais alto que a antiga M4A1-S. A M4A4 termina em um bocal curto; a M4A1-S mantém o silenciador. Cada arma completa tem dez blocos, 120 triângulos e uma única malha. As skins reutilizam essa geometria, também usada nos oponentes e no instanciamento de DM/times. Não há texturas nem leitor de glTF em execução.
 
-A AWP é criada por perfis chanfrados e tubos octogonais: coronha vazada, carregador, guarda do gatilho, cano, lente azul, anéis e torres da luneta e alavanca do ferrolho. Também usa uma única malha, sem texturas ou partes animadas adicionais.
+A AWP é criada por perfis chanfrados e tubos octogonais: coronha vazada, carregador, guarda do gatilho, cano, lente azul, anéis e torres da luneta e alavanca do ferrolho. Usa 728 triângulos em uma única malha, sem texturas ou partes animadas adicionais.

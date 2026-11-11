@@ -7,7 +7,7 @@ const port = Number(process.argv.find(arg => arg.startsWith('--port='))?.slice(7
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid preview port');
 http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
-  const menuImage = /^\/assets\/menu\/[a-z0-9-]+\.webp$/.test(pathname);
+  const menuImage = /^\/assets\/menu\/(?:large\/)?[a-z0-9-]+\.webp$/.test(pathname);
   const audio = /^\/assets\/audio\/[a-z0-9-]+\.mp3$/.test(pathname);
   const file = menuImage || audio ? resolve(root, pathname.slice(1))
     : pathname === '/reference.mp4' && reference ? resolve(reference)

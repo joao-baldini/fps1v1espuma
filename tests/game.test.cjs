@@ -44,7 +44,7 @@ function game(saved) {
     setTimeout() {}, console,
   });
   vm.runInContext(section('const V3 =', '/* ================= Configurações').replace('const V3 = THREE.Vector3, ', 'const '), context);
-  vm.runInContext(section('const DEFAULTS =', '/* ================= Render'), context);
+  vm.runInContext(section('const VIEWMODEL_LIMITS =', '/* ================= Render'), context);
   vm.runInContext(section('const THEMES =', 'const RAMP_FLIP'), context);
   vm.runInContext(section('function stat(', '/* ================= Rede P2P'), context);
   vm.runInContext(section('const RAMP_FLIP', '// Rotação:'), context);
@@ -199,7 +199,7 @@ test('AWP and headshots use lightweight synthesis and retain skin sounds without
   }
 });
 
-test('detailed AWP and imported M4A4 stay within a small triangle budget and support every skin', () => {
+test('AWP and the simple shared M4 bodies stay within a small triangle budget and support every skin', () => {
   const g=game(),cx=g.context;
   cx.THREE.Color=class {
     constructor(hex){this.setHex(hex||0);}
@@ -211,14 +211,62 @@ test('detailed AWP and imported M4A4 stay within a small triangle budget and sup
   vm.runInContext(section('function weaponMesh(','/* ================= Mapas'),cx);
   vm.runInContext(section('const GUNS =','const ARMS ='),cx);
   const guns=vm.runInContext('GUNS',cx);
-  for(const key of ['sniper','m4a4'])for(const skin of ['padrao','neon','brasa','glacial']){
+  assert.deepEqual(guns.m4a4.slice(0,9),guns.m4a1s.slice(0,9));
+  assert.ok(guns.m4a4[0][1][0]-guns.m4a4[0][0][0]>.06);
+  assert.equal(Math.min(...guns.m4a4.map(p=>p[0][2])),-.78);
+  assert.equal(Math.min(...guns.m4a1s.map(p=>p[0][2])),-.94);
+  for(const key of ['sniper','m4a4','m4a1s'])for(const skin of ['padrao','neon','brasa','glacial']){
     const model=cx.boxModel(cx.skinPartsFor(key,skin,guns[key])),geo=model.geometry;
     assert.ok(geo.p.every(Number.isFinite));assert.ok(geo.n.every(Number.isFinite));assert.ok(geo.c.every(Number.isFinite));
     assert.equal(geo.p.length,geo.n.length);assert.equal(geo.p.length,geo.c.length);
-    assert.ok(geo.p.length/9<1400,key+' '+skin);
-    if(key==='m4a4'&&skin==='padrao')assert.equal(geo.p.length/9,1024);
+    assert.ok(geo.p.length/9<(key==='sniper'?1400:200),key+' '+skin);
+    if(key!=='sniper'&&skin==='padrao')assert.equal(geo.p.length/9,120);
     for(let i=0;i<geo.n.length;i+=3)assert.ok(Math.abs(Math.hypot(geo.n[i],geo.n[i+1],geo.n[i+2])-1)<1e-8);
   }
+});
+
+test('scope cannot open during the firing interval and unlocks exactly when the next shot is ready', () => {
+  for(const weapon of ['sniper','ssg']){
+    const g=game(),cx=g.context;g.P.weapon=weapon;g.P.drawEnd=0;g.P.zoom=1;
+    g.shoot(12000,false);const ready=g.P.nextFire;
+    assert.equal(ready,12000+g.W[weapon].rof);assert.equal(g.P.zoom,0);
+    for(const t of [12001,ready-1]){assert.equal(cx.toggleScope(t),false);assert.equal(g.P.zoom,0);}
+    assert.equal(cx.toggleScope(ready),true);assert.equal(g.P.zoom,1);
+  }
+});
+
+test('screen-shake preference preserves old defaults and changes no bullets, damage or spray', () => {
+  assert.equal(game().S.smoothRecoil,true);
+  assert.equal(game({smoothRecoil:'invalid'}).S.smoothRecoil,true);
+  const soft=game({smoothRecoil:true}),full=game({smoothRecoil:false}),shots=[[],[]];
+  assert.equal(soft.context.viewRecoilScale(),.45);assert.equal(full.context.viewRecoilScale(),.7);
+  for(const [i,g] of [soft,full].entries()){
+    g.spawnSelf(0,[0,0,0]);g.P.yaw=g.P.pitch=0;
+    g.context.tracer=(start,end)=>shots[i].push(Array.from(end));
+    for(let n=0;n<20;n++)g.shoot(12000+n*100,false);
+  }
+  assert.deepEqual(shots[0],shots[1]);
+  assert.equal(soft.P.recoilP,full.P.recoilP);assert.equal(soft.P.recoilY,full.P.recoilY);
+  assert.equal(soft.damageFor(soft.W.rifle,'head',true),full.damageFor(full.W.rifle,'head',true));
+});
+
+test('inventory selections equip weapon and skin atomically and reject locked, incompatible or restricted items', () => {
+  const g=game(),cx=g.context;
+  vm.runInContext(section('const slotOf =','const hexCss ='),cx);
+  vm.runInContext(section('function buyAllowed(','function weaponStats('),cx);
+  vm.runInContext(section('function applyLoadoutSelection(','function buyEquip('),cx);
+  assert.equal(cx.applyLoadoutSelection('usps','neon'),true);
+  assert.equal(g.S.loadout.pistol,'usps');assert.equal(g.S.skins.usps,'neon');
+  assert.equal(cx.applyLoadoutSelection('pistol','brasa'),true);
+  assert.equal(g.S.loadout.pistol,'pistol');assert.equal(g.S.skins.pistol,'brasa');
+  assert.equal(cx.applyLoadoutSelection('usps','padrao'),true);assert.equal(g.S.skins.usps,undefined);
+  const before=JSON.stringify({loadout:g.S.loadout,skins:g.S.skins});
+  for(const [weapon,skin] of [['rifle','sublime'],['knife','neon'],['unknown','padrao']])assert.equal(cx.applyLoadoutSelection(weapon,skin),false);
+  assert.equal(JSON.stringify({loadout:g.S.loadout,skins:g.S.skins}),before);
+  cx.G.mode='dm';g.DM.active=true;g.DM.category='rifle';
+  assert.equal(cx.applyLoadoutSelection('usps','neon'),false);
+  assert.equal(cx.applyLoadoutSelection('m4a1s','glacial'),true);assert.equal(g.S.loadout.rifle,'m4a1s');
+  assert.equal(cx.applyLoadoutSelection('butterfly','padrao'),true);assert.equal(g.S.loadout.knife,'butterfly');
 });
 
 test('Aimbotz kills the old bot and immediately spawns a damageable replacement at a different spot', () => {
@@ -294,7 +342,9 @@ test('Aimbotz always changes spots without overlaps at every bot count and when 
 test('every available weapon kills Aimbotz targets with actual shots or knife attacks', () => {
   for (const weapon of Object.keys(game().W)) {
     const g=game(),cx=g.context;
-    cx.buildMap('aimbotz');cx.G.mode='aimbotz';g.spawnSelf(0,[0,9,0]);cx.aimbotzSetup();cx.aimbotzSetBots(1);cx.aimbotzEquip(weapon);
+    cx.buildMap('aimbotz');cx.G.mode='aimbotz';if(g.W[weapon].melee)g.S.loadout.knife=weapon;
+    g.spawnSelf(0,[0,9,0]);cx.aimbotzSetup();cx.aimbotzSetBots(1);
+    if(g.W[weapon].melee)g.selectWeapon(weapon);else cx.aimbotzEquip(weapon);
     const bot=g.DM.actors[1];g.P.pos.set(bot.pos.x,bot.pos.y,bot.pos.z+1.2);
     g.P.pitch=Math.atan2(1.05-cx.eyePos()[1],1.2);g.P.yaw=0;
     for(let n=0;n<8&&bot.alive;n++){
@@ -339,7 +389,7 @@ test('AK-47 has exactly five percent less vertical and horizontal recoil across 
   assert.equal(current.W.m4a1s.recoilScale,.53);
 });
 
-test('Aimbotz board controls match their visible positions and equip every available weapon', () => {
+test('Aimbotz board controls match their visible positions and select only guns with a permanent knife', () => {
   const g = game(), cx = g.context;
   cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
   const { board, buttons, duelMaps } = vm.runInContext('({board:AIMBOTZ_BOARD,buttons:AIMBOTZ_BUTTONS,duelMaps:MAP_IDS})', cx);
@@ -350,10 +400,97 @@ test('Aimbotz board controls match their visible positions and equip every avail
     const y = board.y + (.5 - (b.y + b.h / 2) / board.height) * board.h;
     const direction = [x - from[0], y - from[1], board.z - from[2]];
     assert.equal(cx.aimbotzButtonAt(from, direction), b);
-    if (b.weapon) { cx.aimbotzEquip(b.weapon); assert.equal(g.P.weapon, b.weapon); }
+    if (b.weapon) {
+      cx.aimbotzEquip(b.weapon); assert.equal(g.P.weapon, b.weapon);
+      assert.deepEqual(Array.from(g.ORDER),[b.weapon,g.S.loadout.knife]);
+      g.selectWeapon(g.S.loadout.knife);assert.equal(g.P.weapon,g.S.loadout.knife);
+      g.selectWeapon(b.weapon);assert.equal(g.P.weapon,b.weapon);
+    }
   }
-  assert.equal(buttons.filter(b => b.weapon).length, Object.keys(g.W).length);
+  assert.equal(buttons.filter(b => b.weapon).length, Object.values(g.W).filter(w=>!w.melee).length);
+  assert.ok(buttons.every(b=>!b.weapon||!g.W[b.weapon].melee));
+  for(const invalid of ['knife','butterfly','invalid']){cx.aimbotzEquip(invalid);assert.equal(g.S.aimbotzWeapon,'rifle');assert.equal(g.ORDER.length,2);}
   assert.equal(cx.aimbotzButtonAt(from, [0, 0, -1]), null);
+});
+
+test('Aimbotz infinite magazines cancel a reload, keep every gun full, and stay exclusive to training', () => {
+  const g=game(),cx=g.context;cx.G.mode='aimbotz';g.spawnSelf(0,[0,9,0]);cx.aimbotzSetup();
+  assert.equal(cx.infiniteMagazine(),false);
+  g.P.ammo.rifle.mag=0;cx.startReload(11000);assert.ok(g.P.reloadEnd>11000);
+  cx.aimbotzSetInfiniteAmmo(true);assert.equal(g.P.reloadEnd,0);
+  for(const weapon of Object.keys(g.W).filter(k=>!g.W[k].melee)){
+    cx.aimbotzEquip(weapon);const w=g.W[weapon];
+    for(let n=0;n<w.mag*3;n++){
+      g.shoot(15000+n*w.rof,false);assert.equal(g.P.ammo[weapon].mag,w.mag);assert.equal(g.P.nextFire,15000+(n+1)*w.rof);
+    }
+    cx.startReload(80000);assert.equal(g.P.reloadEnd,0);
+  }
+  cx.aimbotzSetInfiniteAmmo(false);cx.aimbotzEquip('rifle');g.shoot(90000,false);assert.equal(g.P.ammo.rifle.mag,29);
+  cx.aimbotzSetInfiniteAmmo(true);
+  for(const mode of ['bot','online','team','dm']){
+    cx.G.mode=mode;assert.equal(cx.infiniteMagazine(),false);g.P.ammo.rifle.mag=0;g.P.reloadEnd=0;cx.startReload(95000);assert.equal(g.P.reloadEnd,97500);
+  }
+  assert.equal(game({aimbotzInfiniteAmmo:'yes'}).S.aimbotzInfiniteAmmo,false);
+});
+
+test('viewmodel settings migrate, clamp each axis, reset, and change only the held model', () => {
+  const g=game(),cx=g.context;
+  assert.deepEqual(JSON.parse(JSON.stringify(g.S.viewmodel)),{x:0,y:0,z:0});
+  assert.deepEqual(JSON.parse(JSON.stringify(game({viewmodel:{x:200,y:-10,z:'2'}}).S.viewmodel)),{x:2.5,y:-2,z:0});
+  assert.deepEqual(JSON.parse(JSON.stringify(game({viewmodel:null}).S.viewmodel)),{x:0,y:0,z:0});
+  assert.equal(cx.setViewmodelAxis('x',2.57),true);assert.equal(g.S.viewmodel.x,2.5);
+  cx.setViewmodelAxis('y',-10);cx.setViewmodelAxis('z',.16);
+  assert.deepEqual(JSON.parse(JSON.stringify(g.S.viewmodel)),{x:2.5,y:-2,z:.2});
+  const unchanged=JSON.stringify(g.S.viewmodel);
+  for(const [axis,value] of [['q',0],['__proto__',1],['x',NaN],['y',Infinity]])assert.equal(cx.setViewmodelAxis(axis,value),false);
+  assert.equal(JSON.stringify(g.S.viewmodel),unchanged);
+  const position=new Vec(.15,-.16,-.4);cx.offsetViewmodel(position);
+  assert.ok(Math.abs(position.x-.2125)<1e-9);assert.ok(Math.abs(position.y+.156)<1e-9);assert.ok(Math.abs(position.z+.35)<1e-9);
+  cx.resetViewmodel();assert.equal(g.S.viewmodel.x,0);assert.equal(g.S.viewmodel.y,0);assert.equal(g.S.viewmodel.z,0);
+  const shots=[[],[]];
+  for(const [i,viewmodel] of [{x:0,y:0,z:0},{x:-2,y:2,z:2}].entries()){
+    const gameState=game({viewmodel});gameState.spawnSelf(0,[0,0,0]);gameState.P.yaw=gameState.P.pitch=0;
+    gameState.context.tracer=(start,end)=>shots[i].push(Array.from(end));
+    for(let n=0;n<20;n++)gameState.shoot(12000+n*100,false);
+  }
+  assert.deepEqual(shots[0],shots[1]);
+});
+
+test('all viewmodel board buttons match world-space hits, update the shared setting, and reset', () => {
+  const g=game(),cx=g.context;cx.buildMap('aimbotz');cx.G.mode='aimbotz';g.spawnSelf(0,[0,9,0]);cx.aimbotzSetup();
+  cx.aimbotzDrawBoard=()=>{};cx.syncInputs=()=>{};cx.saveS=()=>{};
+  const {board,buttons}=vm.runInContext('({board:AIMBOTZ_VIEWMODEL_BOARD,buttons:AIMBOTZ_VIEWMODEL_BUTTONS})',cx),from=cx.eyePos();
+  for(const button of buttons){
+    const x=board.x+(.5-(button.x+button.w/2)/board.width)*board.w,y=board.y+(.5-(button.y+button.h/2)/board.height)*board.h;
+    const direction=[x-from[0],y-from[1],board.z-from[2]],distance=Math.hypot(...direction);
+    assert.equal(cx.aimbotzViewmodelButtonAt(from,direction),button);
+    g.P.yaw=Math.atan2(-direction[0],-direction[2]);g.P.pitch=Math.asin(direction[1]/distance);g.P.recoilP=g.P.recoilY=g.P.punch=0;
+    g.P.zoom=1;g.P.m1=g.P.m1Press=true;
+    assert.equal(cx.aimbotzClickBoard(),true);
+    assert.equal(g.P.zoom,0);assert.equal(g.P.m1,false);assert.equal(g.P.m1Press,false);
+    if(button.axis)assert.equal(g.S.viewmodel[button.axis],button.value);
+    else assert.deepEqual(JSON.parse(JSON.stringify(g.S.viewmodel)),{x:0,y:0,z:0});
+  }
+  assert.equal(cx.aimbotzViewmodelButtonAt(from,[0,0,-1]),null);
+});
+
+test('round audio ticks once at 3, 2 and 1 and ends once despite repeated or jittered round states', () => {
+  for(const mode of ['bot','online','team','dm']){
+    const g=game(),cx=g.context,events=[];cx.G.mode=mode;
+    cx.AU={freezeTick:()=>events.push('tick'),roundEnd:()=>events.push('end')};
+    vm.runInContext(section('const ROUND_AUDIO =','/* ================= Viewmodel'),cx);
+    cx.G.view={m:'series',r:1,ph:'freeze',endsAt:15000};
+    for(let t=10000;t<15000;t+=10){if(t===13100)cx.G.view.endsAt+=80;cx.updateRoundAudio(t);}
+    assert.deepEqual(events,['tick','tick','tick'],mode);
+    cx.G.view.ph='live';for(let t=15000;t<18000;t+=10)cx.updateRoundAudio(t);
+    cx.G.view.ph='end';cx.updateRoundAudio(18000);cx.updateRoundAudio(18010);
+    cx.G.view.ph='over';cx.updateRoundAudio(18020);assert.deepEqual(events,['tick','tick','tick','end']);
+    cx.G.view.r=2;cx.G.view.ph='freeze';cx.G.view.endsAt=22000;cx.updateRoundAudio(19000);cx.updateRoundAudio(19010);
+    assert.equal(events.filter(e=>e==='tick').length,4);
+    cx.G.view.endsAt=Infinity;cx.updateRoundAudio(20000);assert.equal(events.length,5);
+    cx.G.mode='aimbotz';cx.G.view.ph='end';cx.updateRoundAudio(21000);assert.equal(events.length,5);
+    cx.G.mode=null;cx.updateRoundAudio(22000);
+  }
 });
 
 test('DM has ten distinct participants, the requested names and a full five-minute live phase', () => {
