@@ -73,7 +73,7 @@ function entity(x = 0, z = 0) {
 
 test('the complete game script parses', () => new vm.Script(script));
 
-test('Aimbotz kills the old bot and immediately spawns a damageable replacement in place', () => {
+test('Aimbotz kills the old bot and immediately spawns a damageable replacement at a different spot', () => {
   const g = game(), cx = g.context;
   cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; cx.G.view.ph = 'practice';
   g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
@@ -100,10 +100,10 @@ test('Aimbotz kills the old bot and immediately spawns a damageable replacement 
   assert.equal(g.DM.actors[1], replacement);
   assert.equal(replacement.hp, 100);
   assert.equal(replacement.alive, true);
-  assert.deepEqual(Object.values(replacement.pos), original);
+  assert.notDeepEqual(Object.values(replacement.pos), original);
+  assert.ok(Math.hypot(replacement.pos.x-bot.pos.x,replacement.pos.z-bot.pos.z)>=2);
   assert.equal(g.DM.playerTargets[0].actor, bot.id);
-  const deaths = vm.runInContext('aimbotzDeaths', cx);
-  assert.equal(deaths[0], bot);
+  assert.equal(g.DM.playerTargets[0].min[0],replacement.pos.x-.15);
   // There is no invulnerability window or delay before hitting the replacement.
   cx.aimbotzHit(100, 'body', 'rifle', bot.id);
   assert.equal(replacement.alive, false);
@@ -111,13 +111,36 @@ test('Aimbotz kills the old bot and immediately spawns a damageable replacement 
   assert.equal(g.DM.byId.get(bot.id).hp, 100);
   assert.equal(g.DM.playerTargets.length, 3);
 
-  // Repeated kills keep both live target count and the death-effect pool bounded.
+  // Repeated kills keep the live target count constant.
   for (let i = 0; i < 30; i++) cx.aimbotzHit(100, 'body', 'rifle', bot.id);
-  assert.equal(deaths.length, 12);
   assert.equal(g.DM.actors.length, 2);
   assert.equal(g.DM.byId.size, 2);
-  cx.aimbotzSetup();
-  assert.equal(deaths.length, 0);
+});
+
+test('Aimbotz always changes spots without overlaps at every bot count and when adding bots again', () => {
+  for(const count of [1,8,12]){
+    const g=game(),cx=g.context;
+    cx.buildMap('aimbotz');cx.G.mode='aimbotz';g.spawnSelf(0,[0,-4,0]);cx.aimbotzSetup();cx.aimbotzSetBots(count);
+    const check=()=>{
+      assert.equal(g.DM.actors.length,count+1);
+      assert.equal(g.DM.playerTargets.length,count*3);
+      for(const bot of g.DM.actors.slice(1)){
+        assert.equal(bot.alive,true);assert.equal(bot.hp,100);
+        assert.equal(bot.pos.y,cx.groundAt(bot.pos.x,bot.pos.z));
+        assert.equal(g.overlapAny(bot.pos.x,bot.pos.y+.03,bot.pos.z,1.8),false);
+        for(const other of g.DM.actors)if(other!==bot)assert.ok(Math.hypot(bot.pos.x-other.pos.x,bot.pos.z-other.pos.z)>=1.4);
+      }
+    };
+    check();
+    for(let i=0;i<240;i++){
+      const old=g.DM.actors[1+i%count];
+      cx.aimbotzHit(100,'head','rifle',old.id);
+      const replacement=g.DM.byId.get(old.id);
+      assert.ok(Math.hypot(replacement.pos.x-old.pos.x,replacement.pos.z-old.pos.z)>=2);
+      check();
+    }
+    cx.aimbotzSetBots(1);cx.aimbotzSetBots(count);check();
+  }
 });
 
 test('every available weapon kills Aimbotz targets with actual shots or knife attacks', () => {
@@ -135,7 +158,7 @@ test('every available weapon kills Aimbotz targets with actual shots or knife at
   }
 });
 
-test('Aimbotz renders falling bodies separately from live targets and retires the effects', () => {
+test('Aimbotz renders only live targets at the new spots without a falling body', () => {
   const g = game(), cx = g.context;
   cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
   cx.aimbotzHit(100, 'head', 'rifle', g.DM.actors[1].id);
@@ -144,14 +167,16 @@ test('Aimbotz renders falling bodies separately from live targets and retires th
     setMatrixAt(i) { this.poses[i] = {...pose}; }, setColorAt() {}});
   const legs=mesh(),body=mesh(),head=mesh();
   g.DM.render = {meshes:[legs,body,head],legs,body,head,guns:{},color:{set(){}},
-    dummy:{position:new Vec(),rotation:{set(x,y,z){pose={tilt:z,yaw:y};}},scale:{set(){}},updateMatrix(){}}};
-  cx.dmRender(10180);
-  assert.equal(head.count, 9); // Eight live targets plus one falling body.
-  assert.equal(head.poses[0].tilt, 0);
-  assert.ok(head.poses[8].tilt > .5 && head.poses[8].tilt < 1);
-  cx.dmRender(10360);
-  assert.equal(head.count, 8);
-  assert.equal(vm.runInContext('aimbotzDeaths.length', cx), 0);
+    dummy:{position:new Vec(),rotation:{set(x,y,z){pose={tilt:z,yaw:y};}},scale:{set(){}},updateMatrix(){pose={...pose,x:this.position.x,z:this.position.z};}}};
+  for(const time of [10000,10180,10360]){
+    cx.dmRender(time);
+    assert.equal(head.count,8);
+    assert.equal(body.count,8);
+    assert.equal(legs.count,8);
+    assert.ok(head.poses.slice(0,head.count).every(p=>p.tilt===0));
+    assert.equal(head.poses[0].x,g.DM.actors[1].pos.x);
+    assert.equal(head.poses[0].z,g.DM.actors[1].pos.z);
+  }
 });
 
 test('AK-47 has exactly five percent less vertical and horizontal recoil across a full spray', () => {

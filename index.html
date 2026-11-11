@@ -2831,16 +2831,15 @@ function dmTick(dt,t){
 }
 function dmEnsureRender(){
   if(DM.render)return;
-  const meshes=[],dummy=new THREE.Object3D(),color=new THREE.Color(),capacity=ACTOR_CAP*2;
-  // Até 12 alvos vivos e 12 corpos de abates recentes no Aimbotz, nas mesmas chamadas de desenho.
+  const meshes=[],dummy=new THREE.Object3D(),color=new THREE.Color();
   // A cor por instância precisa ser alocada com a capacidade total ANTES de zerar `count`:
   // o three r128 dimensiona instanceColor por `count`, e um buffer vazio faz a GPU descartar o desenho (bots invisíveis).
   function pool(geometry, material) {
-    const mesh = new THREE.InstancedMesh(geometry, material.clone(), capacity);
+    const mesh = new THREE.InstancedMesh(geometry, material.clone(), ACTOR_CAP);
     mesh.layers.set(ACTOR_LAYER);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.frustumCulled = false;
-    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3).fill(1), 3);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ACTOR_CAP * 3).fill(1), 3);
     mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     mesh.count = 0;
     scene.add(mesh); meshes.push(mesh);
@@ -2865,7 +2864,7 @@ function meshesToGeometry(root){
 }
 function dmRender(t, dt = 0){
   const r=DM.render;if(!r)return;for(const mesh of r.meshes){mesh.count=0;mesh.visible=true;}
-  function put(mesh,b,offset=0,scaleY=1,flash=false,tilt=0){const d=r.dummy;d.position.set(b.pos.x,b.pos.y+offset,b.pos.z);d.rotation.set(0,b.yaw,tilt,'YXZ');d.scale.set(1,scaleY,1);if(flash){d.position.x+=Math.cos(b.yaw)*.16-Math.sin(b.yaw)*.7;d.position.y+=1.26;d.position.z-=Math.sin(b.yaw)*.16+Math.cos(b.yaw)*.7;d.rotation.z=t*.1;}d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
+  function put(mesh,b,offset=0,scaleY=1,flash=false){const d=r.dummy;d.position.set(b.pos.x,b.pos.y+offset,b.pos.z);d.rotation.set(0,b.yaw,0,'YXZ');d.scale.set(1,scaleY,1);if(flash){d.position.x+=Math.cos(b.yaw)*.16-Math.sin(b.yaw)*.7;d.position.y+=1.26;d.position.z-=Math.sin(b.yaw)*.16+Math.cos(b.yaw)*.7;d.rotation.z=t*.1;}d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
   for(const b of DM.actors){
     if(b===P||!b.alive)continue;
     const speed=b.remote?(b.speed||0):Math.hypot(b.vel.x,b.vel.z),bob=Math.min(1,speed/5)*Math.sin(t*.018+(b.index||0))*.025,ally=dmAllies(P,b);
@@ -2879,17 +2878,6 @@ function dmRender(t, dt = 0){
     if(t<b.safeUntil)put(r.protection,b,.025);if(ally)put(r.ally,b,upper);
     if(t<b.flashUntil&&W[held]&&!W[held].melee&&!W[held].silenced)put(r.flash,b,upper,1,true);
   }
-  if(G.mode==='aimbotz'){
-    for(let i=aimbotzDeaths.length-1;i>=0;i--){
-      const b=aimbotzDeaths[i],age=(t-b.deathT)/AIMBOTZ_DEATH_MS;
-      if(age>=1){aimbotzDeaths.splice(i,1);continue;}
-      const fall=clamp(age,0,1),tilt=fall*Math.PI*.49;
-      r.color.set(b.color);
-      for(const mesh of [r.legs,r.body,r.head]){
-        put(mesh,b,.18*fall,1,false,tilt);if(mesh!==r.head)mesh.setColorAt(mesh.count-1,r.color);
-      }
-    }
-  }
   for(const mesh of r.meshes){if(mesh.count)mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.visible=mesh.count>0;}
 }
 
@@ -2898,6 +2886,7 @@ const AIMBOTZ_SPAWN = [0, 9, 0];
 const AIMBOTZ_TARGETS = [
   [0,-4], [-4.2,2.7], [5.1,2], [-8.8,-8.4], [9,-7], [-3.2,-6],
   [3.1,-8.2], [-12.7,-6.2], [13,-6], [2.5,3.1], [-2.5,2.6], [1,-12],
+  ...[-11,-6,-1,4].flatMap(z => [-15,-10,-5,0,5,10,15].map(x => [x,z])),
 ];
 const AIMBOTZ_BOARD = { z: 13.96, y: 2.36, w: 8.4, h: 3.92, width: 960, height: 448 };
 const AIMBOTZ_BUTTONS = [
@@ -2909,14 +2898,21 @@ const AIMBOTZ_BUTTONS = [
   })),
 ];
 let aimbotzBoard = null;
-const AIMBOTZ_DEATH_MS = 360, aimbotzDeaths = [];
+
+function aimbotzSpawnSpot(previous = null, preferred = null) {
+  // Há mais spots que bots: mesmo com 12 alvos sempre sobra outro lugar livre.
+  const spots = AIMBOTZ_TARGETS.filter(([x,z]) =>
+    (!previous || Math.hypot(x-previous.pos.x,z-previous.pos.z) >= 2) &&
+    DM.actors.every(b => b === previous || Math.hypot(x-b.pos.x,z-b.pos.z) >= 1.4));
+  return preferred && spots.includes(preferred) ? preferred : spots[Math.floor(Math.random()*spots.length)];
+}
 
 function aimbotzSetBots(value) {
   const count = Number(value);
-  S.aimbotzBots = fin(count) ? clamp(Math.round(count), 1, AIMBOTZ_TARGETS.length) : DEFAULTS.aimbotzBots;
+  S.aimbotzBots = fin(count) ? clamp(Math.round(count), 1, ACTOR_CAP) : DEFAULTS.aimbotzBots;
   while (DM.actors.length > S.aimbotzBots + 1) DM.byId.delete(DM.actors.pop().id);
   for (let i = DM.actors.length - 1; i < S.aimbotzBots; i++) {
-    const [x, z] = AIMBOTZ_TARGETS[i];
+    const [x, z] = aimbotzSpawnSpot(null, AIMBOTZ_TARGETS[i]);
     const bot = {
       id: 'T' + (i + 1), pos: new V3(x, groundAt(x, z), z), vel: new V3(),
       yaw: Math.atan2(x, z - AIMBOTZ_SPAWN[1]), hp: 100, alive: true, onGround: true,
@@ -2932,7 +2928,6 @@ function aimbotzEquip(weapon) {
   selectWeapon(S.aimbotzWeapon);
 }
 function aimbotzSetup() {
-  aimbotzDeaths.length = 0;
   DM.actors.length = 0; DM.actors.push(P);
   DM.byId.clear(); DM.byId.set(P.id, P);
   aimbotzSetBots(S.aimbotzBots);
@@ -2944,11 +2939,10 @@ function aimbotzHit(damage, part, weapon, id) {
   target.hp = Math.max(0, target.hp - damage);
   AU.hit(part === 'head'); dmgNumber(damage, part === 'head');
   if (target.hp <= 0) {
-    target.alive = false; target.deathT = now();
-    if (aimbotzDeaths.length === ACTOR_CAP) aimbotzDeaths.shift();
-    aimbotzDeaths.push(target);
-    // O corpo deixa de receber tiros; o novo alvo nasce no mesmo ponto sem espera ou proteção.
-    const replacement = { ...target, pos: new V3().copy(target.pos), vel: new V3(), hp: 100, alive: true, deathT: 0 };
+    target.alive = false;
+    const [x,z] = aimbotzSpawnSpot(target);
+    const replacement = { ...target, pos: new V3(x,groundAt(x,z),z), vel: new V3(), hp: 100, alive: true,
+      yaw: Math.atan2(x-P.pos.x,z-P.pos.z) };
     DM.actors[DM.actors.indexOf(target)] = replacement; DM.byId.set(id, replacement);
     dmRefreshTargets();
     const score = stat(G.me);
@@ -2991,7 +2985,7 @@ function aimbotzDrawBoard() {
   ctx.fillText(S.aimbotzBots, 352, 130);
   for (const b of AIMBOTZ_BUTTONS) {
     const chosen = b.weapon === S.aimbotzWeapon;
-    const atLimit = b.count === -1 && S.aimbotzBots === 1 || b.count === 1 && S.aimbotzBots === AIMBOTZ_TARGETS.length;
+    const atLimit = b.count === -1 && S.aimbotzBots === 1 || b.count === 1 && S.aimbotzBots === ACTOR_CAP;
     ctx.fillStyle = chosen ? '#553a27' : '#232c39'; ctx.fillRect(b.x, b.y, b.w, b.h);
     ctx.strokeStyle = chosen ? accent : '#485568'; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
     ctx.fillStyle = atLimit ? '#727f8f' : chosen ? accent : '#f2f3f6';
@@ -3874,7 +3868,6 @@ function startSession(mode, opts = {}) {
 function leaveSession() {
   netStop();arenaNetStop();ARENA.net=false;closeBuy();dmStop();sleeveMat.color.set(pcolHex(S.pcol));G.mode = null; G.opp = null; H.st = null; oppGroup.visible = false;
   if (aimbotzBoard) aimbotzBoard.mesh.visible = false;
-  aimbotzDeaths.length = 0;
   $('dmResult').hidden=true;el.board.hidden=true;el.hud.classList.remove('dm');el.hud.hidden = true;configureLoadout();showMenu(true);applySettings();
   if (document.pointerLockElement) document.exitPointerLock();
 }

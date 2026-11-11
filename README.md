@@ -50,7 +50,7 @@ Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da trave
 
 ## Aimbotz
 
-Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados: ao morrer, o corpo cai e um novo alvo nasce imediatamente no mesmo ponto, já podendo receber tiros. Os corpos desaparecem em 0,36 s e usam as mesmas malhas instanciadas dos alvos. Vire para o quadro atrás do ponto inicial, mire e clique em **−** ou **+** para mudar a quantidade de bots, ou no nome da arma para equipá-la. A reserva de munição é ilimitada, com a recarga normal de cada arma.
+Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos. Vire para o quadro atrás do ponto inicial, mire e clique em **−** ou **+** para mudar a quantidade de bots, ou no nome da arma para equipá-la. A reserva de munição é ilimitada, com a recarga normal de cada arma.
 
 ## Arsenal (tecla B) e skins
 
