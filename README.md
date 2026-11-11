@@ -56,7 +56,7 @@ A habilidade fica na tecla **X**, com uma carga por rodada. Cada time recebe um 
 
 ### Mapas de bomba
 
-Os sites com o radar oficial não estavam acessíveis; as áreas vêm das notas de atualização do CS:GO e do autor de cada mapa.
+**Créditos:** os dois mapas são versões próprias, feitas por fãs, **inspiradas** em mapas de Wingman da comunidade do CS:GO: **Guard**, de **poLemin**, e **Elysion**, de **Big_SG21**. Não usam nenhum arquivo, geometria ou textura dos originais. A identidade e os nomes das áreas vêm das notas de atualização públicas do CS:GO e dos autores. Todo o crédito pelas ideias originais é deles.
 
 - **Guard (Praga):** bombsite A no cais à beira do rio, com as coberturas viradas para a ponte e para os arcos. Ponte Carlos com estátuas, torre da ponte, pit, lixeira, ladder hole, escada com meia parede e conector até o spawn da SWAT. Do lado dos Terroristas: restaurante, loja de vidro, bicicletas, caminhão e a obra. O rio tem água rasa e deixa mais lento.
 - **Elysion (39º andar):** spawn TR com a mesa da recepção, meio em dois níveis com as paredes de cascata, área externa com duas portas para o A, salão com obras de arte, bombsite A com a parede central, o letreiro ELYSION e o guarda-corpo das janelas, e a SWAT atrás da parede de vidro com o relógio.

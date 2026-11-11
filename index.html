@@ -1460,6 +1460,7 @@ function statue(B, x, z, y = 0, size = 1) {
 // escada com meia parede e o spawn da SWAT recuado. Do lado dos Terroristas: restaurante, loja de vidro,
 // bicicletas, caminhão e a obra bloqueada. O lado norte fica 2,4 m acima do cais.
 MAPS.guard = {
+  credit: 'Inspirado em Guard (poLemin), mapa de Wingman da comunidade do CS:GO. Versão própria, feita por fãs.',
   name: 'Guard', theme: 'praga', bomb: true, ax: 22, az: 26, spawn: { hx: 6, z0: 19, z1: 24 },
   water: [[-22, -2, 22, 4]],
   plant: { site: { x0: -1, z0: -8.6, x1: 13, z1: -2.6, lx: 10.5, lz: -6.2 }, t: [[-6, 22, 0], [-2.5, 23.8, 0], [1, 22, 0], [4.5, 23.8, 0], [-1, 20.5, 0]],
@@ -1528,6 +1529,7 @@ MAPS.guard = {
 // salão principal com obras de arte e o bombsite A com a parede central, o letreiro ELYSION e o guarda-corpo das
 // janelas; a SWAT atrás de uma parede de vidro com o relógio.
 MAPS.elysion = {
+  credit: 'Inspirado em Elysion (Big_SG21), mapa de Wingman da comunidade do CS:GO. Versão própria, feita por fãs.',
   name: 'Elysion', theme: 'elysion', bomb: true, ax: 20, az: 24, spawn: { hx: 6, z0: 19, z1: 23 },
   plant: { site: { x0: -11, z0: -22.5, x1: 1, z1: -12, lx: -2, lz: -20.5 }, t: [[-5, 20.5, 0], [-2, 22.3, 0], [2, 20.5, 0], [5, 22.3, 0], [0, 23, 0]],
     ct: [[13, -21.5, 3.9], [16, -19.5, 3.9], [11.5, -18.5, 3.9], [17, -22.5, 3.9], [14, -23, 3.9]] },
@@ -4170,6 +4172,7 @@ function bombBanner(d) {
   const mine = myTeam(), a = ARENA.sc[mine], b = ARENA.sc[1 - mine], side = sideOf(P);
   if (d.ph === 'freeze') {
     if (ARENA.halftime) banner('Troca de lado', 'Agora você é ' + SIDE_NAMES[side] + ' · ' + a + ' a ' + b, '', 3200);
+    else if (d.r === 1 && MAP.credit) banner('Rodada 1 · ' + SIDE_NAMES[side], MAP.credit, '', 3600);
     else banner('Rodada ' + d.r + ' · ' + SIDE_NAMES[side], side === 't' ? 'Plante a bomba no bombsite A · B abre a loja' : 'Defenda o bombsite A · B abre a loja', '', 2800);
 
   } else if (d.ph === 'live') banner('Valendo', BOMB.carrier === G.me ? 'Você está com a bomba (tecla 5)' : '', '', 1100);
@@ -5585,8 +5588,8 @@ const MAP_CARD_DETAILS = {
   dust2: 'Long, Meio e Túneis B',
   dmdeposito: 'Contêineres, passarelas e mirante',
   dmborgo: 'Ruelas, igreja e sacadas',
-  guard: 'Praga · ponte, torre e rio',
-  elysion: '39º andar · salão com cascata',
+  guard: 'Inspirado em Guard, de poLemin',
+  elysion: 'Inspirado em Elysion, de Big_SG21',
 };
 function mountMapCards(group, ids) {
   for (const id of ids) {
@@ -5642,7 +5645,7 @@ function syncLobbyPreview() {
   const title=MAPS[id]?.name||'Rotação',image=$('stageImage'),source='assets/menu/large/'+id+'.webp';
   if(image.getAttribute('src')!==source){image.srcset='assets/menu/'+id+'.webp 640w, '+source+' 2048w';image.src=source;}
   $('stageTitle').textContent=title;
-  $('stageDetail').textContent=practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
+  $('stageDetail').textContent=MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
   $('stageCode').textContent=(practice?'PRÁTICA':dm?'DEATHMATCH':bomb?'PLANT THE BOMB':'ARENA')+' // '+String(maps.indexOf(id)+1).padStart(2,'0');
   $('stageKind').textContent=practice?'Treino de mira':tdm?'Time contra time':dm?'Todos contra todos':bomb?'Terroristas x SWAT':mode==='1v1'?'Duelo de precisão':'Jogo em equipe';
   $('lobbyFormat').textContent=practice?S.aimbotzBots+' alvos':tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':bomb?'2 contra 2 · Wingman':mode==='xvx'?S.xvx.mine+' contra '+S.xvx.foes:mode==='2v2'?'2 contra 2':'1 contra 1';
