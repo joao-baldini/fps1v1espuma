@@ -340,6 +340,8 @@ button:disabled{opacity:.5;cursor:default}
 #clock{background:rgba(12,14,18,.9);padding:6px 16px;font:700 28px/1 var(--display);font-variant-numeric:tabular-nums;min-width:92px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
 #clock small{font:600 11px/1 var(--display);letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
 #clock.freeze b{color:var(--dev)} #clock.low b{color:var(--bad)}
+#clockBomb{display:block;line-height:0;color:#7d2a24}#clockBomb[hidden]{display:none}#clockBomb svg{width:48px;height:30px;transition:color .08s,filter .08s}#clockBomb .led{fill:#3a1513}
+#clockBomb.lit{color:#ff3b2a}#clockBomb.lit svg{filter:drop-shadow(0 0 6px #ff3b2a)}#clockBomb.lit .led{fill:#ffd2cc}
 #waitline{position:absolute;top:calc(68px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:rgba(12,14,18,.8);padding:7px 14px;font:600 16px/1.2 var(--display);letter-spacing:.04em;text-align:center;max-width:90vw}
 #waitline b{color:var(--dev)}
 #banner{position:absolute;top:24%;left:50%;transform:translateX(-50%);text-align:center;opacity:0;transition:opacity .2s;width:90vw}
@@ -405,7 +407,7 @@ button:disabled{opacity:.5;cursor:default}
   <div id="dmgdir"><i></i></div>
   <div id="topbar">
     <div class="side me"><span id="nmMe">Você</span><b id="scMe">0</b></div>
-    <div id="clock"><b id="clockT">–:––</b><small id="clockL">aquecimento</small></div>
+    <div id="clock"><b id="clockT">–:––</b><i id="clockBomb" hidden aria-label="Bomba plantada"><svg viewBox="0 0 48 30" aria-hidden="true"><rect x="3" y="3" width="42" height="7" rx="3.5" fill="currentColor"/><rect x="3" y="11.5" width="42" height="7" rx="3.5" fill="currentColor"/><rect x="3" y="20" width="42" height="7" rx="3.5" fill="currentColor"/><rect x="10" y="1.5" width="4" height="27" fill="#14171c" opacity=".55"/><rect x="34" y="1.5" width="4" height="27" fill="#14171c" opacity=".55"/><rect x="17" y="7" width="14" height="16" rx="2" fill="#14171c"/><circle class="led" cx="24" cy="15" r="3.2"/></svg></i><small id="clockL">aquecimento</small></div>
     <div class="side op"><b id="scOp">0</b><span id="nmOp">Oponente</span></div>
   </div>
   <div id="waitline" hidden></div>
@@ -2068,8 +2070,9 @@ const vmRoot = new THREE.Group(); vmRoot.scale.setScalar(0.5); vmScene.add(vmRoo
 const vmGuns = {}, vmFlash = {}, vmKnives = {};
 // Karambit: peças contínuas, curvas Bézier e eixo no centro do anel do indicador.
 // Pegada da karambit como no CS: indicador no anel, cabo atravessando o punho e garra saindo para o centro da tela, curvada para cima.
-const KH_ROT = [-1.2,-.25,-.1], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.18;
-const KARAMBIT_VIEW = { scale: 1.4, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.01,-.025], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
+// Pegada invertida: anel no indicador em cima do punho, cabo atravessando a mão e garra saindo por baixo, curvada para o centro da tela.
+const KH_ROT = [3.14,0,2.25], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.18;
+const KARAMBIT_VIEW = { scale: 1.4, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [.025,.05,-.02], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
 let karambitGeo = null;
 // Karambit no mesmo estilo das armas: cor chapada com sombreamento fixo por face (tons das caixas).
 const KNIFE_FACE_SHADE = [.80,.80,.80,.80,.80,.80,.70,.70,.70,.70,.70,.70,1,1,1,1,1,1,.50,.50,.50,.50,.50,.50,.90,.90,.90,.90,.90,.90,.62,.62,.62,.62,.62,.62];
@@ -2239,17 +2242,18 @@ const KARAMBIT_DRAW = [
 // Inspeção medida no vídeo do CS2 (3,0 s): levanta o punho (0–0,25 s), a faca vira no indicador com a lâmina
 // passando por cima (0,25–0,7 s), exibição com o punho em pé e a garra pendurada curvando para a esquerda
 // (0,85–2,1 s) e volta girando ao repouso.
+// Inspeção da pegada invertida: a mão sobe e gira um pouco para trás, mostrando a lateral da garra enquanto ela gira no anel.
 const KARAMBIT_INSPECT = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [.033,0,.03,0,.30,0,.10,0,0,0,0,0,0,0,0],
-  [.083,-.02,.12,-.02,1.0,-.2,.20,.8,0,0,0,0,0,0,0],
-  [.13,-.03,.16,-.02,1.1,-.2,.15,Math.PI/2,0,0,0,0,0,0,0],
-  [.18,-.035,.17,0,1.25,-.35,.08,2.4,0,0,0,0,0,0,0],
-  [.23,-.035,.18,.02,1.45,-.5,.03,3.6,0,0,0,0,0,0,0],
-  [.28,-.035,.19,.04,1.6,-.6,0,TAU-1.271,0,0,0,0,0,0,0],
-  [.70,-.035,.19,.04,1.6,-.6,0,TAU-1.271,0,0,0,0,0,0,0],
-  [.78,-.02,.10,.02,1.0,-.3,.10,5.9,0,0,0,0,0,0,0],
-  [.90,0,.02,0,.25,0,0,TAU-.05,0,0,0,0,0,0,0],
+  [.033,0,.03,0,-.075,0,.10,0,0,0,0,0,0,0,0],
+  [.083,-.02,.12,-.02,-.25,-.2,.20,.8,0,0,0,0,0,0,0],
+  [.13,-.03,.16,-.02,-.275,-.2,.15,Math.PI/2,0,0,0,0,0,0,0],
+  [.18,-.035,.17,0,-.3125,-.35,.08,2.4,0,0,0,0,0,0,0],
+  [.23,-.035,.18,.02,-.3625,-.5,.03,3.6,0,0,0,0,0,0,0],
+  [.28,-.035,.19,.04,-.4,-.6,0,TAU-1.271,0,0,0,0,0,0,0],
+  [.70,-.035,.19,.04,-.4,-.6,0,TAU-1.271,0,0,0,0,0,0,0],
+  [.78,-.02,.10,.02,-.25,-.3,.10,5.9,0,0,0,0,0,0,0],
+  [.90,0,.02,0,-.0625,0,0,TAU-.05,0,0,0,0,0,0,0],
   [1,0,0,0,0,0,0,TAU,0,0,0,0,0,0,0]
 ];
 const KARAMBIT_SLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.16,.02,.02,.02,.05,-.15,-.20,0,0,0,0,0,0,0,0],[.36,-.24,.04,-.14,-.25,.45,.70,0,0,0,0,0,0,0,0],[.62,-.14,0,-.07,-.13,.22,.36,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
@@ -2695,7 +2699,7 @@ function spawnSelf(side, spec) {
   const sp = spawnPoint(side ? 1 : 0, spec);
   P.pos.set(sp.x, sp.y, sp.z); P.vel.set(0, 0, 0); P.yaw = sp.yaw; P.pitch = 0;
   P.hp = 100; P.alive = true; P.crouch = false; P.duck = 0; P.duckSpeed = DUCK.ideal; P.wantDuck = false; P.h = H_STAND; P.eyeOff = EYE_STAND; P.onGround = true;
-  P.recoilP = P.recoilY = P.shots = P.spread = 0; P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null;
+  P.recoilP = P.recoilY = P.shots = P.spread = 0; P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null; P.nadePrep = P.nadePending = null; P.throwT = 0;
   refillAmmo(P);
   P.weapon = S.loadout[S.startSlot]; P.lastW = S.loadout.pistol;
   if(G.mode==='dm'){
@@ -2755,7 +2759,7 @@ function selectWeapon(k) {
   if (!ORDER.includes(k) || k === P.weapon || !P.alive) return;
   P.lastW = P.weapon; P.weapon = k; P.drawEnd = now() + W[k].draw; P.reloadEnd = 0; P.zoom = 0; P.shots = 0; applyFov();
   P.recoilP = P.recoilY = P.spread = P.kick = P.swing = 0;
-  P.inspT = 0; P.kAnim = null; P.knifeSide = 0; if (W[k].melee) beginKnifeAnimation('draw',now());
+  P.inspT = 0; P.kAnim = null; P.knifeSide = 0; P.nadePrep = null; if (W[k].melee) beginKnifeAnimation('draw',now());
 }
 function infiniteReserve() { return G.mode === 'dm' || G.mode === 'aimbotz'; }
 function infiniteMagazine() { return G.mode==='aimbotz' && S.aimbotzInfiniteAmmo; }
@@ -2936,7 +2940,7 @@ function updateWeapon(dt, t) {
     P.m1Press = P.m2Press = false; P.kick *= Math.exp(-dt * 10); return;
   }
   if (w.grenade) {
-    if (canAct && t >= P.nextFire && (P.m1Press || P.m2Press)) playerThrow(t, P.m1Press);
+    nadeInput(t, canAct);
     afterThrow(t); P.m1Press = P.m2Press = false; P.punch *= Math.exp(-dt * 10); return;
   }
   if (canAct && !w.melee && am.mag === 0 && am.res > 0 && t >= P.nextFire) startReload(t);
@@ -4047,11 +4051,31 @@ function smokeInside(x, y, z) {
   return k;
 }
 // Lançamento do jogador: clique esquerdo longe, direito perto; o ângulo sobe um pouco, como no CS.
-function playerThrow(t, far) {
-  const type = W[P.weapon].grenade; if (!type || !(P.nades && P.nades[type] > 0)) return false;
-  const pitch = P.pitch + (far ? .12 : .06) * (1 - Math.abs(P.pitch) / 1.6);
-  throwNade(P, type, eyePos(), P.yaw, pitch, far ? NADE.far : NADE.near, t, P.vel);
-  P.nades[type]--; P.nextFire = t + 900; P.throwT = t; P.afterThrow = t + 450; AU.swish();
+// Arremesso como no CS: apertar puxa o pino (o braço recua e fica armado enquanto o botão estiver apertado); soltar
+// começa o arremesso e a granada só sai da mão no meio do movimento. Botão esquerdo joga longe, direito joga perto
+// e os dois juntos jogam a meia distância.
+const NADE_THROW = { pin: 320, release: 150 };
+function nadeInput(t, canAct) {
+  const type = W[P.weapon].grenade, prep = P.nadePrep;
+  if (!prep && !P.nadePending && canAct && t >= P.nextFire && (P.m1Press || P.m2Press) && P.nades && P.nades[type] > 0) {
+    P.nadePrep = { at: t, type, m1: P.m1Press || P.m1, m2: P.m2Press || P.m2 }; AU.clink && AU.clink(.35, .2); return;
+  }
+  if (prep) {
+    if (!P.alive || P.weapon !== prep.type) { P.nadePrep = null; return; }
+    prep.m1 = prep.m1 || P.m1; prep.m2 = prep.m2 || P.m2;
+    // Solta quando nenhum botão está apertado e o pino já saiu.
+    if (!P.m1 && !P.m2 && t >= prep.at + NADE_THROW.pin) { P.nadePrep = null; P.nadePending = { type: prep.type, at: t + NADE_THROW.release, mode: prep.m1 && prep.m2 ? 'mid' : prep.m1 ? 'far' : 'near' }; P.throwT = t; P.nextFire = t + 900; AU.swish(); }
+  }
+  const pend = P.nadePending;
+  if (pend && t >= pend.at) { P.nadePending = null; if (P.alive) playerThrow(t, pend.mode, pend.type); }
+}
+function playerThrow(t, mode, type = W[P.weapon].grenade) {
+  if (mode === true) mode = 'far'; else if (mode === false) mode = 'near';
+  if (!type || !(P.nades && P.nades[type] > 0)) return false;
+  const lift = mode === 'far' ? .12 : mode === 'mid' ? .09 : .06, speed = mode === 'far' ? NADE.far : mode === 'mid' ? (NADE.far + NADE.near) / 2 : NADE.near;
+  const pitch = P.pitch + lift * (1 - Math.abs(P.pitch) / 1.6);
+  throwNade(P, type, eyePos(), P.yaw, pitch, speed, t, P.vel);
+  P.nades[type]--; P.nextFire = Math.max(P.nextFire || 0, t + 750); if (!P.throwT || t - P.throwT > 420) P.throwT = t - NADE_THROW.release; P.afterThrow = t + 320;
   return true;
 }
 // Depois do arremesso: continua com a mesma granada se sobrou, senão troca para outra granada ou a arma anterior.
@@ -4239,8 +4263,8 @@ function arenaApplyStats(st) {
 // Registro de abate (juiz, ou quem entrou ao receber o aviso): placar, killfeed, som da skin e recompensa do DM.
 function arenaRecordKill(killer, victim, w, hs) {
   if (DM.mode === 'team') { const key = ARENA.m + ':' + ARENA.r + ':' + victim; if (ARENA.killSeen.has(key)) return false; ARENA.killSeen.add(key); }
-  stat(victim).d++; stat(killer).k++; if (hs) stat(killer).hs++; DM.scoreVersion++;
-  addFeed(killer, victim, W[w] ? w : 'rifle', hs);
+  stat(victim).d++; if (killer !== victim) { stat(killer).k++; if (hs) stat(killer).hs++; } DM.scoreVersion++;
+  addFeed(killer, victim, W[w] || w === 'fall' ? w : 'rifle', hs);
   const v = DM.byId.get(victim);
   if (v) { v.alive = false; if (DM.mode === 'team') { v.deadRound = ARENA.r; if (v === P) P.respawnAt = Infinity; } else if (v.remote) v.dead = true; }
   if (ARENA.bomb && DM.mode === 'team') { const k = DM.byId.get(killer); if (k && v && k.team !== v.team) bombAddMoney(k, killReward(w)); }
@@ -4737,14 +4761,35 @@ function bombBotsAct(dt, t) {
     if (b.defuseUntil) { b.pos.x = b.holdAt.x; b.pos.z = b.holdAt.z; b.vel.set(0, b.vel.y, 0); if (t >= b.defuseUntil) { b.defuseUntil = 0; bombDefused(b, t); } }
   }
 }
+// Abismo (mapas convertidos, como o 39º andar do Elysion): quem cai do prédio morre depois de cerca de 2 s de queda.
+function worldKill(e, t, why = 'fall') {
+  if (!e || !e.alive) return;
+  e.hp = 0; e.alive = false; e.deathT = t; e.respawnAt = DM.mode === 'team' ? Infinity : t + DM_RESPAWN_MS; e.safeUntil = 0; e.vel.set(0, 0, 0); e.reloadEnd = 0; e.target = null;
+  if (e === P) { P.killedBy = { killer: e.id, w: why, h: false }; P.zoom = 0; P.m1 = P.m2 = P.m1Press = P.m2Press = false; P.nadePrep = P.nadePending = null; applyFov(); }
+  // O corpo (e a bomba, se estava com ela) fica no último chão firme, não no fundo do abismo.
+  if (e.lastGround) e.pos.set(e.lastGround.x, e.lastGround.y, e.lastGround.z);
+  if (DM.mode === 'team' && ARENA.bomb) bombOnDeath(e, t);
+  if (DM.mode === 'team' || ARENA.net) arenaOnDeath(e, e, why, false, t);
+  else { stat(e.id).d++; DM.scoreVersion++; addFeed(e.id, e.id, why, false); }
+}
+function fallTick(t) {
+  if (!sourceWorld || !fin(sourceWorld.floorMin)) return;
+  const limit = sourceWorld.floorMin - 22;
+  for (const e of DM.actors) {
+    if (!e.alive || e.remote) continue;
+    if (e.onGround && e.pos.y > sourceWorld.floorMin) { if (!e.lastGround) e.lastGround = { x: 0, y: 0, z: 0 }; e.lastGround.x = e.pos.x; e.lastGround.y = e.pos.y; e.lastGround.z = e.pos.z; }
+    else if (e.pos.y < limit) worldKill(e, t);
+  }
+}
 function bombTick(dt, t) {
+  fallTick(t);
   if (!ARENA.m) { if (t >= ARENA.startAt) bombNewMatch(t); return; }
   if (DM.phase === 'freeze' && t >= ARENA.roundEnd) { DM.phase = 'live'; ARENA.roundEnd = t + BOMB.roundMs; teamPublish(t); }
   else if (DM.phase === 'live') {
     const p = BOMB.planted;
     if (p && !p.defused && t >= p.t + BOMB.bombMs) bombExplode(t);
     else if (!p && t >= ARENA.roundEnd) bombEndRound(t, 1 - BOMB.tTeam, 'time');
-    if (p && !p.defused && !p.blown && t >= BOMB.beepAt) { const left = (p.t + BOMB.bombMs - t) / BOMB.bombMs, s = spat(p.x, p.z); AU.beep && AU.beep(s.v, s.pan, left < .2); BOMB.beepAt = t + 140 + 860 * left; }
+    if (p && !p.defused && !p.blown && t >= BOMB.beepAt) { const left = (p.t + BOMB.bombMs - t) / BOMB.bombMs, s = spat(p.x, p.z); AU.beep && AU.beep(s.v, s.pan, left < .2); BOMB.lastBeep = t; BOMB.beepAt = t + 140 + 860 * left; }
   } else if (DM.phase === 'end' && t >= ARENA.roundEnd) {
     const [a, b] = ARENA.sc;
     if (a >= BOMB.target || b >= BOMB.target || ARENA.r >= BOMB.maxRounds) { DM.phase = 'over'; ARENA.roundEnd = t + 10000; ARENA.win = a > b ? 0 : b > a ? 1 : null; teamPublish(t); }
@@ -5271,6 +5316,12 @@ function updateVM(dt, t) {
   const sw = Math.exp(-dt * 9); P.swayX *= sw; P.swayY *= sw;
   vmRoot.position.x -= P.swayX * .00005; vmRoot.position.y += P.swayY * .00005;
   vmRoot.rotation.set(P.kick * .04 + relK * .5 - drawK * .6 - P.swayY * .00012, VM_YAW[P.weapon] - P.swayX * .00012, 0);
+  if (w.grenade && P.nadePrep) {
+    // Pino puxado: o braço recua, sobe e fica armado atrás do ombro enquanto o botão estiver apertado.
+    const k = clamp((t - P.nadePrep.at) / NADE_THROW.pin, 0, 1), e = k * k * (3 - 2 * k), far = P.nadePrep.m1 && !P.nadePrep.m2;
+    vmRoot.position.y += e * (far ? .045 : .02); vmRoot.position.z += e * (far ? .09 : .05); vmRoot.position.x += e * .02;
+    vmRoot.rotation.x += e * (far ? .75 : .35); vmRoot.rotation.z -= e * .15;
+  }
   if (w.grenade && P.throwT) {
     // Arremesso: a mão vai para trás, joga para a frente e some até a próxima granada subir.
     const k = clamp((t - P.throwT) / 420, 0, 1), swing = Math.sin(k * Math.PI);
@@ -5300,7 +5351,7 @@ function updateVM(dt, t) {
 
 /* ================= HUD ================= */
 const el = { ability: $('ability'), abName: $('abName'), abIcon: $('abIcon'), abCd: $('abCd'), loc: $('loc'), bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
-  scMe: $('scMe'), scOp: $('scOp'), nmMe: $('nmMe'), nmOp: $('nmOp'), clock: $('clock'), clockT: $('clockT'), clockL: $('clockL'),
+  scMe: $('scMe'), scOp: $('scOp'), nmMe: $('nmMe'), nmOp: $('nmOp'), clock: $('clock'), clockT: $('clockT'), clockL: $('clockL'), clockBomb: $('clockBomb'),
   wait: $('waitline'), banner: $('banner'), bH: $('bH'), bP: $('bP'), feed: $('feed'), hpbox: $('hpbox'), hp: $('hp'),
   wname: $('wname'), ammo: $('ammo'), res: $('res'), fps: $('fps'), netst: $('netst'), board: $('board'), dead: $('deadmsg') };
 function setT(e, s) { if (e._v !== s) { e._v = s; e.textContent = s; } }
@@ -5345,7 +5396,7 @@ function flashRed() {
   el.red.style.transition = 'none'; el.red.style.opacity = 1;
   clearTimeout(redT); redT = setTimeout(() => { el.red.style.transition = 'opacity .5s'; el.red.style.opacity = 0; }, 80);
 }
-const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY', he: 'HE', flash: 'FLASH', smoke: 'SMOKE', c4: 'C4', medgun: 'ESTIMULANTE' };
+const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY', he: 'HE', flash: 'FLASH', smoke: 'SMOKE', c4: 'C4', medgun: 'ESTIMULANTE', fall: 'QUEDA' };
 function headshotIcon() {
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
   svg.setAttribute('viewBox','0 0 28 24');svg.setAttribute('role','img');svg.setAttribute('aria-label','Tiro na cabeça');
@@ -5362,7 +5413,7 @@ function addFeed(killer, victim, w, hs) {
   const a = document.createElement('span'); a.className = side(killer); a.textContent = nameOf(killer);
   const ww = document.createElement('span'); ww.className = 'w'; ww.textContent = WSHORT[w] || 'AK';
   const b = document.createElement('span'); b.className = side(victim); b.textContent = nameOf(victim);
-  d.append(a, ww);
+  if (killer === victim) d.append(ww); else d.append(a, ww);
   if (hs) { const h = document.createElement('span'); h.className = 'hs'; h.title='Tiro na cabeça';h.append(headshotIcon());d.append(h); }
   d.append(b);
   el.feed.prepend(d);
@@ -5446,13 +5497,17 @@ function updateHUD(dt, t) {
   else if (v.ph === 'over') { label = 'fim de jogo'; time = fmtTime(Math.max(0, v.endsAt - t)); }
   if(G.mode==='dm'){label=DM.phase==='freeze'?'prepare-se':DM.phase==='over'?(DM.tdm?'fim do TDM':'fim do DM'):(DM.tdm?'team deathmatch':'deathmatch');if(DM.phase==='over')time='0:00';}
   if (G.mode === 'aimbotz') { label = 'Aimbotz'; time = '∞'; }
+  let bombIcon = false;
   if (bombOn()) {
     const p = BOMB.planted;
     if (v.ph === 'freeze') label = 'compra · prepare-se';
-    else if (v.ph === 'live' && p && !p.defused && !p.blown) { label = 'bomba plantada'; time = fmtTime(Math.max(0, p.t + BOMB.bombMs - t)); cls = 'low'; }
+    // Como no CS e no Valorant: sem contagem; o ícone da C4 pisca junto com o bipe, cada vez mais rápido.
+    else if (v.ph === 'live' && p && !p.defused && !p.blown) { label = 'bomba plantada'; bombIcon = true; }
     else if (v.ph === 'live') label = 'rodada ' + v.r + '/' + BOMB.maxRounds;
   }
   setT(el.clockT, time); setT(el.clockL, label); if (el.clock.className !== cls) el.clock.className = cls;
+  setH(el.clockT, bombIcon); setH(el.clockBomb, !bombIcon);
+  if (bombIcon) el.clockBomb.classList.toggle('lit', t - (BOMB.lastBeep || 0) < 130);
   let wait = '';
   if (G.mode === 'online' && !G.opp) wait = 'Sala ' + NET.code + ' · esperando o oponente entrar com o mesmo código';
   if (G.mode === 'team' && ARENA.net && (!ARENA.m || DM.phase === 'freeze')) wait = 'Sala ' + teamLabel() + ' ' + ARENA.code + ' · ' + (ARENA.host ? arenaHumans().length + '/' + arenaCapacity() + ' pessoas · bots completam os times' : ARENA.netText);
@@ -5517,7 +5572,7 @@ function updateHUD(dt, t) {
   if (!P.alive && G.mode&&!(G.mode==='dm'&&DM.phase==='over')) {
     setH(el.dead, false);
     const kb = P.killedBy;
-    setT(el.dead, 'Você morreu' + (kb ? ' · ' + nameOf(G.mode==='dm'||G.mode==='team'?kb.killer:G.opp) + ' com ' + (WSHORT[kb.w] || 'AK') + (kb.h ? ' · HS' : '') : '')+(G.mode==='team'?' · aguarde a próxima rodada':'')+(G.mode==='dm'&&DM.phase!=='over'&&!fin(P.respawnAt)?' · aguardando o spawn':'')+(G.mode==='dm'&&DM.phase!=='over'&&fin(P.respawnAt)?' · respawn em '+Math.max(0,(P.respawnAt-t)/1000).toFixed(1)+' s':''));
+    setT(el.dead, 'Você morreu' + (kb && kb.w === 'fall' ? ' · caiu no abismo' : kb ? ' · ' + nameOf(G.mode==='dm'||G.mode==='team'?kb.killer:G.opp) + ' com ' + (WSHORT[kb.w] || 'AK') + (kb.h ? ' · HS' : '') : '')+(G.mode==='team'?' · aguarde a próxima rodada':'')+(G.mode==='dm'&&DM.phase!=='over'&&!fin(P.respawnAt)?' · aguardando o spawn':'')+(G.mode==='dm'&&DM.phase!=='over'&&fin(P.respawnAt)?' · respawn em '+Math.max(0,(P.respawnAt-t)/1000).toFixed(1)+' s':''));
   } else setH(el.dead, true);
 }
 

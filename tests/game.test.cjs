@@ -1212,14 +1212,29 @@ test('flash blinds who looks at it much longer than who turns away, and smoke hi
   assert.equal(vm.runInContext('seeLine([-8, 1.6, 30], [8, 1.6, 30])', cx), true);
   run(22000, 19000); assert.equal(N.clouds.length, 0);
 });
-test('throwing the last grenade switches back to a gun and removes the grenade slot', () => {
+test('grenades throw like CS: pressing pulls the pin and holds, releasing swings the arm and the grenade leaves mid-throw; the last one switches back to a gun', () => {
   const { g, cx } = nadeWorld();
   g.P.nades = { he: 1, flash: 0, smoke: 0 }; g.ORDER.splice(0, g.ORDER.length, 'rifle', 'pistol', 'knife', 'he');
-  g.selectWeapon('he'); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.m1Press = true;
+  g.selectWeapon('he'); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.m1Press = true; g.P.m1 = true;
+  const thrown = () => vm.runInContext('NADE.list.length', cx);
   g.updateWeapon(0, 30000);
-  assert.equal(g.P.nades.he, 0); assert.equal(vm.runInContext('NADE.list.length', cx), 1);
-  g.updateWeapon(0, 30500);
+  assert.equal(thrown(), 0, 'apertar só puxa o pino'); assert.ok(g.P.nadePrep);
+  g.updateWeapon(0, 31500); assert.equal(thrown(), 0, 'segurando, a granada fica na mão');
+  g.P.m1 = false; g.updateWeapon(0, 31600);
+  assert.equal(thrown(), 0, 'soltou: começa o arremesso'); assert.ok(g.P.nadePending);
+  g.updateWeapon(0, 31760);
+  assert.equal(g.P.nades.he, 0); assert.equal(thrown(), 1, 'sai da mão no meio do movimento');
+  g.updateWeapon(0, 32300);
   assert.notEqual(g.P.weapon, 'he'); assert.ok(!g.ORDER.includes('he')); assert.ok(g.ORDER.includes(g.P.weapon));
+});
+test('a quick click still waits for the pin, and both buttons throw at medium range', () => {
+  const { g, cx } = nadeWorld();
+  g.P.nades = { he: 0, flash: 2, smoke: 0 }; g.ORDER.splice(0, g.ORDER.length, 'rifle', 'pistol', 'knife', 'flash');
+  g.selectWeapon('flash'); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.m1Press = true; g.P.m1 = true; g.P.m2 = true;
+  g.updateWeapon(0, 40000); g.P.m1 = g.P.m2 = false; g.updateWeapon(0, 40050);
+  assert.ok(g.P.nadePrep && !g.P.nadePending, 'o pino ainda não saiu');
+  g.updateWeapon(0, 40330); assert.equal(g.P.nadePending.mode, 'mid');
+  g.updateWeapon(0, 40500); assert.equal(vm.runInContext('NADE.list.length', cx), 1);
 });
 
 function bombWorld(map = 'guard', setup) {
@@ -1606,4 +1621,19 @@ test('Plant the Bomb bots use their operator skills with the plan: Detector alar
   vm.runInContext(`botsUseAbilities(${t})`, cx);
   assert.ok(ev('ALARM.list.length') >= 1 && c1.ai.task === 'hold', 'alarme colocado na entrada e volta para a posição');
   assert.ok(t1.silentUntil > t, 'Ghost liga os passos mudos na entrada'); assert.ok(t2.toughUntil > t, 'Brutus liga a couraça na entrada');
+});
+test('falling into the Elysion abyss kills after the fall, counts as a death without giving anyone a kill, and drops the bomb', () => {
+  const { g, cx, step } = bombWorld('elysion');
+  const ev = s => vm.runInContext(s, cx);
+  let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500);
+  const floor = ev('sourceWorld.floorMin');
+  const bot = ev("DM.bots.find(b=>b.alive)"); ev(`BOMB.carrier=${JSON.stringify(bot.id)}`);
+  bot.onGround = true; vm.runInContext(`fallTick(${t})`, cx); const ledge = { x: bot.pos.x, y: bot.pos.y, z: bot.pos.z }; bot.onGround = false;
+  bot.pos.y = floor - 5; vm.runInContext(`fallTick(${t})`, cx); assert.equal(bot.alive, true, 'ainda caindo');
+  bot.pos.y = floor - 30; vm.runInContext(`fallTick(${t})`, cx);
+  assert.equal(bot.alive, false); assert.equal(ev(`stat(${JSON.stringify(bot.id)}).d`), 1); assert.equal(ev(`stat(${JSON.stringify(bot.id)}).k`), 0);
+  const d = ev('BOMB.dropped'); assert.ok(d, 'a bomba cai junto');
+  assert.ok(Math.hypot(d.x - ledge.x, d.z - ledge.z) < .5 && Math.abs(d.y - ledge.y) < 1, 'a bomba volta para o último chão firme');
+  g.P.pos.y = floor - 30; vm.runInContext(`fallTick(${t})`, cx);
+  assert.equal(g.P.alive, false); assert.equal(g.P.killedBy.w, 'fall');
 });
