@@ -1338,7 +1338,7 @@ test('operators: Finder reveals enemies inside a 20 m scan, Detector alarm hides
   assert.equal(g.DM.phase, 'live');
   const foes = g.DM.actors.filter(e => e.team !== g.P.team), ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team);
   for (const e of g.DM.actors) if (e !== g.P) { e.alive = true; }
-  assert.ok(g.DM.actors.every(e => ['finder', 'detector', 'doctor', 'ghost'].includes(e.op)));
+  assert.ok(g.DM.actors.every(e => ['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(e.op)));
   assert.notEqual(ally.op, g.P.op);
   // Finder
   g.P.op = 'finder'; g.P.charges = 1; g.P.alive = true;
@@ -1451,4 +1451,28 @@ test('ability HUD: each operator has an icon; ready, active countdown, and coold
   assert.equal(state(t).state, 'ready');
   cx.useAbility(t); assert.deepEqual(JSON.parse(JSON.stringify(state(t + 1200))), { state: 'active', s: 4 });
   const cd = state(t + 5100); assert.equal(cd.state, 'cd'); assert.ok(cd.s >= 5, 'conta até a próxima rodada: ' + cd.s);
+});
+test('operators: 45 s cooldown after use, back at the start of each round', () => {
+  const { g, cx, step } = bombWorld();
+  let t = step(10000, 11500);
+  g.P.op = 'ghost'; g.P.charges = 1; g.P.alive = true;
+  cx.useAbility(t); assert.equal(g.P.charges, 0); assert.equal(g.P.cdUntil, t + 45000);
+  const state = t2 => JSON.parse(JSON.stringify(vm.runInContext(`abilityState(${t2})`, cx)));
+  assert.deepEqual(state(t + 6000), { state: 'cd', s: 39 });
+  vm.runInContext(`opsCooldownTick(${t + 44900})`, cx); assert.equal(g.P.charges, 0);
+  vm.runInContext(`opsCooldownTick(${t + 45000})`, cx); assert.equal(g.P.charges, 1); assert.equal(state(t + 45000).state, 'ready');
+  cx.useAbility(t + 46000); vm.runInContext('opsResetRound()', cx); assert.equal(g.P.charges, 1); assert.equal(g.P.cdUntil, 0);
+});
+test('Brutus: 10% less damage for 5 s except headshots, then back to normal', () => {
+  const { g, cx, step } = bombWorld();
+  let t = step(10000, 11500);
+  const foe = g.DM.actors.find(e => e.team !== g.P.team);
+  g.P.op = 'brutus'; g.P.charges = 1; g.P.alive = true; g.P.armor = 0; g.P.hp = 100;
+  cx.useAbility(t); assert.equal(g.P.toughUntil, t + 5000); assert.equal(g.P.charges, 0);
+  assert.equal(cx.dmDamage(g.P, 30, 'body', 'rifle', foe, t + 100), 27);
+  assert.equal(cx.dmDamage(g.P, 30, 'head', 'rifle', foe, t + 200), 30, 'headshot não reduz');
+  g.P.hp = 100; assert.equal(cx.dmDamage(g.P, 30, 'body', 'rifle', foe, t + 5100), 30, 'acabou o efeito');
+  // Bot Brutus liga ao entrar em combate.
+  const bot = g.DM.bots.find(b => b.team === foe.team); bot.op = 'brutus'; bot.charges = 1; bot.alive = true; bot.seen = true;
+  vm.runInContext(`botsUseAbilities(${t + 5200})`, cx); assert.ok(bot.toughUntil > t + 5200);
 });

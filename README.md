@@ -47,16 +47,19 @@ Terroristas (ataque) contra SWAT (defesa), com as regras do modo Wingman do CS. 
 
 ### Operadores
 
-A habilidade fica na tecla **X**, com uma carga por rodada. Os operadores de um mesmo time são sempre diferentes; os bots sorteiam entre os que sobram.
+A habilidade fica na tecla **X**. Depois de usada, ela recarrega em 45 s e volta pronta no começo de cada rodada. Os operadores de um mesmo time são sempre diferentes; os bots sorteiam entre os que sobram.
 
-O ícone da habilidade fica no centro, embaixo: drone (Finder), cruz de cura (Doctor), mão fazendo "shh" (Ghost) e sirene de alarme (Detector). Disponível, ele fica branco e contornado. Durante o efeito do Ghost, ganha a cor do operador com os segundos restantes. Depois de usada, fica esmaecido com a contagem em segundos até a carga voltar na próxima rodada.
+O ícone da habilidade fica no centro, embaixo: drone (Finder), cruz de cura (Doctor), mão fazendo "shh" (Ghost), escudo (Brutus) e sirene de alarme (Detector). Disponível, ele fica branco e contornado. Durante o efeito do Ghost ou do Brutus, ganha a cor do operador com os segundos restantes. Depois, fica esmaecido com a contagem do cooldown e dá um aviso sonoro quando volta.
+
+Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os passos estão mudos. O Brutus solta um "HAHA" com borda amarela enquanto a couraça dura. As vozes são ouvidas por quem está perto. A varredura do Finder tem som de scan, com pings quando pega alguém, e quem é escaneado também ouve. O alarme do Detector mostra "Armadilha acionada" na tela (laranja para o time do Detector, vermelho para quem pisou). Quem recebe a cura do Doctor vê um pulso verde nas bordas.
 
 | Operador | Habilidade | Visual |
 |---|---|---|
 | Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro. Após um pulso, mostra uma silhueta vermelha parada onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |
 | Doctor | Saca uma pistola de cura estimulante: botão esquerdo atira um dardo no aliado da mira, botão direito aplica em você. Cura 50 de vida (até 100). Errar o dardo não gasta a carga; X de novo guarda a pistola. Bots curam a si ou um aliado próximo abaixo de 50 de vida | Cruz verde no peito e maleta branca com cruz vermelha nas costas |
 | Ghost | Por 5 s seus passos ficam mudos: ninguém escuta você andando ou correndo e os bots não reagem ao barulho. O HUD mostra o tempo restante. Bots Terroristas usam perto do bomb antes de plantar; bots CT usam depois que a bomba é plantada | Capuz escuro com máscara e faixa roxas |
-| Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Quem chega a 3,2 m faz ele apitar, aparece como silhueta vermelha no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
+| Brutus | Couraça: por 5 s recebe 10% menos dano, exceto de headshots. Bots ligam ao entrar numa troca de tiros | Ombreiras amarelas, placa no peito com divisa e protetor de queixo |
+| Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Só um alarme por vez: colocar outro desfaz o anterior. Quem chega a 3,2 m faz ele apitar, aparece como silhueta vermelha no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
 
 ### Mapas de bomba
 
