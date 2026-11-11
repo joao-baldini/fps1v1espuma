@@ -73,6 +73,154 @@ function entity(x = 0, z = 0) {
 
 test('the complete game script parses', () => new vm.Script(script));
 
+test('only exact KQLY snaps a real shot to a head through walls, consuming normal ammo', () => {
+  for(const name of ['KQLY','kqly','Kqly',' KQLY','KQLY ','forsaken','Jogador']){
+    const g=game({name}),cx=g.context;
+    g.spawnSelf(0,[0,0,0]);g.botSpawn(1,[8,-12,0]);g.BOT.helmet=true;
+    cx.OPP.cur={x:8,y:0,z:-12,a:1,c:0,helmet:true};
+    cx.boxes.push({min:[-30,0,-5],max:[30,5,-4]});
+    g.P.yaw=g.P.pitch=0;
+    const ammo=g.P.ammo.rifle.mag;
+    assert.equal(g.BOT.hp,100);
+    g.shoot(12000,false);
+    assert.equal(g.P.ammo.rifle.mag,ammo-1,name);
+    if(name==='KQLY'){
+      assert.equal(g.BOT.alive,false);
+      assert.equal(g.P.recoilP,0);assert.equal(g.P.recoilY,0);
+      assert.ok(Math.abs(g.P.yaw-Math.atan2(-8,12))<1e-12);
+      assert.ok(g.events.some(e=>e.topic==='dead'&&e.data.h===1));
+    }else{
+      assert.equal(g.BOT.hp,100,name);
+      assert.equal(g.P.yaw,0,name);assert.equal(g.P.pitch,0,name);
+    }
+  }
+});
+
+test('KQLY picks the closest angular head and ignores allies, corpses and protected spawns', () => {
+  const g=game({name:'KQLY'}),cx=g.context;
+  cx.G.mode='team';g.DM.mode='team';g.spawnSelf(0,[0,0,0]);g.P.team=0;
+  const actor=(id,x,z,opts={})=>({id,pos:new Vec(x,0,z),alive:true,team:1,...opts});
+  const far=actor('far',.25,-20),near=actor('near',3,-5);
+  g.DM.actors=[g.P,actor('ally',0,-3,{team:0}),actor('dead',0,-6,{alive:false}),
+    actor('safe',0,-8,{safeUntil:20000}),near,far];
+  g.P.yaw=g.P.pitch=0;
+  assert.equal(cx.aimbotTarget(cx.eyePos(),10000).actor,'far');
+  assert.equal(g.P.yaw,0); // Choosing a candidate alone never changes the camera.
+  far.pos.y=3;far.crouch=true;
+  g.P.pitch=Math.atan2(3+1.15-.14-g.P.eyeOff,20);g.P.recoilY=.1;g.P.yaw=-.045;
+  const aim=cx.aimbotTarget(cx.eyePos(),10000);
+  assert.equal(aim.actor,'far');assert.ok(Math.abs(aim.point[1]-4.01)<1e-12);
+  far.alive=near.alive=false;
+  assert.equal(cx.aimbotTarget(cx.eyePos(),10000),null);
+});
+
+test('KQLY leaves empty shots and knives alone and sends headshot damage in online duels', () => {
+  const g=game({name:'KQLY'}),cx=g.context;
+  g.spawnSelf(0,[0,0,0]);g.botSpawn(1,[8,-12,0]);g.P.yaw=g.P.pitch=0;
+  g.P.ammo.rifle.mag=0;g.shoot(12000,false);
+  assert.equal(g.P.yaw,0);assert.equal(g.BOT.hp,100);
+  g.selectWeapon('knife');g.shoot(13000,false);
+  assert.equal(g.P.yaw,0);assert.equal(g.BOT.hp,100);
+  cx.G.mode='online';cx.G.view.ph='live';
+  cx.OPP.cur={x:8,y:2,z:-12,c:1,a:1,helmet:false};
+  cx.boxes.push({min:[-20,0,-5],max:[20,6,-4]});
+  g.selectWeapon('rifle');g.P.ammo.rifle.mag=30;g.shoot(15000,false);
+  const hit=g.events.findLast(e=>e.topic==='hit');
+  assert.ok(hit);assert.equal(hit.data.p,'head');assert.equal(hit.data.w,'rifle');
+  assert.ok(hit.data.d>=100);
+  cx.OPP.cur.a=0;
+  assert.equal(cx.aimbotTarget(cx.eyePos(),15000),null);
+});
+
+test('KQLY deals head damage to the selected actor in DM, teams and Aimbotz', () => {
+  for(const mode of ['dm','team','aimbotz']){
+    const g=game({name:'KQLY'}),cx=g.context;
+    cx.buildMap('aimbotz');g.spawnSelf(0,[0,9,0]);cx.G.mode='aimbotz';cx.aimbotzSetup();
+    cx.aimbotzSetBots(2);cx.G.mode=mode;cx.G.view.ph='live';
+    g.DM.mode=mode==='team'?'team':'dm';g.DM.active=true;g.DM.phase='live';g.DM.endsAt=100000;
+    const [target,other]=g.DM.actors.slice(1);g.P.team=0;target.team=1;other.team=mode==='team'?0:1;
+    target.pos.set(4,0,-4);other.pos.set(-7,0,-4);target.hp=200;target.helmet=true;
+    g.dmRefreshTargets();g.P.yaw=g.P.pitch=0;
+    cx.boxes.push({min:[-20,0,5],max:[20,5,6]});
+    g.shoot(12000,false);
+    assert.equal(target.hp,200-g.damageFor(g.W.rifle,'head',true,Math.hypot(4,13,.26)),mode);
+    assert.equal(other.hp,100,mode);
+  }
+});
+
+test('scope input keeps its timing gates and passes weapon, skin and zoom level to audio', () => {
+  const g=game(),cx=g.context,events=[];
+  cx.AU=new Proxy({}, {get:(_,key)=>(...args)=>{if(key==='scope')events.push(args);}});
+  g.P.weapon='sniper';g.P.alive=true;g.P.drawEnd=11000;
+  assert.equal(cx.toggleScope(10000),false);assert.equal(events.length,0);
+  g.P.drawEnd=0;
+  for(const level of [1,2,0]){assert.equal(cx.toggleScope(12000),true);assert.equal(g.P.zoom,level);}
+  assert.deepEqual(events.map(e=>e[2]),[1,2,0]);
+  g.S.skins.sniper='neon';cx.toggleScope(13000);assert.equal(events.at(-1)[1],'neon');
+  g.P.reloadEnd=14000;assert.equal(cx.toggleScope(13500),false);
+});
+
+test('AWP has ten rounds and scope stays closed until reload finishes, including the empty-magazine frame', () => {
+  const g=game(),cx=g.context;
+  assert.equal(g.W.sniper.mag,10);
+  for(const weapon of ['sniper','ssg']){
+    g.P.weapon=weapon;g.P.drawEnd=0;g.P.alive=true;g.P.reloadEnd=0;g.P.zoom=2;
+    g.P.ammo[weapon]={mag:0,res:30};g.startReload(20000);
+    const end=g.P.reloadEnd;
+    assert.equal(g.P.zoom,0);
+    for(const t of [20000,end-100,end-1]){assert.equal(cx.toggleScope(t),false);assert.equal(g.P.zoom,0);}
+    g.P.zoom=1;g.updateWeapon(0,end-1);assert.equal(g.P.zoom,0);
+    assert.equal(cx.toggleScope(end),true);assert.equal(g.P.zoom,1);
+    assert.equal(g.P.ammo[weapon].mag,10);assert.equal(g.P.ammo[weapon].res,20);assert.equal(g.P.reloadEnd,0);
+    g.updateWeapon(0,end);assert.equal(g.P.ammo[weapon].res,20);
+    g.P.zoom=0;g.P.ammo[weapon].mag=0;
+    assert.equal(cx.toggleScope(end+1000),false);
+    assert.equal(g.P.zoom,0);assert.ok(g.P.reloadEnd>end+1000);
+  }
+});
+
+test('AWP and headshots use lightweight synthesis and retain skin sounds without loading MP3', () => {
+  const cx=vm.createContext({S:{},SKINS:{neon:{}},Math});
+  vm.runInContext(section('const AU =','/* ================= Viewmodel'),cx);
+  const au=vm.runInContext('AU',cx),events=[];
+  for(const kind of ['tone','noise','skinShot'])au[kind]=(...args)=>events.push({kind,args});
+  au.shot('sniper',1,.25,'padrao');
+  assert.ok(events.some(e=>e.kind==='tone'&&e.args[0]<70));
+  assert.ok(events.some(e=>e.kind==='noise'&&e.args[1]===1050));
+  events.length=0;au.shot('sniper',1,.25,'neon');
+  assert.equal(events.length,1);assert.equal(events[0].kind,'skinShot');
+  events.length=0;au.hit(true,true,'padrao');const helmet=events.map(e=>e.args[0]);
+  events.length=0;au.hit(true,false,'padrao');assert.notDeepEqual(events.map(e=>e.args[0]),helmet);
+  events.length=0;au.hit(true,true,'neon');
+  assert.equal(events.length,1);assert.equal(events[0].args[0],1500);
+  assert.equal(au.loadSamples,undefined);assert.ok(!html.includes('<script src="assets/audio/'));
+  for(const name of ['awp-shot','awp-scope','headshot-no-helmet-1','headshot-no-helmet-2','headshot-no-helmet-pitched','headshot-helmet-1','headshot-helmet-2']){
+    assert.ok(readFileSync(resolve(__dirname,'../assets/audio/'+name+'.mp3')).length>1000);
+  }
+});
+
+test('detailed AWP and imported M4A4 stay within a small triangle budget and support every skin', () => {
+  const g=game(),cx=g.context;
+  cx.THREE.Color=class {
+    constructor(hex){this.setHex(hex||0);}
+    setHex(hex){this.r=(hex>>16&255)/255;this.g=(hex>>8&255)/255;this.b=(hex&255)/255;return this;}
+    getHSL(out){out.l=(Math.max(this.r,this.g,this.b)+Math.min(this.r,this.g,this.b))/2;return out;}
+  };
+  cx.basicMat={};cx.geoFrom=out=>out;
+  vm.runInContext(section('const FACES =','function geoFrom'),cx);
+  vm.runInContext(section('function weaponMesh(','/* ================= Mapas'),cx);
+  vm.runInContext(section('const GUNS =','const ARMS ='),cx);
+  const guns=vm.runInContext('GUNS',cx);
+  for(const key of ['sniper','m4a4'])for(const skin of ['padrao','neon','brasa','glacial']){
+    const model=cx.boxModel(cx.skinPartsFor(key,skin,guns[key])),geo=model.geometry;
+    assert.ok(geo.p.every(Number.isFinite));assert.ok(geo.n.every(Number.isFinite));assert.ok(geo.c.every(Number.isFinite));
+    assert.equal(geo.p.length,geo.n.length);assert.equal(geo.p.length,geo.c.length);
+    assert.ok(geo.p.length/9<1400,key+' '+skin);
+    if(key==='m4a4'&&skin==='padrao')assert.equal(geo.p.length/9,1024);
+    for(let i=0;i<geo.n.length;i+=3)assert.ok(Math.abs(Math.hypot(geo.n[i],geo.n[i+1],geo.n[i+2])-1)<1e-8);
+  }
+});
+
 test('Aimbotz kills the old bot and immediately spawns a damageable replacement at a different spot', () => {
   const g = game(), cx = g.context;
   cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; cx.G.view.ph = 'practice';

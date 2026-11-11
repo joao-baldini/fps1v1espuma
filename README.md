@@ -1,6 +1,6 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo e dois mapas de DM. O menu usa prévias dos mapas em WebP.
+FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo e quatro mapas de DM. O menu usa prévias dos mapas em WebP.
 
 ## Modos de jogo
 
@@ -53,6 +53,10 @@ Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e
 Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos. Vire para o quadro atrás do ponto inicial, mire e clique em **−** ou **+** para mudar a quantidade de bots, ou no nome da arma para equipá-la. A reserva de munição é ilimitada, com a recarga normal de cada arma.
 
 ## Arsenal (tecla B) e skins
+
+O apelido exato `KQLY` ativa o aimbot para armas de fogo em todos os modos. Cada disparo escolhe a cabeça mais próxima da direção visível da mira, inclusive atrás de paredes, respeitando altura e agachamento. Aliados, mortos e alvos com proteção de spawn são ignorados; em empate angular, vence o mais próximo. Não há ajuste sem disparar, ao atirar sem munição ou ao usar facas. Trocar o apelido desativa a função.
+
+A AWP padrão usa um estampido sintetizado mais grave, mantendo o estilo do jogo. Os headshots padrão também são sintetizados, com um toque metálico para capacete. As skins mantêm seus sons. Os MP3 do experimento ficam guardados em [assets/audio](assets/audio/README.md), sem carregar ou tocar durante o jogo.
 
 Durante a partida, aperte **B** para abrir o arsenal: uma grade com as armas por categoria (pistolas, rifles, precisão, facas), no estilo do Valorant. O mouse continua travado e move um cursor próprio; clique numa arma para equipá-la na hora (ela passa a valer também nas próximas rodadas). Você continua podendo andar com o arsenal aberto. **B** ou **Esc** fecha. No DM, as armas fora da categoria da partida ficam desativadas. Fora da partida, use **Abrir arsenal** na aba **Armas**.
 
@@ -125,13 +129,15 @@ No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
 | M4A1-S | 38 | 132 / 100 | 20 |
 | Desert Eagle | 40 | 212 / 198 | 7 |
 | USP-S | 35 | 140 / 71 | 12 |
-| AWP | 115 | 460 / 449 | 5 |
+| AWP | 115 | 460 / 449 | 10 |
 | SSG 08 | 88 | 352 / 299 | 10 |
 | Karambit / Butterfly | 40 / 65 | — | — |
 
 Valores de perto. M4A4 e M4A1-S matam com um headshot até 35 metros, inclusive com capacete. Acima dessa distância, o dano na cabeça com capacete é 92.
 
 ## Movimento e precisão
+
+A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante em que a recarga termina, a munição é atualizada antes de liberar a luneta, sem precisar esperar outro quadro.
 
 Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%. A luneta usa a velocidade própria da AWP ou da Scout.
 
