@@ -47,11 +47,12 @@ Terroristas (ataque) contra SWAT (defesa), com as regras do modo Wingman do CS. 
 
 ### Operadores
 
-A habilidade fica na tecla **X**, com uma carga por rodada. Cada time recebe um de cada.
+A habilidade fica na tecla **X**, com uma carga por rodada. Os operadores de um mesmo time são sempre diferentes; os bots sorteiam entre os que sobram.
 
 | Operador | Habilidade | Visual |
 |---|---|---|
 | Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro. Após um pulso, mostra uma silhueta vermelha parada onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |
+| Doctor | Saca uma pistola de cura estimulante: botão esquerdo atira um dardo no aliado da mira, botão direito aplica em você. Cura 50 de vida (até 100). Errar o dardo não gasta a carga; X de novo guarda a pistola. Bots curam a si ou um aliado próximo abaixo de 50 de vida | Cruz verde no peito e maleta branca com cruz vermelha nas costas |
 | Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Quem chega a 3,2 m faz ele apitar, aparece como silhueta vermelha no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
 
 ### Mapas de bomba

@@ -407,7 +407,7 @@ test('Aimbotz board controls match their visible positions and select only guns 
       g.selectWeapon(b.weapon);assert.equal(g.P.weapon,b.weapon);
     }
   }
-  assert.equal(buttons.filter(b => b.weapon).length, Object.values(g.W).filter(w=>!w.melee&&!w.grenade&&!w.bomb).length);
+  assert.equal(buttons.filter(b => b.weapon).length, Object.values(g.W).filter(w=>!w.melee&&!w.grenade&&!w.bomb&&!w.medgun).length);
   assert.ok(buttons.every(b=>!b.weapon||!g.W[b.weapon].melee));
   for(const invalid of ['knife','butterfly','invalid']){cx.aimbotzEquip(invalid);assert.equal(g.S.aimbotzWeapon,'rifle');assert.equal(g.ORDER.length,2);}
   assert.equal(cx.aimbotzButtonAt(from, [0, 0, -1]), null);
@@ -418,7 +418,7 @@ test('Aimbotz infinite magazines cancel a reload, keep every gun full, and stay 
   assert.equal(cx.infiniteMagazine(),false);
   g.P.ammo.rifle.mag=0;cx.startReload(11000);assert.ok(g.P.reloadEnd>11000);
   cx.aimbotzSetInfiniteAmmo(true);assert.equal(g.P.reloadEnd,0);
-  for(const weapon of Object.keys(g.W).filter(k=>!g.W[k].melee&&!g.W[k].grenade&&!g.W[k].bomb)){
+  for(const weapon of Object.keys(g.W).filter(k=>!g.W[k].melee&&!g.W[k].grenade&&!g.W[k].bomb&&!g.W[k].medgun)){
     cx.aimbotzEquip(weapon);const w=g.W[weapon];
     for(let n=0;n<w.mag*3;n++){
       g.shoot(15000+n*w.rof,false);assert.equal(g.P.ammo[weapon].mag,w.mag);assert.equal(g.P.nextFire,15000+(n+1)*w.rof);
@@ -754,7 +754,7 @@ test('collisions still block walls, land on boxes, and climb ramps', () => {
 
 test('all seven bot weapons use the selected ammo, reload time, fire rate and damage identity', () => {
   const g = game();
-  for (const key of Object.keys(g.W).filter(k => !g.W[k].melee && !g.W[k].grenade && !g.W[k].bomb)) {
+  for (const key of Object.keys(g.W).filter(k => !g.W[k].melee && !g.W[k].grenade && !g.W[k].bomb && !g.W[k].medgun)) {
     g.context.G.view.ph = 'freeze';
     g.S.botWeapon = key; g.S.botHelmet = false; g.botSpawn(1);
     assert.equal(g.BOT.w, key); assert.equal(g.BOT.helmet, false);
@@ -1338,7 +1338,7 @@ test('operators: Finder reveals enemies inside a 20 m scan, Detector alarm hides
   assert.equal(g.DM.phase, 'live');
   const foes = g.DM.actors.filter(e => e.team !== g.P.team), ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team);
   for (const e of g.DM.actors) if (e !== g.P) { e.alive = true; }
-  assert.ok(g.DM.actors.every(e => e.op === 'finder' || e.op === 'detector'));
+  assert.ok(g.DM.actors.every(e => ['finder', 'detector', 'doctor'].includes(e.op)));
   assert.notEqual(ally.op, g.P.op);
   // Finder
   g.P.op = 'finder'; g.P.charges = 1; g.P.alive = true;
@@ -1396,4 +1396,24 @@ test('Wingman loss bonus: $2,000 +$300 per consecutive loss up to $2,900, +$600 
   for (const e of g.DM.actors) e.money = 0; g.DM.phase = 'live'; cx.bombEndRound(t, ct, 'defuse');
   assert.equal(g.DM.actors.find(e => e.team === ct).money, 3000);
   assert.equal(g.DM.actors.find(e => e.team === tTeam).money, 2000, 'bônus voltou ao início depois da vitória');
+});
+test('Doctor: left click heals the ally in the crosshair, right click heals yourself, +50 up to 100, a miss keeps the charge', () => {
+  const { g, cx, step } = bombWorld();
+  let t = step(10000, 11500);
+  const ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team);
+  g.P.op = 'doctor'; g.P.charges = 1; g.P.hp = 100;
+  g.P.pos.set(0, 0, 10); g.P.yaw = 0; g.P.pitch = 0; ally.alive = true; ally.hp = 30; ally.pos.set(0, 0, 0);
+  for (const e of g.DM.actors) if (e.team !== g.P.team) e.pos.set(30, 0, 30);
+  cx.useAbility(t); assert.equal(g.P.weapon, 'medgun'); g.P.drawEnd = 0; g.P.nextFire = 0;
+  // erra (mira para cima): não gasta a carga
+  g.P.pitch = 1.2; g.P.m1Press = true; g.updateWeapon(0, t + 10); assert.equal(g.P.charges, 1); assert.equal(ally.hp, 30);
+  g.P.pitch = Math.atan2(1.2 - 1.64, 10); g.P.nextFire = 0; g.P.m1Press = true; g.updateWeapon(0, t + 20);
+  assert.equal(ally.hp, 80); assert.equal(g.P.charges, 0);
+  g.updateWeapon(0, t + 400); assert.notEqual(g.P.weapon, 'medgun'); assert.ok(!g.ORDER.includes('medgun'));
+  // em si mesmo (botão direito), até 100
+  g.P.charges = 1; g.P.hp = 70; cx.useAbility(t + 1000); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.m2Press = true; g.updateWeapon(0, t + 1010);
+  assert.equal(g.P.hp, 100); assert.equal(g.P.charges, 0);
+  // bot Doctor se cura com a vida baixa
+  const doc = ally; doc.op = 'doctor'; doc.charges = 1; doc.hp = 20; doc.seen = false; doc.opAt = 1;
+  vm.runInContext(`botsUseAbilities(${t + 2000})`, cx); assert.equal(doc.hp, 70); assert.equal(doc.charges, 0);
 });
