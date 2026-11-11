@@ -652,7 +652,7 @@ test('karambit clips remain bounded and keep velocity continuous across pose key
 
 test('karambit transitions into its idle motion without snapping at animation completion', () => {
   const g=game({startSlot:'knife'});g.spawnSelf(0);
-  assert.equal(g.P.kAnim.duration,650);
+  assert.equal(g.P.kAnim.duration,800); // 24 quadros a 30 fps, como na puxada do CS2
   for(const type of Object.keys(g.KARAMBIT_CLIPS)){
     g.tick(12000);g.beginKnifeAnimation(type,12000);const end=12000+g.P.kAnim.duration;
     const completed=Array.from(g.sampleKnifeAnimation(g.P.kAnim,end));
@@ -700,9 +700,9 @@ test('skin kills escalate the Valorant-style streak and reset on spawn; default 
   assert.equal(banners.length, 6); assert.equal(g.P.streak, 2);
 });
 
-test('DM starts with no two participants in sight of each other, facing open routes, with reachable sites', () => {
-  for (let run = 0; run < 3; run++) {
-    const g = deathmatch(), n = g.DM.nav, first = g.DM.actors.map(a => g.DM.spawnPoints.findIndex(p => Math.abs(p.x - a.pos.x) < .01 && Math.abs(p.z - a.pos.z) < .01));
+test('Medina, Depósito and Borgo start with no two participants in sight of each other, facing open routes, with reachable high ground', () => {
+  for (const map of ['deathmatch', 'dmdeposito', 'dmborgo']) for (let run = 0; run < 3; run++) {
+    const g = deathmatch('all', 'medio', map), n = g.DM.nav, first = g.DM.actors.map(a => g.DM.spawnPoints.findIndex(p => Math.abs(p.x - a.pos.x) < .01 && Math.abs(p.z - a.pos.z) < .01));
     assert.ok(first.every(i => i >= 0));
     for (const a of first) for (const b of first) if (a !== b) assert.equal(g.DM.spawnVis[a][b], 0, `spawns ${a} and ${b} see each other`);
     for (const p of g.DM.spawnPoints) { const hit = g.context.traceMap([p.x, p.y + 1.64, p.z], vm.runInContext(`dirFrom(${p.yaw},0)`, g.context), 40); assert.ok(!hit || hit.t >= 6, 'spawn faces a wall'); }
@@ -859,4 +859,17 @@ test('Team room: people on opposite sides, bots fill the rest, and a networked k
   assert.equal(host.P.alive, false); assert.equal(host.stat('B').k, 1); assert.equal(guest.stat('B').k, 1); assert.equal(guest.stat('A').d, 1);
   const ally = guest.DM.actors.find(e => e !== guest.P && e.team === guest.P.team);
   assert.equal(guest.dmDamage(ally, 50, 'body', 'usps', guest.P, t), 0, 'no friendly fire across the network either');
+});
+
+test('bots fight across the Depósito and Borgo maps and use their elevated parts', () => {
+  for (const map of ['dmdeposito', 'dmborgo']) {
+    const g = deathmatch('rifle', 'dificil', map); let high = 0;
+    assert.ok(g.DM.spawnPoints.length >= 26, map);
+    const end = g.time + 60000;
+    while (g.time < end) { g.advance(1000, 1/30); high += g.DM.bots.filter(b => b.alive && b.pos.y > 1).length; }
+    const kills = g.events.filter(e => e.topic === 'feed' && e.killer !== 'A' && e.victim !== 'A');
+    assert.ok(kills.length >= 5, map + ': ' + kills.length + ' kills');
+    assert.ok(high > 0, map + ': bots never climbed');
+    for (const b of g.DM.bots) assert.ok(Math.abs(b.pos.x) < 24 && Math.abs(b.pos.z) < 24 && Number.isFinite(b.pos.y));
+  }
 });

@@ -33,7 +33,7 @@ No **XvX**, escolha o tamanho de **Seu time** e do **Time inimigo** (1 a 5 cada)
 
 ## Deathmatch
 
-Em **Modo de jogo**, escolha **DM**. Selecione **Medina** ou **Dust II**, a categoria de armas e a dificuldade. Para jogar sozinho, use **Jogar DM com bots**. Para jogar com amigos, todos digitam o mesmo código e clicam em **Entrar na sala de DM**. Quem chega primeiro cria a sala e define o mapa. Cada pessoa que entra assume a vaga de um bot durante a partida, e um bot volta se alguém sai. A categoria limita as armas de todos, e a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento, e a opção de capacete vale para todos eles.
+Em **Modo de jogo**, escolha **DM**. Selecione **Medina**, **Dust II**, **Depósito** ou **Borgo**, a categoria de armas e a dificuldade. Para jogar sozinho, use **Jogar DM com bots**. Para jogar com amigos, todos digitam o mesmo código e clicam em **Entrar na sala de DM**. Quem chega primeiro cria a sala e define o mapa. Cada pessoa que entra assume a vaga de um bot durante a partida, e um bot volta se alguém sai. A categoria limita as armas de todos, e a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento, e a opção de capacete vale para todos eles.
 
 Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e coldzera**. Os bots enxergam, perseguem e acertam uns aos outros com os mesmos raios de tiro, colisões e cálculo de dano usados contra o jogador. Os nomes não alteram a dificuldade.
 
@@ -46,7 +46,7 @@ Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e 
 - Killfeed mantém os últimos oito abates, inclusive bot contra bot. **Tab** mostra os dez participantes; no menu, use **Ver placar do Deathmatch**.
 - Vence quem tem mais abates; desempates por menos mortes e depois mais headshots. Empates exatos dividem a vitória. Ao zerar o relógio, tiros, respawns e placar param; é possível jogar novamente ou voltar ao menu.
 
-Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da travessia do CT na Dust II. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
+Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e em todos os mapas próprios os spawns iniciais são escolhidos sem que nenhum par de participantes se enxergue. Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da travessia do CT na Dust II. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
 
 ## Aimbotz
 
@@ -87,7 +87,7 @@ O bot pode usar qualquer uma das sete armas de fogo, com sua própria cadência,
 
 As facas têm animações distintas de puxada, inspeção, corte e estocada. A Butterfly segue o formato da do CS2: lâmina clip point com swedge (falso fio) no dorso, kicker e choil no tang, dois cabos esqueletizados com três rasgos cada, pinos aparentes e trava no cabo seguro. Os cabos ficam empilhados dos dois lados da lâmina. A puxada de 0,8 s e a inspeção de 4,2 s seguem a sequência do vídeo de referência: subir com a faca fechada, abrir, girar o pulso e segurar; na inspeção, apoiar no indicador e exibir a lâmina antes de voltar. Os cortes alternam de direção; o botão direito faz uma estocada. Segurar o botão repete o ataque na cadência da faca. Atacar interrompe a inspeção com uma transição curta. A Deagle tem ferrolho móvel, recuo visual mais forte e som mais grave. São recriações estilizadas em geometria do próprio jogo.
 
-A Karambit segue o perfil da do CS: anel grande de aço no pomo, cabo preto com guarda e sulcos para os dedos, parafusos aparentes e lâmina em garra com bisel no fio côncavo e swedge perto da ponta. A pegada também é a do CS: indicador no anel, cabo atravessando o punho e a garra saindo para o centro da tela, curvada para cima, com a face da lâmina à vista. A puxada de 0,65 s sobe girando a faca no indicador; a inspeção de 2,8 s dá um giro completo, exibe a lâmina e gira de volta; cortes e golpe forte cruzam a tela.
+A Karambit segue o perfil da do CS: anel grande de aço no pomo, cabo preto com guarda e sulcos para os dedos, parafusos aparentes e lâmina em garra com bisel no fio côncavo e swedge perto da ponta. A pegada e a puxada foram medidas quadro a quadro num vídeo de referência do CS2: em repouso aparecem as duas mãos, o punho direito na horizontal com o anel à esquerda e a garra saindo à direita com a concavidade virada para a frente, vista na diagonal de cima. A puxada dura 0,8 s (24 quadros a 30 fps): a mão sobe pela direita, a faca dá uma volta completa no indicador com o punho virado para a câmera, passando por cima e descendo pela esquerda, e a mão desce ao repouso enquanto a esquerda entra por baixo. A inspeção gira a faca, exibe a face da lâmina e gira de volta; cortes e golpe forte cruzam a tela.
 
 As duas facas usam interpolação cúbica monotônica: a velocidade passa contínua pelas poses-chave, sem o "para e anda" de antes, e nunca ultrapassa os valores capturados. As duas têm respiração leve em repouso, e toda animação termina entrando nesse movimento.
 
@@ -105,6 +105,8 @@ Os cinco mapas de duelo são simétricos (girados 180°), com chão branco e uma
 | Rotação | — | Fila com os 5 mapas em ordem aleatória; quando a fila acaba, embaralha de novo |
 | Medina | areia | Mapa exclusivo do DM: assimétrico, dois sites elevados com escadas, meio com portas, túneis, longa e passarela |
 | Dust II | areia | Recriação simplificada para DM com Long e Pit, Short sobre a passagem do CT, Meio com Xbox, Túneis B em dois níveis e caixas nos bombsites |
+| Depósito | concreto | DM próprio no clima industrial do Cache: galpões, contêineres de 2,6 m, passarela a 1,2 m no oeste, mirante a 2,4 m no nordeste, passarela elevada no meio com duas escadas e um caminhão em que dá para subir |
+| Borgo | terracota | DM próprio no clima de vila italiana do Inferno: ruelas e arcos, igreja, corredor estreito a oeste, sacadas de apartamento a 2,4 m no leste com escadas nas duas pontas, terraço baixo e fonte na praça |
 
 No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
 
