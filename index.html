@@ -774,10 +774,10 @@ const MAPS = {
   torres: { name: 'Torres', theme: 'verde', ax: 14, az: 26, spawn: { hx: 5.5, z0: 22.2, z1: 25 },
     build(B, K) {
       B.shield(-21, 7);
-      B.pairSolid([6, 0, -16], [12, 3, -12], K.plat);           // torre ao lado de cada base
-      B.pairRamp(7, -22, 9.4, -16, 0, 3, '+z', K.ramp);         // rampa logo na saída do spawn até a torre
-      B.pairSolid([9.6, 3, -12.3], [12, 4, -12], K.crate2);     // parapeito da torre
-      B.pair(6.8, -15, C, C, C, K.crate, 3);
+      B.pairSolid([6, 0, -13], [12, 3, -9], K.plat);            // torre ao lado de cada base
+      B.pairRamp(7, -19, 9.4, -13, 0, 3, '+z', K.ramp);         // rampa logo na saída do spawn até a torre
+      B.pairSolid([9.6, 3, -9.3], [12, 4, -9], K.crate2);       // parapeito da torre
+      B.pair(6.8, -12, C, C, C, K.crate, 3);
       B.pair(0, -3, 6, .8, 1.1, K.crate2);                      // muretas no meio
       B.pair(-8, -6, C, C, 2 * C, K.crate2);
       B.pair(-11, -13, C, 2 * C, C, K.crate);
