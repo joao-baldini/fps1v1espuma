@@ -68,7 +68,9 @@ button:disabled{opacity:.5;cursor:default}
 .chk{display:flex;gap:10px;align-items:center;font-size:15px}
 .chks{display:flex;gap:18px;flex-wrap:wrap}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
-.modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.modes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.modes button[data-mode=aimbotz] b{font-size:23px}
+@media (max-width:560px){.modes{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .modes button{display:grid;gap:4px;justify-items:center;padding:12px 6px;background:var(--field)}
 .modes button b{font:800 26px/1 var(--display);letter-spacing:.02em}
 .modes button small{font:600 12px/1 var(--display);letter-spacing:.12em;color:var(--muted)}
@@ -251,6 +253,7 @@ button:disabled{opacity:.5;cursor:default}
       <button type="button" role="radio" data-mode="2v2"><b>2v2</b><small>Times</small></button>
       <button type="button" role="radio" data-mode="xvx"><b>XvX</b><small>1v5, 2v5…</small></button>
       <button type="button" role="radio" data-mode="dm"><b>DM</b><small>10 jogadores</small></button>
+      <button type="button" role="radio" data-mode="aimbotz"><b>Aimbotz</b><small>Treino de mira</small></button>
     </div><small id="modeInfo"></small></div>
     <label class="fld" id="mapField"><span>Mapa</span><select id="inMap" data-k="map">
       <option value="caixas">Caixas · azul</option><option value="patio">Pátio · amarelo (praça elevada)</option><option value="torres">Torres · verde (torres com rampa)</option>
@@ -274,7 +277,8 @@ button:disabled{opacity:.5;cursor:default}
     </div>
     <div class="grid2" id="xvxField"><label class="fld"><span>Seu time</span><select data-k="xvx.mine" data-num="1" aria-label="Tamanho do seu time"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label><label class="fld"><span>Time inimigo</span><select data-k="xvx.foes" data-num="1" aria-label="Tamanho do time inimigo"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label></div>
     <label class="fld" id="teamField"><span>Times na sala</span><select data-k="teamSetup" aria-label="Times na sala 2v2"><option value="versus">Pessoas em lados opostos · bots completam os times</option><option value="coop">Pessoas no mesmo time contra bots</option></select></label>
-    <div class="fld"><span>Seu equipamento</span><small id="loadoutSummary"></small><button id="btnLoadout" type="button">Escolher armas, skins e bot</button></div>
+    <div class="fld" id="equipmentField"><span>Seu equipamento</span><small id="loadoutSummary"></small><button id="btnLoadout" type="button">Escolher armas, skins e bot</button></div>
+    <button id="btnAimbotz" class="primary" type="button" hidden>Jogar Aimbotz</button>
     <button id="btnJoin" class="primary" type="button">Entrar na sala 1v1</button>
     <div class="row" id="duelBotControls"><select id="inBot" data-k="botLevel" aria-label="Dificuldade do bot"><option value="facil">Bot fácil</option><option value="medio">Bot médio</option><option value="dificil">Bot difícil</option></select><button id="btnBot" class="wide" type="button">Treinar contra bot</button></div>
     <p id="mpStatus" class="note">Verificando conexão…</p>
@@ -285,7 +289,7 @@ button:disabled{opacity:.5;cursor:default}
     <button id="btnResume" class="primary" type="button">Voltar ao jogo</button>
     <button id="btnDmBoard" type="button" hidden>Ver placar do Deathmatch</button>
     <div class="row"><button id="btnFull" class="wide" type="button">Tela cheia</button><button id="btnLeave" class="wide danger" type="button">Sair da partida</button></div>
-    <p class="note">A partida continua enquanto o menu está aberto.</p>
+    <p class="note" id="pauseNote">A partida continua enquanto o menu está aberto.</p>
   </section>
 
   <nav class="tabs" role="tablist">
@@ -411,6 +415,7 @@ const fin = n => typeof n === 'number' && isFinite(n);
 /* ================= Configurações ================= */
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
   target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: '1v1', teamSetup: 'versus', xvx: { mine: 1, foes: 5 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio',
+  aimbotzBots: 8, aimbotzWeapon: 'rifle',
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife', sniper: 'sniper' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', botHelmet: true, autoBhop: true, wheelJump: false, adaptiveScale: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
 function genCode() { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; let c = ''; for (let i = 0; i < 5; i++) c += a[Math.floor(Math.random() * a.length)]; return c; }
@@ -418,7 +423,7 @@ function loadS() {
   const s = JSON.parse(JSON.stringify(DEFAULTS));
   try { const j = JSON.parse(localStorage.getItem('aimduelo.v1') || 'null'); if (j && typeof j === 'object') { Object.assign(s, j); s.ch = Object.assign({}, DEFAULTS.ch, j.ch || {}); s.loadout = Object.assign({}, DEFAULTS.loadout, j.loadout || {}); s.skins = Object.assign({}, j.skins && typeof j.skins === 'object' ? j.skins : {}); s.unlocks = Array.isArray(j.unlocks) ? j.unlocks.filter(x => typeof x === 'string') : []; } } catch (e) {}
   if (s.map === 'deathmatch') { s.mode = 'dm'; s.map = 'caixas'; } // versões antigas escolhiam o DM pelo mapa
-  if (!['1v1', '2v2', 'xvx', 'dm'].includes(s.mode)) s.mode = '1v1';
+  if (!['1v1', '2v2', 'xvx', 'dm', 'aimbotz'].includes(s.mode)) s.mode = '1v1';
   s.xvx = { mine: clamp(+((s.xvx || {}).mine) || 1, 1, 5), foes: clamp(+((s.xvx || {}).foes) || 5, 1, 5) };
   if (!s.room) s.room = genCode();
   return s;
@@ -906,7 +911,13 @@ function buildDust2Walls(B, color, ax, az, footprint) {
   for (const [a, b] of walls) B.solid(a, b, color);
 }
 if (!MAPS[S.dmMap]?.dm) S.dmMap = 'deathmatch';
-const MAP_IDS = Object.keys(MAPS).filter(id=>!MAPS[id].dm);
+MAPS.aimbotz = {
+  name: 'Aimbotz', theme: 'azul', ax: 18, az: 14, practice: true,
+  build(B, K) {
+    B.solid([-18, 0, 7], [18, .28, 14], K.plat);
+  },
+};
+const MAP_IDS = Object.keys(MAPS).filter(id => !MAPS[id].dm && !MAPS[id].practice);
 const RAMP_FLIP = { '+z': '-z', '-z': '+z', '+x': '-x', '-x': '+x' };
 function rampHeightAt(r, x, z) {
   if (x < r.x0 || x > r.x1 || z < r.z0 || z > r.z1) return null;
@@ -977,7 +988,7 @@ function buildMap(id) {
 // Rotação: fila com todos os mapas em ordem aleatória; quando a fila acaba, embaralha de novo
 let mapQueue = [];
 function pickMap(prev) {
-  if (S.map !== 'rotacao' && MAPS[S.map] && !MAPS[S.map].dm) return S.map;
+  if (MAP_IDS.includes(S.map)) return S.map;
   if (!mapQueue.length) {
     mapQueue = MAP_IDS.slice();
     for (let i = mapQueue.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [mapQueue[i], mapQueue[j]] = [mapQueue[j], mapQueue[i]]; }
@@ -1012,7 +1023,7 @@ col=min(col,vec3(1.0));
 float d=length(vW-cameraPosition);col=mix(col,uFog,clamp((d-40.0)/80.0,0.0,0.3));
 gl_FragColor=vec4(col,1.0);}`,
 });
-buildMap(S.mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? 'caixas' : S.map);
+buildMap(S.mode === 'aimbotz' ? 'aimbotz' : S.mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? 'caixas' : S.map);
 // céu em degradê, sempre centrado na câmera
 const skyGeo = new THREE.SphereGeometry(200, 24, 12);
 { const pos = skyGeo.attributes.position, cols = [], top = new THREE.Color(0x4fa3f2), hor = new THREE.Color(0xdcefff), c = new THREE.Color();
@@ -1880,7 +1891,7 @@ function applyRound(d) {
   const v = G.view, prev = v.m + ':' + v.r + ':' + v.ph;
   if (d.m !== v.m) { G.stats = {}; G.deadSeen.clear(); }
   v.m = d.m; v.r = d.r; v.ph = d.ph; v.endsAt = now() + (fin(d.ms) ? d.ms : 0); v.sc = d.sc || {}; v.tg = d.tg || 10; v.rt = d.rt || 60; v.win = d.win || null; v.why = d.why || '';
-  if (typeof d.mp === 'string' && MAPS[d.mp] && d.mp !== MAP.id) buildMap(d.mp);
+  if (MAP_IDS.includes(d.mp) && d.mp !== MAP.id) buildMap(d.mp);
   v.mp = MAP.id;
   const key = d.m + ':' + d.r;
   if ((d.ph === 'freeze' || d.ph === 'live') && G.spawnKey !== key) {
@@ -1964,9 +1975,10 @@ function selectWeapon(k) {
   P.recoilP = P.recoilY = P.spread = P.kick = P.swing = 0;
   P.inspT = 0; P.kAnim = null; P.knifeSide = 0; if (W[k].melee) beginKnifeAnimation('draw',now());
 }
+function infiniteReserve() { return G.mode === 'dm' || G.mode === 'aimbotz'; }
 function startReload(t) {
   const w = W[P.weapon], am = P.ammo[P.weapon];
-  if(G.mode==='dm'&&am&&am.res<=0)am.res=w.res;
+  if (infiniteReserve() && am && am.res <= 0) am.res = w.res;
   if (w.melee || !am || P.reloadEnd || am.mag >= w.mag || am.res <= 0) return;
   P.reloadEnd = t + w.reload; P.zoom = 0; applyFov(); AU.reload();
 }
@@ -1983,7 +1995,7 @@ function muzzleWorld() {
   return [e[0] + f[0] * .6 + cy * .14, e[1] + f[1] * .6 - .1, e[2] + f[2] * .6 - sy * .14];
 }
 function oppTargets() {
-  if(G.mode==='dm'||G.mode==='team')return DM.playerTargets;
+  if (G.mode === 'dm' || G.mode === 'team' || G.mode === 'aimbotz') return DM.playerTargets;
   const s = OPP.cur; if (!s || !s.a) return null;
   return hitboxesAt(s.x, s.y, s.z, s.c);
 }
@@ -2017,13 +2029,14 @@ function shoot(t, heavy) {
   const end = res ? res.point : [e[0] + dir[0] * 300, e[1] + dir[1] * 300, e[2] + dir[2] * 300];
   const mz = muzzleWorld();
   tracer(mz, end, 45);
-  if (res) { if (res.part) {const victim=G.mode==='dm'||G.mode==='team' ? DM.byId.get(res.actor) : OPP.cur;dealDamage(damageFor(w,res.part,victim&&victim.helmet,res.t),res.part,P.weapon,res.actor);} else addDecal(res.point, res.normal); }
+  if (res) { if (res.part) {const victim=res.actor ? DM.byId.get(res.actor) : OPP.cur;dealDamage(damageFor(w,res.part,victim&&victim.helmet,res.t),res.part,P.weapon,res.actor);} else addDecal(res.point, res.normal); }
   if (w.scope && P.zoom) { P.zoom = 0; applyFov(); }
   if ((G.mode === 'team' || G.mode === 'dm') && ARENA.net) arenaRelayShot(G.me, P.weapon, skinOf(P.weapon), mz, end);
   if (G.mode === 'online' && G.opp) { netSend({ t: 'e', k: 'shot', d: { w: P.weapon, sk: skinOf(P.weapon), s: [[mz[0], mz[1], mz[2], end[0], end[1], end[2]].map(r2)] } }); }
 }
 function dealDamage(dmg, part, wkey, actorId) {
   const v = G.view;
+  if (G.mode === 'aimbotz') { aimbotzHit(dmg, part, wkey, actorId); return; }
   if(G.mode==='dm'||G.mode==='team'){
     const victim=DM.byId.get(actorId);if(!victim||!dmDamage(victim,dmg,part,wkey,P,now()))return;
     AU.hit(part==='head');dmgNumber(dmg,part==='head');if(victim.alive)hitmark(part==='head'?'head':'');return;
@@ -2054,7 +2067,7 @@ function onMyKill(wkey) {
 }
 function updateWeapon(dt, t) {
   const w = W[P.weapon], am = P.ammo[P.weapon];
-  if (P.reloadEnd && t >= P.reloadEnd) { const take = Math.min(w.mag - am.mag, am.res); am.mag += take; am.res -= take; if(G.mode==='dm')am.res=w.res;P.reloadEnd = 0; }
+  if (P.reloadEnd && t >= P.reloadEnd) { const take = Math.min(w.mag - am.mag, am.res); am.mag += take; am.res -= take; if(infiniteReserve())am.res=w.res;P.reloadEnd = 0; }
   const canAct = P.alive && G.view.ph !== 'freeze' && locked && t >= P.drawEnd && !P.reloadEnd && (G.mode==='dm'?DM.phase==='live'&&t<DM.endsAt:G.mode==='team'?DM.phase==='live'||DM.phase==='end':true);
   if (canAct && !w.melee && am.mag === 0 && am.res > 0 && t >= P.nextFire) startReload(t);
   const trig = w.auto || w.melee ? P.m1 : P.m1Press;
@@ -2764,6 +2777,116 @@ function dmRender(t, dt = 0){
   for(const mesh of r.meshes){if(mesh.count)mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.visible=mesh.count>0;}
 }
 
+/* ================= Aimbotz ================= */
+const AIMBOTZ_SPAWN = [0, 9, 0];
+const AIMBOTZ_TARGETS = [
+  [0,-4], [-4.2,2.7], [5.1,2], [-8.8,-8.4], [9,-7], [-3.2,-6],
+  [3.1,-8.2], [-12.7,-6.2], [13,-6], [2.5,3.1], [-2.5,2.6], [1,-12],
+];
+const AIMBOTZ_BOARD = { z: 13.96, y: 2.36, w: 8.4, h: 3.92, width: 960, height: 448 };
+const AIMBOTZ_BUTTONS = [
+  { x: 244, y: 100, w: 68, h: 58, count: -1, label: '−' },
+  { x: 392, y: 100, w: 68, h: 58, count: 1, label: '+' },
+  ...FIREARMS.concat(CATEGORIES.knife).map((weapon, i) => ({
+    x: 32 + i % 3 * 302, y: 212 + Math.floor(i / 3) * 68,
+    w: 292, h: 56, weapon, label: W[weapon].name,
+  })),
+];
+let aimbotzBoard = null;
+
+function aimbotzSetBots(value) {
+  const count = Number(value);
+  S.aimbotzBots = fin(count) ? clamp(Math.round(count), 1, AIMBOTZ_TARGETS.length) : DEFAULTS.aimbotzBots;
+  while (DM.actors.length > S.aimbotzBots + 1) DM.byId.delete(DM.actors.pop().id);
+  for (let i = DM.actors.length - 1; i < S.aimbotzBots; i++) {
+    const [x, z] = AIMBOTZ_TARGETS[i];
+    const bot = {
+      id: 'T' + (i + 1), pos: new V3(x, groundAt(x, z), z), vel: new V3(),
+      yaw: Math.atan2(x, z - AIMBOTZ_SPAWN[1]), hp: 100, alive: true, onGround: true,
+      color: Object.values(PCOLORS)[i % 7],
+    };
+    DM.actors.push(bot); DM.byId.set(bot.id, bot);
+  }
+  dmRefreshTargets();
+}
+function aimbotzEquip(weapon) {
+  S.aimbotzWeapon = ALL_WEAPONS.includes(weapon) ? weapon : DEFAULTS.aimbotzWeapon;
+  ORDER.splice(0, ORDER.length, S.aimbotzWeapon);
+  selectWeapon(S.aimbotzWeapon);
+}
+function aimbotzSetup() {
+  DM.actors.length = 0; DM.actors.push(P);
+  DM.byId.clear(); DM.byId.set(P.id, P);
+  aimbotzSetBots(S.aimbotzBots);
+  aimbotzEquip(S.aimbotzWeapon);
+}
+function aimbotzHit(damage, part, weapon, id) {
+  const target = DM.byId.get(id);
+  if (!target || target === P) return;
+  target.hp -= damage;
+  AU.hit(part === 'head'); dmgNumber(damage, part === 'head');
+  if (target.hp <= 0) {
+    target.hp = 100;
+    const score = stat(G.me);
+    score.k++; if (part === 'head') score.hs++;
+    onMyKill(weapon);
+  } else hitmark(part === 'head' ? 'head' : '');
+}
+function aimbotzButtonAt(origin, direction) {
+  const board = AIMBOTZ_BOARD;
+  if (direction[2] <= 0 || origin[2] >= board.z) return null;
+  const distance = (board.z - origin[2]) / direction[2];
+  const x = origin[0] + direction[0] * distance, y = origin[1] + direction[1] * distance;
+  const u = (.5 - x / board.w) * board.width, v = (.5 - (y - board.y) / board.h) * board.height;
+  const button = AIMBOTZ_BUTTONS.find(b => u >= b.x && u < b.x + b.w && v >= b.y && v < b.y + b.h);
+  return button && clearLine(origin, [x, y, board.z]) ? button : null;
+}
+function aimbotzDrawBoard() {
+  const board = AIMBOTZ_BOARD;
+  if (!aimbotzBoard) {
+    const art = document.createElement('canvas');
+    art.width = board.width; art.height = board.height;
+    const texture = new THREE.CanvasTexture(art);
+    texture.minFilter = THREE.LinearFilter; texture.generateMipmaps = false;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(board.w, board.h), new THREE.MeshBasicMaterial({ map: texture }));
+    mesh.position.set(0, board.y, board.z); mesh.rotation.y = Math.PI;
+    scene.add(mesh); aimbotzBoard = { mesh, texture, ctx: art.getContext('2d') };
+  }
+  const { mesh, texture, ctx } = aimbotzBoard, accent = '#ffbc76';
+  mesh.visible = true;
+  ctx.fillStyle = '#151b24'; ctx.fillRect(0, 0, board.width, board.height);
+  ctx.strokeStyle = '#3f4857'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, board.width - 4, board.height - 4);
+  ctx.fillStyle = accent; ctx.fillRect(0, 0, 8, board.height);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#faf1e5'; ctx.font = '800 46px Arial, sans-serif'; ctx.fillText('AIMBOTZ', 32, 45);
+  ctx.fillStyle = '#a7b2c1'; ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.textAlign = 'right'; ctx.fillText('MIRE E CLIQUE', 928, 48); ctx.textAlign = 'left';
+  ctx.fillStyle = '#353e4c'; ctx.fillRect(32, 81, 896, 2);
+  ctx.fillStyle = '#d4dce5'; ctx.fillText('CONTAGEM DE BOTS', 32, 129); ctx.fillText('ARMA', 32, 189);
+  ctx.textAlign = 'center'; ctx.fillStyle = accent; ctx.font = 'bold 44px Arial, sans-serif';
+  ctx.fillText(S.aimbotzBots, 352, 130);
+  for (const b of AIMBOTZ_BUTTONS) {
+    const chosen = b.weapon === S.aimbotzWeapon;
+    const atLimit = b.count === -1 && S.aimbotzBots === 1 || b.count === 1 && S.aimbotzBots === AIMBOTZ_TARGETS.length;
+    ctx.fillStyle = chosen ? '#553a27' : '#232c39'; ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.strokeStyle = chosen ? accent : '#485568'; ctx.lineWidth = 2; ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+    ctx.fillStyle = atLimit ? '#727f8f' : chosen ? accent : '#f2f3f6';
+    ctx.font = b.weapon ? 'bold 26px Arial, sans-serif' : 'bold 38px Arial, sans-serif';
+    ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2 + 1);
+  }
+  texture.needsUpdate = true;
+}
+function aimbotzClickBoard() {
+  if (!P.alive) return false;
+  const direction = dirFrom(P.yaw + P.recoilY * VIEW_RECOIL, P.pitch + P.recoilP * VIEW_RECOIL + P.punch);
+  const button = aimbotzButtonAt(eyePos(), direction);
+  if (!button) return false;
+  if (button.weapon) aimbotzEquip(button.weapon);
+  else aimbotzSetBots(S.aimbotzBots + button.count);
+  aimbotzDrawBoard(); saveS(); AU.tone(1300, .04, .05);
+  return true;
+}
+
 /* ================= Times (2v2 e XvX) e salas online de times e de DM ================= */
 // Usa o mesmo motor de atores do DM (bots, navegação, hitboxes, render instanciado).
 // Online, quem cria a sala é o juiz: recebe o estado de cada pessoa, simula os bots que completam as vagas
@@ -2877,7 +3000,7 @@ function teamApplyRound(d) {
   const prev = ARENA.m + ':' + ARENA.r + ':' + DM.phase, t = now();
   if (d.m !== ARENA.m) { G.stats = {}; ARENA.killSeen.clear(); DM.scoreVersion++; }
   if (!ARENA.host) {
-    if (typeof d.mp === 'string' && MAPS[d.mp] && !MAPS[d.mp].dm && d.mp !== MAP.id) buildMap(d.mp);
+    if (MAP_IDS.includes(d.mp) && d.mp !== MAP.id) buildMap(d.mp);
     if (Array.isArray(d.sizes)) ARENA.sizes = [clamp(d.sizes[0] | 0, 1, TEAM_MAX), clamp(d.sizes[1] | 0, 1, TEAM_MAX)];
     const key = JSON.stringify(d.roster);
     if (key !== ARENA.rosterKey && rosterValid(d.roster, true)) { ARENA.rosterKey = key; arenaBuildActors(d.roster.map(([id, team, name, kind]) => [id, team, cleanName(name), kind === 'human' ? 'human' : 'bot'])); }
@@ -3329,12 +3452,17 @@ function updateHUD(dt, t) {
   setT(el.nmMe, cleanName(S.name)); setT(el.nmOp, G.opp ? nameOf(G.opp) : '—');
   if(G.mode==='dm'){const leader=dmRanking()[0];setT(el.scMe,String(stat(G.me).k));setT(el.scOp,String(stat(leader.id).k));setT(el.nmOp,'Líder · '+nameOf(leader.id));}
   if(G.mode==='team'){const mine=myTeam(),pips=n=>'●'.repeat(n)+'○'.repeat(Math.max(0,2-n));setT(el.scMe,String(ARENA.sc[mine]));setT(el.scOp,String(ARENA.sc[1-mine]));setT(el.nmMe,'Seu time '+pips(teamAlive(mine)));setT(el.nmOp,pips(teamAlive(1-mine))+' Inimigos');}
+  if (G.mode === 'aimbotz') {
+    setT(el.nmMe, 'Abates'); setT(el.scMe, String(stat(G.me).k));
+    setT(el.nmOp, 'Bots'); setT(el.scOp, String(S.aimbotzBots));
+  }
   let label = 'aquecimento', time = '–:––', cls = '';
   if (v.ph === 'freeze') { label = 'prepare-se'; time = fmtTime(Math.max(0, v.endsAt - t)); cls = 'freeze'; }
   else if (v.ph === 'live') { const rem = Math.max(0, v.endsAt - t); label = 'rodada ' + v.r; time = fmtTime(rem); if (rem < 10000) cls = 'low'; }
   else if (v.ph === 'end') { label = 'fim da rodada'; time = '0:00'; }
   else if (v.ph === 'over') { label = 'fim de jogo'; time = fmtTime(Math.max(0, v.endsAt - t)); }
   if(G.mode==='dm'){label=DM.phase==='freeze'?'prepare-se':DM.phase==='over'?'fim do DM':'deathmatch';if(DM.phase==='over')time='0:00';}
+  if (G.mode === 'aimbotz') { label = 'Aimbotz'; time = '∞'; }
   setT(el.clockT, time); setT(el.clockL, label); if (el.clock.className !== cls) el.clock.className = cls;
   let wait = '';
   if (G.mode === 'online' && !G.opp) wait = 'Sala ' + NET.code + ' · esperando o oponente entrar com o mesmo código';
@@ -3345,7 +3473,7 @@ function updateHUD(dt, t) {
   setT(el.hp, String(P.hp)); el.hpbox.classList.toggle('low', P.hp <= 25);
   setT(el.wname, w.name);
   if (w.melee) { setT(el.ammo, '—'); setT(el.res, ''); }
-  else { const am = P.ammo[P.weapon]; setT(el.ammo, P.reloadEnd ? '…' : String(am.mag)); setT(el.res, '/ ' + (G.mode==='dm'?'∞':am.res)); }
+  else { const am = P.ammo[P.weapon]; setT(el.ammo, P.reloadEnd ? '…' : String(am.mag)); setT(el.res, '/ ' + (infiniteReserve() ? '∞' : am.res)); }
   const showXH = P.alive && !P.zoom;
   setH(el.xh, !showXH); setH(el.scope, !(P.zoom && P.alive));
   if (showXH) {
@@ -3355,10 +3483,11 @@ function updateHUD(dt, t) {
   }
   fpsN++; if (t - fpsT >= 500) { fpsV = Math.round(fpsN * 1000 / (t - fpsT)); fpsN = 0; fpsT = t; }
   setH(el.fps, !S.showFps); if (S.showFps) setT(el.fps, fpsV + ' FPS');
+  setH(el.netst, G.mode === 'aimbotz');
   if (G.mode === 'online') setT(el.netst, G.opp ? ('ping ' + (G.ping == null ? '…' : G.ping + ' ms')) : G.netText);
   else if(G.mode==='dm')setT(el.netst,ARENA.net?'DM online · '+(ARENA.host?'você é o juiz':'jogador '+G.me)+' · '+DM.actors.filter(e=>e===P||e.remote).length+' pessoas · '+DM_LABELS[DM.category]:'DM · 9 bots · '+LEVELS[DM.level].label+' · '+DM_LABELS[DM.category]);
   else if(G.mode==='team')setT(el.netst,teamLabel()+(ARENA.net?' online · '+(ARENA.host?'você é o juiz':'jogador '+G.me):'')+' · bots '+LEVELS[DM.level].label);
-  else setT(el.netst, 'bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label + ' · ' + W[botHeldWeapon(BOT)].name + (BOT.helmet ? ' · capacete' : ' · sem capacete'));
+  else if (G.mode === 'bot') setT(el.netst, 'bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label + ' · ' + W[botHeldWeapon(BOT)].name + (BOT.helmet ? ' · capacete' : ' · sem capacete'));
   if(G.mode==='dm'&&DM.resultReady){
     DM.resultReady=false;el.hud.classList.add('dm-over');const mine=stat(G.me),winners=DM.winners;
     $('dmWinner').textContent=winners.length>1?'Empate no Deathmatch':winners[0]===G.me?'Você venceu!':nameOf(winners[0])+' venceu';
@@ -3367,7 +3496,7 @@ function updateHUD(dt, t) {
     const guest=ARENA.net&&!ARENA.host;$('btnDmAgain').disabled=guest;$('btnDmAgain').textContent=guest?'Aguardando quem criou a sala':'Jogar novamente';
     if(document.pointerLockElement)document.exitPointerLock();
   }
-  const showBoard = G.mode==='dm'&&(DM.phase==='over'||DM.showBoard)||locked&&K('Tab'); setH(el.board, !showBoard);
+  const showBoard = G.mode!=='aimbotz'&&(G.mode==='dm'&&(DM.phase==='over'||DM.showBoard)||locked&&K('Tab')); setH(el.board, !showBoard);
   if (showBoard && (G.mode==='dm'?boardVersion!==DM.scoreVersion:t-boardT>250)) { boardT = t; renderBoard(); }
   if (!P.alive && G.mode&&!(G.mode==='dm'&&DM.phase==='over')) {
     setH(el.dead, false);
@@ -3505,7 +3634,10 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('mousedown', e => {
   if (!locked) return;
   if (BUY.open) { if (e.button === 0 && BUY.hover) BUY.hover.click(); return; }
-  if (e.button === 0) { P.m1 = true; P.m1Press = true; updateWeapon(0, now()); }
+  if (e.button === 0) {
+    if (G.mode === 'aimbotz' && aimbotzClickBoard()) return;
+    P.m1 = true; P.m1Press = true; updateWeapon(0, now());
+  }
   else if (e.button === 2) {
     const w = W[P.weapon];
     if (w.scope && P.alive && now() >= P.drawEnd && !P.reloadEnd) { P.zoom = (P.zoom + 1) % 3; applyFov(); AU.tone(1800, .02, .05, 'square'); }
@@ -3530,7 +3662,7 @@ document.addEventListener('keydown', e => {
   else if (e.code === 'KeyQ') selectWeapon(P.lastW);
   else if (e.code === 'KeyR') { P.inspT = 0; startReload(now()); }
   else if (e.code === 'KeyF') inspect();
-  else if (e.code === 'KeyB') { if (BUY.open) closeBuy(); else openBuy(true); }
+  else if (e.code === 'KeyB' && G.mode !== 'aimbotz') { if (BUY.open) closeBuy(); else openBuy(true); }
 });
 document.addEventListener('keyup', e => { keys.delete(e.code); });
 window.addEventListener('blur', () => { keys.clear(); P.m1 = P.m2 = P.m1Press = P.m2Press = false; P.jumpUntil = 0; });
@@ -3557,23 +3689,33 @@ function showMenu(on) {
   $('playSec').hidden = !!G.mode;
   $('pauseSec').hidden = !G.mode;
   $('btnDmBoard').hidden=G.mode!=='dm';
-  if (G.mode) $('pauseInfo').textContent = (G.mode === 'online' ? 'Sala ' + NET.code + (G.opp ? ' · contra ' + nameOf(G.opp) : ' · esperando oponente') : G.mode==='dm'?(ARENA.net?'Sala DM '+ARENA.code:'Deathmatch · 9 bots '+LEVELS[DM.level].label)+' · '+DM_LABELS[DM.category]+' · o tempo continua no menu':G.mode==='team'?(ARENA.net?'Sala '+teamLabel()+' '+ARENA.code+(ARENA.host?' · '+arenaHumans().length+'/'+arenaCapacity()+' pessoas':''):teamLabel()+' com bots '+LEVELS[DM.level].label):'Treino contra bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label) + ' · ' + MAP.name;
+  $('pauseNote').hidden = $('btnArsenal').disabled = G.mode === 'aimbotz';
+  if (G.mode === 'aimbotz') $('pauseInfo').textContent = 'Aimbotz · ' + S.aimbotzBots + ' bots';
+  else if (G.mode) $('pauseInfo').textContent = (G.mode === 'online' ? 'Sala ' + NET.code + (G.opp ? ' · contra ' + nameOf(G.opp) : ' · esperando oponente') : G.mode==='dm'?(ARENA.net?'Sala DM '+ARENA.code:'Deathmatch · 9 bots '+LEVELS[DM.level].label)+' · '+DM_LABELS[DM.category]+' · o tempo continua no menu':G.mode==='team'?(ARENA.net?'Sala '+teamLabel()+' '+ARENA.code+(ARENA.host?' · '+arenaHumans().length+'/'+arenaCapacity()+' pessoas':''):teamLabel()+' com bots '+LEVELS[DM.level].label):'Treino contra bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label) + ' · ' + MAP.name;
 }
-function resetSession() {
+function resetSession(spawn = null) {
   H.st = null; G.view = { m: '', r: 0, ph: 'wait', endsAt: 0, sc: {}, tg: S.target, win: null, why: '', rt: S.roundTime };
   G.spawnKey = ''; G.stats = {}; G.deadSeen.clear(); G.ping = null; G.names = {};
   OPP.snaps = []; OPP.latest = null; OPP.cur = null; OPP.fall = OPP.crouchK = 0;
   el.feed.replaceChildren(); clearDecals();
-  spawnSelf(0, null);
+  spawnSelf(0, spawn);
 }
 function startSession(mode, opts = {}) {
   S.name = $('inName').value;
   saveS();
   AU.init();dmStop();arenaNetStop();ARENA.net=false;sleeveMat.color.set(pcolHex(S.pcol));G.mode=null;$('dmResult').hidden=true;el.hud.classList.remove('dm-over');el.hud.classList.toggle('dm',mode==='dm');
-  const map=mode==='dm'?S.dmMap:S.map==='rotacao'?MAP_IDS[Math.floor(Math.random()*MAP_IDS.length)]:MAPS[S.map]&&!MAPS[S.map].dm?S.map:'caixas';
-  buildMap(map);resetSession();G.mode=mode;
+  const map = mode === 'aimbotz' ? 'aimbotz' : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
+  buildMap(map);resetSession(mode === 'aimbotz' ? AIMBOTZ_SPAWN : null);G.mode=mode;
   el.hud.hidden = false;
   if (xrayEnabled()) toast('Raio-X ativo');
+  if (mode === 'aimbotz') {
+    G.me = P.id = 'A'; G.opp = null; G.host = false; oppGroup.visible = false;
+    G.view.ph = 'practice'; G.view.mp = MAP.id; P.pitch = -.02;
+    aimbotzSetup(); dmEnsureRender(); dmRender(now()); aimbotzDrawBoard();
+    showMenu(false); lock();
+    banner('Aimbotz', 'Vire para o quadro atrás de você. Mire e clique para ajustar bots e arma.', '', 4500);
+    return;
+  }
   if(mode==='dm'){
     G.me='A';P.id='A';G.opp=null;G.host=false;G.hostPeer='A';oppGroup.visible=false;DM.showBoard=false;
     boardVersion=-1;ARENA.kind='dm';ARENA.net=!!opts.online;ARENA.host=true;ARENA.names={};ARENA.roster=[];ARENA.rosterKey='';ARENA.lastPhase='';
@@ -3604,6 +3746,7 @@ function startSession(mode, opts = {}) {
 }
 function leaveSession() {
   netStop();arenaNetStop();ARENA.net=false;closeBuy();dmStop();sleeveMat.color.set(pcolHex(S.pcol));G.mode = null; G.opp = null; H.st = null; oppGroup.visible = false;
+  if (aimbotzBoard) aimbotzBoard.mesh.visible = false;
   $('dmResult').hidden=true;el.board.hidden=true;el.hud.classList.remove('dm');el.hud.hidden = true;configureLoadout();showMenu(true);applySettings();
   if (document.pointerLockElement) document.exitPointerLock();
 }
@@ -3620,13 +3763,15 @@ function syncInputs(except) {
   $('sensInfo').textContent = 'No Valorant isso equivale a ' + (S.sens / 3.181818).toFixed(3) + '. eDPI ' + Math.round(S.sens * S.dpi) + '.';
   $('cm360').textContent = S.dpi > 0 && S.sens > 0 ? (360 / (S.sens * 0.022 * S.dpi) * 2.54).toFixed(1) + ' cm' : '–';
   $('loadoutSummary').textContent = Object.values(S.loadout).map(k => W[k] ? W[k].name : '').join(' · ');
-  const mode=S.mode,dm=mode==='dm',duo=mode==='2v2'||mode==='xvx',xvx=mode==='xvx';
+  const mode=S.mode,dm=mode==='dm',duo=mode==='2v2'||mode==='xvx',xvx=mode==='xvx',practice=mode==='aimbotz';
   document.querySelectorAll('#modeSel button').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.mode===mode)));
   $('dmOptions').hidden=!dm;
-  for(const id of ['mapField','duelBotControls'])$(id).hidden=dm;
+  for(const id of ['mapField','duelBotControls'])$(id).hidden=dm||practice;
+  for(const id of ['roomField','equipmentField','btnJoin','mpStatus'])$(id).hidden=practice;
+  $('btnAimbotz').hidden=!practice;
   $('teamField').hidden=!duo;$('xvxField').hidden=!xvx;$('colorField').hidden=mode!=='1v1';
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
-  $('modeInfo').textContent=dm?'Todos contra todos por 5 minutos, com respawn. Sozinho com 9 bots ou numa sala com amigos.':xvx?'Times de tamanhos livres em rodadas, de 1 a 5 de cada lado (1v5, 2v5, 3v3…). Bots completam as vagas.':duo?'Dois contra dois em rodadas. Sozinho: você e um bot contra dois bots. Online: até 4 pessoas na sala, bots completam as vagas.':'Duelo em rodadas contra outra pessoa ou contra um bot.';
+  $('modeInfo').textContent=practice?'Treino livre com bots que renascem na hora.':dm?'Todos contra todos por 5 minutos, com respawn. Sozinho com 9 bots ou numa sala com amigos.':xvx?'Times de tamanhos livres em rodadas, de 1 a 5 de cada lado (1v5, 2v5, 3v3…). Bots completam as vagas.':duo?'Dois contra dois em rodadas. Sozinho: você e um bot contra dois bots. Online: até 4 pessoas na sala, bots completam as vagas.':'Duelo em rodadas contra outra pessoa ou contra um bot.';
   $('btnJoin').textContent=dm?'Entrar na sala de DM':duo?'Entrar na sala '+label:'Entrar na sala 1v1';$('btnBot').textContent=duo?'Jogar '+label+' com bots':'Treinar contra bot';
   $('roomInfo').textContent=dm?'Todos digitam o mesmo código. Quem entrar primeiro cria a sala e vira o juiz; bots completam os 10.':duo?'Todos digitam o mesmo código. Quem entrar primeiro cria a sala e vira o juiz.':'Vocês dois digitam o mesmo código. Quem entrar primeiro cria a sala.';
   $('mapInfo').textContent='Vale o mapa escolhido por quem cria a sala. Rotação alterna os cinco mapas de duelo.';
@@ -3640,7 +3785,7 @@ function applySettings() {
   if (!P.zoom) applyFov();
   setRenderScale(S.scale); AU.vol(S.volume);
   renderXH($('xhPrev'), S.ch, 0); el.xh._k = '';
-  const bg = S.mode === 'dm' ? S.dmMap : S.map;
+  const bg = S.mode === 'aimbotz' ? 'aimbotz' : S.mode === 'dm' ? S.dmMap : S.map;
   if (!G.mode && bg !== 'rotacao' && MAPS[bg] && MAP.id !== bg) buildMap(bg);
 }
 document.querySelectorAll('[data-k]').forEach(e => {
@@ -3693,6 +3838,7 @@ $('btnJoin').addEventListener('click', () => {
 $('btnBot').addEventListener('click', () => { if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: false }); else startSession('bot'); });
 $('modeSel').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (!b) return; S.mode = b.dataset.mode; saveS(); syncInputs(); applySettings(); });
 $('btnDm').addEventListener('click',()=>startSession('dm',{online:false}));
+$('btnAimbotz').addEventListener('click', () => startSession('aimbotz'));
 $('btnDmAgain').addEventListener('click',()=>{
   if(!ARENA.net){startSession('dm');return;}
   if(!ARENA.host)return;
@@ -3757,7 +3903,7 @@ function frame() {
     else if (G.mode === 'bot') botUpdate(dt, t);
     if (G.host) hostTick(t);
     netTick(t);
-    if(G.mode==='dm'||G.mode==='team')dmRender(t,dt);else updateOpp(dt, t);
+    if(G.mode==='dm'||G.mode==='team'||G.mode==='aimbotz')dmRender(t,dt);else updateOpp(dt, t);
     updateWeapon(dt, t);
     updateCamera(dt, t);
     updateVM(dt, t);

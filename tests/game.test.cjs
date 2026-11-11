@@ -73,6 +73,49 @@ function entity(x = 0, z = 0) {
 
 test('the complete game script parses', () => new vm.Script(script));
 
+test('Aimbotz counts live targets and restores a killed bot in place immediately', () => {
+  const g = game(), cx = g.context;
+  cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; cx.G.view.ph = 'practice';
+  g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
+  const bot = g.DM.actors[1], original = [...Object.values(bot.pos)];
+  assert.equal(g.DM.actors.length, 9);
+  assert.equal(g.DM.playerTargets.length, 24);
+  cx.aimbotzSetBots(40);
+  assert.equal(g.DM.playerTargets.length, 36);
+  cx.aimbotzSetBots(0);
+  assert.equal(g.DM.actors.length, 2);
+  assert.equal(g.DM.byId.size, 2);
+  assert.equal(g.DM.playerTargets.length, 3);
+  assert.equal(g.DM.actors[1], bot);
+  cx.aimbotzHit(27, 'body', 'rifle', bot.id);
+  assert.equal(bot.hp, 73);
+
+  g.P.pitch = Math.atan2(1.64 - cx.eyePos()[1], 13);
+  g.shoot(12000, false);
+  assert.equal(g.stat(cx.G.me).k, 1);
+  assert.equal(bot.hp, 100);
+  assert.equal(bot.alive, true);
+  assert.deepEqual(Object.values(bot.pos), original);
+  assert.equal(g.DM.playerTargets[0].actor, bot.id);
+});
+
+test('Aimbotz board controls match their visible positions and equip every available weapon', () => {
+  const g = game(), cx = g.context;
+  cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
+  const { board, buttons, duelMaps } = vm.runInContext('({board:AIMBOTZ_BOARD,buttons:AIMBOTZ_BUTTONS,duelMaps:MAP_IDS})', cx);
+  assert.ok(!duelMaps.includes('aimbotz'));
+  const from = cx.eyePos();
+  for (const b of buttons) {
+    const x = (.5 - (b.x + b.w / 2) / board.width) * board.w;
+    const y = board.y + (.5 - (b.y + b.h / 2) / board.height) * board.h;
+    const direction = [x - from[0], y - from[1], board.z - from[2]];
+    assert.equal(cx.aimbotzButtonAt(from, direction), b);
+    if (b.weapon) { cx.aimbotzEquip(b.weapon); assert.equal(g.P.weapon, b.weapon); }
+  }
+  assert.equal(buttons.filter(b => b.weapon).length, Object.keys(g.W).length);
+  assert.equal(cx.aimbotzButtonAt(from, [0, 0, -1]), null);
+});
+
 test('DM has ten distinct participants, the requested names and a full five-minute live phase', () => {
   const g=deathmatch();
   assert.equal(g.DM.actors.length,10);assert.equal(new Set(g.DM.actors.map(e=>e.id)).size,10);

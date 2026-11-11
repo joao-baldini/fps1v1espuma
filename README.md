@@ -1,6 +1,6 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com quatro modos: **1v1**, **2v2**, **XvX** e **DM**. O jogo continua em um arquivo só (`index.html`), com geometria leve, áudio sintetizado, cinco arenas de duelo e dois mapas de DM. Sem modelos, texturas ou arquivos de som pesados.
+FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **DM** e treino de mira no **Aimbotz**. O jogo continua em um arquivo só (`index.html`), com geometria leve, áudio sintetizado, cinco arenas de duelo e dois mapas de DM. Sem modelos, texturas ou arquivos de som pesados.
 
 ## Modos de jogo
 
@@ -12,6 +12,7 @@ No menu, escolha o modo em **Modo de jogo**:
 | 2v2 | Você e um bot aliado contra dois bots | Sala para até 4 pessoas; bots completam as vagas |
 | XvX | Times de 1 a 5 de cada lado (1v5, 2v5, 3v3…), completados por bots | Sala para até 10 pessoas, no tamanho escolhido por quem cria |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
+| Aimbotz | Treino livre de mira com 1 a 12 bots | — |
 
 ## Como jogar com seu parceiro
 
@@ -46,6 +47,10 @@ Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e 
 - Vence quem tem mais abates; desempates por menos mortes e depois mais headshots. Empates exatos dividem a vitória. Ao zerar o relógio, tiros, respawns e placar param; é possível jogar novamente ou voltar ao menu.
 
 Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da travessia do CT na Dust II. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
+
+## Aimbotz
+
+Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados e renascem imediatamente no mesmo ponto. Vire para o quadro atrás do ponto inicial, mire e clique em **−** ou **+** para mudar a quantidade de bots, ou no nome da arma para equipá-la. A reserva de munição é ilimitada, com a recarga normal de cada arma.
 
 ## Arsenal (tecla B) e skins
 
