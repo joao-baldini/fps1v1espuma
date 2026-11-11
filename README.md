@@ -49,6 +49,8 @@ Terroristas (ataque) contra SWAT (defesa), com as regras do modo Wingman do CS. 
 
 A habilidade fica na tecla **X**, com uma carga por rodada. Os operadores de um mesmo time são sempre diferentes; os bots sorteiam entre os que sobram.
 
+O ícone da habilidade fica no centro, embaixo: drone (Finder), cruz de cura (Doctor), mão fazendo "shh" (Ghost) e sirene de alarme (Detector). Disponível, ele fica branco e contornado. Durante o efeito do Ghost, ganha a cor do operador com os segundos restantes. Depois de usada, fica esmaecido com a contagem em segundos até a carga voltar na próxima rodada.
+
 | Operador | Habilidade | Visual |
 |---|---|---|
 | Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro. Após um pulso, mostra uma silhueta vermelha parada onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |

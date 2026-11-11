@@ -1441,3 +1441,14 @@ test('Ghost: five seconds of silent footsteps that bots cannot hear, one charge 
   listener.cautionUntil = 0; cx.botListen(listener, g.P, 9, t + 100); assert.equal(listener.cautionUntil, 0, 'passos mudos');
   listener.cautionUntil = 0; cx.botListen(listener, g.P, 9, t + 5100); assert.ok(listener.cautionUntil > t + 5100, 'voltou a ouvir');
 });
+test('ability HUD: each operator has an icon; ready, active countdown, and cooldown until the next round', () => {
+  const { g, cx, step } = bombWorld();
+  let t = step(10000, 11500);
+  const icons = vm.runInContext('ABILITY_ICONS', cx);
+  for (const op of ['finder', 'doctor', 'ghost', 'detector']) assert.match(icons[op], /^<svg/);
+  const state = t2 => vm.runInContext(`abilityState(${t2})`, cx);
+  g.P.op = 'ghost'; g.P.charges = 1; g.P.silentUntil = 0;
+  assert.equal(state(t).state, 'ready');
+  cx.useAbility(t); assert.deepEqual(JSON.parse(JSON.stringify(state(t + 1200))), { state: 'active', s: 4 });
+  const cd = state(t + 5100); assert.equal(cd.state, 'cd'); assert.ok(cd.s >= 5, 'conta até a próxima rodada: ' + cd.s);
+});

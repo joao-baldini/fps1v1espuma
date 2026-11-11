@@ -293,8 +293,14 @@ button:disabled{opacity:.5;cursor:default}
 #dmgdir{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}
 #dmgdir i{position:absolute;left:-60px;top:-150px;width:120px;height:14px;border-radius:50% 50% 0 0/100% 100% 0 0;background:radial-gradient(ellipse at 50% 100%,rgba(255,60,40,.9),rgba(255,60,40,0) 70%)}
 #loc{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));font:700 13px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:#e9eef2;text-shadow:0 1px 2px #000}
-#ability{position:absolute;bottom:calc(64px + env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:8px;align-items:center;background:rgba(12,14,18,.72);padding:6px 10px;font:700 14px/1 var(--display);color:#fff}
-#ability kbd{background:#fff;color:#111;padding:2px 6px;font:700 12px/1 var(--display)}#ability.used{opacity:.5}
+#ability{position:absolute;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;font:700 10px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none}
+#ability .ab-icon{position:relative;width:58px;height:58px;display:grid;place-items:center;background:rgba(12,14,18,.55);border:2px solid #fff;border-radius:9px;box-shadow:0 0 10px rgba(255,255,255,.35),inset 0 0 8px rgba(255,255,255,.12);transition:border-color .15s,box-shadow .15s}
+#ability .ab-icon svg{width:40px;height:40px;color:#fff;filter:drop-shadow(0 0 3px rgba(255,255,255,.55));transition:opacity .15s}
+#ability kbd{position:absolute;right:-8px;bottom:-8px;background:#fff;color:#111;padding:2px 5px;border-radius:3px;font:700 11px/1 var(--display);text-shadow:none}
+#abCd{position:absolute;inset:0;display:grid;place-items:center;font:800 24px/1 var(--display);color:#fff;text-shadow:0 0 4px #000,0 1px 2px #000}
+#abName{background:rgba(12,14,18,.62);padding:3px 7px;border-radius:3px;color:#e9eef2}
+#ability.cd .ab-icon{border-color:rgba(255,255,255,.22);box-shadow:none}#ability.cd .ab-icon svg{opacity:.28;filter:none}#ability.cd kbd{opacity:.45}
+#ability.active .ab-icon{border-color:var(--opc,#fff);box-shadow:0 0 14px var(--opc,#fff)}#ability.active .ab-icon svg{color:var(--opc,#fff);opacity:.45;filter:none}
 #minimap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(12,14,18,.94);padding:12px;z-index:21;color:#fff}
 #minimap header{display:flex;gap:12px;align-items:baseline;margin-bottom:8px;font:700 16px/1 var(--display)}#minimap header span{font:500 12px/1.2 var(--body);color:#aab2ba}#mmCanvas{display:block;max-width:80vw;max-height:72vh}
 #opPick{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(8,10,12,.92);color:#fff}
@@ -360,7 +366,7 @@ button:disabled{opacity:.5;cursor:default}
 #board th:first-child,#board td:first-child{text-align:left}
 #board td{padding:9px 8px;text-align:right;border-top:1px solid var(--line)}
 #board caption{font:700 20px/1 var(--display);text-transform:uppercase;letter-spacing:.06em;text-align:left;padding-bottom:10px}
-#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:#23272e;border:1px solid var(--line);padding:10px 16px;border-radius:5px;font-size:15px;max-width:90vw;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:#23272e;border:1px solid var(--line);padding:10px 16px;border-radius:5px;font-size:15px;max-width:90vw;text-align:center}
 #hud.dm #feed{top:82px;max-width:min(440px,45vw)}
 #hud.dm #feed div{font-size:14px}
 #dmResult{position:fixed;z-index:25;top:18px;left:50%;transform:translateX(-50%);width:min(480px,94vw);padding:14px 18px;background:rgba(12,14,18,.96);border:1px solid var(--dev);border-radius:6px;text-align:center}
@@ -400,7 +406,7 @@ button:disabled{opacity:.5;cursor:default}
   <div id="feed"></div>
   <div id="hpbox"><span class="lbl">Vida</span><b id="hp">100</b></div>
   <div id="bombbox" hidden><span id="bbMoney">$800</span><span id="bbArmor"></span><span id="bbC4" hidden>C4</span></div>
-  <div id="ability" hidden><kbd>X</kbd><b id="abName"></b><span id="abCharge"></span></div>
+  <div id="ability" hidden><div class="ab-icon"><span id="abIcon"></span><b id="abCd" hidden></b><kbd>X</kbd></div><span id="abName"></span></div>
   <section id="minimap" hidden aria-label="Minimapa"><header><b>Varredura</b><span>escolha a área (10 m) com o clique · X ou Esc cancela</span></header><canvas id="mmCanvas" width="520" height="520"></canvas></section>
   <div id="actbar" hidden><span id="actLbl">Plantando</span><i><b id="actFill"></b></i></div>
   <section id="shop" hidden aria-label="Loja"><header><b>Loja</b><span id="shopMoney"></span><span id="shopTime"></span><span id="shopHint">clique compra · botão direito vende o que foi comprado nesta rodada</span><button type="button" id="shopClose">Fechar · B</button></header><div id="shopGrid"></div></section>
@@ -4615,6 +4621,21 @@ function opsAssign() {
 // Doctor: pistola de cura estimulante. Cura 50 (até 100). Errar o dardo não gasta a carga.
 const DOCTOR = { heal: 50, range: 30 }, GHOST = { ms: 5000 };
 // Ghost: passos sem barulho por 5 s (nem som para os outros, nem para a audição dos bots).
+// Ícones da habilidade no HUD (branco quando disponível; esmaecido com a contagem quando não).
+const ABILITY_ICONS = {
+  finder: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 13l22 22M35 13 13 35" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><g fill="none" stroke="currentColor" stroke-width="2.8"><circle cx="11" cy="11" r="7.5"/><circle cx="37" cy="11" r="7.5"/><circle cx="11" cy="37" r="7.5"/><circle cx="37" cy="37" r="7.5"/></g><g fill="currentColor"><circle cx="11" cy="11" r="2"/><circle cx="37" cy="11" r="2"/><circle cx="11" cy="37" r="2"/><circle cx="37" cy="37" r="2"/></g><rect x="17" y="17" width="14" height="14" rx="4" fill="currentColor"/><circle cx="24" cy="24" r="3" fill="#14171c"/><circle cx="24" cy="24" r="1.1" fill="currentColor"/></svg>',
+  doctor: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M19 6h10a1 1 0 0 1 1 1v11h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H30v11a1 1 0 0 1-1 1H19a1 1 0 0 1-1-1V30H7a1 1 0 0 1-1-1V19a1 1 0 0 1 1-1h11V7a1 1 0 0 1 1-1z" fill="currentColor"/><path d="M15 24h5l2-4 4 8 2-4h5" fill="none" stroke="#14171c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  ghost: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M5 19c4-6 9-8 13-6 2 1 4 2 6 2s4-1 6-2c4-2 9 0 13 6-5 7-11 10-19 10S10 26 5 19z" fill="currentColor"/><path d="M7 19c8 2 26 2 34 0" fill="none" stroke="#14171c" stroke-width="2" stroke-linecap="round"/><rect x="17.5" y="2" width="9.5" height="30" rx="4.75" fill="currentColor" stroke="#14171c" stroke-width="2.4"/><path d="M14 33a6 6 0 0 1 6-6h12a7 7 0 0 1 7 7v4a8 8 0 0 1-8 8h-9a8 8 0 0 1-8-8z" fill="currentColor" stroke="#14171c" stroke-width="2.4"/><path d="M28 32.5h10M28 38.5h10" stroke="#14171c" stroke-width="2" stroke-linecap="round"/><path d="M14 35c3 1 6 0 8-2" fill="none" stroke="#14171c" stroke-width="2" stroke-linecap="round"/></svg>',
+  detector: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3v6M8 9l4 4M40 9l-4 4M2 23h6M46 23h-6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M13 37V26a11 11 0 0 1 22 0v11z" fill="currentColor"/><path d="M19 27a5 5 0 0 1 5-5" fill="none" stroke="#14171c" stroke-width="2.6" stroke-linecap="round"/><rect x="8" y="37" width="32" height="7" rx="2" fill="currentColor"/></svg>'
+};
+// 'ready': pode usar; 'active': efeito rodando (s = segundos restantes); 'cd': carga gasta, s = segundos até recarregar na próxima rodada.
+function abilityState(t) {
+  if (t < (P.silentUntil || 0)) return { state: 'active', s: Math.ceil((P.silentUntil - t) / 1000) };
+  if (P.charges > 0) return { state: 'ready', s: 0 };
+  let ms = Math.max(0, ARENA.roundEnd - t);
+  if (DM.phase === 'live') ms += BOMB.endMs; else if (DM.phase === 'freeze') ms += BOMB.roundMs + BOMB.endMs;
+  return { state: 'cd', s: Math.max(1, Math.ceil(ms / 1000)) };
+}
 function ghostSilence(e, t) { if (e.op !== 'ghost' || !(e.charges > 0) || !e.alive) return false; e.charges--; e.silentUntil = t + GHOST.ms; if (e === P) { opNotice('Passos mudos por 5 s'); AU.swish && AU.swish(); } return true; }
 function doctorHeal(by, target, t) {
   if (!by || !target || !target.alive || by.op !== 'doctor' || !(by.charges > 0) || target.team !== by.team || target.hp >= 100) return false;
@@ -5066,7 +5087,7 @@ function updateVM(dt, t) {
 }
 
 /* ================= HUD ================= */
-const el = { ability: $('ability'), abName: $('abName'), abCharge: $('abCharge'), loc: $('loc'), bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
+const el = { ability: $('ability'), abName: $('abName'), abIcon: $('abIcon'), abCd: $('abCd'), loc: $('loc'), bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'), dmgn: $('dmgn'), dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
   scMe: $('scMe'), scOp: $('scOp'), nmMe: $('nmMe'), nmOp: $('nmOp'), clock: $('clock'), clockT: $('clockT'), clockL: $('clockL'),
   wait: $('waitline'), banner: $('banner'), bH: $('bH'), bP: $('bP'), feed: $('feed'), hpbox: $('hpbox'), hp: $('hp'),
   wname: $('wname'), ammo: $('ammo'), res: $('res'), fps: $('fps'), netst: $('netst'), board: $('board'), dead: $('deadmsg') };
@@ -5217,8 +5238,10 @@ function updateHUD(dt, t) {
     if (msg) { setT(el.wait, msg); setH(el.wait, false); }
   }
   if (bombOn() && P.op) {
-    setH(el.ability, !P.alive); setT(el.abName, OPS[P.op].name + ' · ' + OPS[P.op].ability); setT(el.abCharge, t < (P.silentUntil || 0) ? 'ativo · ' + Math.ceil((P.silentUntil - t) / 1000) + ' s' : P.charges > 0 ? '1 carga' : 'usada');
-    el.ability.classList.toggle('used', !(P.charges > 0)); el.ability.style.borderBottom = '3px solid ' + OPS[P.op].color;
+    setH(el.ability, !P.alive); setT(el.abName, OPS[P.op].name + ' · ' + OPS[P.op].ability);
+    if (el.abIcon.dataset.op !== P.op) { el.abIcon.dataset.op = P.op; el.abIcon.innerHTML = ABILITY_ICONS[P.op] || ''; el.ability.style.setProperty('--opc', OPS[P.op].color); }
+    const st = abilityState(t); el.ability.classList.toggle('cd', st.state === 'cd'); el.ability.classList.toggle('active', st.state === 'active');
+    setH(el.abCd, st.state === 'ready'); setT(el.abCd, st.state === 'ready' ? '' : String(st.s));
     if (MINI.open) drawMinimap(t);
   } else setH(el.ability, true);
   if (bombOn()) {
