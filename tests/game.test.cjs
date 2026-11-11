@@ -1318,3 +1318,17 @@ test('TDM: two teams on a DM map, no friendly fire, team score counts kills and 
   assert.equal(DMs.teamScore[0], kills(0)); assert.equal(DMs.teamScore[1], kills(1));
   if (g.DM.phase === 'over') assert.ok(Math.max(...DMs.teamScore) >= DMs.target || t >= DMs.endsAt);
 });
+test('Plant the Bomb shop sells back what was bought this round for the full price, restoring the previous gear', () => {
+  const { g, cx, A, BM, step } = bombWorld();
+  let t = step(10000, 1500);
+  g.P.money = 5000;
+  assert.ok(cx.bombBuy(g.P, 'pistol', t)); assert.equal(g.P.inv.secondary, 'pistol'); assert.equal(g.P.money, 4300);
+  assert.ok(cx.bombBuy(g.P, 'helmet', t)); assert.ok(cx.bombBuy(g.P, 'flash', t)); assert.equal(g.P.money, 3100);
+  assert.ok(cx.bombSell(g.P, 'pistol', t)); assert.equal(g.P.inv.secondary, 'usps'); assert.equal(g.P.money, 3800); assert.ok(g.ORDER.includes('usps'));
+  assert.ok(cx.bombSell(g.P, 'helmet', t)); assert.equal(g.P.inv.armor, 0); assert.equal(g.P.inv.helmet, false);
+  assert.ok(cx.bombSell(g.P, 'flash', t)); assert.equal(g.P.nades.flash, 0); assert.equal(g.P.money, 5000);
+  assert.equal(cx.bombSell(g.P, 'kevlar', t), false);
+  assert.ok(cx.bombBuy(g.P, 'kevlar', t));
+  t = step(t, 30000); // passou o tempo de compra
+  assert.equal(cx.bombSell(g.P, 'kevlar', t), false);
+});
