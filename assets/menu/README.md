@@ -1,7 +1,7 @@
 # Prévias do menu
 
-As imagens mostram a geometria real dos mapas do jogo. As miniaturas de 640 pixels alimentam os cards de seleção. O destaque usa `srcset` para escolher entre a miniatura e a versão em `large/`, de 2048 × 768 pixels.
+A interface atual usa os arquivos em **play/**: cenas 16:9 em 1280 × 720 e miniaturas em **play/thumb/**, com 320 × 180. São renders novos da geometria real do jogo, com antialiasing e compressão WebP. O arquivo **play/cameras.json** registra posições, alvos e campo de visão. O Aimbotz inclui os bots reais; Guard e Elysion usam pontos desobstruídos próximos do bombsite. A rotação reúne três câmeras renderizadas em viewports separados, sem esticar as cenas.
 
-As versões grandes foram renderizadas novamente com antialiasing e comprimidas em WebP (qualidade 80), sem ampliar as miniaturas. A rotação reúne Pátio, Ponte e Torres; Aimbotz mostra os bots da própria arena. Guard e Elysion mostram a geometria convertida dos arquivos enviados, com as mesmas cores chapadas usadas na partida. Apenas o mapa selecionado é solicitado para o destaque.
+O destaque só carrega a imagem selecionada. As miniaturas usam carregamento adiado. Não existe renderização contínua dos mapas no menu. CSS mantém as imagens em 16:9 e os controles da partida ficam ao lado em monitores de desktop.
 
-São arquivos estáticos: antialiasing e captura ocorrem fora do jogo. Não há cena 3D animada, novo efeito gráfico nem renderização de prévia em tempo real no menu.
+Os arquivos anteriores na raiz e em **large/** foram preservados; a seleção de mapas atual usa **play/**.

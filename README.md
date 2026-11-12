@@ -4,7 +4,7 @@ FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **Pla
 
 ## Modos de jogo
 
-Na tela **Jogar**, escolha o modo e selecione a arena na faixa de mapas. O mapa escolhido aparece em destaque. No painel da partida, escolha **Contra bots** ou **Com amigos** e ajuste as opções antes de iniciar. O Aimbotz entra direto no treino. A engrenagem abre as configurações; o equipamento mostra as silhuetas das armas escolhidas.
+Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de miniaturas. O mapa escolhido aparece em destaque. A configuração da partida e o botão **Jogar** ficam juntos ao lado da prévia em 16:9; **Contra bots** ou **Com amigos** aparece nos modos que aceitam sala online. O Aimbotz entra direto no treino. **Configurações** abre uma tela própria; **Seu equipamento** expande um resumo do loadout e o acesso ao arsenal.
 
 | Modo | Sozinho | Online |
 |---|---|---|
@@ -17,9 +17,9 @@ Na tela **Jogar**, escolha o modo e selecione a arena na faixa de mapas. O mapa 
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
 | Aimbotz | Treino livre de mira com 1 a 12 bots | — |
 
-**5v5:** escolha o card do modo, depois **Palace** ou **Factory**. É uma base que reutiliza as regras de bomba e a IA já existentes; não há uma nova lógica tática específica para esses mapas. Há cinco pontos de nascimento separados por lado. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e aliados; inimigos não aparecem. Os spawns são **azul = defensor**, **vermelho = atacante**. No Palace, a defesa fica na parte superior e o ataque na inferior; no Factory, as bases seguem a orientação da referência original, defesa à esquerda e ataque à direita.
+**5v5:** escolha o modo na lista, depois **Palace** ou **Factory**. É uma base que reutiliza as regras de bomba e a IA já existentes; não há uma nova lógica tática específica para esses mapas. Há cinco pontos de nascimento separados por lado. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e aliados; inimigos não aparecem. Os spawns são **azul = defensor**, **vermelho = atacante**. No Palace, a defesa fica na parte superior e o ataque na inferior; no Factory, as bases seguem a orientação da referência original, defesa à esquerda e ataque à direita.
 
-Os dois modelos enviados foram convertidos offline, com cores chapadas inspiradas nas referências originais do Warface. As imagens de seleção vêm dos próprios mapas do jogo, em 2048 × 768, sem carregar cenas 3D no menu. Os GLBs originais e as ferramentas de revisão não são necessários para jogar.
+Os dois modelos enviados foram convertidos offline, com cores chapadas inspiradas nas referências originais do Warface. As imagens de seleção vêm dos próprios mapas do jogo, em 1280 × 720, sem carregar cenas 3D no menu. Os GLBs originais e as ferramentas de revisão não são necessários para jogar.
 
 ## Como jogar com seu parceiro
 
@@ -128,7 +128,7 @@ Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e 
 - Respawn automático após **1,5 segundo**, com vida e carregador cheios. O ponto escolhido nunca está à vista de um inimigo vivo nem perto dele; depois disso, vale a distância e a variedade.
 - Proteção de **1,8 segundo** ao nascer, encerrada ao mover ou atirar; os bots seguem a mesma regra. Um anel azul identifica bots protegidos.
 - Reserva de munição infinita, com carregadores, cadência e recargas normais.
-- Killfeed mantém os últimos oito abates, inclusive bot contra bot. **Tab** mostra os dez participantes; no menu, use **Ver placar do Deathmatch**.
+- Killfeed mostra até cinco abates recentes por 6,5 s, inclusive bot contra bot, com silhueta vetorial da arma e ícone de headshot. **Tab** mostra os dez participantes; no menu, use **Ver placar do Deathmatch**.
 - Vence quem tem mais abates; desempates por menos mortes e depois mais headshots. Empates exatos dividem a vitória. Ao zerar o relógio, tiros, respawns e placar param; é possível jogar novamente ou voltar ao menu.
 
 Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e em todos os mapas próprios os spawns iniciais são escolhidos sem que nenhum par de participantes se enxergue. Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da travessia do CT na Dust II. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
@@ -147,17 +147,27 @@ Esse trecho usa a geometria física do VPK fornecido, convertida offline e recor
 
 O quadro separado **Viewmodel** muda a posição da arma em tempo real. **X** move para esquerda/direita (−2 a 2,5), **Y** para trás/frente (−2 a 2) e **Z** para baixo/cima (−2 a 2). Os botões usam passos de 0,5; **Preferências → Posição da arma** permite digitar valores de 0,1 em 0,1. As duas telas compartilham a mesma preferência, salva no navegador e aplicada em todos os modos. **Restaurar padrão** zera os três valores e recupera a posição anterior do jogo. É uma transformação do modelo em primeira pessoa, sem mudar a câmera, a mira, os tiros ou o modelo dos adversários.
 
+Em **Preferências → Posição da arma → Mão da arma**, escolha **Mão direita** (padrão) ou **Mão esquerda**. A troca espelha as armas, facas, mãos e animações em primeira pessoa, vale em todos os modos e fica salva no navegador.
+
+## HUD em partida
+
+Placar e tempo ficam reunidos no topo. Vida, proteção e munição têm números separados e sem caixas individuais. A recarga conserva a contagem de balas visível e mostra seu progresso; armas de precisão também indicam o intervalo até o próximo disparo. A habilidade mostra a tecla, o estado real e o progresso do cooldown. FPS aparece somente quando a opção está ativa; os dados de conexão aparecem nas partidas online.
+
+O radar é circular e gira com a câmera, mantendo a mesma escala nos dois eixos. Aparece nos duelos, times, DM, TDM e Prefire. Mostra você, aliados vivos e as últimas posições reveladas pela varredura do Finder; não revela adversários sem essa habilidade. Os sites A/B e a bomba seguem o estado da partida. A geometria é desenhada uma vez por mapa e reutilizada; o radar atualiza no máximo a cada 80 ms, sem uma segunda câmera 3D. A HUD usa a resolução da tela mesmo com a resolução 3D reduzida. O Finder conserva a escolha de área de 10 m no mapa completo circular.
+
+Testes do radar: `node --test tests/hud-radar.test.cjs`.
+
 ## Arsenal (tecla B) e skins
 
 O apelido exato `KQLY` ativa o aimbot para armas de fogo em todos os modos. Cada disparo escolhe a cabeça mais próxima da direção visível da mira, inclusive atrás de paredes, respeitando altura e agachamento. Aliados, mortos e alvos com proteção de spawn são ignorados; em empate angular, vence o mais próximo. Não há ajuste sem disparar, ao atirar sem munição ou ao usar facas. Trocar o apelido desativa a função.
 
 A AWP padrão usa um estampido sintetizado mais grave, mantendo o estilo do jogo. Os headshots padrão também são sintetizados, com um toque metálico para capacete. As skins mantêm seus sons. Os MP3 do experimento ficam guardados em [assets/audio](assets/audio/README.md), sem carregar ou tocar durante o jogo.
 
-O **Arsenal** é uma tela própria, acessível pelo topo do menu ou por **Editar equipamento**. Escolha o slot de rifle, pistola, faca ou precisão à esquerda. À direita, cada card mostra uma arma com a skin que ela usa: um clique equipa a arma e abre logo abaixo uma barra com as skins dela. O contorno cobre e a indicação **Equipada** confirmam a escolha; os slots mostram seu equipamento atual. As escolhas ficam salvas no navegador.
+O **Arsenal** é uma tela própria, acessível pelo topo do menu ou por **Seu equipamento → Editar no arsenal**. Escolha o slot de primária, pistola, faca ou precisão à esquerda e clique em uma arma da lista para equipar. Ao lado, a prévia 3D mostra o modelo real do jogo sobre fundo escuro, com luz própria e enquadramento adequado a rifles, pistolas e facas; os acabamentos ficam sempre abaixo dela. As cores convertidas para a iluminação existem apenas nos buffers da prévia. A indicação **Equipada** e os slots confirmam a escolha. Armas e skins ficam salvas no navegador. A prévia só renderiza quando a seleção ou o tamanho da tela muda, sem animação contínua.
 
 Durante a partida, **B** abre a mesma tela com um cursor próprio; **1–4** alternam os slots, a rodinha rola o inventário e **B** volta ao jogo. **Esc** libera o mouse e abre a pausa. Os comandos de movimento e tiro ficam suspensos enquanto você escolhe. No DM, as categorias não permitidas ficam desativadas. O relógio da partida continua.
 
-Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de tom a cada abate seguido, como no Valorant, e o quinto vira finalização; um emblema com a contagem aparece no HUD. A sequência zera quando você morre ou renasce. Equipar no inventário toca apenas uma confirmação discreta.
+Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de tom a cada abate seguido, como no Valorant, e o quinto vira finalização; uma confirmação discreta com a contagem aparece no HUD. A sequência zera quando você morre ou renasce. Equipar no inventário toca apenas uma confirmação discreta.
 
 | Skin | Armas | Visual | Sons |
 |---|---|---|---|
@@ -281,7 +291,7 @@ A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atir
 
 ## Configurações
 
-Use a engrenagem no topo do menu para abrir as abas de mouse, mira, armas, partida, preferências, vídeo e som e controles.
+Use **Configurações**, no topo do menu, para abrir a tela de mouse, mira, armas, partida, preferências, vídeo e som e controles. As opções ficam em linhas alinhadas, com navegação por seção e salvamento automático. A interface usa grafite, branco suave e detalhes em azul-aço. A IBM Plex Sans é carregada localmente, em três arquivos WOFF2 latinos, com licença e fonte documentadas em `assets/ui/fonts/`. Não há índices decorativos ou cantoneiras.
 
 - **Cor do boneco:** escolha antes de entrar na sala. É a cor que o oponente vê.
 
@@ -298,7 +308,7 @@ A luneta da AWP e da Scout só abre quando a arma está pronta para disparar: ap
 
 ## Desempenho e desenvolvimento
 
-Sem pós-processamento, sombras em tempo real ou antialiasing durante o jogo. O mapa e as partes estáticas das armas usam geometria agrupada; impactos e rastros são reutilizados. As animações só transformam grupos existentes. A resolução padrão não multiplica pixels por telas de DPI alto. O ajuste automático reduz a resolução quando o tempo médio de quadro sobe. A cena 3D é renderizada durante a partida e fica suspensa em abas ocultas. O menu usa imagens WebP estáticas, SVG e CSS, sem reconstruir o mapa 3D a cada seleção. As prévias grandes foram renderizadas separadamente em **2048 × 768 com antialiasing**; `srcset` permite usar as miniaturas de 640 pixels em telas menores. A arena é construída ao iniciar a partida.
+Sem pós-processamento, sombras em tempo real ou antialiasing durante o jogo. O mapa e as partes estáticas das armas usam geometria agrupada; impactos e rastros são reutilizados. As animações só transformam grupos existentes. A resolução padrão não multiplica pixels por telas de DPI alto. O ajuste automático reduz a resolução quando o tempo médio de quadro sobe. A cena 3D é renderizada durante a partida e fica suspensa em abas ocultas. A seleção de mapas usa imagens WebP estáticas, SVG e CSS, sem reconstruir o mapa 3D a cada seleção. A prévia da arma no arsenal cria seu renderizador apenas no primeiro acesso e desenha uma vez por seleção ou redimensionamento. O estilo dos menus fica em `assets/ui/menu.css`; nenhuma biblioteca foi acrescentada. As prévias atuais foram renderizadas separadamente em **1280 × 720 com antialiasing**, com câmeras próprias; as miniaturas usam 320 × 180. A proporção é 16:9 em todos os tamanhos, sem deformar a cena. A faixa de mapas aceita os botões de navegação, a rodinha e o teclado. A arena é construída ao iniciar a partida.
 
 No DM e no 2v2, os outros participantes compartilham geometria por instanciamento: corpo, cabeça, capacete, nove modelos de arma (facas incluídas) e marcador de aliado, com efeitos reutilizados. A cor de cada instância é alocada com a capacidade total antes do primeiro desenho; antes dessa correção o buffer ficava vazio e a GPU descartava os bots, que ficavam invisíveis. A navegação é uma grade 2,5D: cada célula guarda a altura do chão e só liga vizinhas sem degrau maior que um passo, então os bots sobem escadas, rampas e plataformas. A malha é calculada uma vez por mapa e reutiliza buffers de busca; a percepção dos bots é distribuída ao longo dos quadros. Áudio e passos simultâneos têm limite próprio para evitar picos.
 
