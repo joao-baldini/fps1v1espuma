@@ -245,7 +245,7 @@ test('AWP and headshots use lightweight synthesis and retain skin sounds without
   }
 });
 
-test('detailed weapon models: every gun stays within a triangle budget, supports every skin and keeps the Deagle untouched', () => {
+test('detailed weapon models: every gun stays within a triangle budget and supports every skin; the Deagle keeps its moving slide', () => {
   const g=game(),cx=g.context;
   cx.THREE.Color=class {
     constructor(hex){this.setHex(hex||0);}
@@ -269,7 +269,7 @@ test('detailed weapon models: every gun stays within a triangle budget, supports
   const minZ=k=>Math.min(...guns[k].map(p=>p[0][2]));
   assert.ok(Math.abs(minZ('m4a4')+.785)<1e-9);assert.ok(minZ('m4a1s')<-.94&&minZ('m4a1s')>-.95);
   const tris=k=>cx.boxModel(guns[k]).geometry.p.length/9;
-  for(const key of ['rifle','m4a4','m4a1s','galil','famas','ump','bucky','ssg','sniper','usps','glock','medgun','he','flash','smoke','c4']){
+  for(const key of ['rifle','m4a4','m4a1s','galil','famas','ump','bucky','ssg','sniper','usps','glock','medgun','he','flash','smoke','c4','pistol']){
     assert.ok(tris(key)>(['he','flash','smoke','c4'].includes(key)?150:300),key+' tem detalhe: '+tris(key));
     for(const skin of ['padrao','neon','brasa','glacial']){
       const geo=cx.boxModel(cx.skinPartsFor(key,skin,guns[key])).geometry;
@@ -283,8 +283,12 @@ test('detailed weapon models: every gun stays within a triangle budget, supports
   const sub=cx.skinPartsFor('rifle','sublime',guns.rifle);assert.ok(sub.length>guns.rifle.length);
   for(let i=0;i<guns.rifle.length;i++)assert.equal(sub[i][3],guns.rifle[i][3]);
   assert.ok(sub.some(p=>p[2]===0xefe7d6)&&sub.some(p=>p[2]===0xd9a93a)&&sub.some(p=>p[2]===0x5ff6ff));
-  // Deagle e seu ferrolho continuam com os mesmos perfis.
-  assert.equal(guns.pistol.length,12);assert.equal(vm.runInContext('DEAGLE_SLIDE.length',cx),13);
+  // Deagle: cano fixo detalhado e o ferrolho de trás separado (é ele que recua no tiro).
+  const slide=vm.runInContext('DEAGLE_SLIDE',cx),deagle=cx.boxModel(guns.pistol.concat(slide)).geometry.p.length/9;
+  assert.ok(guns.pistol.length>20&&slide.length>14);assert.ok(deagle>500&&deagle<1500,String(deagle));
+  assert.ok(slide.every(p=>p[0][2]>=-.165),'o ferrolho fica atrás do cano');
+  // AWP do CS: coronha vazada (thumbhole) e luneta de objetiva grande.
+  assert.ok(tris('sniper')>900);
 });
 
 test('Deagle draw follows the reference turn and joins the support hand before the firing gate opens',()=>{
@@ -345,7 +349,6 @@ test('screen-shake preference preserves old defaults and changes no bullets, dam
 test('inventory selections equip weapon and skin atomically and reject locked, incompatible or restricted items', () => {
   const g=game(),cx=g.context;
   vm.runInContext(section('const slotOf =','const hexCss ='),cx);
-  vm.runInContext(section('function buyAllowed(','function weaponStats('),cx);
   vm.runInContext(section('function applyLoadoutSelection(','function buyEquip('),cx);
   assert.equal(cx.applyLoadoutSelection('usps','neon'),true);
   assert.equal(g.S.loadout.pistol,'usps');assert.equal(g.S.skins.usps,'neon');
@@ -647,6 +650,9 @@ test('each DM category constrains player switching and bot weapons at every resp
     }
     g.S.dmWeapons=category==='all'?'pistol':'all';g.S.dmLevel='dificil';
     assert.equal(g.DM.category,category);assert.equal(g.DM.level,'medio');
+    // Precisão e rifles usam o slot 1; só a categoria pistola (ou tudo) traz a pistola.
+    const order=Array.from(g.dmLoadoutOrder({rifle:'ssg',pistol:'usps',knife:'knife'},category));
+    assert.deepEqual(order,{pistol:['usps','knife'],sniper:['ssg','knife'],rifle:['rifle','knife'],all:['ssg','usps','knife']}[category]);
   }
 });
 
@@ -705,17 +711,23 @@ test('DM reloads indefinitely, ends exactly on deadline and freezes final result
 test('old settings migrate and invalid equipment falls back to usable slots', () => {
   const g = game({ sens: 1.25, loadout: { rifle: 'missing', knife: 'butterfly' }, botWeapon: 'butterfly', startSlot: 'missing' });
   assert.equal(g.S.sens, 1.25);
-  assert.deepEqual(Array.from(g.ORDER), ['rifle', 'pistol', 'butterfly', 'sniper']);
+  assert.deepEqual(Array.from(g.ORDER), ['rifle', 'pistol', 'butterfly']);
   assert.equal(g.S.botWeapon, 'rifle');
   assert.equal(g.S.startSlot, 'rifle');
+  // O antigo slot de precisão (tecla 4) some: quem nascia com ele passa a ter a arma na primária.
+  const old = game({ loadout: { rifle: 'm4a4', sniper: 'ssg' }, startSlot: 'sniper' });
+  assert.equal(old.S.loadout.rifle, 'ssg'); assert.equal(old.S.startSlot, 'rifle'); assert.equal(old.S.loadout.sniper, undefined);
+  assert.deepEqual(Array.from(old.ORDER), ['ssg', 'pistol', 'knife']);
+  const kept = game({ loadout: { rifle: 'm4a4', sniper: 'ssg' }, startSlot: 'pistol' });
+  assert.equal(kept.S.loadout.rifle, 'm4a4'); assert.equal(kept.S.loadout.sniper, undefined);
 });
 
 test('every equipment combination equips, switches, shoots and reloads each selected gun', () => {
   const g = game(); let combinations = 0;
   for (const rifle of g.CATEGORIES.rifle) for (const pistol of g.CATEGORIES.pistol)
-    for (const knife of g.CATEGORIES.knife) for (const sniper of g.CATEGORIES.sniper) {
-      g.S.loadout = { rifle, pistol, knife, sniper }; g.spawnSelf(0);
-      assert.deepEqual(Array.from(g.ORDER), [rifle, pistol, knife, sniper]);
+    for (const knife of g.CATEGORIES.knife) {
+      g.S.loadout = { rifle, pistol, knife }; g.spawnSelf(0);
+      assert.deepEqual(Array.from(g.ORDER), [rifle, pistol, knife]);
       for (const key of g.ORDER) {
         g.selectWeapon(key);
         assert.equal(g.P.weapon, key);
@@ -735,12 +747,41 @@ test('every equipment combination equips, switches, shoots and reloads each sele
 
 test('equipment edits take effect on the next spawn, with the chosen starting slot', () => {
   const g = game(); g.spawnSelf(0);
-  g.S.loadout.rifle = 'm4a4'; g.S.startSlot = 'sniper';
+  g.S.loadout.rifle = 'm4a4'; g.S.startSlot = 'pistol';
   g.selectWeapon('m4a4'); assert.equal(g.P.weapon, 'rifle');
-  g.spawnSelf(0); assert.equal(g.P.weapon, 'sniper');
+  g.spawnSelf(0); assert.equal(g.P.weapon, 'pistol');
   g.selectWeapon('m4a4'); assert.equal(g.P.weapon, 'm4a4');
+  // AWP e Scout são primárias: entram no slot 1, no lugar do fuzil.
+  assert.ok(g.CATEGORIES.rifle.includes('sniper') && g.CATEGORIES.rifle.includes('ssg')); assert.equal(g.CATEGORIES.sniper, undefined);
+  g.S.loadout.rifle = 'sniper'; g.S.startSlot = 'rifle'; g.spawnSelf(0);
+  assert.equal(g.P.weapon, 'sniper'); assert.deepEqual(Array.from(g.ORDER), ['sniper', g.S.loadout.pistol, g.S.loadout.knife]);
 });
 
+test('outside Plant the Bomb: free shop with every gun (no grenades or gear); kevlar and helmet are default and can be turned off', () => {
+  const g = game(), cx = g.context, ev = s => vm.runInContext(s, cx);
+  cx.G.mode = 'bot'; g.spawnSelf(0);
+  assert.equal(ev('bombOn()'), false); assert.equal(ev('freeShopOn()'), true);
+  const listed = [...ev('shopColsFor(P)').flatMap(([, items]) => [...items])];
+  for (const k of ['glock', 'usps', 'pistol', 'ump', 'bucky', 'galil', 'rifle', 'famas', 'm4a4', 'm4a1s', 'ssg', 'sniper']) assert.ok(listed.includes(k), k);
+  for (const k of ['he', 'flash', 'smoke', 'kevlar', 'helmet', 'kit']) assert.ok(!listed.includes(k), k);
+  assert.ok(listed.every(k => ev(`freeShopBlock('${k}')`) === ''));
+  cx.G.mode = 'aimbotz'; assert.equal(ev('freeShopOn()'), false); cx.G.mode = 'bot';
+  // Colete e capacete padrão: no corpo o dano cai pela penetração da arma; pernas passam direto; o colete gasta.
+  assert.equal(g.P.armor, 100); assert.equal(g.P.helmet, true);
+  g.botSpawn(1); assert.equal(g.BOT.armor, 100); assert.equal(g.BOT.helmet, true);
+  const e = { armor: 100, helmet: true };
+  assert.equal(ev('armorCut')(e, 36, 'body', 'rifle'), 36 * g.W.rifle.helmetPen); assert.ok(e.armor < 100);
+  assert.equal(ev('armorCut')(e, 27, 'leg', 'rifle'), 27);
+  assert.equal(ev('armorCut')({ armor: 0, helmet: false }, 36, 'body', 'rifle'), 36);
+  g.S.armor = false; g.spawnSelf(0); g.botSpawn(1);
+  assert.equal(g.P.armor, 0); assert.equal(g.P.helmet, false); assert.equal(g.BOT.armor, 0); assert.equal(g.BOT.helmet, false);
+  // Configuração antiga "Bot com capacete" vira a nova opção.
+  assert.equal(game({ botHelmet: false }).S.armor, false); assert.equal(game({}).S.armor, true);
+  // DM: a loja respeita a categoria da partida.
+  const dm = deathmatch('pistol');
+  assert.equal(vm.runInContext("freeShopBlock('rifle')", dm.context), 'Fora da categoria'); assert.equal(vm.runInContext("freeShopBlock('usps')", dm.context), '');
+  assert.equal(dm.P.armor, 100);
+});
 test('USP-S HS kills an unhelmeted target at close range and survives with a helmet', () => {
   const g = game();
   assert.equal(g.damageFor(g.W.usps, 'head', false), 140);
@@ -848,7 +889,7 @@ test('all seven bot weapons use the selected ammo, reload time, fire rate and da
   const g = game();
   for (const key of Object.keys(g.W).filter(k => !g.W[k].melee && !g.W[k].grenade && !g.W[k].bomb && !g.W[k].medgun)) {
     g.context.G.view.ph = 'freeze';
-    g.S.botWeapon = key; g.S.botHelmet = false; g.botSpawn(1);
+    g.S.botWeapon = key; g.S.armor = false; g.botSpawn(1);
     assert.equal(g.BOT.w, key); assert.equal(g.BOT.helmet, false);
     assert.equal(g.BOT.mag, g.W[key].mag);
     g.BOT.mag = 0; g.botUpdate(0, 20000);
@@ -1451,6 +1492,23 @@ test('a short bot match plays rounds with plants or eliminations, swaps sides at
   assert.notEqual(sides[0], sides[2], 'não trocou de lado');
   assert.ok(reasons.size >= 1); assert.ok([...reasons].every(r => ['kill', 'time', 'bomb', 'defuse'].includes(r)), [...reasons].join());
 });
+test('crouching cuts recoil by 15%, and each shot kicks the gun back on a smooth spring like CS:GO', () => {
+  const g = game(), cx = g.context; g.spawnSelf(0); g.selectWeapon('rifle');
+  const kick = crouch => { g.P.recoilP = g.P.recoilY = 0; g.P.shots = 4; g.P.crouch = crouch; g.P.onGround = true; cx.applyRecoil(g.W.rifle); return g.P.recoilP; };
+  const stand = kick(false), duck = kick(true); assert.ok(stand > 0); assert.ok(Math.abs(duck - stand * .85) < 1e-12, duck + ' vs ' + stand);
+  const awp = c => { g.P.recoilP = 0; g.P.crouch = c; cx.applyRecoil(g.W.sniper); return g.P.recoilP; };
+  assert.ok(Math.abs(awp(true) - awp(false) * .85) < 1e-12);
+  g.P.recoilP = 0; g.P.shots = 4; g.P.crouch = true; g.P.onGround = false; cx.applyRecoil(g.W.rifle); assert.ok(Math.abs(g.P.recoilP - stand) < 1e-12, 'no ar não conta como agachado');
+  // Coice: sobe rápido, passa por um pico pequeno e volta sozinho, sem tremer, a qualquer FPS.
+  for (const fps of [30, 60, 144]) {
+    g.P.vmKick = { z: 0, v: 0 }; cx.vmKickImpulse('rifle'); let peak = 0, low = 0, t = 0, z = 0;
+    for (; t < .5; t += 1 / fps) { z = cx.vmKickStep(1 / fps); peak = Math.max(peak, z); low = Math.min(low, z); }
+    assert.ok(peak > .02 && peak < .06, fps + ' pico ' + peak); assert.ok(low > -peak * .15, 'quase sem rebote'); assert.ok(Math.abs(z) < .002, 'voltou');
+  }
+  g.P.vmKick = { z: 0, v: 0 }; cx.vmKickImpulse('sniper'); let awpPeak = 0; for (let i = 0; i < 30; i++) awpPeak = Math.max(awpPeak, cx.vmKickStep(1 / 60));
+  g.P.vmKick = { z: 0, v: 0 }; cx.vmKickImpulse('ump'); let umpPeak = 0; for (let i = 0; i < 30; i++) umpPeak = Math.max(umpPeak, cx.vmKickStep(1 / 60));
+  assert.ok(awpPeak > umpPeak * 2, 'AWP dá um coice bem maior que a UMP');
+});
 test('AWP accuracy follows CS: precise only when (almost) still, wild while moving scoped, quickscope needs a moment', () => {
   const g = game(), w = g.W.sniper, e = { vel: { x: 0, z: 0 }, onGround: true, crouch: false, landSpread: 0 };
   const at = (speed, zoomed, crouch = false) => { e.vel.x = speed; e.crouch = crouch; return g.inaccuracy(e, w, zoomed, 0); };
@@ -1460,7 +1518,7 @@ test('AWP accuracy follows CS: precise only when (almost) still, wild while movi
   assert.ok(at(0, true, true) < at(0, true));
   assert.ok(at(0, false) >= w.noscope);
   // tiro logo depois de abrir o scope: ainda carrega parte da imprecisão sem scope
-  g.spawnSelf(0, [0, 0, 0]); g.selectWeapon('sniper'); g.P.drawEnd = 0; g.P.nextFire = 0;
+  g.S.loadout.rifle = 'sniper'; g.spawnSelf(0, [0, 0, 0]); g.selectWeapon('sniper'); g.P.drawEnd = 0; g.P.nextFire = 0;
   g.context.toggleScope(20000); assert.equal(g.P.zoomAt, 20000);
 });
 test('XvX goes up to 8 per team: sixteen actors with distinct names spawn apart and rounds still finish', () => {

@@ -120,7 +120,7 @@ Clique esquerdo lança a granada longe; o direito joga perto. As granadas quicam
 
 ### Modelos das armas
 
-Todas as armas, menos a Desert Eagle e a Karambit, ganharam modelos mais detalhados. Em vez de caixas, cada peça é um perfil lateral recortado (côncavo quando precisa), tubos facetados para canos, silenciadores e lunetas, e caixas pequenas para os detalhes:
+Todas as armas, menos a Karambit, ganharam modelos mais detalhados. Em vez de caixas, cada peça é um perfil lateral recortado (côncavo quando precisa), tubos facetados para canos, silenciadores e lunetas, e caixas pequenas para os detalhes:
 
 - **AK-47:** caixa com tampa e mola, guarda-mão de madeira em duas partes com ranhuras, carregador curvo, alça de mira, massa com orelhas e freio de boca.
 - **M4A4 e M4A1-S:** dividem o mesmo corpo (trilho com dentes, alça rebatível, retém, janela de ejeção, tubo do amortecedor e coronha retrátil). A M4A4 tem guarda-mão de trilhos, massa em A e quebra-chamas; a M4A1-S, guarda-mão fino e silenciador com anéis.
@@ -131,7 +131,8 @@ Todas as armas, menos a Desert Eagle e a Karambit, ganharam modelos mais detalha
   - **Bucky:** telha estriada, tubo de cartuchos e mira de pérola.
   - **SSG:** cano facetado, freio de boca e luneta com torres.
 - **USP-S e Glock-18:** ferrolho com serrilhas, armação com trilho, cabo texturizado e miras. A USP-S tem cão e silenciador; a Glock tem pontos brancos e o seletor de rajada.
-- **AWP:** ganhou o quebra-chamas vazado, os pontos de bandoleira e a tampa da culatra.
+- **AWP:** refeita no estilo da do CS. Tem chassi verde-oliva com coronha vazada (thumbhole), descanso de rosto ajustável e ação com trilho. O ferrolho tem bola, o cano afina até o freio de boca com janelas, o carregador é destacável e a luneta tem objetiva grande e três torres.
+- **Desert Eagle:** ganhou trilho com ranhuras e massa com ponto no cano, alavanca de desmontagem e cabo de borracha texturizado. O ferrolho tem trava ambidestra e mira. A animação e o ferrolho que recua no tiro continuam iguais.
 - **Granadas:** HE redonda, flash e smoke cilíndricas, todas com alavanca, espoleta e argola do pino.
 - **C4, pistola do Doctor e Butterfly:**
   - **C4:** três tijolos, painel com visor e teclado, e fios.
@@ -189,9 +190,18 @@ O apelido exato `KQLY` ativa o aimbot para armas de fogo em todos os modos. Cada
 
 A AWP padrão usa um estampido sintetizado mais grave, mantendo o estilo do jogo. Os headshots padrão também são sintetizados, com um toque metálico para capacete. As skins mantêm seus sons. Os MP3 do experimento ficam guardados em [assets/audio](assets/audio/README.md), sem carregar ou tocar durante o jogo.
 
-O **Arsenal** é uma tela própria, acessível pelo topo do menu ou por **Seu equipamento → Editar no arsenal**. Escolha o slot de primária, pistola, faca ou precisão à esquerda e clique em uma arma da lista para equipar. Ao lado, a prévia 3D mostra o modelo real do jogo sobre fundo escuro, com luz própria e enquadramento adequado a rifles, pistolas e facas; os acabamentos ficam sempre abaixo dela. As cores convertidas para a iluminação existem apenas nos buffers da prévia. A indicação **Equipada** e os slots confirmam a escolha. Armas e skins ficam salvas no navegador. A prévia só renderiza quando a seleção ou o tamanho da tela muda, sem animação contínua.
+O **Arsenal** é uma tela própria, acessível pelo topo do menu ou por **Seu equipamento → Editar no arsenal**. Escolha o slot de primária (fuzis, SMG, escopeta, AWP e Scout), pistola ou faca à esquerda e clique em uma arma da lista para equipar. Ao lado, a prévia 3D mostra o modelo real do jogo sobre fundo escuro, com luz própria e enquadramento adequado a rifles, pistolas e facas; os acabamentos ficam sempre abaixo dela. As cores convertidas para a iluminação existem apenas nos buffers da prévia. A indicação **Equipada** e os slots confirmam a escolha. Armas e skins ficam salvas no navegador. A prévia só renderiza quando a seleção ou o tamanho da tela muda, sem animação contínua.
 
-Durante a partida, **B** abre a mesma tela com um cursor próprio; **1–4** alternam os slots, a rodinha rola o inventário e **B** volta ao jogo. **Esc** libera o mouse e abre a pausa. Os comandos de movimento e tiro ficam suspensos enquanto você escolhe. No DM, as categorias não permitidas ficam desativadas. O relógio da partida continua.
+Durante a partida, **B** abre a **loja**:
+
+- **No Plant the Bomb:** a loja tem economia, como sempre.
+- **No 1v1, 2v2, XvX, DM e TDM:** a loja é grátis e tem todas as armas, dos dois lados. Não tem granadas nem equipamento, porque colete e capacete já vêm por padrão.
+- **Como escolher:** clicar numa arma equipa no slot dela e já põe na mão. A escolha fica salva no seu equipamento, e a arma equipada aparece marcada.
+- **No DM:** o que está fora da categoria da partida fica desativado.
+
+O cursor é próprio da loja e os comandos de movimento e tiro ficam suspensos enquanto ela está aberta. **B** volta ao jogo e **Esc** libera o mouse e abre a pausa. O relógio da partida continua. As skins continuam sendo escolhidas no Arsenal, pelo menu.
+
+**Colete e capacete** são padrão para todos (você e os bots) fora do Plant the Bomb. O colete reduz o dano no corpo conforme a penetração da arma e se desgasta a cada acerto; o capacete protege a cabeça; as pernas passam direto. Para jogar sem eles, desligue **Configurações → Armas → Colete e capacete para todos** antes da partida.
 
 Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de tom a cada abate seguido, como no Valorant, e o quinto vira finalização; uma confirmação discreta com a contagem aparece no HUD. A sequência zera quando você morre ou renasce. Equipar no inventário toca apenas uma confirmação discreta.
 
@@ -213,14 +223,13 @@ Abra **Arsenal** no topo ou clique em **Editar equipamento**. Escolha uma combin
 
 | Tecla | Categoria | Opções |
 |---|---|---|
-| 1 | Rifle | AK-47, M4A4, M4A1-S com silenciador, Galil AR, FAMAS, UMP-45, Bucky |
+| 1 | Primária | AK-47, M4A4, M4A1-S com silenciador, Galil AR, FAMAS, UMP-45, Bucky, AWP, SSG 08 (Scout) |
 | 2 | Pistola | Desert Eagle, USP-S com silenciador, Glock-18 |
 | 3 | Faca | Karambit, Butterfly |
-| 4 | Precisão | AWP, SSG 08 (Scout) |
 
 As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão em bloco de pele, sem luva, e manga em bloco na cor do boneco (nos times, na cor do time). Com faca, como no CS, aparece só a mão direita.
 
-O bot pode usar qualquer uma das armas de fogo, com sua própria cadência, carregador e recarga. Também é possível escolher se ele tem capacete: a proteção aparece no personagem e reduz apenas o dano na cabeça. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância. Os jogadores usam capacete no 1v1.
+O bot pode usar qualquer uma das armas de fogo, com sua própria cadência, carregador e recarga. O capacete aparece no personagem; com a opção de colete e capacete ligada, todos nascem protegidos. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância.
 
 As facas têm animações distintas de puxada, inspeção, corte e estocada. As duas facas usam o mesmo acabamento das armas, cor chapada com tom fixo por face, mas com contornos em curvas contínuas em vez de blocos. A Butterfly segue a do CS2: lâmina clip point com swedge côncavo até a ponta e chanfro claro no fio, tang com kicker e choil, dois cabos vazados com três rasgos cada, ponta redonda no pino, pinos aparentes e trava no cabo seguro. A mão da Butterfly usa o mesmo bloco, tamanho e lugar da mão das armas (como a Deagle, embaixo à direita), com a lâmina saindo para a frente e para a esquerda. A puxada de 0,8 s é a abertura básica de balisong, no tempo do vídeo de referência: a mão sobe com a faca fechada em pé e de frente para a câmera, o cabo solto cai e dá a volta inteira enquanto a lâmina gira meia volta por cima do punho, os dois cabos fecham na palma e o pulso vira a lâmina para a frente. A inspeção, mais simples, dura 3,0 s: o punho vira a faca de frente, a lâmina aponta para cima com os cabos abertos em V por cerca de 1,3 s, a lâmina dá uma volta e a faca volta ao repouso. O corte vai da direita para a esquerda, o corte de volta faz o caminho inverso e a estocada empurra a lâmina para a frente. Os cortes alternam de direção; o botão direito faz uma estocada. Segurar o botão repete o ataque na cadência da faca. Atacar interrompe a inspeção com uma transição curta. A Deagle tem ferrolho móvel, recuo visual mais forte e som mais grave. São recriações estilizadas em geometria do próprio jogo.
 
@@ -295,7 +304,7 @@ Os passos têm duas camadas, com o baque do calcanhar e o raspar da sola, altern
 
 No difícil, os bots se deslocam entre rajadas, fazem contra-strafe antes do disparo, às vezes agacham para fazer spray e tentam quebrar a linha de visão durante a recarga. Em trechos livres, podem sacar a faca e tentar sequências curtas de bunnyhop, com acertos e erros de tempo. O agachamento aparece para os outros jogadores no 1v1, no 2v2, no XvX e no DM.
 
-A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atirar, e as balas seguem o recuo inteiro (por isso sobem um pouco acima da mira no spray). A AK-47 teve redução de 5% no recuo vertical e lateral, inclusive na variação aleatória do spray. O solavanco ao tomar tiro é pequeno e tem teto, e o recuo das armas na mão é mais contido. Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precisão. Os rifles têm spray, com recuo menor nas M4s. A Scout recupera parte da precisão no ápice do salto. O recuo da câmera acompanha o desvio dos tiros.
+A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atirar, e as balas seguem o recuo inteiro (por isso sobem um pouco acima da mira no spray). A AK-47 teve redução de 5% no recuo vertical e lateral, inclusive na variação aleatória do spray. O solavanco ao tomar tiro é pequeno e tem teto, e o recuo das armas na mão é mais contido. **Agachado (no chão), o recuo de cada tiro é 15% menor**, inclusive na AWP. A cada tiro a arma dá um coice na mão, como no CS:GO: vai um pouco para trás e levanta a boca, e uma mola amortecida a traz de volta sem tremer, em qualquer FPS. Na AWP, na Scout e na Bucky o coice é bem maior que nas SMGs; a Deagle mantém a animação própria. Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precisão. Os rifles têm spray, com recuo menor nas M4s. A Scout recupera parte da precisão no ápice do salto. O recuo da câmera acompanha o desvio dos tiros.
 
 É uma aproximação própria para este jogo no navegador, sem o motor Source 2 nem os assets do CS2. Referência de movimento: [código do Source publicado pela Valve](https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/game/shared/gamemovement.cpp). Parâmetros das armas: [dados do jogo espelhados pelo SteamTracking](https://github.com/SteamTracking/GameTracking-CS2/blob/master/game/csgo/pak01_dir/scripts/weapons.vdata), adaptados ao balanceamento existente.
 
@@ -309,13 +318,13 @@ A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atir
 | Espaço | Pular / segurar para bunnyhop assistido |
 | Mouse 1 | Atirar |
 | Mouse 2 | Luneta da AWP ou Scout / golpe forte da faca |
-| 1 2 3 4 | Rifle, pistola, faca e precisão do equipamento escolhido |
+| 1 2 3 | Primária (fuzis, SMG, escopeta, AWP e Scout), pistola e faca; no Plant the Bomb, 4 alterna granadas e 5 pega a bomba |
 | Q / rodinha | Última arma / trocar arma |
 | G | Largar a arma na mão |
 | E | Pegar/trocar a arma do chão; plantar e desarmar a bomba |
 | R | Recarregar |
 | F | Inspecionar (giros da Karambit e Butterfly) |
-| B | Arsenal: grade de armas e skins |
+| B | Loja (grátis fora do Plant the Bomb) |
 | Tab | Placar |
 | Esc | Menu de pausa |
 
