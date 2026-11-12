@@ -2101,7 +2101,20 @@ const AU = {
   kill() { this.tone(880, 0.09, 0.18); setTimeout(() => this.tone(1320, 0.14, 0.18), 70); },
   hurt() { this.noise(0.14, 500, 0.7, 0.32, 0); },
   dry() { this.tone(2200, 0.03, 0.08, 'square'); },
-  reload() { this.noise(0.05, 3000, 3, 0.12, 0, 'bandpass'); setTimeout(() => this.noise(0.05, 2400, 3, 0.12, 0, 'bandpass'), 350); },
+  reload() { this.noise(0.04, 1400, 1.5, 0.06, 0, 'bandpass'); },
+  // Peças da arma no tempo das animações: pente saindo e entrando, ferrolho, ferrolho da pistola, telha e cartucho.
+  mech(kind) {
+    const n = (d, f, q, g, dl = 0) => this.noise(d, f, q, g, 0, 'bandpass', dl), t = (f, d, g, ty = 'square', dl = 0) => this.tone(f, d, g, ty, 0, 0, dl);
+    if (kind === 'magout') { n(.04, 1500, 2, .12); t(420, .03, .05, 'square', .01); }
+    else if (kind === 'magin') { n(.035, 2600, 3, .16); t(900, .025, .07); n(.03, 1800, 2, .1, .06); }
+    else if (kind === 'boltup') n(.03, 2200, 3, .09);
+    else if (kind === 'boltback') { n(.06, 1700, 2, .13); t(300, .05, .05, 'sawtooth'); }
+    else if (kind === 'boltfwd' || kind === 'slide') { n(.04, 2900, 3, .17); t(1200, .025, .07); }
+    else if (kind === 'pumpback') n(.07, 1200, 2, .14);
+    else if (kind === 'pumpfwd') { n(.05, 2000, 3, .16); t(700, .03, .06); }
+    else if (kind === 'shell') { n(.03, 3200, 3, .08); this.clink(.5, 0); }
+    else if (kind === 'grab') n(.03, 1100, 1, .06);
+  },
   freezeTick() { this.noise(.012,3400,.8,.045,0,'bandpass');this.tone(1900,.035,.075,'triangle',0,-850); },
   roundEnd() { this.tone(660,.13,.16,'sine');this.tone(440,.23,.14,'triangle',0,0,.13); },
 };
@@ -2791,8 +2804,9 @@ function beginKnifeAnimation(type, t) {
 // Measured from the supplied 30 fps reference: a ~0.8 s draw, a quick wrist/weapon
 // turn, support hand joining late, then a fast lift and a weighted ~0.4 s shot recovery.
 // Channels: wrist xyz/rotation, gun rotation, support offset/roll, slide travel.
-const DEAGLE_SHOT_MS=410,DEAGLE_REST=new Float32Array(14),deaglePose=new Float32Array(14);
-const deagleKey=(t,p=[0,0,0],r=[0,0,0],gun=[0,0,0],left=[0,0,0],roll=0,slide=0)=>[t,...p,...r,...gun,...left,roll,slide];
+const DEAGLE_SHOT_MS=410,DEAGLE_REST=new Float32Array(18),deaglePose=new Float32Array(18);
+// Canais 14-16: pente (posição no espaço da arma) e 17: giro do pente.
+const deagleKey=(t,p=[0,0,0],r=[0,0,0],gun=[0,0,0],left=[0,0,0],roll=0,slide=0,mag=[0,0,0],magR=0)=>[t,...p,...r,...gun,...left,roll,slide,...mag,magR];
 const DEAGLE_DRAW=[
   deagleKey(0,[.075,-.26,.085],[.4,-.4,-.28],[0,0,-.1],[-.15,-.23,.1],-.3),
   deagleKey(.12,[.065,-.13,.05],[.44,-.4,-.24],[.1,0,-.08],[-.15,-.23,.1],-.3),
@@ -2816,9 +2830,26 @@ const DEAGLE_FIRE=[
   deagleKey(.83,[-.0005,-.001,0],[-.018,0,.003]),
   deagleKey(1),
 ];
+// Recarga da Deagle (base: CS): inclina a arma, o pente cai, a mão esquerda traz o novo de baixo, encaixa com um tapa
+// e, se estava vazia, solta o ferrolho travado.
+const DEAGLE_RELOAD=[
+  deagleKey(0),
+  deagleKey(.1,[0,.06,.0],[.22,-.08,-.3],[0,0,0],[-.02,-.04,.02],-.1),
+  deagleKey(.17,[0,.06,.0],[.22,-.08,-.3],[0,0,0],[-.05,-.13,.04],-.2),
+  deagleKey(.31,[0,.06,.0],[.24,-.08,-.3],[0,0,0],[-.06,-.3,.05],-.3,0,[0,-.42,.03],.5),
+  deagleKey(.32,[0,.06,.0],[.24,-.08,-.3],[0,0,0],[-.05,-.3,.05],-.3,0,[-.02,-.32,.03],-.2),
+  deagleKey(.5,[0,.06,.0],[.22,-.08,-.3],[0,0,0],[-.012,-.095,.02],-.1,0,[0,-.07,0],0),
+  deagleKey(.58,[0,.068,.0],[.28,-.08,-.3],[0,0,0],[-.004,-.05,.01],-.05),
+  deagleKey(.66,[0,.05,.0],[.18,-.06,-.26],[0,0,0],[-.01,-.04,.01],-.05),
+  deagleKey(.86,[0,.004,0],[.04,-.02,.08]),
+  deagleKey(1),
+];
+const DEAGLE_RELOAD_CUES=[[.17,'magout'],[.58,'magin'],[.7,'slide']];
 function sampleDeaglePose(t,out=deaglePose){
   out.fill(0);
+  const rk=P.weapon==='pistol'&&P.reloadEnd?clamp(1-(P.reloadEnd-t)/W.pistol.reload,0,1):-1;
   if(P.weapon==='pistol'&&t<P.drawEnd){sampleKnifePose(DEAGLE_DRAW,clamp(1-(P.drawEnd-t)/W.pistol.draw,0,1),out);}
+  else if(rk>=0)sampleKnifePose(DEAGLE_RELOAD,rk,out);
   else if(P.deagleShot){
     const age=Math.max(0,t-P.deagleShot.t0);
     if(age<DEAGLE_SHOT_MS){
@@ -2828,7 +2859,7 @@ function sampleDeaglePose(t,out=deaglePose){
       if(blend>0)for(let i=0;i<out.length;i++)out[i]+=P.deagleShot.from[i]*blend;
     }
   }
-  if(P.ammo.pistol.mag===0){const age=P.deagleShot?t-P.deagleShot.t0:100;out[13]=Math.max(out[13],.052*clamp(age/20,0,1));}
+  if(P.ammo.pistol.mag===0&&!(rk>=.7)){const age=P.deagleShot?t-P.deagleShot.t0:100;out[13]=Math.max(out[13],.052*clamp(age/20,0,1));}
   return out;
 }
 function beginDeagleShot(t){P.deagleShot={t0:t,from:new Float32Array(sampleDeaglePose(t))};}
@@ -2902,6 +2933,7 @@ function applyDeaglePose(rig,pose){
   rig.left.rotation.copy(rig.right.rotation);rig.left.rotation.z+=pose[12];
   for(let i=0;i<2;i++){const hand=i?rig.left:rig.right,arm=rig.arms[i];knifeArmB.copy(arm.elbow).sub(hand.position).setLength(.04).add(hand.position);fitKnifeArm(arm.sleeve,arm.elbow,knifeArmB,.036);}
   deagleSlide.position.z=pose[13];
+  if(rig.mag){const m=rig.mag;m.grp.position.set(m.rest[0]+pose[14],m.rest[1]+pose[15],m.rest[2]+pose[16]);m.grp.rotation.x=pose[17];}
 }
 let deagleSlide = null,deagleRig=null;
 // Autoaplicação do Doctor: antebraço esquerdo que entra na tela (no lugar da mão esquerda da pistola) para receber o dardo.
@@ -2909,23 +2941,203 @@ const vmMedLeft = [], vmInjectArm = new THREE.Group();
 { const wrist = [.1, .02, -.33], h = new THREE.Mesh(gloveGeo, skinMat); h.position.set(...wrist); vmInjectArm.add(h); limb(vmInjectArm, [-.7, -.3, .05], [.065, .006, -.31], .072, sleeveMat); }
 vmInjectArm.scale.setScalar(.5); vmInjectArm.visible = false; vmHands.add(vmInjectArm);
 const vmBody = {}, vmSkin = {};
-for (const k of ALL_WEAPONS) {
-  const g = new THREE.Group(); if (GUNS[k].length) { vmBody[k] = boxModel(GUNS[k]); vmSkin[k] = 'padrao'; g.add(vmBody[k]); }
-  if (W[k].melee) vmKnives[k] = buildKnifeHands(g, k === 'butterfly');
-  if (k === 'pistol') {
-    deagleRig=buildDeagleHands(g,vmBody[k]);
+/* ---- Saque, recarga, ferrolho e telha (base: animações do CS) ---- */
+// Peças móveis de cada arma, achadas pela posição no espaço da arma (c = centro, s = tamanho de cada peça):
+// pente, ferrolho/alavanca de manejo e telha da escopeta. As pistolas ganham o corpo do pente, escondido dentro do cabo.
+const VM_PARTS = {
+  rifle: { mag: c => c[1] < -.1 && c[2] > -.34 && c[2] < -.15, bolt: c => c[0] > .02 && c[1] > 0 && c[1] < .03 && c[2] > -.25 && c[2] < -.21, kind: 'side', rock: .14 },
+  galil: { mag: c => c[1] < -.1 && c[2] > -.3 && c[2] < -.15, bolt: c => c[0] > .02 && c[2] > -.27 && c[2] < -.23, kind: 'side', rock: .12 },
+  m4a4: { mag: c => c[1] < -.1 && c[2] > -.3 && c[2] < -.15, kind: 'tap' }, // M4: o polegar bate no retém do ferrolho, como no CS
+  famas: { mag: c => c[1] < -.08 && c[2] > 0 && c[2] < .08, kind: 'tap' },
+  ump: { mag: c => c[1] < -.09 && c[2] > -.25 && c[2] < -.15, bolt: c => c[0] < -.02 && c[2] > -.27 && c[2] < -.22, kind: 'left' },
+  bucky: { pump: (c, s) => Math.abs(c[0]) < .03 && c[1] > -.05 && c[1] < 0 && c[2] > -.56 && c[2] < -.24 && s[2] < .3, kind: 'pump' },
+  sniper: { mag: c => c[1] < -.08 && c[2] > -.23 && c[2] < -.12, bolt: c => (c[0] > .03 && c[1] < .03 && c[2] > 0 && c[2] < .06) || (Math.abs(c[0]) < .005 && Math.abs(c[1] - .035) < .005 && c[2] > .06 && c[2] < .095), kind: 'sniper', axis: .035 },
+  ssg: { mag: c => c[1] < -.06 && c[2] > -.18 && c[2] < -.1, bolt: c => c[0] > .03 && c[1] < .03 && c[2] > -.03 && c[2] < .03, kind: 'sniper', axis: .015 },
+  usps: { mag: c => c[1] < -.14, magBody: [[-.015, -.15, .0], [.015, -.05, .052], 0x202325], kind: 'pistol' },
+  glock: { mag: c => c[1] < -.14, magBody: [[-.015, -.147, .0], [.015, -.05, .05], 0x1a1c1f], kind: 'pistol' },
+  pistol: { mag: c => c[1] < -.15, magBody: [[-.014, -.165, .005], [.014, -.05, .06], 0x2a2f35] },
+};
+VM_PARTS.m4a1s = VM_PARTS.m4a4;
+const partBox = p => { const c = [], s = []; for (let j = 0; j < 3; j++) { c.push((p[0][j] + p[1][j]) / 2); s.push(Math.abs(p[1][j] - p[0][j])); } return [c, s]; };
+function splitGun(k, list) {
+  const spec = VM_PARTS[k] || {}, out = { body: [], mag: [], bolt: [], pump: [] };
+  for (const p of list) { const [c, s] = partBox(p); out[spec.mag && spec.mag(c, s) ? 'mag' : spec.bolt && spec.bolt(c, s) ? 'bolt' : spec.pump && spec.pump(c, s) ? 'pump' : 'body'].push(p); }
+  if (spec.magBody && out.mag.length) out.mag.unshift(spec.magBody);
+  return out;
+}
+function partsCenter(list) {
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const p of list) for (let j = 0; j < 3; j++) { lo[j] = Math.min(lo[j], p[0][j], p[1][j]); hi[j] = Math.max(hi[j], p[0][j], p[1][j]); }
+  return [0, 1, 2].map(j => (lo[j] + hi[j]) / 2);
+}
+const meshOf = list => list.length ? boxModel(list) : new THREE.Mesh(new THREE.BufferGeometry(), basicMat);
+// Canais da pose: 0-2 posição e 3-5 rotação da arma; 6-8 mão esquerda e 9-11 mão direita (deslocamento do repouso);
+// 12-14 pente, 15 giro do pente (x), 16 ferrolho para trás, 17 ferrolho levantado (giro), 18 telha para trás,
+// 19 cartucho na mão, 20 giro do pente (z), 21 giro da mão esquerda.
+const GUN_CH = 22, GUN_REST = new Float32Array(GUN_CH), gunPose = new Float32Array(GUN_CH);
+function gk(t, o = {}) {
+  const k = new Array(GUN_CH + 1).fill(0); k[0] = t;
+  const put = (a, at) => { if (a) for (let i = 0; i < a.length; i++) k[at + 1 + i] = a[i]; };
+  put(o.g, 0); put(o.l, 6); put(o.r, 9); put(o.m, 12);
+  k[16] = o.mr || 0; k[17] = o.b || 0; k[18] = o.bl || 0; k[19] = o.p || 0; k[20] = o.sh || 0; k[21] = o.mz || 0; k[22] = o.lr || 0;
+  return k;
+}
+const vAdd = (...v) => [0, 1, 2].map(j => v.reduce((s, a) => s + a[j], 0)), vSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+// Ferrolho do rifle (alavanca de manejo): a mão esquerda vai até ela, puxa e solta; usado no saque e na recarga.
+function boltPull(rig, t0, t1, g, L0) {
+  const kind = VM_PARTS[rig.k].kind, B = rig.bolt && rig.bolt.center, d = t1 - t0, out = [];
+  if (kind === 'tap') { const H = vSub([-.045, -.005, -.16], L0); out.push(gk(t0 + d * .35, { g, l: H }), gk(t0 + d * .5, { g: vAdd(g, [0, 0, 0, .02, -.03, 0]), l: vAdd(H, [.014, 0, 0]) }), gk(t0 + d * .65, { g, l: H })); return out; }
+  if (!B) return out;
+  // AK/Galil: a mão passa por baixo da arma e puxa a alavanca do lado direito (como no CS); M4: puxa o T de trás; UMP: lado esquerdo.
+  const grip = kind === 'rear' ? [0, .04, .015] : kind === 'left' ? [-.035, .005, 0] : [.018, -.032, .004], pull = kind === 'rear' ? .06 : .085;
+  const H = vSub(vAdd(B, grip), L0), gb = kind === 'side' ? vAdd(g, [0, 0, 0, .02, .06, .18]) : g;
+  out.push(gk(t0 + d * .35, { g: gb, l: H }), gk(t0 + d * .62, { g: gb, l: vAdd(H, [0, 0, pull]), b: pull }), gk(t0 + d * .7, { g: vAdd(gb, [0, 0, .006, .03, 0, 0]), l: vAdd(H, [0, .012, pull]) }), gk(t0 + d * .9, { g: gb, l: vAdd(H, [0, .02, .03]) }));
+  return out;
+}
+// Ferrolho de sniper: a mão direita sai do cabo, levanta a alavanca, puxa, empurra e abaixa (como a AWP e a Scout do CS).
+function sniperBolt(rig, t0, t1) {
+  const sp = VM_PARTS[rig.k], R0 = rig.hands[1].rest.toArray(), d = t1 - t0, ay = sp.axis, A = .9;
+  const knob = rig.knob, H0 = vAdd(knob, [.022, -.02, .012]);
+  const lift = p => { const x = p[0], y = p[1] - ay; return [x * Math.cos(A) - y * Math.sin(A), ay + x * Math.sin(A) + y * Math.cos(A), p[2]]; };
+  const H1 = lift(H0), g = [0, .008, 0, .05, -.04, .16], back = .11;
+  return [
+    gk(t0 + d * .16, { g, r: vSub(H0, R0) }),
+    gk(t0 + d * .32, { g, r: vSub(H1, R0), bl: A }),
+    gk(t0 + d * .5, { g: vAdd(g, [0, 0, .004, .02, 0, 0]), r: vAdd(vSub(H1, R0), [0, 0, back]), bl: A, b: back }),
+    gk(t0 + d * .64, { g, r: vSub(H1, R0), bl: A }),
+    gk(t0 + d * .78, { g, r: vSub(H0, R0) }),
+  ];
+}
+// Troca de pente (rifles e snipers): segura o pente, tira, joga fora da tela, traz o novo e encaixa com um tapa.
+function magSwap(rig, t0, t1, g, L0, rock = 0) {
+  const M = rig.mag.center, G = vSub(vAdd(M, [-.036, -.03, .008]), L0), d = t1 - t0, at = x => t0 + d * x;
+  const gs = vAdd(g, [0, 0, 0, .04, 0, 0]);
+  return [
+    gk(at(.22), { g, l: G }),
+    gk(at(.34), { g: gs, l: vAdd(G, [0, -.065, .016]), m: [0, -.065, .016], mr: rock }),
+    gk(at(.46), { g, l: vAdd(G, [-.1, -.36, .1]), m: [-.13, -.46, .12], mr: rock * 4 + .5 }),
+    gk(at(.47), { g, l: vAdd(G, [-.07, -.36, .09]), m: [-.07, -.36, .09], mr: -.3 }),
+    gk(at(.66), { g, l: vAdd(G, [-.004, -.075, .014]), m: [0, -.075, .014], mr: rock }),
+    gk(at(.78), { g: vAdd(g, [0, .006, 0, .06, 0, 0]), l: vAdd(G, [0, .006, 0]), m: [0, 0, 0] }),
+    gk(at(.86), { g, l: G }),
+  ];
+}
+function buildGunAnims(rig) {
+  const k = rig.k, sp = VM_PARTS[k] || {}, kind = sp.kind, L0 = rig.hands[0].rest.toArray(), rest = gk(0), end = gk(1), A = {};
+  const sortKeys = keys => keys.sort((a, b) => a[0] - b[0]);
+  if (kind === 'pistol') {
+    const M = rig.mag.center, G = vSub(vAdd(M, [0, -.06, 0]), L0), g = [-.02, .07, -.03, .2, -.06, -.32];
+    A.reload = sortKeys([rest, gk(.1, { g }), gk(.16, { g, l: [-.02, -.08, .02] }),
+      gk(.32, { g, l: [-.05, -.32, .04], m: [0, -.48, .05], mr: .4 }), gk(.33, { g, l: vAdd(G, [-.03, -.28, .03]), m: [-.03, -.34, .03], mr: -.25 }),
+      gk(.52, { g, l: vAdd(G, [0, -.065, 0]), m: [0, -.065, 0] }), gk(.6, { g: vAdd(g, [0, .008, 0, .05, 0, 0]), l: vAdd(G, [0, .012, 0]) }),
+      gk(.68, { g, l: G }), gk(.86, { g: [0, .004, 0, .02, 0, .04] }), end]);
+    A.reloadCues = [[.16, 'magout'], [.6, 'magin'], [.72, 'slide']];
+    A.draw = sortKeys([gk(0, { g: [.0, -.2, .08, -.8, .3, .45], l: [-.03, -.3, .1] }), gk(.45, { g: [0, -.02, .02, .12, .05, .12], l: [-.02, -.12, .05] }), gk(.72, { g: [0, .004, 0, -.02, 0, .02] }), end]);
+    A.drawCues = [[.5, 'grab']];
+  } else if (kind === 'pump') {
+    const port = vSub([0, -.075, -.13], L0), push = vSub([0, -.05, -.12], L0), g = [0, .015, 0, .12, .1, -.45];
+    const keys = [rest, gk(.1, { g, l: vAdd(port, [-.04, -.12, .04]) })], cues = [];
+    for (let i = 0; i < 4; i++) { const t = .16 + i * .16; keys.push(gk(t, { g, l: vAdd(port, [-.03, -.1, .03]), sh: 1 }), gk(t + .06, { g, l: port, sh: 1 }), gk(t + .1, { g: vAdd(g, [0, .004, 0, .02, 0, 0]), l: push }), gk(t + .13, { g, l: vAdd(port, [-.02, -.06, .02]) })); cues.push([t + .1, 'shell']); }
+    keys.push(gk(.84, { g: [0, .005, 0, .05, 0, -.05] }), gk(.89, { g: [0, .005, .01, .05, 0, -.05], l: [0, 0, .14], p: .14 }), gk(.95, { g: [0, .002, 0, .02, 0, 0] }), end);
+    A.reload = sortKeys(keys); A.reloadCues = cues.concat([[.89, 'pumpback'], [.94, 'pumpfwd']]);
+    A.after = { delay: 110, max: 560, keys: [rest, gk(.3, { l: [0, 0, .14], p: .14, g: [0, -.025, .04, -.09, .03, .1] }), gk(.62, { l: [0, 0, 0], p: 0, g: [0, 0, 0, .01, 0, 0] }), end], cues: [[.22, 'pumpback'], [.58, 'pumpfwd']] };
+    A.draw = sortKeys([gk(0, { g: [.02, -.25, .12, -.9, .25, -.5], l: [-.05, -.35, .2] }), gk(.4, { g: [0, -.03, .03, -.12, .1, -.15], l: [-.04, -.2, .12] }), gk(.6, { g: [0, .006, 0, .04, 0, 0] }), gk(.72, { l: [0, 0, .14], p: .14 }), gk(.84, { g: [0, .002, 0, .01, 0, 0] }), end]);
+    A.drawCues = [[.68, 'pumpback'], [.8, 'pumpfwd']];
+  } else {
+    const sniper = kind === 'sniper', g = sniper ? [0, .02, 0, .12, .14, -.42] : [0, .03, 0, .16, .18, -.55];
+    const keys = [rest, gk(.1, { g, l: [-.02, -.05, .06] })];
+    if (rig.mag) keys.push(...magSwap(rig, sniper ? 0 : 0, sniper ? .62 : (rig.bolt || kind === 'tap') ? .7 : .86, g, L0, sp.rock || 0));
+    if (sniper) keys.push(gk(.66, { g: [0, .006, 0, .03, 0, .05] }), ...sniperBolt(rig, .66, .98));
+    else if (rig.bolt || kind === 'tap') keys.push(...boltPull(rig, .66, .9, g, L0));
+    keys.push(gk(sniper ? .95 : .93, { g: [0, .004, 0, .02, .02, -.03], l: [0, -.008, .015] }), end);
+    A.reload = sortKeys(keys);
+    const swap = (x, s) => (sniper ? .62 : (rig.bolt || kind === 'tap') ? .7 : .86) * x;
+    A.reloadCues = [[swap(.3), 'magout'], [swap(.78), 'magin']].concat(sniper ? [[.66 + .32 * .32, 'boltup'], [.66 + .32 * .5, 'boltback'], [.66 + .32 * .64, 'boltfwd']] : rig.bolt ? [[.66 + .24 * .62, 'boltback'], [.66 + .24 * .7, 'boltfwd']] : kind === 'tap' ? [[.66 + .24 * .5, 'magin']] : []);
+    const draw = [gk(0, { g: [.02, -.26, .12, -.95, .3, -.55], l: [-.06, -.36, .2] }), gk(.34, { g: [.0, -.035, .035, -.16, .12, -.22], l: [-.05, -.24, .15] }), gk(.5, { g: [0, .008, 0, .05, .04, -.05], l: [0, -.05, .03] })];
+    if (sniper) draw.push(...sniperBolt(rig, .5, .98));
+    else if (rig.bolt) draw.push(...boltPull(rig, .5, .92, [0, .006, 0, .03, .02, -.02], L0));
+    draw.push(gk(sniper ? .92 : .94, { g: [0, .002, 0, .01, 0, 0] }), end);
+    A.draw = sortKeys(draw);
+    A.drawCues = sniper ? [[.5 + .48 * .32, 'boltup'], [.5 + .48 * .5, 'boltback'], [.5 + .48 * .64, 'boltfwd']] : rig.bolt ? [[.5 + .42 * .62, 'boltback'], [.5 + .42 * .7, 'boltfwd']] : [[.48, 'grab']];
+    if (sniper) A.after = { delay: 130, max: 900, keys: [rest, ...sniperBolt(rig, 0, 1), end], cues: [[.32, 'boltup'], [.5, 'boltback'], [.64, 'boltfwd']] };
   }
-  if(k!=='pistol')ARMS[k].forEach((a, i) => { const before = g.children.length; if (a.hand) { const h = new THREE.Mesh(gloveGeo, skinMat); h.position.set(...a.hand); g.add(h); } limb(g, a.from, a.to, .072, sleeveMat);
+  return A;
+}
+function applyGunPose(rig, pose) {
+  rig.g.position.set(pose[0], pose[1], pose[2]); rig.g.rotation.set(pose[3], pose[4], pose[5]);
+  rig.hands.forEach((h, i) => {
+    const o = i ? 9 : 6; h.hand.position.set(h.rest.x + pose[o], h.rest.y + pose[o + 1], h.rest.z + pose[o + 2]); if (!i) h.hand.rotation.z = pose[21];
+    knifeArmB.copy(h.wrist).add(h.hand.position); fitKnifeArm(h.sleeve, knifeArmB, h.elbow, .036);
+  });
+  if (rig.mag) { const m = rig.mag; m.grp.position.set(m.rest[0] + pose[12], m.rest[1] + pose[13], m.rest[2] + pose[14]); m.grp.rotation.set(pose[15], 0, pose[20]); }
+  if (rig.bolt) { const b = rig.bolt; b.grp.position.set(b.rest[0], b.rest[1], b.rest[2] + pose[16]); b.grp.rotation.z = pose[17]; }
+  if (rig.pump) rig.pump.grp.position.z = rig.pump.rest[2] + pose[18];
+  if (rig.shell) rig.shell.visible = pose[19] > .5;
+}
+const VM_RIG = {};
+function rigPart(rig, name, list, pivot) {
+  if (!list.length) return null;
+  const center = partsCenter(list), at = pivot || center, grp = new THREE.Group(), mesh = meshOf(list);
+  grp.position.set(...at); mesh.position.set(-at[0], -at[1], -at[2]); grp.add(mesh); rig.g.add(grp);
+  return { grp, mesh, rest: at, center };
+}
+function buildGunRig(k, g) {
+  const sp = VM_PARTS[k] || {}, parts = splitGun(k, GUNS[k]), rig = { k, g, hands: [] };
+  vmBody[k] = meshOf(parts.body); g.add(vmBody[k]);
+  rig.mag = rigPart(rig, 'mag', parts.mag);
+  if (parts.bolt.length) { const c = partsCenter(parts.bolt); rig.bolt = rigPart(rig, 'bolt', parts.bolt, sp.axis != null ? [0, sp.axis, c[2]] : c); rig.knob = parts.bolt.map(p => partBox(p)[0]).sort((a, b) => b[0] - a[0])[0]; }
+  rig.pump = rigPart(rig, 'pump', parts.pump);
+  for (const a of ARMS[k]) {
+    const hand = new THREE.Group(); hand.add(new THREE.Mesh(gloveGeo, skinMat)); hand.position.set(...a.hand); g.add(hand);
+    const sleeve = new THREE.Mesh(knifeArmGeo, sleeveMat); g.add(sleeve);
+    rig.hands.push({ hand, sleeve, rest: new V3(...a.hand), wrist: new V3(a.from[0] - a.hand[0], a.from[1] - a.hand[1], a.from[2] - a.hand[2]), elbow: new V3(...a.to) });
+  }
+  if (sp.kind === 'pump') { const s = boxModel([[[-.011, -.011, -.03], [.011, .011, .012], 0xb3262a], [[-.0115, -.0115, .012], [.0115, .0115, .026], 0xc9a23e]]); s.position.set(0, .04, -.03); s.visible = false; rig.hands[0].hand.add(s); rig.shell = s; }
+  rig.anim = buildGunAnims(rig); applyGunPose(rig, GUN_REST); VM_RIG[k] = rig;
+  return rig;
+}
+// Qual animação está tocando agora: saque, recarga ou ferrolho/telha depois do tiro (com o progresso de 0 a 1).
+function gunAnimNow(k, t) {
+  const rig = VM_RIG[k], w = W[k]; if (!rig) return null;
+  if (t < P.drawEnd) return { id: 'draw', key: P.drawEnd, k: clamp(1 - (P.drawEnd - t) / w.draw, 0, 1), keys: rig.anim.draw, cues: rig.anim.drawCues };
+  if (P.reloadEnd) return { id: 'reload', key: P.reloadEnd, k: clamp(1 - (P.reloadEnd - t) / w.reload, 0, 1), keys: rig.anim.reload, cues: rig.anim.reloadCues };
+  const a = rig.anim.after;
+  if (a && P.lastShot) { const ms = Math.min(a.max, Math.max(200, (P.nextFire - P.lastShot) - a.delay - 60)), age = t - P.lastShot - a.delay; if (age >= 0 && age < ms) return { id: 'after', key: P.lastShot, k: age / ms, keys: a.keys, cues: a.cues }; }
+  return null;
+}
+// Sons das peças no tempo da animação (soltar e encaixar pente, ferrolho, telha, cartucho).
+function gunCues(anim) {
+  const c = P.gunCue || (P.gunCue = { id: '', key: 0, i: 0 });
+  if (!anim) { c.id = ''; return; }
+  if (c.id !== anim.id || c.key !== anim.key) { c.id = anim.id; c.key = anim.key; c.i = 0; while (c.i < (anim.cues || []).length && anim.cues[c.i][0] < anim.k - .05) c.i++; }
+  const list = anim.cues || []; while (c.i < list.length && list[c.i][0] <= anim.k) AU.mech && AU.mech(list[c.i++][1]);
+}
+
+for (const k of ALL_WEAPONS) {
+  const g = new THREE.Group(), rigged = !!VM_PARTS[k] && k !== 'pistol';
+  if (GUNS[k].length) vmSkin[k] = 'padrao';
+  if (rigged) buildGunRig(k, g);
+  else if (k === 'pistol') {
+    const parts = splitGun(k, GUNS[k]); vmBody[k] = meshOf(parts.body); g.add(vmBody[k]);
+    deagleRig=buildDeagleHands(g,vmBody[k]);
+    const at = partsCenter(parts.mag), grp = new THREE.Group(), mesh = meshOf(parts.mag); grp.position.set(...at); mesh.position.set(-at[0], -at[1], -at[2]); grp.add(mesh); deagleRig.weapon.add(grp); deagleRig.mag = { grp, mesh, rest: at };
+  } else if (GUNS[k].length) { vmBody[k] = boxModel(GUNS[k]); g.add(vmBody[k]); }
+  if (W[k].melee) vmKnives[k] = buildKnifeHands(g, k === 'butterfly');
+  if(k!=='pistol'&&!rigged)ARMS[k].forEach((a, i) => { const before = g.children.length; if (a.hand) { const h = new THREE.Mesh(gloveGeo, skinMat); h.position.set(...a.hand); g.add(h); } limb(g, a.from, a.to, .072, sleeveMat);
     if (k === 'medgun' && i === 0) vmMedLeft.push(...g.children.slice(before)); });
   if (MUZZLE[k]) { const f = new THREE.Mesh(k==='pistol'?deagleFlashGeo:flashGeo,k==='pistol'?deagleFlashMat:flashMat); f.position.set(...MUZZLE[k]); f.visible = false; (k==='pistol'?deagleRig.weapon:g).add(f); vmFlash[k] = f; }
   g.visible = false; vmRoot.add(g); vmGuns[k] = g;
 }
-function swapGeometry(mesh, parts) { const next = boxModel(parts).geometry; mesh.geometry.dispose(); mesh.geometry = next; }
+function swapGeometry(mesh, parts) { const next = meshOf(parts).geometry; mesh.geometry.dispose(); mesh.geometry = next; }
 // Aplica as skins escolhidas no modelo em primeira pessoa (só reconstrói o que mudou).
 function applyVmSkins() {
   for (const k of FIREARMS) {
     const id = skinOf(k); if (vmSkin[k] === id) continue; vmSkin[k] = id;
-    swapGeometry(vmBody[k], skinPartsFor(k, id, GUNS[k]));
+    const parts = skinPartsFor(k, id, GUNS[k]), rig = VM_RIG[k] || (k === 'pistol' ? deagleRig : null);
+    if (!rig) { swapGeometry(vmBody[k], parts); continue; }
+    // Pente, ferrolho e telha são peças separadas: a skin é dividida do mesmo jeito.
+    const sp = splitGun(k, parts); swapGeometry(vmBody[k], sp.body);
+    for (const n of ['mag', 'bolt', 'pump']) if (rig[n]) swapGeometry(rig[n].mesh, sp[n]);
     if (k === 'pistol') swapGeometry(deagleSlide, skinPartsFor(k, id, DEAGLE_SLIDE, false));
   }
 }
@@ -6302,6 +6514,7 @@ function specViewmodel(s, t) {
   for (const k of ALL_WEAPONS) vmGuns[k].visible = k === gun;
   vmRoot.position.set(b[0], b[1], b[2] + kick * .03); vmRoot.rotation.set(kick * .05, VM_YAW[gun] || 0, 0);
   if (gun === 'pistol') applyDeaglePose(deagleRig, deaglePose.fill(0));
+  if (VM_RIG[gun]) applyGunPose(VM_RIG[gun], GUN_REST);
   if (vmKnives[gun]) applyKnifePose(vmKnives[gun], (gun === 'knife' ? sampleKarambitIdle : sampleButterflyIdle)(t, knifePose));
   for (const k in vmFlash) vmFlash[k].visible = k === gun && t < (s.e.flashUntil || 0) && !W[gun].silenced;
   offsetViewmodel(vmRoot.position);
@@ -6366,8 +6579,13 @@ function updateVM(dt, t) {
   for (const k of ALL_WEAPONS) vmGuns[k].visible = (k === P.weapon);
   const b = VM_BASE[P.weapon], w = W[P.weapon], hs = Math.hypot(P.vel.x, P.vel.z), mv = P.onGround ? clamp(hs / 6, 0, 1) : 0;
   P.bob += dt * hs * 1.9;
-  const drawK = (t < P.drawEnd && !w.melee && P.weapon!=='pistol') ? clamp((P.drawEnd - t) / w.draw, 0, 1) : 0;
-  const relK = P.reloadEnd ? Math.sin(clamp(1 - (P.reloadEnd - t) / w.reload, 0, 1) * Math.PI) : 0;
+  // Armas com animação própria (saque, recarga, ferrolho) não usam o mergulho genérico.
+  const own = !!VM_RIG[P.weapon] || P.weapon === 'pistol';
+  const drawK = (t < P.drawEnd && !w.melee && !own) ? clamp((P.drawEnd - t) / w.draw, 0, 1) : 0;
+  const relK = P.reloadEnd && !own ? Math.sin(clamp(1 - (P.reloadEnd - t) / w.reload, 0, 1) * Math.PI) : 0;
+  const rig = VM_RIG[P.weapon], anim = rig ? gunAnimNow(P.weapon, t) : P.weapon === 'pistol' && P.reloadEnd ? { id: 'reload', key: P.reloadEnd, k: clamp(1 - (P.reloadEnd - t) / w.reload, 0, 1), cues: DEAGLE_RELOAD_CUES } : null;
+  if (rig) applyGunPose(rig, anim ? sampleKnifePose(anim.keys, anim.k, gunPose) : GUN_REST);
+  gunCues(anim);
   const vk=P.weapon==='pistol'?0:vmKickStep(dt);
   vmRoot.position.set(b[0] + Math.sin(P.bob) * .008 * mv, b[1] - Math.abs(Math.cos(P.bob)) * .008 * mv - drawK * .25 - relK * .08 + (P.onGround ? 0 : .012) + vk * .08, b[2] + vk * .5);
   const sw = Math.exp(-dt * 9); P.swayX *= sw; P.swayY *= sw;

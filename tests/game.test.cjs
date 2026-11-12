@@ -312,6 +312,14 @@ test('Deagle shot is time-based, blends fast follow-up shots and locks the slide
   cx.completeReload(g.P.reloadEnd);assert.equal(g.P.ammo.pistol.mag,6);assert.equal(pose(25000)[13],0);
   g.selectWeapon('rifle');assert.equal(g.P.deagleShot,null);
 });
+test('Deagle reload: the gun tilts, the magazine drops away and comes back, and a locked slide is released only near the end',()=>{
+  const g=game(),cx=g.context;g.spawnSelf(0);g.selectWeapon('pistol');g.P.drawEnd=0;g.P.ammo.pistol.mag=0;g.P.ammo.pistol.res=30;
+  cx.startReload(30000);const end=g.P.reloadEnd,dur=g.W.pistol.reload,pose=k=>Array.from(cx.sampleDeaglePose(end-dur*(1-k)));
+  assert.equal(end,30000+dur);assert.equal(pose(.0)[13]>.05,true,'vazia: ferrolho travado no começo');
+  assert.ok(Math.abs(pose(.2)[3])>.1,'inclina a arma');assert.ok(pose(.31)[15]<-.3,'o pente cai');assert.ok(Math.abs(pose(.58)[15])<.02,'pente encaixado');
+  assert.ok(pose(.75)[13]<.01,'solta o ferrolho depois do tapa');assert.ok(pose(.999).every(v=>Math.abs(v)<.01),'volta ao repouso');
+  for(let k=.002;k<1;k+=.002){const a=pose(k-.002),b=pose(k);for(let i=0;i<18;i++)if(i!==15&&i!==14&&i!==16&&i!==17)assert.ok(Math.abs(a[i]-b[i])<.08,'salto no canal '+i+' em '+k.toFixed(3));}
+});
 test('Deagle sound has a low body, leading crack and delayed metal, and draw sounds cannot repeat or arrive late',()=>{
   const audio=vm.createContext({S:{},SKINS:{neon:{}},Math});vm.runInContext(section('const AU =','/* ================= Viewmodel'),audio);
   const au=vm.runInContext('AU',audio),events=[];for(const kind of ['tone','noise','skinShot'])au[kind]=(...args)=>events.push({kind,args});

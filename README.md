@@ -381,6 +381,19 @@ Os passos têm duas camadas, com o baque do calcanhar e o raspar da sola, altern
 
 No difícil, os bots se deslocam entre rajadas, fazem contra-strafe antes do disparo, às vezes agacham para fazer spray e tentam quebrar a linha de visão durante a recarga. Em trechos livres, podem sacar a faca e tentar sequências curtas de bunnyhop, com acertos e erros de tempo. O agachamento aparece para os outros jogadores no 1v1, no 2v2, no XvX e no DM.
 
+### Saque, recarga e ferrolho
+
+As armas têm animações próprias de saque e de recarga, com o CS como base. O pente, o ferrolho (ou a alavanca de manejo) e a telha da escopeta são peças separadas do modelo, e as mãos se mexem de verdade. Cada parte do movimento tem som próprio: pente saindo e entrando, ferrolho e telha. As durações seguem o tempo de saque e de recarga de cada arma.
+
+- **Saque:** a arma sobe de baixo da tela girando e a mão esquerda chega no guarda-mão. Na AK, na Galil e na UMP, a mão ainda puxa a alavanca de manejo. Na AWP e na SSG, a mão direita passa o ferrolho.
+- **Recarga dos rifles e da UMP:** a arma inclina, a mão esquerda segura o pente, puxa, joga para fora da tela, traz o pente novo e encaixa com um tapa.
+  - **AK e Galil:** o pente entra balançando. Depois, a mão passa por baixo da arma e puxa a alavanca do lado direito.
+  - **M4 e FAMAS:** a mão bate no retém do ferrolho.
+  - **UMP:** a mão puxa a alavanca do lado esquerdo.
+- **Pistolas (USP-S, Glock e Deagle):** a arma sobe e inclina, o pente cai pelo cabo, e a mão esquerda traz o novo de baixo e encaixa com um tapa. Na Deagle vazia, o ferrolho fica travado para trás até o fim da recarga e então é solto.
+- **AWP e SSG 08:** depois de cada tiro, a mão direita sai do cabo, levanta a alavanca do ferrolho, puxa, empurra e abaixa, como no CS. A animação cabe dentro do intervalo entre tiros. A recarga troca o pente e passa o ferrolho no final.
+- **Bucky:** depois de cada tiro a mão esquerda bombeia a telha, com um tranco da arma. Na recarga a arma inclina e a mão põe quatro cartuchos pela janela de baixo, um por vez, e bombeia no fim.
+
 A cada tiro a arma dá um coice na mão: vai um pouco para trás e levanta a boca, e uma mola amortecida a traz de volta sem tremer, em qualquer FPS. Na AWP, na Scout e na Bucky o coice é bem maior que nas SMGs; a Deagle mantém a animação própria. O solavanco ao tomar tiro é pequeno e tem teto.
 
 É uma aproximação própria para este jogo no navegador, sem os motores nem os assets do Valorant ou do CS2.
