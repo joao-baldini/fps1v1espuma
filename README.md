@@ -42,7 +42,7 @@ Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu
 - **Partida:** primeiro a 9 rodadas, troca de lado depois da 8ª (a economia recomeça); 8 a 8 termina empatado.
 - **Tempos:** 10 s de preparação, compra até 20 s depois do início da rodada, 1:30 de rodada, bomba de 40 s. Plantar leva 3,2 s; desarmar leva 10 s, ou 5 s com kit.
 - **Economia (Wingman):** $800 iniciais e teto de $8.000. A vitória paga $2.750 por eliminação ou tempo esgotado e $3.000 por desarme ou detonação. A derrota paga $2.000, $2.300, $2.600 e no máximo $2.900 por derrotas seguidas, voltando ao início quando o time vence; os Atacantes que plantaram e perderam ganham mais $600. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
-- **Loja (B):** pistolas, SMG e escopeta, rifles (AK só para Atacantes, M4 só para Defensores), precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para Defensores). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
+- **Loja (B):** pistolas, SMG e escopeta, rifles (AK, Galil e Glock só para Atacantes; M4, FAMAS e USP-S só para Defensores). Como no CS, os Atacantes começam com a Glock e os Defensores com a USP-S. Os bots compram a Galil ou a FAMAS quando não dá para o rifle cheio com colete, precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para Defensores). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
 - **Teclas:** 1 primária, 2 pistola, 3 faca, 4 alterna granadas, 5 bomba. Plante segurando **E** no bombsite (ou o clique com a C4 na mão) e desarme segurando **E** perto da bomba. Quem carrega a bomba e morre deixa ela no chão; um Atacante pega passando por cima.
 - **Bots:** compram conforme o dinheiro, carregam e plantam a bomba, desarmam, buscam a bomba caída e usam smoke, flash e HE. Eles jogam em equipe:
   - **Estudo do mapa:** na primeira rodada de cada mapa, os bots estudam cada bombsite. Eles acham as entradas por onde os Atacantes chegam, um ponto de reunião escondido antes de cada entrada, posições de defesa com cobertura e visão da entrada, e posições dentro do site viradas para a volta dos Defensores.
@@ -96,6 +96,9 @@ Dois times de 2 a 8 (você e bots contra bots) nos mapas de DM, com renascimento
 
 ## Armas novas e granadas
 
+- **Glock-18:** pistola inicial dos Atacantes no Plant the Bomb. O clique esquerdo dá um tiro; o direito dispara uma **rajada de 3 tiros** (55 ms entre eles), mais aberta, como no Valorant, e espera 0,48 s antes da próxima.
+- **Galil AR:** rifle barato dos Atacantes ($1.800): pente de 35, 30 de dano e recuo médio.
+- **FAMAS:** rifle barato dos Defensores ($2.050): pente de 25 e 30 de dano. O botão direito dispara uma rajada de 3 tiros precisa, como o modo rajada do CS.
 - **UMP-45:** submetralhadora automática, precisa em movimento, perde dano com a distância.
 - **Bucky:** escopeta com 12 chumbos por disparo; o dano soma por vítima. Letal de perto e fraca de longe.
 - **HE:** explode em 1,6 s, até 98 de dano caindo com a distância (7 m), só com linha de visão.
@@ -161,14 +164,14 @@ Abra **Arsenal** no topo ou clique em **Editar equipamento**. Escolha uma combin
 
 | Tecla | Categoria | Opções |
 |---|---|---|
-| 1 | Rifle | AK-47, M4A4, M4A1-S com silenciador |
-| 2 | Pistola | Desert Eagle, USP-S com silenciador |
+| 1 | Rifle | AK-47, M4A4, M4A1-S com silenciador, Galil AR, FAMAS, UMP-45, Bucky |
+| 2 | Pistola | Desert Eagle, USP-S com silenciador, Glock-18 |
 | 3 | Faca | Karambit, Butterfly |
 | 4 | Precisão | AWP, SSG 08 (Scout) |
 
 As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão em bloco de pele, sem luva, e manga em bloco na cor do boneco (nos times, na cor do time). Com faca, como no CS, aparece só a mão direita.
 
-O bot pode usar qualquer uma das sete armas de fogo, com sua própria cadência, carregador e recarga. Também é possível escolher se ele tem capacete: a proteção aparece no personagem e reduz apenas o dano na cabeça. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância. Os jogadores usam capacete no 1v1.
+O bot pode usar qualquer uma das armas de fogo, com sua própria cadência, carregador e recarga. Também é possível escolher se ele tem capacete: a proteção aparece no personagem e reduz apenas o dano na cabeça. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância. Os jogadores usam capacete no 1v1.
 
 As facas têm animações distintas de puxada, inspeção, corte e estocada. As duas facas usam o mesmo acabamento das armas, cor chapada com tom fixo por face, mas com contornos em curvas contínuas em vez de blocos. A Butterfly segue a do CS2: lâmina clip point com swedge côncavo até a ponta e chanfro claro no fio, tang com kicker e choil, dois cabos vazados com três rasgos cada, ponta redonda no pino, pinos aparentes e trava no cabo seguro. A mão da Butterfly usa o mesmo bloco, tamanho e lugar da mão das armas (como a Deagle, embaixo à direita), com a lâmina saindo para a frente e para a esquerda. A puxada de 0,8 s é a abertura básica de balisong, no tempo do vídeo de referência: a mão sobe com a faca fechada em pé e de frente para a câmera, o cabo solto cai e dá a volta inteira enquanto a lâmina gira meia volta por cima do punho, os dois cabos fecham na palma e o pulso vira a lâmina para a frente. A inspeção, mais simples, dura 3,0 s: o punho vira a faca de frente, a lâmina aponta para cima com os cabos abertos em V por cerca de 1,3 s, a lâmina dá uma volta e a faca volta ao repouso. O corte vai da direita para a esquerda, o corte de volta faz o caminho inverso e a estocada empurra a lâmina para a frente. Os cortes alternam de direção; o botão direito faz uma estocada. Segurar o botão repete o ataque na cadência da faca. Atacar interrompe a inspeção com uma transição curta. A Deagle tem ferrolho móvel, recuo visual mais forte e som mais grave. São recriações estilizadas em geometria do próprio jogo.
 
@@ -210,6 +213,9 @@ No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
 | M4A1-S | 38 | 132 / 100 | 20 |
 | Desert Eagle | 40 | 212 / 198 | 7 |
 | USP-S | 35 | 140 / 71 | 12 |
+| Glock-18 | 30 | 120 / 56 | 20 |
+| Galil AR | 30 | 120 / 93 | 35 |
+| FAMAS | 30 | 120 / 84 | 25 |
 | AWP | 115 | 460 / 449 | 10 |
 | SSG 08 | 88 | 352 / 299 | 10 |
 | Karambit / Butterfly | 40 / 65 | — | — |
@@ -223,6 +229,8 @@ Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocid
 A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante em que a recarga termina, a munição é atualizada antes de liberar a luneta, sem precisar esperar outro quadro.
 
 Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%.
+
+Degraus e escadas sobem sozinhos, até 0,5 m por degrau, sem perder velocidade. Nos mapas convertidos (Guard e Elysion), a física sobe só o necessário para cada degrau, para a cabeça não bater no teto de escadas cobertas. Ela também trata a quina do degrau como degrau, e não como rampa: antes, a quina jogava o boneco para cima e ele subia a escada se arrastando.
 
 O agachamento segue o CS: a câmera desce e sobe em cerca de 0,22 s, e a velocidade cai junto com a altura, sem pular de uma vez. Cada agachada gasta stamina; spammar C deixa a próxima bem mais lenta (até uns 0,7 s), e ela volta ao normal em cerca de 1,5 s. No ar o encolher das pernas continua instantâneo, para subir em caixas.
 

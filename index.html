@@ -558,7 +558,7 @@ button:disabled{opacity:.5;cursor:default}
     <div class="fld"><span>Código de skin</span><div class="row"><input id="skinCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Código de skin" placeholder="Digite o código"><button id="btnSkinCode" type="button">Desbloquear</button></div><small id="skinCodeMsg">A AK-47 Sublime só aparece para quem tem o código.</small></div>
     <div class="grid2">
       <label class="fld"><span>Arma ao nascer</span><select data-k="startSlot" aria-label="Arma ao nascer"><option value="rifle">Rifle · 1</option><option value="pistol">Pistola · 2</option><option value="knife">Faca · 3</option><option value="sniper">Precisão · 4</option></select></label>
-      <label class="fld"><span>Arma do bot</span><select data-k="botWeapon" aria-label="Arma do bot"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S</option><option value="ump">UMP-45</option><option value="bucky">Bucky</option><option value="pistol">Desert Eagle</option><option value="usps">USP-S</option><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
+      <label class="fld"><span>Arma do bot</span><select data-k="botWeapon" aria-label="Arma do bot"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S</option><option value="ump">UMP-45</option><option value="bucky">Bucky</option><option value="pistol">Desert Eagle</option><option value="usps">USP-S</option><option value="glock">Glock-18</option><option value="galil">Galil AR</option><option value="famas">FAMAS</option><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
     </div>
     <label class="chk"><input type="checkbox" data-k="botHelmet">Bot com capacete</label>
     <div class="fld" id="colorField"><span>Cor do seu boneco no 1v1</span><div class="sw" id="pcolors"></div></div>
@@ -734,6 +734,17 @@ const W = {
   // Escopeta no papel da Bucky: doze chumbos por disparo, letal de perto, fraca de longe.
   bucky: { name: 'Bucky', dmg: 19, pellets: 12, pelletSpread: .055, mult: { head: 2, body: 1, leg: .75 }, rof: 900, mag: 5, res: 20, reload: 2600, speed: 5.5, auto: false,
     base: .002, move: .03, air: .15, shotSpread: 0, recover: 6, kickP: .07, kickY: .02, helmetPen: 1, rangeModifier: .3, draw: 700, snd: 'bucky' },
+  // Glock-18: pistola padrão dos Atacantes. Botão direito dispara uma rajada de 3 tiros, mais aberta, como no Valorant.
+  glock: { name: 'Glock-18', dmg: 30, mult: { head: 4, body: 1, leg: .75 }, rof: 150, mag: 20, res: 120, reload: 2270, speed: 6.096, auto: false,
+    base: .0021, move: .058, air: .2, shotSpread: .011, recover: 8, kickP: .013, kickY: .005, helmetPen: .47, rangeModifier: .85, draw: 550, snd: 'glock',
+    burst: { n: 3, gap: 55, after: 480, spread: .016 } },
+  // Galil AR: rifle barato dos Atacantes; pente de 35, dano de 30 e recuo médio.
+  galil: { name: 'Galil AR', dmg: 30, mult: { head: 4, body: 1, leg: .75 }, rof: 90, mag: 35, res: 90, reload: 3000, speed: 5.461, auto: true,
+    base: .0019, move: .08, air: .24, shotSpread: .0041, recover: 6, pattern: true, recoilScale: .7, recoilJitter: .0024, helmetPen: .775, draw: 550, snd: 'galil' },
+  // FAMAS: rifle barato dos Defensores; botão direito dispara uma rajada de 3 tiros precisa, como o modo rajada do CS.
+  famas: { name: 'FAMAS', dmg: 30, mult: { head: 4, body: 1, leg: .75 }, rof: 90, mag: 25, res: 90, reload: 3300, speed: 5.588, auto: true,
+    base: .0017, move: .072, air: .23, shotSpread: .0035, recover: 7, pattern: true, recoilScale: .62, recoilJitter: .0022, helmetPen: .7, draw: 550, snd: 'famas',
+    burst: { n: 3, gap: 75, after: 360, spread: .0006 } },
   // Granadas: ficam na mão até o clique; esquerdo lança longe, direito joga perto.
   he: { name: 'HE', grenade: 'he', dmg: 0, mult: { head: 1, body: 1, leg: 1 }, mag: 1, res: 0, rof: 900, speed: 6.1, base: 0, move: 0, air: 0, draw: 450, snd: 'he' },
   flash: { name: 'Flash', grenade: 'flash', dmg: 0, mult: { head: 1, body: 1, leg: 1 }, mag: 1, res: 0, rof: 900, speed: 6.1, base: 0, move: 0, air: 0, draw: 450, snd: 'flash' },
@@ -743,9 +754,9 @@ const W = {
 };
 const GRENADES = ['he', 'flash', 'smoke'];
 const SLOT = { Digit1: 'rifle', Digit2: 'pistol', Digit3: 'knife', Digit4: 'sniper' };
-const CATEGORIES = { rifle: ['rifle', 'm4a4', 'm4a1s', 'ump', 'bucky'], pistol: ['pistol', 'usps'], knife: ['knife', 'butterfly'], sniper: ['sniper', 'ssg'] };
+const CATEGORIES = { rifle: ['rifle', 'm4a4', 'm4a1s', 'galil', 'famas', 'ump', 'bucky'], pistol: ['pistol', 'usps', 'glock'], knife: ['knife', 'butterfly'], sniper: ['sniper', 'ssg'] };
 const ALL_WEAPONS = Object.keys(W), ORDER = [];
-const DM_POOLS = {pistol:['pistol','usps'],sniper:['sniper','ssg'],rifle:['rifle','m4a4','m4a1s'],all:['rifle','m4a4','m4a1s','ump','pistol','usps','sniper','ssg']};
+const DM_POOLS = {pistol:['pistol','usps','glock'],sniper:['sniper','ssg'],rifle:['rifle','m4a4','m4a1s','galil','famas'],all:['rifle','m4a4','m4a1s','galil','famas','ump','pistol','usps','glock','sniper','ssg']};
 const DM_LABELS = {pistol:'pistolas',sniper:'precisão',rifle:'rifles',all:'tudo liberado'};
 const DM_BOT_NAMES = ['donk','ZywOo','m0NESY','NiKo','KSCERATO','ropz','YEKINDAR','molodoy','coldzera'];
 // Nomes extras para times grandes (até 8v8): completam os bots além dos nove do DM.
@@ -771,7 +782,7 @@ const PAT = [[0,0],[.016,.001],[.02,.002],[.024,-.002],[.026,.003],[.026,.004],[
 /* ================= Skins ================= */
 // Cada skin troca as cores do modelo, o som do tiro e o som de abate (que sobe de tom a cada abate seguido, como no Valorant).
 // "Sublime" (nome da linha Prime no Valorant em português) é exclusiva da AK: marfim, ouro e energia ciano, com modelo próprio.
-const FIREARMS = ['rifle','m4a4','m4a1s','ump','bucky','pistol','usps','sniper','ssg'];
+const FIREARMS = ['rifle','m4a4','m4a1s','galil','famas','ump','bucky','pistol','usps','glock','sniper','ssg'];
 const SKINS = {
   padrao:  { name: 'Padrão', for: null, desc: 'Acabamento original.' },
   sublime: { name: 'Sublime', for: ['rifle'], lock: 'a0ae4456e6fd4a5c7974355a34cfe9aa5ddd469272b195abe9b99259aa1fadd9', css: ['#f2eadb','#d9a93a','#5ff6ff'], desc: 'Marfim, ouro e energia ciano. Tiro elétrico e sinos ao abater.' },
@@ -1794,6 +1805,9 @@ const AU = {
     else if (w === 'm4a4') { this.noise(.13, 2200, .7, .42 * v, pan); this.tone(135, .085, .28 * v, 'triangle', pan, -70); }
     else if (w === 'm4a1s' || w === 'usps') { this.noise(.07, 1250, 1.1, .22 * v, pan, 'bandpass'); this.tone(w === 'usps' ? 210 : 155, .065, .17 * v, 'sine', pan, -75); }
     else if (w === 'ssg') { this.noise(.28, 2400, .6, .5 * v, pan); this.tone(105, .19, .36 * v, 'triangle', pan, -65); }
+    else if (w === 'glock') { this.noise(.07, 2500, 1, .3 * v, pan); this.tone(245, .05, .2 * v, 'triangle', pan, -95); }
+    else if (w === 'galil') { this.noise(.12, 2300, .7, .44 * v, pan); this.tone(126, .085, .3 * v, 'triangle', pan, -65); }
+    else if (w === 'famas') { this.noise(.11, 2750, .7, .4 * v, pan); this.tone(142, .07, .27 * v, 'triangle', pan, -72); }
     else if (w === 'ump') { this.noise(.1, 1900, .8, .38 * v, pan); this.tone(150, .07, .24 * v, 'triangle', pan, -80); }
     else if (w === 'bucky') {
       // Estrondo largo e o "tchac-tchac" da telha voltando depois do tiro.
@@ -2017,6 +2031,30 @@ GUNS.c4 = [[[-.07,-.07,-.12],[.07,-.02,.03],0x6b5b3a], [[-.072,-.074,-.06],[.072
 GUNS.he = [[[-.018,-.06,-.03],[.042,0,.02],0x4d5a2e], [[-.004,0,-.013],[.03,.017,.006],0x2b2f22], [[.026,-.042,-.009],[.035,.02,.002],0x8f9496], [[.029,.012,-.017],[.037,.029,0],0xb8bcbf]];
 GUNS.flash = [[[-.008,-.075,-.022],[.032,.012,.018],0xc9cdd0], [[-.004,.012,-.014],[.028,.026,.01],0x3b4045], [[-.009,-.042,-.023],[.033,-.033,.019],0x7a8086], [[.03,-.052,-.006],[.038,.02,.002],0x8f9496]];
 GUNS.smoke = [[[-.01,-.08,-.024],[.034,.012,.02],0x5d6a74], [[-.006,.012,-.016],[.03,.026,.012],0x2f363c], [[-.011,-.05,-.025],[.035,-.04,.021],0xd0d4d6], [[.032,-.055,-.007],[.04,.02,.002],0x8f9496]];
+// Glock-18: polímero preto, ferrolho quadrado e massa de mira simples.
+GUNS.glock = [
+  [[-.022,-.02,-.215],[.022,.032,.02],0x2b2e31], [[-.021,-.036,-.205],[.021,-.02,-.02],0x1d1f22],
+  [[-.022,-.14,-.004],[.022,-.02,.05],0x1d1f22], [[-.02,-.064,-.09],[.02,-.054,.0],0x1d1f22],
+  [[-.012,.032,.004],[.012,.043,.018],0x111315], [[-.003,.032,-.208],[.003,.041,-.197],0x111315],
+  [[-.006,-.006,-.222],[.006,.012,-.214],0x0d0f10]
+];
+// Galil AR: caixa cinza, guarda-mão preto, carregador curvo, alça de mira alta e coronha vazada.
+GUNS.galil = [
+  [[-.026,-.03,-.30],[.026,.032,.06],0x3d4044], [[-.028,-.034,-.50],[.028,.016,-.30],0x2a2c2f],
+  [[-.009,-.002,-.66],[.009,.016,-.50],0x1f2123], [[-.004,.016,-.625],[.004,.062,-.605],0x1f2123],
+  [[-.008,.016,-.48],[.008,.03,-.30],0x2a2c2f], [[-.01,.032,-.06],[.01,.052,0],0x2a2c2f],
+  [[-.017,-.16,-.255],[.017,-.03,-.195],0x2b2d30], [[-.017,-.215,-.235],[.017,-.15,-.172],0x2b2d30],
+  [[-.016,-.12,-.02],[.016,-.03,.03],0x2e3033], [[-.006,-.006,.06],[.006,.012,.27],0x2a2c2f],
+  [[-.006,-.072,.08],[.006,-.056,.27],0x2a2c2f], [[-.02,-.078,.26],[.02,.016,.29],0x1f2123]
+];
+// FAMAS: bullpup com a alça de transporte comprida em cima, gatilho à frente e o pente atrás dele.
+GUNS.famas = [
+  [[-.03,-.05,-.36],[.03,.04,.22],0x45494d], [[-.008,.07,-.30],[.008,.09,.12],0x2b2e31],
+  [[-.006,.04,-.31],[.006,.07,-.285],0x2b2e31], [[-.006,.04,.095],[.006,.07,.12],0x2b2e31],
+  [[-.009,-.004,-.58],[.009,.014,-.36],0x1f2123], [[-.026,-.076,-.36],[.026,-.05,-.18],0x2b2e31],
+  [[-.016,-.15,-.17],[.016,-.05,-.11],0x2b2e31], [[-.016,-.17,.0],[.016,-.05,.065],0x2a2c2f],
+  [[-.03,-.085,.22],[.03,.04,.25],0x1f2123], [[-.024,.04,.10],[.024,.058,.22],0x2b2e31]
+];
 // UMP-45: corpo quadrado, pente reto à frente do gatilho, coronha rebatível e trilho em cima.
 GUNS.ump = [
   [[-.028,-.035,-.30],[.028,.035,.07],0x2b2f33], [[-.012,.035,-.28],[.012,.045,.03],0x1c1f22],
@@ -2043,7 +2081,8 @@ const ARMS = {
   sniper: [{ hand: [0, -.05, -.45], from: [0, -.065, -.43], to: [-.24, -.34, -.04] }, { hand: [0, -.09, .01], from: [.01, -.10, .04], to: [.17, -.32, .33] }],
 };
 ARMS.m4a4 = ARMS.m4a1s = ARMS.rifle; ARMS.usps = ARMS.pistol; ARMS.ssg = ARMS.sniper; ARMS.butterfly = [];
-ARMS.medgun = ARMS.pistol;
+ARMS.medgun = ARMS.pistol; ARMS.glock = ARMS.pistol; ARMS.galil = ARMS.rifle;
+ARMS.famas = [{ hand: [0, -.07, -.31], from: [0, -.085, -.29], to: [-.24, -.34, -.02] }, { hand: [0, -.10, -.14], from: [.01, -.11, -.11], to: [.17, -.32, .30] }];
 ARMS.c4 = [{ hand: [-.07, -.085, -.02], from: [-.08, -.10, .0], to: [-.22, -.33, .26] }, { hand: [.07, -.085, -.02], from: [.08, -.10, .0], to: [.16, -.33, .32] }];
 ARMS.he = ARMS.flash = ARMS.smoke = [{ hand: [.012, -.085, .005], from: [.02, -.10, .03], to: [.16, -.33, .32] }];
 ARMS.ump = [{ hand: [0, -.06, -.27], from: [0, -.075, -.26], to: [-.24, -.34, 0] }, { hand: [0, -.085, .005], from: [.01, -.10, .035], to: [.17, -.32, .32] }];
@@ -2061,10 +2100,10 @@ function limb(group, from, to, thick, mat) {
   m.quaternion.setFromUnitVectors(UPZ, b.clone().sub(a).normalize());
   group.add(m);
 }
-const MUZZLE = { rifle: [0, .01, -.67], pistol: [0, .035, -.32], sniper: [0,.025,-.945], m4a4: [0,.01,-.79], m4a1s: [0,.01,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.89], ump: [0,.005,-.475], bucky: [0,.014,-.745] };
+const MUZZLE = { rifle: [0, .01, -.67], pistol: [0, .035, -.32], sniper: [0,.025,-.945], m4a4: [0,.01,-.79], m4a1s: [0,.01,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.89], ump: [0,.005,-.475], bucky: [0,.014,-.745], glock: [0,.006,-.226], galil: [0,.007,-.67], famas: [0,.005,-.588] };
 const VM_BASE = { rifle: [.15, -.16, -.40], pistol: [.13, -.145, -.38], knife: [.005, -.11, -.38], sniper: [.15, -.16, -.38] };
-VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.rifle; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.he = VM_BASE.flash = VM_BASE.smoke = [.13, -.15, -.38]; VM_BASE.c4 = [.06, -.13, -.36]; VM_BASE.medgun = VM_BASE.pistol; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
-const VM_YAW = { rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0, ump: .05, bucky: .05, he: .03, flash: .03, smoke: .03, c4: 0, medgun: .03 };
+VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.galil = VM_BASE.rifle; VM_BASE.famas = [.15, -.165, -.36]; VM_BASE.glock = VM_BASE.pistol; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.he = VM_BASE.flash = VM_BASE.smoke = [.13, -.15, -.38]; VM_BASE.c4 = [.06, -.13, -.36]; VM_BASE.medgun = VM_BASE.pistol; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
+const VM_YAW = { glock: .03, galil: .05, famas: .05, rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0, ump: .05, bucky: .05, he: .03, flash: .03, smoke: .03, c4: 0, medgun: .03 };
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: .95, depthWrite: false, blending: THREE.AdditiveBlending });
 const flashGeo = new THREE.PlaneGeometry(.13, .13);
 const vmRoot = new THREE.Group(); vmRoot.scale.setScalar(0.5); vmScene.add(vmRoot);
@@ -2877,7 +2916,7 @@ function shoot(t, heavy) {
     P.recoilP=P.recoilY=P.punch=0;
   }
   const settle = w.scope && P.zoom && w.zoomMs ? clamp(1 - (t - (P.zoomAt || 0)) / w.zoomMs, 0, 1) : 0;
-  const inac = inaccuracy(P, w, P.zoom > 0, P.spread) + (settle ? settle * (w.noscope - w.base) : 0);
+  const inac = inaccuracy(P, w, P.zoom > 0, P.spread) + (settle ? settle * (w.noscope - w.base) : 0) + (P.inBurst && w.burst ? w.burst.spread : 0);
   const rr = inac * Math.sqrt(Math.random()), th = Math.random() * TAU;
   const dir = aim ? aim.direction : dirFrom(P.yaw + P.recoilY + Math.cos(th) * rr, P.pitch + P.recoilP + Math.sin(th) * rr);
   const mz = muzzleWorld();
@@ -2954,9 +2993,17 @@ function updateWeapon(dt, t) {
   }
   if (canAct && !w.melee && am.mag === 0 && am.res > 0 && t >= P.nextFire) startReload(t);
   const trig = w.auto || w.melee ? P.m1 : P.m1Press;
-  if (canAct && t >= P.nextFire) {
+  // Rajada (Glock e FAMAS): botão direito dispara 3 tiros seguidos e espera um pouco antes da próxima.
+  if (P.burstLeft > 0 && (P.burstW !== P.weapon || !canAct || P.reloadEnd)) P.burstLeft = 0;
+  if (canAct && t >= P.nextFire && !P.burstLeft) {
     if (w.melee && (P.m2 || P.m2Press)) shoot(t,true);
+    else if (w.burst && P.m2Press && P.ammo[P.weapon].mag > 0) { P.burstLeft = w.burst.n; P.burstW = P.weapon; P.burstAt = t; }
     else if (trig) shoot(t,false);
+  }
+  if (P.burstLeft > 0 && t >= P.burstAt) {
+    P.inBurst = true; shoot(t,false); P.inBurst = false; P.burstLeft--;
+    if (P.ammo[P.weapon].mag <= 0) P.burstLeft = 0;
+    P.burstAt = t + w.burst.gap; P.nextFire = P.burstLeft ? P.burstAt : t + w.burst.after;
   }
   P.m1Press = false; P.m2Press = false;
   if (t - P.lastShot > (w.rof || 100) + 60) { const k = Math.exp(-dt * 8); P.recoilP *= k; P.recoilY *= k; P.shots = Math.max(0, P.shots - dt * 14); }
@@ -3773,8 +3820,8 @@ const AIMBOTZ_BUTTONS = [
   { x: 244, y: 100, w: 68, h: 58, count: -1, label: '−' },
   { x: 392, y: 100, w: 68, h: 58, count: 1, label: '+' },
   ...FIREARMS.map((weapon, i) => ({
-    x: 32 + i % 3 * 302, y: 212 + Math.floor(i / 3) * 68,
-    w: 292, h: 56, weapon, label: W[weapon].name,
+    x: 32 + i % 4 * 226, y: 212 + Math.floor(i / 4) * 68,
+    w: 216, h: 56, weapon, label: W[weapon].name,
   })),
   { x: 32, y: 432, w: 896, h: 52, infinite: true },
 ];
@@ -4319,8 +4366,8 @@ function teamTick(dt, t) {
 const BOMB = { beepRange: 38, half: 8, target: 9, maxRounds: 16, freezeMs: 10000, buyMs: 20000, roundMs: 90000, bombMs: 40000, plantMs: 3200, defuseMs: 10000, kitMs: 5000, endMs: 5000,
   start: 800, max: 8000, win: { kill: 2750, bomb: 3000, defuse: 3000, time: 2750 }, lossBase: 2000, lossStep: 300, lossMax: 2900, plantTeam: 600, plantMe: 300, defuseMe: 300,
   tTeam: 0, streak: [0, 0], planted: null, dropped: null, carrier: null, roundStart: 0, plantedBy: null, beepAt: 0, gfx: null, lastWhy: '' };
-const PRICES = { usps: 200, pistol: 700, ump: 1200, bucky: 1050, rifle: 2700, m4a4: 3100, m4a1s: 2900, ssg: 1700, sniper: 4750, he: 300, flash: 200, smoke: 300, kevlar: 650, helmet: 1000, kit: 400 };
-const SIDE_ONLY = { rifle: 't', m4a4: 'ct', m4a1s: 'ct', kit: 'ct' };
+const PRICES = { glock: 200, usps: 200, galil: 1800, famas: 2050, pistol: 700, ump: 1200, bucky: 1050, rifle: 2700, m4a4: 3100, m4a1s: 2900, ssg: 1700, sniper: 4750, he: 300, flash: 200, smoke: 300, kevlar: 650, helmet: 1000, kit: 400 };
+const SIDE_ONLY = { rifle: 't', galil: 't', glock: 't', m4a4: 'ct', m4a1s: 'ct', famas: 'ct', usps: 'ct', kit: 'ct' };
 const NADE_MAX = { he: 1, flash: 2, smoke: 1 };
 const SIDE_NAMES = { t: 'Atacantes', ct: 'Defensores' };
 const bombOn = () => G.mode === 'team' && ARENA.bomb;
@@ -4328,10 +4375,12 @@ const sideOf = e => e && e.team === BOMB.tTeam ? 't' : 'ct';
 const killReward = w => W[w]?.melee ? 1500 : w === 'he' ? 300 : w === 'sniper' ? 100 : w === 'ump' ? 600 : w === 'bucky' ? 900 : 300;
 function bombSiteAt(x,z,y) { return (MAP.plant?.sites||[MAP.plant?.site]).find(s=>s&&x>=s.x0&&x<=s.x1&&z>=s.z0&&z<=s.z1&&(!sourceWorld||!fin(y)||y+H_STAND>=s.y0&&y<=s.y1+.15)); }
 function bombInSite(x,z,y) { return !!bombSiteAt(x,z,y); }
-function bombResetGear(e) { e.inv = { primary: null, secondary: 'usps', armor: 0, helmet: false, kit: false }; e.nades = { he: 0, flash: 0, smoke: 0 }; }
+// Pistola inicial como no CS: Glock para os Atacantes, USP-S para os Defensores.
+const bombPistol = e => sideOf(e) === 't' ? 'glock' : 'usps';
+function bombResetGear(e) { e.inv = { primary: null, secondary: bombPistol(e), armor: 0, helmet: false, kit: false }; e.nades = { he: 0, flash: 0, smoke: 0 }; }
 // Inventário em ordem de teclas: 1 primária, 2 pistola, 3 faca, 4 granadas, 5 bomba.
 function bombOrder(e) {
-  const o = []; if (e.inv.primary) o.push(e.inv.primary); o.push(e.inv.secondary || 'usps'); o.push((e === P ? S.loadout.knife : 'knife'));
+  const o = []; if (e.inv.primary) o.push(e.inv.primary); o.push(e.inv.secondary || bombPistol(e)); o.push((e === P ? S.loadout.knife : 'knife'));
   for (const g of GRENADES) if (e.nades[g] > 0) o.push(g);
   if (BOMB.carrier === e.id) o.push('c4');
   return o;
@@ -4343,7 +4392,7 @@ function bombEquip(e, t, fresh) {
     ORDER.splice(0, ORDER.length, ...bombOrder(P));
     if (!keep || !ORDER.includes(P.weapon)) { P.weapon = ORDER[0]; P.drawEnd = t + W[P.weapon].draw; P.kAnim = null; P.reloadEnd = 0; if (W[P.weapon].melee) beginKnifeAnimation('draw', t); applyFov(); }
     if (!ORDER.includes(P.lastW) || P.lastW === P.weapon) P.lastW = ORDER.find(k => k !== P.weapon) || P.weapon;
-  } else if (!e.remote) { const w = e.inv.primary || e.inv.secondary || 'usps'; if (e.w !== w || fresh) { e.w = w; e.mag = W[w].mag; e.reloadEnd = 0; } }
+  } else if (!e.remote) { const w = e.inv.primary || e.inv.secondary || bombPistol(e); if (e.w !== w || fresh) { e.w = w; e.mag = W[w].mag; e.reloadEnd = 0; } }
 }
 function bombGive(e, item) {
   if (W[item] && !W[item].grenade) { if (CATEGORIES.pistol.includes(item)) e.inv.secondary = item; else e.inv.primary = item; if (e === P) refillOne(P, item); }
@@ -4402,9 +4451,11 @@ function bombBuy(e, item, t) {
 // Compra dos bots: rifle e colete quando dá; força com SMG/escopeta; economiza no resto. Utilitários se sobrar.
 function bombBotBuy(e, t) {
   const side = sideOf(e), m = () => e.money, buy = k => bombBuy(e, k, t);
-  const rifle = side === 't' ? 'rifle' : (Math.random() < .5 ? 'm4a1s' : 'm4a4');
+  const rifle = side === 't' ? 'rifle' : (Math.random() < .5 ? 'm4a1s' : 'm4a4'), cheap = side === 't' ? 'galil' : 'famas';
   if (!e.inv.primary) {
     if (m() >= PRICES[rifle] + 1000) { buy(rifle); }
+    // Rifle barato (Galil / FAMAS) quando não dá para o rifle cheio com colete.
+    else if (m() >= PRICES[cheap] + 900 && ARENA.r !== 1 && ARENA.r !== BOMB.half + 1) buy(cheap);
     else if (m() >= 2200 && ARENA.r !== 1 && ARENA.r !== BOMB.half + 1) buy(Math.random() < .55 ? 'ump' : 'bucky');
     else if (m() >= 5800 && Math.random() < .3) buy('sniper');
   }
@@ -4524,7 +4575,7 @@ const playerBusy = () => bombOn() && P.alive && (P.plantUntil > 0 || P.defuseUnt
 function bombSlotKey(code) {
   const n = +code.slice(5), o = ORDER;
   if (n === 1 && P.inv.primary) selectWeapon(P.inv.primary);
-  else if (n === 2) selectWeapon(P.inv.secondary || 'usps');
+  else if (n === 2) selectWeapon(P.inv.secondary || bombPistol(P));
   else if (n === 3) selectWeapon(o.find(k => W[k].melee));
   else if (n === 4) { const nades = o.filter(k => W[k].grenade); if (nades.length) selectWeapon(nades[(nades.indexOf(P.weapon) + 1) % nades.length]); }
   else if (n === 5 && o.includes('c4')) selectWeapon('c4');
@@ -5452,7 +5503,7 @@ function flashRed() {
   el.red.style.transition = 'none'; el.red.style.opacity = 1;
   clearTimeout(redT); redT = setTimeout(() => { el.red.style.transition = 'opacity .5s'; el.red.style.opacity = 0; }, 80);
 }
-const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY', he: 'HE', flash: 'FLASH', smoke: 'SMOKE', c4: 'C4', medgun: 'ESTIMULANTE', fall: 'QUEDA' };
+const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY', glock: 'GLOCK', galil: 'GALIL', famas: 'FAMAS', he: 'HE', flash: 'FLASH', smoke: 'SMOKE', c4: 'C4', medgun: 'ESTIMULANTE', fall: 'QUEDA' };
 function headshotIcon() {
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
   svg.setAttribute('viewBox','0 0 28 24');svg.setAttribute('role','img');svg.setAttribute('aria-label','Tiro na cabeça');
@@ -5753,7 +5804,7 @@ function closeBuy() {
 }
 // Loja do modo bomba (tecla B): mesma mira virtual do arsenal, com preços e bloqueios do Wingman.
 const SHOP = { open: false, key: '' };
-const SHOP_COLS = [['Pistolas', ['usps', 'pistol']], ['SMG e escopeta', ['ump', 'bucky']], ['Rifles', ['rifle', 'm4a4', 'm4a1s']], ['Precisão', ['ssg', 'sniper']], ['Granadas', ['he', 'flash', 'smoke']], ['Equipamento', ['kevlar', 'helmet', 'kit']]];
+const SHOP_COLS = [['Pistolas', ['glock', 'usps', 'pistol']], ['SMG e escopeta', ['ump', 'bucky']], ['Rifles', ['galil', 'rifle', 'famas', 'm4a4', 'm4a1s']], ['Precisão', ['ssg', 'sniper']], ['Granadas', ['he', 'flash', 'smoke']], ['Equipamento', ['kevlar', 'helmet', 'kit']]];
 const SHOP_NAMES = { kevlar: 'Colete', helmet: 'Colete + capacete', kit: 'Kit de desarme' };
 function openShop() {
   if (!bombOn() || SHOP.open) return;

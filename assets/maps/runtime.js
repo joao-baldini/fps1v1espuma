@@ -119,12 +119,17 @@
     }
     move(e,dt,radius=.32,step=.5){
       const p=[e.pos.x,e.pos.y,e.pos.z],v=[e.vel.x,e.vel.y,e.vel.z],wasGround=e.onGround;let result=this.slide(p,v,e.h,dt,radius);
-      if(wasGround&&v[1]<=.5&&result.wall){
-        const lift=this.sweep(p,[0,step+.005,0],1,radius,e.h,1);
-        if(!lift){const raised=[p[0],p[1]+step+.005,p[2]],up=this.slide(raised,[v[0],0,v[2]],e.h,dt,radius),down=this.sweep(up.p,[0,-step-.1,0],1,radius,e.h,1);
-          if(down&&down.n[1]>.69){const y=up.p[1]-(step+.1)*down.t;
-            if(y<=p[1]+step+.002&&Math.hypot(up.p[0]-p[0],up.p[2]-p[2])>Math.hypot(result.p[0]-p[0],result.p[2]-p[2])+.0001&&!this.overlap(up.p[0],y+.001,up.p[2],e.h,radius))result={p:[up.p[0],y,up.p[2]],v:[up.v[0],0,up.v[2]],ground:true};
-          }
+      // Degrau: tenta subir só o necessário (6 cm, 12 cm ... até o limite). Levantar sempre o máximo fazia a cabeça
+      // bater no teto de escadas cobertas e arcos, e o degrau baixo era recusado.
+      // Também quando a quina do degrau devolve uma "rampa" (normal inclinada conta como chão e não como parede):
+      // sem isso o boneco era jogado para cima, perdia o chão e subia a escada se arrastando.
+      const want=Math.hypot(v[0],v[2])*dt,flat=Math.hypot(result.p[0]-p[0],result.p[2]-p[2]);
+      if(wasGround&&v[1]<=.5&&want>1e-4&&(result.wall||flat<want*.9||result.v[1]>.5)){
+        for(const h of [.06,.12,.2,.3,.4,step]){
+          if(h>step)break;const lift=this.sweep(p,[0,h+.005,0],1,radius,e.h,1);if(lift)break;
+          const raised=[p[0],p[1]+h+.005,p[2]],up=this.slide(raised,[v[0],0,v[2]],e.h,dt,radius),down=this.sweep(up.p,[0,-h-.1,0],1,radius,e.h,1);
+          if(!down||down.n[1]<=.69)continue;const y=up.p[1]-(h+.1)*down.t;
+          if(y<=p[1]+h+.002&&Math.hypot(up.p[0]-p[0],up.p[2]-p[2])>flat+.0001&&!this.overlap(up.p[0],y+.001,up.p[2],e.h,radius)){result={p:[up.p[0],y,up.p[2]],v:[up.v[0],0,up.v[2]],ground:true};break;}
         }
       }
       if(wasGround&&v[1]<=0&&!result.ground){const snap=this.sweep([result.p[0],result.p[1]+.015,result.p[2]],[0,-.34,0],1,radius,e.h,1);if(snap&&snap.n[1]>.69){result.p[1]+=.015-.34*snap.t;result.v[1]=0;result.ground=true;}}

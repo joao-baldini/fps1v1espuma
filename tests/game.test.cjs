@@ -1405,7 +1405,7 @@ test('Plant the Bomb shop sells back what was bought this round for the full pri
   g.P.money = 5000;
   assert.ok(cx.bombBuy(g.P, 'pistol', t)); assert.equal(g.P.inv.secondary, 'pistol'); assert.equal(g.P.money, 4300);
   assert.ok(cx.bombBuy(g.P, 'helmet', t)); assert.ok(cx.bombBuy(g.P, 'flash', t)); assert.equal(g.P.money, 3100);
-  assert.ok(cx.bombSell(g.P, 'pistol', t)); assert.equal(g.P.inv.secondary, 'usps'); assert.equal(g.P.money, 3800); assert.ok(g.ORDER.includes('usps'));
+  const start = vm.runInContext('bombPistol(P)', cx); assert.ok(cx.bombSell(g.P, 'pistol', t)); assert.equal(g.P.inv.secondary, start); assert.equal(g.P.money, 3800); assert.ok(g.ORDER.includes(start));
   assert.ok(cx.bombSell(g.P, 'helmet', t)); assert.equal(g.P.inv.armor, 0); assert.equal(g.P.inv.helmet, false);
   assert.ok(cx.bombSell(g.P, 'flash', t)); assert.equal(g.P.nades.flash, 0); assert.equal(g.P.money, 5000);
   assert.equal(cx.bombSell(g.P, 'kevlar', t), false);
@@ -1653,4 +1653,39 @@ test('the C4 beep comes from the bomb: silent far away, louder as you get closer
   const hear = (d) => { beeps.length = 0; g.P.pos.set(p.x + d, p.y, p.z); ev('BOMB.beepAt=0'); vm.runInContext(`bombTick(1/30,${t += 30})`, cx); return beeps[0] || 0; };
   assert.equal(hear(60), 0, 'longe: não ouve');
   const mid = hear(18), near = hear(2); assert.ok(mid > 0 && near > mid, `perto ${near} > meio ${mid}`);
+});
+test('Glock and FAMAS: right click fires a 3-round burst, then waits; left click is a normal single shot', () => {
+  const g = game(), cx = g.context;
+  cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
+  for (const [weapon, gap] of [['glock', 55], ['famas', 75]]) {
+    cx.aimbotzEquip(weapon); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.reloadEnd = 0;
+    const am = g.P.ammo[weapon], start = am.mag; let t = 50000;
+    g.P.m2Press = true; g.updateWeapon(0, t); assert.equal(start - am.mag, 1, weapon + ': primeiro tiro na hora');
+    g.updateWeapon(0, t + gap - 5); assert.equal(start - am.mag, 1);
+    g.updateWeapon(0, t + gap); g.updateWeapon(0, t + 2 * gap); assert.equal(start - am.mag, 3, weapon + ': três tiros');
+    g.updateWeapon(0, t + 3 * gap + 5); assert.equal(start - am.mag, 3, 'a rajada para no terceiro');
+    g.P.m2Press = true; g.updateWeapon(0, t + 3 * gap + 10); assert.equal(start - am.mag, 3, 'espera antes da próxima rajada');
+  }
+});
+test('Plant the Bomb: Glock is the Attackers starting pistol, USP-S the Defenders; Galil is Attackers-only and FAMAS Defenders-only', () => {
+  const { g, cx, step } = bombWorld();
+  const ev = s => vm.runInContext(s, cx);
+  let t = step(10000, 1500);
+  for (const e of ev('DM.actors')) assert.equal(e.inv.secondary, ev('sideOf')(e) === 't' ? 'glock' : 'usps');
+  const t1 = ev("DM.actors.find(e=>sideOf(e)==='t')"), c1 = ev("DM.actors.find(e=>sideOf(e)==='ct')");
+  for (const e of [t1, c1]) e.money = 9000;
+  assert.equal(ev('bombBuyBlock')(t1, 'famas', t), 'Só Defensores'); assert.equal(ev('bombBuyBlock')(c1, 'galil', t), 'Só Atacantes');
+  assert.ok(cx.bombBuy(t1, 'galil', t)); assert.equal(t1.inv.primary, 'galil'); assert.equal(t1.money, 9000 - 1800);
+  assert.ok(cx.bombBuy(c1, 'famas', t)); assert.equal(c1.inv.primary, 'famas'); assert.equal(c1.money, 9000 - 2050);
+});
+test('stairs: the player runs up a covered Guard staircase at full speed instead of being bounced by the step edges', () => {
+  const { g, cx, step } = bombWorld('guard');
+  const ev = s => vm.runInContext(s, cx);
+  let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500);
+  for (const b of ev('DM.bots')) { b.alive = false; b.pos.set(999, -999, 999); }
+  g.P.pos.set(13.3, ev('groundAt(13.3,-35,1)') + .02, -35); g.P.vel.set(0, 0, 0); g.P.onGround = true; g.P.yaw = Math.PI; g.P.pitch = 0;
+  g.keys.clear(); g.keys.add('KeyW');
+  for (let i = 0; i < 330; i++) { t += 1000 / 128; g.playerInput(1 / 128, t); }
+  g.keys.clear();
+  assert.ok(g.P.pos.y > 2.6, 'subiu a escada: y ' + g.P.pos.y.toFixed(2)); assert.ok(g.P.pos.z > -23, 'sem perder velocidade: z ' + g.P.pos.z.toFixed(2));
 });
