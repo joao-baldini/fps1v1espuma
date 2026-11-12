@@ -1960,3 +1960,16 @@ test('Guard ladder lets the player climb from the bottom onto the upper landing 
   assert.ok(frames<360,JSON.stringify(g.P.pos));assert.equal(g.P.climbing,false);assert.ok(Math.hypot(g.P.pos.x-x,g.P.pos.z-z)>.5);
   assert.equal(cx.sourceWorld.overlap(g.P.pos.x,g.P.pos.y,g.P.pos.z,g.P.h,.3),false);
 });
+test('walking gait: legs alternate along the movement in all eight directions, amplitude follows speed and drops to zero when stopped', () => {
+  const g = game(), cx = g.context, ev = s => vm.runInContext(s, cx);
+  assert.equal(ev('typeof gaitUpdate'), 'function');
+  for (let d = 0; d < 8; d++) {
+    const a = d * Math.PI / 4, yaw = .7, f = Math.cos(a), r = Math.sin(a), s = Math.sin(yaw), c = Math.cos(yaw);
+    const vx = (-s * f + c * r) * 5, vz = (-c * f - s * r) * 5, gait = {}; let x = 0, z = 0, minL = 0, maxL = 0, opposite = true;
+    for (let i = 0; i < 180; i++) { x += vx / 60; z += vz / 60; cx.gaitUpdate(gait, x, z, yaw, 1 / 60, false); const L = cx.gaitLeg(gait, 1), R = cx.gaitLeg(gait, -1); if (Math.abs(L) > .01 && Math.sign(L) === Math.sign(R)) opposite = false; minL = Math.min(minL, L); maxL = Math.max(maxL, L); }
+    assert.ok(Math.abs(gait.f - f) < .05 && Math.abs(gait.r - r) < .05, 'direção ' + d);
+    assert.ok(maxL > .2 && minL < -.2, 'passada ' + d); assert.ok(opposite, 'pernas alternadas ' + d);
+    for (let i = 0; i < 90; i++) cx.gaitUpdate(gait, x, z, yaw, 1 / 60, false);
+    assert.ok(gait.amp < .02, 'parado: pernas voltam');
+  }
+});

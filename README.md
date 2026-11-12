@@ -80,7 +80,7 @@ A habilidade fica na tecla **X**. Depois de usada, ela recarrega em 45 s e volta
 
 O ícone da habilidade fica no centro, embaixo: drone (Finder), cruz de cura (Doctor), mão fazendo "shh" (Ghost), escudo (Brutus) e sirene de alarme (Detector). Disponível, ele fica branco e contornado. Durante o efeito do Ghost ou do Brutus, ganha a cor do operador com os segundos restantes. Depois, fica esmaecido com a contagem do cooldown e dá um aviso sonoro quando volta.
 
-Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os passos estão mudos. O Brutus solta um "HAHA" com borda amarela enquanto a couraça dura. As vozes são ouvidas por quem está perto. A varredura do Finder tem som de scan, com pings quando pega alguém, e quem é escaneado também ouve. O alarme do Detector mostra "Armadilha acionada" na tela (laranja para o time do Detector, vermelho para quem pisou). Quem recebe a cura do Doctor vê um pulso verde nas bordas.
+Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os passos estão mudos. O Brutus solta um "HAHA" com borda amarela enquanto a couraça dura. As vozes são ouvidas por quem está perto. A varredura do Finder tem som de scan, com pings quando pega alguém, e quem é escaneado também ouve. Revelações aparecem numa faixa rosada no alto da tela, em caixa alta: "INIMIGO REVELADO" quando a varredura do Finder pega alguém, "ARMADILHA ACIONADA" quando o alarme do Detector dispara e "LOCALIZAÇÃO REVELADA" para quem foi pego. Quem recebe a cura do Doctor vê um pulso verde nas bordas.
 
 | Operador | Habilidade | Visual |
 |---|---|---|
@@ -256,6 +256,8 @@ Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocid
 A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante em que a recarga termina, a munição é atualizada antes de liberar a luneta, sem precisar esperar outro quadro.
 
 Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%.
+
+Os bonecos têm passada nas oito direções: as pernas giram no quadril, alternadas, na direção em que o boneco anda (de lado a passada é menor), e a amplitude acompanha a velocidade. O tronco inclina de leve para onde anda e balança com a passada. A cabeça fica sempre na mesma altura, e a arma acompanha o tronco. Vale para bots, pessoas online e o oponente do 1v1.
 
 Degraus e escadas sobem sozinhos, até 0,5 m por degrau, sem perder velocidade. Nos mapas convertidos (Guard e Elysion), a física sobe só o necessário para cada degrau, para a cabeça não bater no teto de escadas cobertas. Ela também trata a quina do degrau como degrau, e não como rampa: antes, a quina jogava o boneco para cima e ele subia a escada se arrastando.
 

@@ -31,7 +31,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
 
 <div id="hud" hidden>
   <div id="redflash"></div>
-  <div id="blindfx"></div><div id="smokefx"></div><div id="edgefx" class="edgefx"></div><div id="pulsefx" class="edgefx"></div><div id="trapfx" hidden><b>Armadilha acionada</b><small id="trapSub"></small></div>
+  <div id="blindfx"></div><div id="smokefx"></div><div id="edgefx" class="edgefx"></div><div id="pulsefx" class="edgefx"></div><div id="revealfx" hidden></div>
   <div id="scope" hidden></div>
   <div id="xh" class="xh"><i></i><i></i><i></i><i></i><i></i></div>
   <div id="hitm"><i></i><i></i><i></i><i></i></div>
@@ -2193,7 +2193,11 @@ applyVmSkins();
 const oppTint = new THREE.MeshBasicMaterial({ vertexColors: true, color: PCOLORS.vermelho });
 function tinted(list) { const o = { p: [], n: [], c: [] }; for (const [a, b, hex] of list) addBoxTo(o, a, b, hex, true, false); return new THREE.Mesh(geoFrom(o), oppTint); }
 const oppGroup = new THREE.Group();
-const oppLegs = tinted([[[-.2,0,-.12],[-.02,.81,.12],0x6a6a6a],[[.02,0,-.12],[.2,.81,.12],0x6a6a6a]]);
+// Pernas do oponente do 1v1 em dois pivôs no quadril, para a passada.
+const oppLegL = tinted([[[-.2,0,-.12],[-.02,.81,.12],0x6a6a6a]]), oppLegR = tinted([[[.02,0,-.12],[.2,.81,.12],0x6a6a6a]]);
+const oppHipL = new THREE.Group(), oppHipR = new THREE.Group(), oppLegs = new THREE.Group();
+oppHipL.position.set(-.11, .81, 0); oppHipR.position.set(.11, .81, 0); oppLegL.position.set(.11, -.81, 0); oppLegR.position.set(-.11, -.81, 0);
+oppHipL.add(oppLegL); oppHipR.add(oppLegR); oppLegs.add(oppHipL, oppHipR); oppLegs.material = oppLegL.material;
 const oppUpper = new THREE.Group();
 oppUpper.add(tinted([[[-.23,.81,-.15],[.23,1.52,.15],0xffffff],[[-.25,1.18,-.38],[.25,1.32,-.18],0xdddddd]]));
 oppUpper.add(boxModel([[[-.13,1.52,-.13],[.13,1.76,.13],0xf2cfa4],[[-.08,1.6,-.135],[.08,1.65,-.13],0x111111]]));
@@ -2222,8 +2226,8 @@ function hullGeometry(geo) {
   geo.computeBoundingBox(); const c = new THREE.Vector3(), size = new THREE.Vector3(); geo.boundingBox.getCenter(c); geo.boundingBox.getSize(size);
   const g = geo.clone().translate(-c.x, -c.y, -c.z); g.userData.c = c; g.userData.s = size; return g;
 }
-{ const tint = stencilMark(oppTint); oppLegs.material = oppUpper.children[0].material = tint; oppUpper.children[1].material = stencilMark(basicMat); oppHelmet.material = stencilMark(basicMat); }
-for (const part of [oppLegs, oppUpper.children[0], oppUpper.children[1], oppHelmet]) {
+{ const tint = stencilMark(oppTint); oppLegs.material = oppLegL.material = oppLegR.material = oppUpper.children[0].material = tint; oppUpper.children[1].material = stencilMark(basicMat); oppHelmet.material = stencilMark(basicMat); }
+for (const part of [oppLegL, oppLegR, oppUpper.children[0], oppUpper.children[1], oppHelmet]) {
   const g = hullGeometry(part.geometry), m = new THREE.Mesh(g, oppHullMat), w = .014; m.renderOrder = 5;
   m.position.copy(g.userData.c); m.scale.set(1 + 2 * w / g.userData.s.x, 1 + 2 * w / g.userData.s.y, 1 + 2 * w / g.userData.s.z); part.add(m);
 }
@@ -3494,21 +3498,25 @@ function dmTick(dt,t){
 }
 const agentGeometryCache=new Map();
 function agentGeometry(id){
-  if(!agentGeometryCache.has(id)){const parts=AgentModels.parts(id);agentGeometryCache.set(id,Object.fromEntries(Object.entries(parts).map(([key,list])=>[key,boxModel(list).geometry])));}
+  if(!agentGeometryCache.has(id)){
+    const parts=AgentModels.parts(id),geo=Object.fromEntries(Object.entries(parts).map(([key,list])=>[key,boxModel(list).geometry]));
+    // Pernas separadas para a passada: cada peça vai para a perna do seu lado; o que fica no meio é o quadril.
+    const side=item=>{const cx=(item[0][0]+item[1][0])/2;return cx<-.03?'legL':cx>.03?'legR':'hip';},split={hip:[],legL:[],legR:[]};
+    for(const item of parts.legs)split[side(item)].push(item);
+    for(const key of Object.keys(split))if(split[key].length)geo[key]=boxModel(split[key]).geometry;
+    agentGeometryCache.set(id,geo);
+  }
   return agentGeometryCache.get(id);
 }
 function ensureAgentPools(r){
   if(!r.agents||Object.keys(r.agents).length)return;
   for(const id of Object.keys(OPS)){
-    const geometry=agentGeometry(id),agent={legs:r.pool(geometry.legs,basicMat),body:r.pool(geometry.body,basicMat),head:r.pool(geometry.head,basicMat)};
-    const parts=[agent.legs,agent.body,agent.head,r.helmet];
-    for(const mesh of parts){const mat=mesh.material;mat.stencilWrite=true;mat.stencilRef=3;mat.stencilFunc=THREE.AlwaysStencilFunc;mat.stencilZPass=THREE.ReplaceStencilOp;}
-    const hull=parts.map(mesh=>hullGeometry(mesh.geometry));
-    agent.enemyHull=hull.map(g=>r.pool(g,r.enemyHull[0].material));
-    agent.allyFill=parts.map(mesh=>r.pool(mesh.geometry,r.allyFill[0].material));
-    agent.allyEdge=hull.map(g=>r.pool(g,r.allyEdge[0].material));
-    for(const mesh of agent.enemyHull)mesh.renderOrder=5;for(const mesh of agent.allyFill)mesh.renderOrder=20;for(const mesh of agent.allyEdge)mesh.renderOrder=21;
-    r.agentEnemyHulls.push(...agent.enemyHull);r.agents[id]=agent;
+    const geometry=agentGeometry(id),agent={};
+    // Esqueleto do agente: quadril, perna esquerda, perna direita (giram no quadril), tronco e cabeça.
+    const parts=[['hip',geometry.hip],['legL',geometry.legL,-.115],['legR',geometry.legR,.115],['body',geometry.body],['head',geometry.head]].filter(([,g])=>g);
+    agent.rig={hipY:.8,parts:parts.map(([kind,g,px])=>r.rigPart(kind,r.pool(g,basicMat),px)).concat([r.helmetPart])};
+    for(const part of agent.rig.parts)agent[part.kind]=part.mesh;
+    r.agentEnemyHulls.push(...agent.rig.parts.map(part=>part.enemy));r.agents[id]=agent;
   }
   // Team markings leave each agent's outfit intact.
   r.agentBands=r.pool(boxModel([[[-.342,1.28,-.09],[-.325,1.35,.06],0xffffff],[[.325,1.28,-.09],[.342,1.35,.06],0xffffff],[[-.12,1.07,.325],[.12,1.11,.339],0xffffff]]).geometry,basicMat);
@@ -3552,7 +3560,18 @@ function dmEnsureRender(){
   const edgeMat=new THREE.MeshBasicMaterial({color:0x8ffff4,transparent:true,opacity:.95,side:THREE.BackSide,depthWrite:false,depthFunc:THREE.GreaterDepth,stencilWrite:true,stencilRef:1,stencilFunc:THREE.GreaterStencilFunc});
   const allyEdge=hull.map(g=>pool(g,edgeMat));
   for(const m of allyFill)m.renderOrder=20;for(const m of allyEdge)m.renderOrder=21;
-  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally,ghostLegs,ghostBody,ghostHead,ghostMats:[ghostLegs,ghostBody,ghostHead].map(m=>m.material),enemyHull,allyFill,allyEdge,pool,agents:{},agentEnemyHulls:[]};
+  // Peça animável: a malha do boneco (grava o stencil) e as cópias de contorno, preenchimento e borda do aliado.
+  const stencil=m=>{const mt=m.material;mt.stencilWrite=true;mt.stencilRef=3;mt.stencilFunc=THREE.AlwaysStencilFunc;mt.stencilZPass=THREE.ReplaceStencilOp;};
+  function rigPart(kind,mesh,px=0){
+    stencil(mesh);const hull=hullGeometry(mesh.geometry),enemy=pool(hull,enemyHull[0].material),fill=pool(mesh.geometry,fillMat),edge=pool(hull,edgeMat);
+    enemy.renderOrder=5;fill.renderOrder=20;edge.renderOrder=21;return {kind,mesh,px,hull,enemy,fill,edge};
+  }
+  const legL=pool(boxModel([[[-.2,0,-.12],[-.02,.81,.12],0x555555]]).geometry,basicMat),legR=pool(boxModel([[[.02,0,-.12],[.2,.81,.12],0x555555]]).geometry,basicMat);
+  const helmetPart=rigPart('helmet',helmet);
+  const rig={hipY:.81,tint:true,parts:[rigPart('legL',legL,-.11),rigPart('legR',legR,.11),rigPart('body',body),rigPart('head',head),helmetPart]};
+  DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally,ghostLegs,ghostBody,ghostHead,ghostMats:[ghostLegs,ghostBody,ghostHead].map(m=>m.material),enemyHull,allyFill,allyEdge,pool,agents:{},agentEnemyHulls:[],
+    rig,rigPart,helmetPart,rigM:{m:new THREE.Matrix4(),yaw:new THREE.Matrix4(),loc:new THREE.Matrix4(),back:new THREE.Matrix4(),hull:new THREE.Matrix4(),body:new THREE.Matrix4(),v:new THREE.Vector3(),s:new THREE.Vector3(),ax:new THREE.Vector3(),q:new THREE.Quaternion(),qb:new THREE.Quaternion(),qi:new THREE.Quaternion(),e:new THREE.Euler()}};
+  DM.render.agentEnemyHulls.push(...rig.parts.map(part=>part.enemy));
   if(DM.mode==='team'&&ARENA.bomb)ensureAgentPools(DM.render);
 }
 // Junta as malhas de um modelo (facas) numa só geometria com cor por vértice, para desenhar por instância.
@@ -3561,8 +3580,45 @@ function meshesToGeometry(root){
   root.traverse(o=>{if(!o.isMesh)return;const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push([g,g.attributes.color?null:o.material.color.getHex()]);});
   const merged=mergeKnifeParts(parts);for(const [g] of parts)g.dispose();merged.computeBoundingSphere();return merged;
 }
+// Passada nas oito direções: a fase avança com a distância andada e a amplitude acompanha a velocidade.
+// A direção (frente/lado) é medida no referencial do boneco; parado, as pernas voltam ao lugar.
+const GAIT = { stride: 5.2, swing: .5, side: .62 };
+function gaitUpdate(g, x, z, yaw, dt, crouch) {
+  if (dt > 0 && g.px !== undefined) { const ivx = (x - g.px) / dt, ivz = (z - g.pz) / dt, k = Math.min(1, dt * 12); if (Math.hypot(ivx, ivz) < 15) { g.vx += (ivx - g.vx) * k; g.vz += (ivz - g.vz) * k; } }
+  g.px = x; g.pz = z; g.vx = g.vx || 0; g.vz = g.vz || 0;
+  const sp = Math.hypot(g.vx, g.vz), sn = Math.sin(yaw), cs = Math.cos(yaw), f = -(g.vx * sn + g.vz * cs), r = g.vx * cs - g.vz * sn;
+  const target = sp > .35 ? Math.min(1, sp / 5.5) * (crouch ? .6 : 1) : 0;
+  g.amp = (g.amp || 0) + (target - (g.amp || 0)) * Math.min(1, dt * 8);
+  if (sp > .2) { g.f = f / sp; g.r = r / sp; } else if (g.f === undefined) { g.f = 1; g.r = 0; }
+  g.phase = ((g.phase || 0) + sp * dt * GAIT.stride) % TAU;
+  return g;
+}
+// Ângulo da perna (lado 1 ou -1): pernas alternadas; de lado a passada é menor para as pernas não se cruzarem demais.
+function gaitLeg(g, side) { const mix = Math.abs(g.f) + Math.abs(g.r) * GAIT.side; return side * Math.sin(g.phase) * GAIT.swing * g.amp * mix / Math.max(1e-3, Math.abs(g.f) + Math.abs(g.r)); }
 function dmRender(t, dt = 0){
   const r=DM.render;if(!r)return;for(const mesh of r.meshes){mesh.count=0;mesh.visible=true;}
+  // Matriz de uma peça: posição e direção do boneco, pivô no quadril (pernas giram e encolhem ao agachar; tronco inclina).
+  function rigMatrix(out,b,px,py,off,q,sy){const M=r.rigM;M.yaw.makeRotationY(b.yaw).setPosition(b.pos.x,b.pos.y,b.pos.z);M.loc.compose(M.v.set(px,py+off,0),q,M.s.set(1,sy,1));M.back.makeTranslation(-px,-py,0);return out.multiplyMatrices(M.yaw,M.loc).multiply(M.back);}
+  function rigHull(out,base,hull,sy,w){const u=hull.userData,c=u.c,sz=u.s;return out.copy(base).multiply(r.rigM.loc.makeTranslation(c.x,c.y,c.z)).multiply(r.rigM.back.makeScale(1+2*w/sz.x,1+2*w/(sz.y*sy),1+2*w/sz.z));}
+  function renderRig(rig,b,ally,drop){
+    const g=b.gait||(b.gait={});gaitUpdate(g,b.pos.x,b.pos.z,b.yaw,dt,b.crouch);
+    const M=r.rigM,hipY=rig.hipY,sy=(hipY-drop)/hipY,sw=Math.sin(g.phase)*g.amp;
+    // Tronco: inclina para onde anda e balança de leve com a passada. A cabeça não sobe nem desce.
+    M.e.set(-.07*g.f*g.amp,.06*sw,-.05*g.r*g.amp+.02*sw,'YXZ');M.qb.setFromEuler(M.e);
+    const dist=Math.hypot(b.pos.x-camera.position.x,b.pos.y+1-camera.position.y,b.pos.z-camera.position.z),w=ally?clamp(dist*.005,.011,.24):clamp(dist*.0021,.005,.11);
+    for(const part of rig.parts){
+      if(part.kind==='helmet'&&!b.helmet)continue;
+      const leg=part.kind==='legL'||part.kind==='legR';let q=M.qi;
+      if(leg){M.ax.set(g.f,0,g.r);if(M.ax.lengthSq()<1e-6)M.ax.set(1,0,0);M.ax.normalize();q=M.q.setFromAxisAngle(M.ax,gaitLeg(g,part.kind==='legL'?1:-1));}
+      else if(part.kind==='body')q=M.qb;
+      rigMatrix(M.m,b,leg?part.px:0,hipY,-drop,q,leg?sy:1);
+      if(part.kind==='body')M.body.copy(M.m);
+      part.mesh.setMatrixAt(part.mesh.count++,M.m);if(rig.tint&&part.kind!=='head'&&part.kind!=='helmet')part.mesh.setColorAt(part.mesh.count-1,r.color);
+      if(ally)part.fill.setMatrixAt(part.fill.count++,M.m);
+      const edge=ally?part.edge:part.enemy;edge.setMatrixAt(edge.count++,rigHull(M.hull,M.m,part.hull,leg?sy:1,w));
+    }
+    return M.body;
+  }
   // Contorno: cópia centrada da peça, esticada w metros para cada lado (w cresce com a distância para manter a espessura na tela).
   function putHull(mesh,b,offset,scaleY,w){const u=mesh.geometry.userData,c=u.c,sz=u.s,d=r.dummy,sn=Math.sin(b.yaw),cs=Math.cos(b.yaw);
     d.position.set(b.pos.x+c.x*cs+c.z*sn,b.pos.y+offset+c.y*scaleY,b.pos.z-c.x*sn+c.z*cs);d.rotation.set(0,b.yaw,0,'YXZ');
@@ -3582,7 +3638,16 @@ function dmRender(t, dt = 0){
     b.crouchK = dt > 0 ? previous + (crouch - previous) * Math.min(1, dt * 18) : crouch;
     const drop = TUCK * b.crouchK, upper = bob - drop, held = botHeldWeapon(b);
     r.color.set(DM.mode==='team'?(ARENA.bomb?b.color:ally?TEAM_COLORS[0]:TEAM_COLORS[1]):b.color);
-    const agent=DM.mode==='team'&&ARENA.bomb&&r.agents?.[b.op];
+    const agent=DM.mode==='team'&&ARENA.bomb&&r.agents?.[b.op],rig=agent?agent.rig:r.rig;
+    if(rig){
+      // Bonecos com passada: pernas animadas, tronco inclina, arma e marcas do time acompanham o tronco.
+      const bodyM=renderRig(rig,b,ally,drop);
+      if(agent){r.agentBands.setMatrixAt(r.agentBands.count++,bodyM);r.agentBands.setColorAt(r.agentBands.count-1,r.color);}
+      if(r.guns[held])r.guns[held].setMatrixAt(r.guns[held].count++,bodyM);
+      if(t<b.safeUntil)put(r.protection,b,.025);if(ally)put(r.ally,b,-drop);
+      if(t<b.flashUntil&&W[held]&&!W[held].melee&&!W[held].silenced)put(r.flash,b,-drop,1,true);
+      continue;
+    }
     if(agent){
       put(agent.legs,b,bob,1-drop/.81);put(agent.body,b,upper);put(agent.head,b,upper);
       put(r.agentBands,b,upper);r.agentBands.setColorAt(r.agentBands.count-1,r.color);
@@ -4932,8 +4997,9 @@ function scanTick(t) {
   SCAN.last = { x: s.x, z: s.z, t, team: s.team };
   // Som da varredura: o time do Finder ouve o sweep (com pings se achou alguém); quem foi escaneado também ouve.
   if (s.team === P.team) AU.scan(1, 0, found > 0); else if (list.includes(P)) AU.scan(.8, 0, true);
-  if (s.team === P.team) opNotice(found ? 'Varredura: ' + found + ' inimigo' + (found > 1 ? 's' : '') + ' marcado' + (found > 1 ? 's' : '') + ' (marca de novo em 1 s)' : 'Varredura: área limpa');
-  else if (P.alive && Math.hypot(P.pos.x - s.x, P.pos.z - s.z) <= SCAN.radius) opNotice('Você foi detectado por uma varredura');
+  const banner = typeof revealFx === 'function' ? revealFx : opNotice;
+  if (s.team === P.team) { if (found) banner(found > 1 ? 'Inimigos revelados' : 'Inimigo revelado'); else opNotice('Varredura: área limpa'); }
+  else if (list.includes(P)) banner('Localização revelada');
 }
 // Alarme do Detector: no chão, à frente de quem coloca (até 2,5 m), sem atravessar parede.
 function detectorPlace(e, t) {
@@ -5286,6 +5352,11 @@ function updateOpp(dt, t) {
   oppGroup.position.set(s.x, s.y + OPP.fall * 0.15, s.z);
   oppGroup.rotation.set(-OPP.fall * Math.PI / 2 * 0.95, s.yaw, 0, 'YXZ');
   oppLegs.scale.y = 1 - 0.8 * OPP.crouchK; oppUpper.position.y = -TUCK * OPP.crouchK;
+  // Passada do oponente nas oito direções (a cabeça fica na mesma altura; o tronco só inclina de leve).
+  const og = OPP.gait || (OPP.gait = {}); gaitUpdate(og, s.x, s.z, s.yaw, dt, !!s.c); const osw = Math.sin(og.phase) * og.amp;
+  const oax = new THREE.Vector3(og.f, 0, og.r); if (oax.lengthSq() < 1e-6) oax.set(1, 0, 0); oax.normalize();
+  oppHipL.quaternion.setFromAxisAngle(oax, gaitLeg(og, 1)); oppHipR.quaternion.setFromAxisAngle(oax, gaitLeg(og, -1));
+  oppUpper.rotation.set(-.07 * og.f * og.amp, .06 * osw, -.05 * og.r * og.amp + .02 * osw, 'YXZ');
   oppFlash.visible = t < OPP.flashUntil && !W[s.w].silenced;
   oppHelmet.visible = !!s.helmet;
   for (const k of ALL_WEAPONS) oppGuns[k].visible = k === s.w;
@@ -5459,10 +5530,12 @@ function pulseFx(rgb, ms) {
   const e = $('pulsefx'); e.style.setProperty('--ec', rgb); e.style.animation = 'none'; void e.offsetWidth; e.style.animation = 'edgePulse ' + ms + 'ms ease-out forwards';
   clearTimeout(pulseT); pulseT = setTimeout(() => { e.style.animation = 'none'; }, ms + 30);
 }
-function trapFx(sub, enemy) {
-  const e = $('trapfx'); $('trapSub').textContent = sub; e.classList.toggle('enemy', !!enemy); e.hidden = false; e.classList.remove('show'); void e.offsetWidth; e.classList.add('show');
-  pulseFx(enemy ? '255,74,58' : '240,138,36', 900); clearTimeout(trapT); trapT = setTimeout(() => { e.hidden = true; e.classList.remove('show'); }, 1950);
+// Faixa de revelação no topo: "INIMIGO REVELADO" (Finder), "ARMADILHA ACIONADA" (Detector), "LOCALIZAÇÃO REVELADA" (você).
+function revealFx(text) {
+  const e = $('revealfx'); e.textContent = text; e.hidden = false; e.classList.remove('show'); void e.offsetWidth; e.classList.add('show');
+  clearTimeout(trapT); trapT = setTimeout(() => { e.hidden = true; e.classList.remove('show'); }, 2250);
 }
+function trapFx(sub, enemy) { revealFx(enemy ? 'Localização revelada' : 'Armadilha acionada'); pulseFx(enemy ? '255,74,58' : '240,138,36', 900); }
 const EDGE = { on: false, off: 0 };
 function edgeTick(t) {
   const e = $('edgefx'), rgb = !P.alive || !bombOn() ? null : t < (P.silentUntil || 0) ? '167,139,250' : t < (P.toughUntil || 0) ? '250,204,21' : null;
