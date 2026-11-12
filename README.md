@@ -1,6 +1,6 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com **Elimination** (1 a 8 por time), **Plant the Bomb** (5v5), **Wingman** (2v2), **TDM**, **DM** e treino de mira no **Practice**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, dois mapas de Wingman e dois mapas de Plant the Bomb. O menu usa prévias dos mapas em WebP.
+FPS que roda no navegador, com tiro e movimento como no Valorant (a AWP segue o CS2), com **Elimination** (1 a 8 por time), **Plant the Bomb** (5v5), **Wingman** (2v2), **TDM**, **DM** e treino de mira no **Practice**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, dois mapas de Wingman e dois mapas de Plant the Bomb. O menu usa prévias dos mapas em WebP.
 
 ## Modos de jogo
 
@@ -107,11 +107,11 @@ Dois times de 2 a 8 (você e bots contra bots) nos mapas de DM, com renascimento
 
 ## Armas novas e granadas
 
-- **Glock-18:** pistola inicial dos Atacantes no Plant the Bomb. O clique esquerdo dá um tiro; o direito dispara uma **rajada de 3 tiros** (55 ms entre eles), mais aberta, como no Valorant, e espera 0,48 s antes da próxima.
-- **Galil AR:** rifle barato dos Atacantes ($1.800): pente de 35, 30 de dano e recuo médio.
-- **FAMAS:** rifle barato dos Defensores ($2.050): pente de 25 e 30 de dano. O botão direito dispara uma rajada de 3 tiros precisa, como o modo rajada do CS.
-- **UMP-45:** submetralhadora automática, precisa em movimento, perde dano com a distância.
-- **Bucky:** escopeta com 12 chumbos por disparo; o dano soma por vítima. Letal de perto e fraca de longe.
+- **Glock-18:** pistola inicial dos Atacantes no Plant the Bomb, com as regras do Classic. O clique esquerdo dá um tiro; o direito dispara **3 chumbos de uma vez** (gasta 3 balas).
+- **Galil AR:** rifle barato dos Atacantes ($1.800), com as regras da Bulldog: com a mira (botão direito), atira em rajadas de 3.
+- **FAMAS:** rifle barato dos Defensores ($2.050), também com as regras da Bulldog (rajada de 3 com a mira).
+- **UMP-45:** submetralhadora com as regras da Spectre: precisa em movimento, perde dano com a distância.
+- **Bucky:** escopeta com 15 chumbos por disparo; o dano soma por vítima. Letal de perto e fraca de longe. O botão direito lança um cartucho que estoura em 5 chumbos a 7,5 m.
 - **HE:** explode em 1,6 s, até 98 de dano caindo com a distância (7 m), só com linha de visão.
 - **Flash:** cega por até 3,6 s quem olha para ela; de lado cega menos, de costas quase nada.
 - **Smoke:** estoura ao parar, nuvem de 3,2 m por 18 s que bloqueia a visão dos bots e a flash.
@@ -279,93 +279,111 @@ No Elimination online vale o mapa escolhido por quem criou a sala.
 - Primeiro a 10 rodadas vence (dá para mudar para 5, 8, 13 ou 16).
 - 3 s de freeze no começo de cada rodada. Rodada acaba na primeira morte.
 - Se o tempo acabar, vence quem tiver mais vida.
-- 100 de vida, sem colete. Capacetes reduzem o dano na cabeça conforme a penetração da arma. Na AK e na Deagle, corpo e pernas levam o mesmo dano.
+- 100 de vida. O colete funciona como o escudo do Valorant (100 de colete = 50 de escudo, que absorve 66% de cada acerto até acabar). Capacete só conta contra a AWP.
 - Lado e ponto de nascimento são sorteados a cada rodada.
 
-| Arma | Corpo | Cabeça sem capacete / com | Carregador |
+| Arma (regras do Valorant) | Cabeça / corpo / perna | Pente | Cadência |
 |---|---|---|---|
-| AK-47 | 27 | 144 / 112 | 30 |
-| M4A4 | 33 | 132 / 100 | 30 |
-| M4A1-S | 38 | 132 / 100 | 20 |
-| Desert Eagle | 40 | 212 / 198 | 7 |
-| USP-S | 35 | 140 / 71 | 12 |
-| Glock-18 | 30 | 120 / 56 | 20 |
-| Galil AR | 30 | 120 / 93 | 35 |
-| FAMAS | 30 | 120 / 84 | 25 |
-| AWP | 115 | 460 / 449 | 10 |
-| SSG 08 | 88 | 352 / 299 | 10 |
+| AK-47 (Vandal) | 160 / 40 / 34, sem queda até 50 m | 25 | 9,75/s |
+| M4A4 e M4A1-S (Phantom) | 156 / 39 / 33 até 20 m; 140 / 35 / 29 depois | 30 | 11/s |
+| Galil e FAMAS (Bulldog) | 115 / 35 / 29 | 24 | 10/s; rajada de 3 com a mira |
+| UMP-45 (Spectre) | 78 / 26 / 22; 66 / 22 / 18 a 15 m; 60 / 20 / 17 a 30 m | 30 | 13,3/s |
+| Bucky | 34 / 17 / 14 por chumbo (15 chumbos), caindo em 8 e 12 m | 5 | 1,1/s |
+| SSG 08 (Marshal) | 202 / 101 / 85 | 5 | 1,5/s (1,2/s com luneta) |
+| Desert Eagle (Sheriff) | 159 / 55 / 46; 145 / 50 / 42 depois de 30 m | 6 | 4/s |
+| USP-S (Ghost) | 105 / 30 / 25; 87 / 25 / 21 depois de 30 m | 13 | 6,75/s |
+| Glock-18 (Classic) | 78 / 26 / 22; 66 / 22 / 18 depois de 30 m | 12 | 6,75/s |
+| AWP (CS2) | 115 no peito, ×4 na cabeça | 5 | — |
 | Karambit / Butterfly | 40 / 65 | — | — |
 
-Valores de perto. M4A4 e M4A1-S matam com um headshot até 35 metros, inclusive com capacete. Acima dessa distância, o dano na cabeça com capacete é 92.
+Dano arredondado para baixo, sem efeito de capacete. O estômago conta como corpo.
 
-## Tiro igual ao CS2
+## Tiro e movimento como no Valorant
 
-O tiro usa os números reais das armas do CS2, tirados do `weapons.vdata` publicado no espelho público dos arquivos do jogo ([SteamTracking/GameTracking-CS2](https://github.com/SteamTracking/GameTracking-CS2)). As regras de uso desses números seguem o estudo público do [cs2spraylab](https://github.com/HamzahAlrawi/cs2spraylab), que é GPL-3. Dele usamos só as descrições; o código daqui foi escrito do zero. Seguem também o código do Source publicado pela Valve.
+Todas as armas, menos a AWP, seguem as regras de tiro e movimento do Valorant. A AWP continua com o modelo do CS2 (tiro e movimento), e o bunnyhop não mudou. Os modelos e nomes das armas são os do jogo; cada uma usa os números da arma equivalente do Valorant (tabela acima).
 
-- **Spray de verdade:** cada arma tem uma semente de recuo. O gerador aleatório do Source (Park-Miller com embaralhamento) monta a tabela de 64 tiros da arma.
-  - **Tabela:** ângulo e magnitude são sorteados. No automático, cada tiro guarda 45% do anterior, e os quatro primeiros são atenuados.
-  - **Formato:** sai o padrão conhecido de cada arma. A AK sobe reta uns 10° nas primeiras balas, vai para a esquerda e volta para a direita.
-- **Aim punch:** cada tiro dá um impulso no "punch" da mira, que decai sozinho em passos de 1/128 s, com os valores do CS (exponencial 8, linear 18°/s, velocidade 4,5).
-  - **Bala e mira:** a bala sai com 2× o punch, e a câmera mostra 45% disso (a mira fica abaixo de onde as balas vão, como no CS).
-  - **Índice do recuo:** só começa a voltar depois do intervalo do tiro + 1/64 s. Pausar um pouco no meio do spray não reinicia o padrão.
-- **Precisão:**
-  - **Base:** parado, agachado ou no ar (em pé + pulo, e mais ainda logo na decolagem).
-  - **Penalidade por tiro:** cada tiro soma a sua e ela volta à base em `10^(-dt/tempo)`. O tempo de recuperação passa do inicial ao final conforme o spray avança, e agachado tem tempos próprios.
-  - **Correndo:** acima de 34% da velocidade da arma, a imprecisão sobe com raiz quarta (logo acima do limite já erra bastante) até o máximo em 95%. Andando com Shift, ela sobe em linha reta.
-- **Spread:** como no CS, o desvio soma um sorteio de raio (de 0 a 1, sem raiz, o que concentra os tiros no centro) e ângulo para a imprecisão, mais outro para o spread fixo da arma.
-- **Modos:** luneta (AWP e Scout), rajada (Glock e FAMAS) e silenciador (M4A1-S e USP-S) usam os valores alternativos da arma.
-- **Dano e corpo:** dano, multiplicador de cabeça, perda por distância e blindagem são os do CS2. O tronco tem peito/braços (×1) e estômago (×1,25); pernas ×0,75.
-  - **O que mudou em relação a antes:** a AK tira 36 no peito, a Deagle 53 e a M4A1-S tem cabeça ×3,475. As M4 não matam mais com um tiro na cabeça através do capacete (92 de dano), como no CS2. A AWP tem pente de 5.
-- **Aterrissagem do CS2:** o CS2 não tem mais a estamina antiga. Ao cair com velocidade vertical `v`, o jogo calcula `b = clamp(1 + v·0,0005; 0,2; 1)`.
-  - **No chão:** a velocidade máxima fica em `b²` e volta em ~0,25 s.
-  - **Pulo seguinte:** sai com força `b`.
-  - Isso tira velocidade de quem emenda pulos.
-- **Rajadas:** Glock a cada 0,05 s (próxima rajada em 0,5 s); FAMAS a cada 0,075 s (próxima em 0,55 s).
-- **Diferença deliberada:** agachado, o impulso do recuo continua 15% menor, porque foi pedido antes. No CS isso não existe: lá, agachar só melhora a precisão.
+**De onde vêm os números:**
+- **Estatísticas oficiais das armas:** cadência, pente, recarga, saque, velocidade, dano por distância, zoom e modo de mira, expostas pela [valorant-api.com](https://valorant-api.com/v1/weapons).
+- **Spread:** tabelas de spread (primeiro tiro e máximo, em pé, agachado e com mira; erro agachado, andando, correndo e no ar) e histórico de patches da [wiki do Valorant](https://valorant.fandom.com/wiki/Vandal).
+- **Regras de movimento e precisão:** notas de patch da Riot: [0.50](https://valorant.fandom.com/wiki/Patch_Notes/0.50) (Tap Efficiency, Gun Recovery Time, recuo lateral agachado), [2.02](https://valorant.fandom.com/wiki/Patch_Notes/2.02), [3.0](https://valorant.fandom.com/wiki/Patch_Notes/3.0) (tagging de 72,5%, zona morta de 27,5%), [6.11](https://valorant.fandom.com/wiki/Patch_Notes/6.11) (viés para o centro, recuo correndo) e [9.10](https://valorant.fandom.com/wiki/Patch_Notes/9.10) (erro andando 3° e correndo 6° nos fuzis).
+- **Tempos de parada:** medidos por um desenvolvedor da Riot na Phantom e repetidos por [guias](https://alviran.net/blog/valorant-movement-guide-2026/) e [fóruns](https://devtrackers.gg/valorant/p/f29d0021-walking-running-accuracy-too-high) da comunidade. O post original não foi encontrado.
 
-## Movimento e precisão
-
-Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocidade da arma. Andando de scope (100 u/s na AWP, como no CS2) o tiro sai torto; parado, com contra-strafe ou andando devagar com Shift ele volta a ser preciso, e agachado ajuda. Logo depois de abrir o scope, o tiro ainda carrega parte da imprecisão sem scope por cerca de 0,22 s. As linhas da luneta ficam progressivamente desfocadas conforme a imprecisão real: movimento, salto, aterrissagem e estabilização ao abrir a luneta. Parado, agachado ou andando com Shift, voltam a ficar nítidas quando a arma estabiliza. O indicador usa a mesma função de cone dos disparos e adapta a intensidade ao FOV e à altura da tela. A referência do blur ligado à precisão é a [documentação da Valve](https://blog.counter-strike.net/2016/10/16296/).
-
-A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante em que a recarga termina, a munição é atualizada antes de liberar a luneta, sem precisar esperar outro quadro.
-
-**Movimento igual ao do CS2**, com os mesmos valores do jogo (atrito 5,2, aceleração 5,5, velocidade de parada de 80 u/s; AK a 215 u/s), conferidos por teste:
+**Movimento** (conferido por teste):
+- **Velocidade:** 6,75 m/s com a faca, multiplicada pela arma: Vandal, Phantom, Bulldog, Sheriff e Marshal 0,8 (5,4 m/s); Spectre, Ghost e Classic 0,85; Bucky 0,75.
+- **Shift e agachado:** Shift anda a 61% e agachado a 40%. Com a mira (ADS), o boneco anda a 76% (90% na Marshal com luneta).
+- **Chão (estilo Unreal):** com tecla apertada, o atrito puxa a velocidade para a direção da tecla. Na tecla oposta, isso freia forte (contra-strafe). A aceleração é fixa (32 m/s²). Sem tecla, freia com desaceleração fixa mais atrito.
+- **Constantes:** ajustadas aos tempos da Riot.
 
 | Situação | Tempo |
 |---|---|
-| Soltar a tecla até a mira ficar precisa (abaixo de 34% da velocidade) | cerca de 0,2 s |
-| Soltar a tecla até parar de vez | cerca de 0,38 s, como os ~25 ticks medidos no CS2 |
-| Counter-strafe (apertar a tecla oposta) até a mira ficar precisa | 0,04–0,09 s |
+| Arrancada até a velocidade máxima | ~0,17 s |
+| Contra-strafe até a velocidade de andar (61%) | ~0,055 s |
+| Contra-strafe até a zona morta (27,5%) | ~0,10 s |
+| Contra-strafe até parar | ~0,16 s |
+| Soltar a tecla até a zona morta / até parar | ~0,13 s / ~0,2 s |
 
-Segurando a tecla oposta por mais tempo, o boneco começa a andar para o outro lado, como no CS.
+- **Tagging:** tomar tiro deixa o boneco 72,5% mais lento por um instante.
+- **Aterrissagem:** não reduz a velocidade nas armas do Valorant.
 
-**Agachado e andando com Shift**, o boneco chega de fato à velocidade certa: 34% e 52% da velocidade da arma (AK agachada a 73 u/s, AWP agachada a 68 u/s).
+**Precisão:**
+- **Spread base:** começa no 1º tiro da arma (Vandal 0,25°, Phantom 0,2°, agachado menor) e cresce a cada bala até o máximo (Vandal 1° em 6 balas).
+- **Gun Recovery Time:** depois de um intervalo de tiro sem atirar, o spread volta ao 1º tiro nesse tempo (Vandal 0,375 s, Phantom 0,35 s).
+- **Tap Efficiency:** atirar de novo antes de recuperar acumula menos quanto mais se espera.
+- **Erro de movimento:** soma graus ao spread.
+  - **Zona morta:** abaixo de 27,5% da velocidade da arma, não há erro. Por isso o contra-strafe deixa a arma precisa em ~0,1 s.
+  - **Acima da zona morta:** o erro cresce com a velocidade até o valor do estado: agachado andando, Shift ou correndo (fuzis 0,8° / 3° / 6°).
+  - **No ar e na aterrissagem:** no ar o erro é fixo (fuzis 10°). Aterrissar soma 7° por 0,225 s.
+- **Viés para o centro:** parado, as balas puxam para o centro do cone. Andando, ficam quase uniformes no cone.
 
-Antes, a aceleração era proporcional à velocidade-alvo e, com alvos baixos, perdia para o piso do atrito (80 u/s). A AWP agachada com luneta andava a uns 3 u/s, e a AK agachada não passava de ~49 u/s. Agora, como no CS, a aceleração usa 250 u/s (ou a velocidade da arma, se maior), e o boneco chega à velocidade de agachado em menos de 0,1 s.
+**Recuo:**
+- **Subida:** o primeiro tiro sai no centro. A bala sobe por uma curva até o topo da arma (Vandal ~5°, Phantom ~4,4°) e para de subir.
+- **Lado:** depois das balas protegidas (Vandal 6, Phantom 8, Spectre 5), o recuo vai para um lado. A cada bala há 10% de chance de trocar de lado, e cruzar de um lado ao outro leva o tempo da arma (0,6 s nos fuzis, 0,28 s na Spectre).
+- **Multiplicadores:** correndo ou no ar, a subida é 1,8× (Spectre 1,5× também no lado). Agachado e parado, o lado é 15% menor. Com a mira, o recuo é 10% menor.
+- **Reset:** sem atirar, o recuo volta ao centro no Gun Recovery Time, junto com o spread.
+- **Estimativa:** o tamanho exato de cada recuo não é publicado pela Riot e foi estimado pelos sprays conhecidos.
+- **Câmera:** sem mira, a tela mostra parte do recuo (45%, ou 70% com o tremor sem suavizar). Com a mira, a câmera segue o recuo inteiro (*crosshair follows recoil*), e a arma vem para o centro da tela com a mira de ferro na linha do olho.
 
-Agachado, a **luneta** também não corta mais a velocidade: a AWP anda como agachada sem luneta (68 u/s), que é o limite em que ela continua precisa. Em pé com luneta, a AWP anda a 100 u/s; com luneta e Shift, a 52 u/s (valores do CS2). Essa exceção é só da AWP; os multiplicadores das outras armas continuam iguais.
+**Botão direito:**
+- **Mira (ADS):** liga e desliga a mira nos fuzis e na Spectre. Dá zoom 1,25× (Spectre 1,15×), menos spread e recuo, 90% da cadência e 76% da velocidade. A Bulldog (Galil e FAMAS) atira em rajadas de 3 com a mira. Recarregar ou trocar de arma tira a mira.
+- **Classic (Glock):** um tiro de 3 chumbos que gasta 3 balas, a 2,22 tiros por segundo.
+- **Bucky:** um cartucho que voa reto até 7,5 m e estoura em 5 chumbos. Se acertar alguém antes, dá o dano de um chumbo.
+- **Marshal (SSG 08):** luneta de 3,5×, com tiro perfeito parado.
 
-A sensação de "deslizar" vinha da tela, e não da física. A física roda em passos fixos de 1/128 s, e a câmera mostrava a posição do último passo. Com isso, a 60 FPS alguns quadros andavam o dobro de outros e, a 144 FPS, alguns quadros não andavam nada. Agora a câmera interpola entre os dois últimos passos, como o CS faz, e o deslocamento por quadro fica regular em qualquer FPS.
+**Escudo:** o colete vale como escudo do Valorant (100 de colete = 50 de escudo) e absorve 66% de qualquer acerto (cabeça, corpo ou perna) até acabar. Contra a AWP, colete e capacete seguem o CS2.
 
-As teclas também passaram a contar do instante exato em que são apertadas ou soltas, como o subtick do CS2, e não do começo do quadro. O counter-strafe e a parada começam na hora certa, e o resultado é o mesmo a 30 ou a 144 FPS.
+**Online:** nas salas, o colete é aplicado só na máquina de quem leva o tiro. Antes ele era descontado duas vezes, e acertos no estômago pela rede eram descartados.
 
-Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%.
+## AWP (modelo do CS2)
+
+A AWP mantém o tiro do CS2: números do `weapons.vdata` publicado no espelho público dos arquivos do jogo ([SteamTracking/GameTracking-CS2](https://github.com/SteamTracking/GameTracking-CS2)) e regras de uso do estudo público do [cs2spraylab](https://github.com/HamzahAlrawi/cs2spraylab) (GPL-3; só as descrições foram usadas, o código é próprio).
+- **Precisão:** base em pé, agachado ou no ar, penalidade por tiro que volta em `10^(-dt/tempo)` e imprecisão acima de 34% da velocidade.
+- **Recuo e punch:** aim punch com os valores do CS. Agachado, o impulso é 15% menor.
+- **Luneta:** 100 u/s em pé, 52 com Shift e 68 agachada. Logo depois de abrir a luneta, o tiro ainda carrega parte da imprecisão sem luneta (~0,22 s).
+- **Linhas da luneta:** desfocam conforme a imprecisão real ([referência da Valve](https://blog.counter-strike.net/2016/10/16296/)).
+- **Movimento:** física do Source (atrito 5,2, aceleração 5,5, parada a 80 u/s; ~0,2 s até ficar precisa ao soltar, 0,04–0,09 s com contra-strafe).
+- **Aterrissagem do CS2:** velocidade máxima em `b²` por ~0,25 s.
+
+A luneta fica bloqueada durante a recarga e com o carregador vazio.
+
+## Movimento (geral)
+
+A física roda em passos fixos de 1/128 s, e a câmera interpola entre os dois últimos passos, para o deslocamento por quadro ficar regular em qualquer FPS. As teclas contam do instante exato em que são apertadas ou soltas, e o resultado é o mesmo a 30 ou a 144 FPS. A diagonal não ganha velocidade.
 
 Os bonecos têm passada nas oito direções, no estilo do Valorant: as pernas giram no quadril, alternadas, na direção em que o boneco anda (de lado a passada é menor). Correndo, os passos são largos (cerca de 1 m) e, andando com Shift, curtos (cerca de 0,5 m). O comprimento do passo segue a abertura das pernas, então o pé não escorrega nem treme. A direção e a velocidade usadas na animação são suavizadas e vêm da velocidade real do boneco, não da diferença de posição a cada quadro. O tronco só inclina de leve para onde anda, sem girar. A cabeça fica sempre na mesma altura, e a arma acompanha o tronco. Vale para bots, pessoas online e o oponente do 1v1.
 
 Degraus e escadas sobem sozinhos, até 0,5 m por degrau, sem perder velocidade. Nos mapas convertidos (Guard e Elysion), a física sobe só o necessário para cada degrau, para a cabeça não bater no teto de escadas cobertas. Ela também trata a quina do degrau como degrau, e não como rampa: antes, a quina jogava o boneco para cima e ele subia a escada se arrastando.
 
-O agachamento segue o CS: a câmera desce e sobe em cerca de 0,22 s, e a velocidade cai junto com a altura, sem pular de uma vez. Cada agachada gasta stamina; spammar C deixa a próxima bem mais lenta (até uns 0,7 s), e ela volta ao normal em cerca de 1,5 s. No ar o encolher das pernas continua instantâneo, para subir em caixas.
+O agachamento: a câmera desce e sobe em cerca de 0,22 s, e a velocidade cai junto com a altura, sem pular de uma vez. Cada agachada gasta stamina; spammar C deixa a próxima bem mais lenta (até uns 0,7 s), e ela volta ao normal em cerca de 1,5 s. No ar o encolher das pernas continua instantâneo, para subir em caixas.
 
-Os passos têm duas camadas, com o baque do calcanhar e o raspar da sola, alternando pé esquerdo e direito, e um respingo na água rasa. O ritmo acompanha a velocidade. Shift e agachado continuam silenciosos. A luneta usa a velocidade própria da AWP ou da Scout.
+Os passos têm duas camadas, com o baque do calcanhar e o raspar da sola, alternando pé esquerdo e direito, e um respingo na água rasa. O ritmo acompanha a velocidade. Shift e agachado continuam silenciosos.
 
-**Bunnyhop assistido** vem ligado: segure Espaço para pular novamente ao tocar o chão. Para ganhar controle no ar, solte W, alterne A/D e acompanhe o movimento com o mouse. É possível desligar a assistência e usar pulos manuais ou configurar a rodinha para pular. Nesse caso, troque armas pelas teclas 1–4 ou Q. A velocidade aérea tem limite para impedir aceleração ilimitada.
+**Bunnyhop assistido** vem ligado (não mudou): segure Espaço para pular novamente ao tocar o chão. Para ganhar controle no ar, solte W, alterne A/D e acompanhe o movimento com o mouse. É possível desligar a assistência e usar pulos manuais ou configurar a rodinha para pular. Nesse caso, troque armas pelas teclas 1–4 ou Q. A velocidade aérea tem limite para impedir aceleração ilimitada.
 
 No difícil, os bots se deslocam entre rajadas, fazem contra-strafe antes do disparo, às vezes agacham para fazer spray e tentam quebrar a linha de visão durante a recarga. Em trechos livres, podem sacar a faca e tentar sequências curtas de bunnyhop, com acertos e erros de tempo. O agachamento aparece para os outros jogadores no 1v1, no 2v2, no XvX e no DM.
 
-A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atirar, e as balas seguem o recuo inteiro (por isso sobem um pouco acima da mira no spray). A AK-47 teve redução de 5% no recuo vertical e lateral, inclusive na variação aleatória do spray. O solavanco ao tomar tiro é pequeno e tem teto, e o recuo das armas na mão é mais contido. **Agachado (no chão), o recuo de cada tiro é 15% menor**, inclusive na AWP. A cada tiro a arma dá um coice na mão, como no CS:GO: vai um pouco para trás e levanta a boca, e uma mola amortecida a traz de volta sem tremer, em qualquer FPS. Na AWP, na Scout e na Bucky o coice é bem maior que nas SMGs; a Deagle mantém a animação própria. Atirar correndo ou no ar aumenta a dispersão; parar ou agachar melhora a precisão. Os rifles têm spray, com recuo menor nas M4s. A Scout recupera parte da precisão no ápice do salto. O recuo da câmera acompanha o desvio dos tiros.
+A cada tiro a arma dá um coice na mão: vai um pouco para trás e levanta a boca, e uma mola amortecida a traz de volta sem tremer, em qualquer FPS. Na AWP, na Scout e na Bucky o coice é bem maior que nas SMGs; a Deagle mantém a animação própria. O solavanco ao tomar tiro é pequeno e tem teto.
 
-É uma aproximação própria para este jogo no navegador, sem o motor Source 2 nem os assets do CS2. Referência de movimento: [código do Source publicado pela Valve](https://github.com/ValveSoftware/source-sdk-2013/blob/master/src/game/shared/gamemovement.cpp). Parâmetros das armas: [dados do jogo espelhados pelo SteamTracking](https://github.com/SteamTracking/GameTracking-CS2/blob/master/game/csgo/pak01_dir/scripts/weapons.vdata), adaptados ao balanceamento existente.
+É uma aproximação própria para este jogo no navegador, sem os motores nem os assets do Valorant ou do CS2.
 
 ## Controles
 
@@ -376,7 +394,7 @@ A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atir
 | C | Agachar (no ar, encolhe as pernas para subir nas caixas) |
 | Espaço | Pular / segurar para bunnyhop assistido |
 | Mouse 1 | Atirar |
-| Mouse 2 | Luneta da AWP ou Scout / golpe forte da faca |
+| Mouse 2 | Mira (ADS) dos fuzis e da Spectre (liga/desliga) / luneta da AWP e da SSG / tiro alternativo da Glock (3 chumbos) e da Bucky (cartucho) / golpe forte da faca |
 | 1 2 3 | Primária (fuzis, SMG, escopeta, AWP e Scout), pistola e faca; no Plant the Bomb, 4 alterna granadas e 5 pega a bomba |
 | Q / rodinha | Última arma / trocar arma |
 | G | Largar a arma na mão |

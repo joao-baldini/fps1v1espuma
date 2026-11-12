@@ -379,7 +379,16 @@ function applyVmSize(hands, side = 1, w = P.weapon) {
   const fit = VM_FIT[w] || {}, k = VM_SIZE * (fit.s || 1); hands.scale.set(side * k, k, k);
   hands.position.set(side * ((1 - k) * VM_ANCHOR[0] + (fit.x || 0)), (1 - k) * VM_ANCHOR[1] + (fit.y || 0), (1 - k) * VM_ANCHOR[2]);
 }
-function viewRecoilScale() { return S.smoothRecoil ? VIEW_RECOIL : .7; }
+function viewRecoilScale() { const base = S.smoothRecoil ? VIEW_RECOIL : .7; return base + (1 - base) * (W[P.weapon]?.val ? (P.adsK || 0) : 0); }
+// Zoom do Valorant: campo de visão dividido pelo multiplicador (1,25× nos fuzis, 1,15× na Spectre, 3,5× na Marshal).
+function zoomedH(z) { return 2 * Math.atan(Math.tan(S.fov * DEG / 2) / z) / DEG; }
+function zoomH() {
+  const w = W[P.weapon], v = w && w.val;
+  if (v && v.ads) return w.scope ? (P.zoom ? zoomedH(v.ads.zoom) : S.fov) : zoomedH(1 + (v.ads.zoom - 1) * (P.adsK || 0));
+  return P.zoom === 1 ? 40 : (P.zoom === 2 ? 10 : S.fov);
+}
+// Mira do Valorant (ADS) completa ou luneta: usa a precisão e a cadência de mira.
+function adsOn(e) { const w = W[e.weapon]; return !!w && (w.scope ? e.zoom > 0 : !!(w.val && w.val.ads && (e.adsK || 0) >= 1)); }
 const xrayEnabled = () => S.name === 'forsaken';
 const aimbotEnabled = () => S.name === 'KQLY';
 const cleanName = n => (typeof n === 'string' ? n : '').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮]/g, '').trim().slice(0, 16) || 'Jogador';
@@ -409,14 +418,14 @@ const W = {
   // Escopeta no papel da Bucky: doze chumbos por disparo, letal de perto, fraca de longe.
   bucky: { name: 'Bucky', dmg: 19, pellets: 12, pelletSpread: .055, mult: { head: 2, body: 1, leg: .75 }, rof: 900, mag: 5, res: 20, reload: 2600, speed: 5.5, auto: false,
     base: .002, move: .03, air: .15, shotSpread: 0, recover: 6, kickP: .07, kickY: .02, helmetPen: 1, rangeModifier: .3, draw: 700, snd: 'bucky' },
-  // Glock-18: pistola padrão dos Atacantes. Botão direito dispara uma rajada de 3 tiros, mais aberta, como no Valorant.
+  // Glock-18: pistola padrão dos Atacantes. Regras do Classic do Valorant (módulo do Valorant): botão direito = 3 chumbos.
   glock: { name: 'Glock-18', dmg: 30, mult: { head: 4, body: 1, leg: .75 }, rof: 150, mag: 20, res: 120, reload: 2270, speed: 6.096, auto: false,
     base: .0021, move: .058, air: .2, shotSpread: .011, recover: 8, kickP: .013, kickY: .005, helmetPen: .47, rangeModifier: .85, draw: 550, snd: 'glock',
     burst: { n: 3, gap: 55, after: 480, spread: .016 } },
   // Galil AR: rifle barato dos Atacantes; pente de 35, dano de 30 e recuo médio.
   galil: { name: 'Galil AR', dmg: 30, mult: { head: 4, body: 1, leg: .75 }, rof: 90, mag: 35, res: 90, reload: 3000, speed: 5.461, auto: true,
     base: .0019, move: .08, air: .24, shotSpread: .0041, recover: 6, pattern: true, recoilScale: .7, recoilJitter: .0024, helmetPen: .775, draw: 550, snd: 'galil' },
-  // FAMAS: rifle barato dos Defensores; botão direito dispara uma rajada de 3 tiros precisa, como o modo rajada do CS.
+  // FAMAS: rifle barato dos Defensores. Regras da Bulldog do Valorant: com a mira (botão direito), rajada de 3 tiros.
   famas: { name: 'FAMAS', dmg: 30, mult: { head: 4, body: 1, leg: .75 }, rof: 90, mag: 25, res: 90, reload: 3300, speed: 5.588, auto: true,
     base: .0017, move: .072, air: .23, shotSpread: .0035, recover: 7, pattern: true, recoilScale: .62, recoilJitter: .0022, helmetPen: .7, draw: 550, snd: 'famas',
     burst: { n: 3, gap: 75, after: 360, spread: .0006 } },
@@ -456,6 +465,7 @@ function configureLoadout() {
 }
 configureLoadout();
 function damageFor(w, part, helmet, distance = 0) {
+  if (w.val) return valDamage(w, part, distance);
   const falloff = Math.pow(w.rangeModifier || 1, distance / 12.7);
   const minimum = part === 'head' && distance <= w.headshotKillRange ? 100 : 1;
   return Math.max(minimum, Math.round(w.dmg * w.mult[part] * falloff * (part === 'head' && helmet ? w.helmetPen || 1 : 1)));
@@ -1507,7 +1517,21 @@ function physics(e, wx, wz, maxS, jump, dt, accelGoal = maxS) {
     const speed = Math.hypot(e.vel.x, e.vel.z);
     if (speed > BHOP_CAP) { e.vel.x *= BHOP_CAP / speed; e.vel.z *= BHOP_CAP / speed; }
   }
-  if (e.onGround) {
+  if (e.onGround && e.valMove) {
+    // Chão do Valorant (movimento do Unreal): com tecla, o atrito puxa a velocidade para a direção da tecla (tecla oposta
+    // freia forte, o contra-strafe) e a aceleração é fixa; acima do limite (Shift, mira) freia até ele; sem tecla, freia
+    // com desaceleração fixa + atrito. Parada total do contra-strafe ≈ 0,16 s, sem tecla ≈ 0,2 s, arrancada ≈ 0,17 s.
+    let sp = Math.hypot(e.vel.x, e.vel.z);
+    if (wl > 0.01) {
+      const k = Math.min(wl, 1), dx = wx / k, dz = wz / k, ws = maxS * k, f = Math.min(dt * VAL.steer, 1);
+      e.vel.x -= (e.vel.x - dx * sp) * f; e.vel.z -= (e.vel.z - dz * sp) * f;
+      sp = Math.hypot(e.vel.x, e.vel.z);
+      if (sp > ws) { const ns = Math.max(ws, sp - (VAL.brake + VAL.fric * sp) * dt); e.vel.x *= ns / sp; e.vel.z *= ns / sp; sp = ns; }
+      const cap = Math.max(ws, sp);
+      e.vel.x += dx * VAL.accel * dt; e.vel.z += dz * VAL.accel * dt;
+      const s2 = Math.hypot(e.vel.x, e.vel.z); if (s2 > cap) { e.vel.x *= cap / s2; e.vel.z *= cap / s2; }
+    } else if (sp > 0) { const ns = Math.max(0, sp - (VAL.brake + VAL.fric * sp) * dt); e.vel.x *= ns / sp; e.vel.z *= ns / sp; }
+  } else if (e.onGround) {
     const sp = Math.hypot(e.vel.x, e.vel.z);
     if (sp > 0) { const ns = Math.max(0, sp - Math.max(sp, STOP_SPEED) * FRICTION * dt); e.vel.x *= ns / sp; e.vel.z *= ns / sp; }
     // aceleração só na direção do input: trocar A↔D passa por zero e perde velocidade; contra-strafe para rápido
@@ -1648,6 +1672,7 @@ function csAirTerm(e, c) {
 }
 function inaccuracy(e, w, zoomed, extra) {
   if (w.melee) return 0;
+  if (w.val) return valSpread(e, w.key, !!zoomed).total * DEG + (extra || 0);
   if (!w.cs) return (extra || 0);
   const c = w.cs, mode = csMode(e, w.key, zoomed), base = csBaseline(e, c, mode), s = e.aim && e.aim.k === w.key ? e.aim : null;
   const pen = s && s.pen != null ? Math.max(s.pen, base) : base;
@@ -1704,6 +1729,164 @@ function scopeLineState(e,w,t,height,fov){
   const blur=Math.min(8,Math.sqrt(Math.max(0,pixels))*.22);
   return {blur,width:1+blur*1.65,opacity:1-Math.min(.18,blur*.023)};
 }
+
+/* ================= Tiro e movimento como no Valorant ================= */
+// Todas as armas, menos a AWP (que segue o modelo do CS2 acima), usam as regras do Valorant. Fontes: estatísticas oficiais
+// expostas pela valorant-api.com (cadência, pente, recarga, saque, velocidade, dano por distância, zoom e modo de mira),
+// tabelas de spread e histórico de patches da wiki do Valorant (fandom), e as notas de patch da Riot (0.50, 2.02, 3.0,
+// 6.11, 9.10): zona morta de 27,5%, imprecisão por movimento que cresce com a velocidade, Gun Recovery Time, Tap
+// Efficiency, balas protegidas e troca de lado do recuo, tagging de 72,5% e viés para o centro parado. Os tempos de parada
+// (velocidade de andar em 0,055 s, zona morta em 0,104 s, parada total em 0,160 s, medidos na Phantom) vêm de um post de
+// desenvolvedor da Riot citado pela comunidade. O tamanho de cada recuo (graus por tiro) não é publicado: foi estimado
+// pelos padrões de spray conhecidos.
+// Arma deste jogo → arma do Valorant: AK-47 → Vandal, M4A4 e M4A1-S → Phantom, Galil e FAMAS → Bulldog, UMP → Spectre,
+// Bucky → Bucky, SSG 08 → Marshal, Desert Eagle → Sheriff, USP-S → Ghost, Glock → Classic.
+const VAL = {
+  run: 6.75,          // m/s com a faca; cada arma multiplica (runSpeedMultiplier)
+  walk: .61,          // andar (Shift) = 61% da corrida
+  crouch: .4,         // agachado andando
+  deadzone: .275,     // abaixo de 27,5% da velocidade da arma não há erro de movimento
+  accel: 32, steer: .75, brake: 18, fric: 4, // aceleração e frenagem no chão (m/s², 1/s), ajustadas aos tempos da Riot
+  land: 7, landMs: 225, // aterrissar: +7° por 0,225 s
+  tag: .275,          // tomar tiro: 72,5% mais lento
+  bias: [1.5, .5],    // "Error Power": parado as balas puxam para o centro; andando ficam uniformes no cone
+};
+// Valores em graus. spread: [1º tiro, máximo] em pé/agachado, sem e com mira (ADS). move: [agachado, andando, correndo, no ar].
+// spreadN: tiros para chegar ao spread máximo. rec: Gun Recovery Time (s). tap: Tap Efficiency.
+// pitch: [subida total (°), tiros para chegar ao topo, curva]. yaw: [amplitude (°), balas protegidas, chance de trocar de
+// lado por bala, tempo para cruzar de um lado ao outro (s)]. runPitch/runYaw: multiplicador do recuo correndo ou no ar.
+// dmg: [até (m), cabeça, corpo, perna]. ads: zoom, cadência e velocidade com a mira. burst: rajada no ADS (Bulldog).
+const VAL_W = {
+  rifle: { src: 'Vandal', mul: .8, rps: 9.75, mag: 25, reload: 2500, equip: 1000, auto: true, pen: 'medium',
+    dmg: [[50, 160, 40, 34]], spread: { hip: [[.25, 1], [.21, .85]], ads: [[.157, 1.02], [.13, .87]] }, spreadN: 6,
+    move: [.8, 3, 6, 10], rec: .375, tap: 6, pitch: [5.2, 9, 1.25], yaw: [2.6, 6, .1, .6], jit: .12, runPitch: 1.8, runYaw: 1,
+    ads: { zoom: 1.25, rps: 8.775, run: .76, ms: 220 } },
+  m4a4: { src: 'Phantom', mul: .8, rps: 11, mag: 30, reload: 2500, equip: 1000, auto: true, pen: 'medium', silenced: true,
+    dmg: [[20, 156, 39, 33.15], [50, 140, 35, 29.75]], spread: { hip: [[.2, .9], [.17, .76]], ads: [[.11, .91], [.09, .78]] }, spreadN: 7,
+    move: [.8, 3, 6, 10], rec: .35, tap: 4, pitch: [4.4, 9, 1.2], yaw: [1.9, 8, .1, .6], jit: .1, runPitch: 1.8, runYaw: 1,
+    ads: { zoom: 1.25, rps: 9.9, run: .76, ms: 220 } },
+  galil: { src: 'Bulldog', mul: .8, rps: 10, mag: 24, reload: 2500, equip: 1000, auto: true, pen: 'medium',
+    dmg: [[50, 115.5, 35, 29.75]], spread: { hip: [[.3, 1.25], [.26, 1.06]], ads: [[.1, 1.5], [.08, 1.12]] }, spreadN: 6,
+    move: [.8, 3, 6, 10], rec: .35, tap: 4, pitch: [4.2, 8, 1.25], yaw: [2.2, 5, .1, .6], jit: .12, runPitch: 1.8, runYaw: 1,
+    ads: { zoom: 1.25, rps: 6.316, run: .76, ms: 220, burst: { n: 3, gap: 75, every: 475 } } },
+  ump: { src: 'Spectre', mul: .85, rps: 13.333, mag: 30, reload: 2250, equip: 750, auto: true, pen: 'low', silenced: true,
+    dmg: [[15, 78, 26, 22.1], [30, 66, 22, 18.7], [50, 60, 20, 17]], spread: { hip: [[.4, 1.4], [.34, 1.19]], ads: [[.25, 1.25], [.21, 1.06]] }, spreadN: 6,
+    move: [.15, 1, 2.5, 10], rec: .33, tap: 3, pitch: [3.6, 7, 1.6], yaw: [1.7, 5, .1, .28], jit: .15, runPitch: 1.5, runYaw: 1.5,
+    ads: { zoom: 1.15, rps: 12, run: .76, ms: 180 } },
+  bucky: { src: 'Bucky', mul: .75, rps: 1.1, mag: 5, reload: 2500, equip: 1000, auto: false, pen: 'low',
+    dmg: [[8, 34, 17, 14], [12, 26, 13, 11.05], [50, 18, 9, 7.65]], pellets: 15, pelletSpread: [3, 2.34], spread: { hip: [[0, 0], [0, 0]] }, spreadN: 1,
+    move: [.5, 1, 2, 4], rec: .9, tap: 1, pitch: [4, 1, 1], yaw: [0, 99, 0, 1], jit: .4, runPitch: 1, runYaw: 1,
+    air: { pellets: 5, at: 7.5, spread: 2, dmg: [[50, 44, 22, 18.7]] } },
+  ssg: { src: 'Marshal', mul: .8, rps: 1.5, mag: 5, reload: 2500, equip: 1250, auto: false, pen: 'medium',
+    dmg: [[50, 202, 101, 85.85]], spread: { hip: [[1, 1], [.9, .9]], ads: [[0, 0], [0, 0]] }, spreadN: 1,
+    move: [7.5, 10, 15, 20], rec: .9, tap: 1, pitch: [2.4, 1, 1], yaw: [0, 99, 0, 1], jit: .3, runPitch: 1, runYaw: 1,
+    ads: { zoom: 3.5, rps: 1.2, run: .9, ms: 250, scope: true } },
+  pistol: { src: 'Sheriff', mul: .8, rps: 4, mag: 6, reload: 2250, equip: 1000, auto: false, pen: 'high',
+    dmg: [[30, 159.5, 55, 46.75], [50, 145, 50, 42.5]], spread: { hip: [[.25, 2.75], [.19, 2.06]] }, spreadN: 3,
+    move: [.5, 1.2, 3, 7], rec: .45, tap: 3, pitch: [6.5, 3, 1.1], yaw: [1.2, 1, .5, .4], jit: .5, runPitch: 1, runYaw: 1 },
+  usps: { src: 'Ghost', mul: .85, rps: 6.75, mag: 13, reload: 1500, equip: 750, auto: false, pen: 'medium', silenced: true,
+    dmg: [[30, 105, 30, 25.5], [50, 87.5, 25, 21.25]], spread: { hip: [[.3, 1.65], [.23, 1.24]] }, spreadN: 5,
+    move: [.5, 1.1, 2.3, 7], rec: .3, tap: 3, pitch: [3.2, 6, 1.1], yaw: [.8, 2, .4, .4], jit: .25, runPitch: 1, runYaw: 1 },
+  glock: { src: 'Classic', mul: .85, rps: 6.75, mag: 12, reload: 1750, equip: 750, auto: false, pen: 'low',
+    dmg: [[30, 78, 26, 22.1], [50, 66, 22, 18.7]], spread: { hip: [[.4, 1.8], [.3, 1.35]] }, spreadN: 5,
+    move: [.5, 1.1, 2.3, 7], rec: .3, tap: 3, pitch: [2.8, 6, 1.1], yaw: [.8, 2, .4, .4], jit: .25, runPitch: 1, runYaw: 1,
+    alt: { pellets: 3, rps: 2.22, spread: [[1.9, 5.78], [1.71, 5.21]], move: [0, .6, 1.5, 2.25], pitch: 3.2 } },
+};
+VAL_W.m4a1s = { ...VAL_W.m4a4 };
+VAL_W.famas = { ...VAL_W.galil };
+// Liga os números às armas: dano por tabela (sem capacete, arredondado para baixo), cadência, pente, recarga, saque e velocidade.
+for (const k in VAL_W) {
+  const w = W[k], v = VAL_W[k]; if (!w) continue;
+  w.val = v; w.key = k; delete w.cs; delete w.burst; delete w.headshotKillRange;
+  w.rof = 1000 / v.rps; w.mag = v.mag; w.reload = v.reload; w.draw = v.equip; w.auto = v.auto; w.speed = VAL.run * v.mul;
+  if (v.silenced) w.silenced = true;
+  if (v.pellets) { w.pellets = v.pellets; w.pelletSpread = v.pelletSpread[0] * DEG; }
+  if (w.scope) w.scopedSpeed = w.speed * v.ads.run;
+}
+for (const k of ['knife', 'butterfly', 'he', 'flash', 'smoke', 'medgun', 'c4']) if (W[k]) W[k].speed = VAL.run;
+// Dano do Valorant: a tabela da faixa de distância; estômago conta como corpo; sem efeito de capacete.
+function valDamage(w, part, distance = 0, table = w.val.dmg) {
+  const row = table.find(r => distance <= r[0]) || table[table.length - 1];
+  return Math.floor(part === 'head' ? row[1] : part === 'leg' ? row[3] : row[2]);
+}
+// Escudo do Valorant: o colete vira escudo (100 de colete = 50 de escudo pesado) e absorve 66% de todo dano até acabar.
+function valShield(e, amount) {
+  const shield = (e.armor || 0) / 2, absorbed = Math.min(shield, amount * .66);
+  e.armor = Math.max(0, Math.round((shield - absorbed) * 2)); if (e.inv) e.inv.armor = e.armor;
+  return amount - absorbed;
+}
+// Estado de tiro (jogador ou bot): calor do spray (0 = primeiro tiro), tiros seguidos e recuo acumulado em graus.
+function valAim(e, k) {
+  let s = e.vaim;
+  if (!s || s.k !== k) s = e.vaim = { k, heat: 0, n: 0, last: -1e9, at: -1e9, pitch: 0, yaw: 0, dir: Math.random() < .5 ? -1 : 1 };
+  return s;
+}
+function valReset(e) { e.vaim = null; }
+const valCap = v => Math.max(v.spreadN, v.pitch[1]);
+const valCycle = (v, ads) => 1 / (ads && v.ads ? v.ads.rps : v.rps);
+// Recuperação: depois de um intervalo de tiro sem atirar, o calor cai até zero no Gun Recovery Time e o recuo volta ao centro.
+function valRecover(e, k, t) {
+  const s = valAim(e, k), v = W[k].val, dt = Math.max(0, Math.min(.25, (t - s.at) / 1000)); s.at = t;
+  if (!dt) return s;
+  const idle = (t - s.last) / 1000 - valCycle(v, false), rdt = Math.max(0, Math.min(dt, idle));
+  if (rdt > 0) {
+    s.heat = Math.max(0, s.heat - rdt * valCap(v) / v.rec); if (!s.heat) s.n = 0;
+    const f = Math.exp(-rdt * 3.2 / v.rec), lin = rdt * 1.5;
+    s.pitch = Math.max(0, s.pitch * f - lin); s.yaw = Math.sign(s.yaw) * Math.max(0, Math.abs(s.yaw) * f - lin * .5);
+  }
+  return s;
+}
+// Estado de movimento para a imprecisão: 0 agachado, 1 andando, 2 correndo, 3 no ar.
+function valMoveState(e) { return !e.onGround ? 3 : e.crouch ? 0 : e.walking ? 1 : 2; }
+// Erro de movimento (graus): zero na zona morta e cresce com a velocidade até o valor do estado (agachado, andando, correndo).
+function valMoveError(e, v, move = v.move) {
+  const st = valMoveState(e); if (st === 3) return move[3];
+  const ref = VAL.run * v.mul, f = Math.hypot(e.vel.x, e.vel.z) / ref, top = clamp(e.moveCap ?? (st === 0 ? VAL.crouch : st === 1 ? VAL.walk : 1), VAL.deadzone + .05, 1);
+  if (f <= VAL.deadzone) return 0;
+  return move[st] * clamp((f - VAL.deadzone) / (top - VAL.deadzone), 0, 1);
+}
+function valLanding(e, t) { return e.landAt != null && t - e.landAt < VAL.landMs ? VAL.land : 0; }
+// Spread total (graus) e o expoente do viés: base pelo calor (1º tiro → máximo) + movimento + aterrissagem.
+function valSpread(e, k, ads, t = now(), alt = false) {
+  const w = W[k], v = w.val, crouch = e.crouch && e.onGround ? 1 : 0;
+  const table = alt && v.alt ? v.alt.spread : (ads && v.spread.ads ? v.spread.ads : v.spread.hip);
+  const [first, max] = table[crouch];
+  const heat = e === P || e.vaim ? (e.vaim && e.vaim.k === k ? valRecover(e, k, t).heat : 0) : Math.min(v.spreadN, e.shots || 0);
+  const base = first + (max - first) * clamp(heat / v.spreadN, 0, 1), mv = valMoveError(e, v, alt && v.alt ? v.alt.move : v.move) + valLanding(e, t);
+  return { base, move: mv, total: base + mv, power: VAL.bias[0] - (VAL.bias[0] - VAL.bias[1]) * (mv / (mv + base + 1e-9)) };
+}
+// Desvio do tiro (radianos): raio = spread × u^power (parado concentra no centro; andando, uniforme na área).
+function valSpreadOffset(spreadDeg, power, rnd = Math.random) {
+  const r = spreadDeg * DEG * Math.pow(rnd(), power), a = rnd() * TAU;
+  return [Math.cos(a) * r, Math.sin(a) * r];
+}
+// Tiro disparado: Tap Efficiency decide quanto calor entra; o recuo sobe pela curva até o topo, e depois das balas
+// protegidas o recuo lateral anda para um lado, com chance de trocar de lado a cada bala.
+function valFired(e, k, t, ads = false, rnd = Math.random) {
+  const v = W[k].val, s = valRecover(e, k, t), cyc = valCycle(v, ads), gap = (t - s.last) / 1000;
+  // Tap Efficiency só vale para quem atira de novo antes de recuperar tudo: quanto mais espera, menos calor entra.
+  const frac = clamp((gap - cyc) / Math.max(1e-3, v.rec - cyc), 0, 1), inc = s.heat > 0 ? 1 / (1 + v.tap * frac) : 1;
+  const h0 = s.heat, h1 = Math.min(valCap(v), h0 + inc), n = v.pitch[1], curve = x => 1 - Math.pow(1 - clamp(x / n, 0, 1), v.pitch[2]);
+  const moving = !e.onGround || (valMoveState(e) === 2 && Math.hypot(e.vel.x, e.vel.z) > VAL.run * v.mul * VAL.deadzone);
+  const still = e.onGround && e.crouch && Math.hypot(e.vel.x, e.vel.z) < VAL.run * v.mul * VAL.deadzone;
+  const adsK = ads ? .9 : 1, pm = (moving ? v.runPitch : 1) * adsK, ym = (moving ? v.runYaw : 1) * (still ? .85 : 1) * adsK;
+  // armas de tiro único (pistolas, Marshal, Bucky) sobem um pouco mesmo no topo da curva
+  let up = v.pitch[0] * (curve(h1) - curve(h0));
+  if (!v.auto) up = Math.max(up, v.pitch[0] / Math.max(1, n) * inc * .5);
+  s.pitch += up * pm;
+  s.n++;
+  if (s.n <= v.yaw[1]) s.yaw += (rnd() - .5) * v.jit * ym;
+  else {
+    if (rnd() < v.yaw[2]) s.dir = -s.dir;
+    const amp = v.yaw[0] * ym, step = 2 * amp / v.yaw[3] * cyc;
+    s.yaw = clamp(s.yaw + s.dir * step, -amp, amp);
+    if (Math.abs(s.yaw) >= amp - 1e-9 && rnd() < .5) s.dir = -Math.sign(s.yaw);
+  }
+  s.heat = h1; s.last = t;
+  return s;
+}
+// Disparo alternativo do Classic: 3 chumbos de uma vez, recuo maior.
+function valAltFired(e, k, t) { const v = W[k].val, s = valRecover(e, k, t); s.pitch += v.alt.pitch; s.heat = Math.min(valCap(v), s.heat + 1); s.last = t; s.n++; return s; }
 
 /* ================= Áudio sintetizado ================= */
 const AU = {
@@ -3082,7 +3265,7 @@ function spawnSelf(side, spec) {
   // Fora do Plant the Bomb (que tem economia), todos nascem com colete e capacete se a opção estiver ligada.
   if (!bombOn()) { P.helmet = !!S.armor; P.armor = S.armor ? 100 : 0; }
   P.hp = 100; P.alive = true; P.crouch = false; P.duck = 0; P.duckSpeed = DUCK.ideal; P.wantDuck = false; P.h = H_STAND; P.eyeOff = EYE_STAND; P.onGround = true;
-  P.recoilP = P.recoilY = P.shots = P.spread = 0; csReset(P); P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null; P.nadePrep = P.nadePending = null; P.throwT = 0;
+  P.recoilP = P.recoilY = P.shots = P.spread = 0; csReset(P); valReset(P); P.ads = false; P.adsK = 0; P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null; P.nadePrep = P.nadePending = null; P.throwT = 0;
   refillAmmo(P);
   P.weapon = S.loadout[CATEGORIES[S.startSlot] ? S.startSlot : 'rifle']; P.lastW = S.loadout.pistol;
   if(G.mode==='dm'){
@@ -3142,16 +3325,20 @@ function playerInput(dt, t) {
   P.h = P.crouch ? H_CROUCH : H_STAND;
   const dk = P.duck * P.duck * (3 - 2 * P.duck);
   P.eyeOff = EYE_STAND + (EYE_CROUCH - EYE_STAND) * dk;
-  const w = W[P.weapon];
+  const w = W[P.weapon], val = !!w.val || !!w.melee || !w.cs;
+  // Valorant em tudo menos a AWP: corrida da arma, Shift a 61%, agachado a 40%, mira (ADS) com a velocidade da mira.
+  P.valMove = val;
   let maxS = w.speed;
   if (P.zoom) maxS = w.scopedSpeed || maxS;
-  const walk = K('ShiftLeft') || K('ShiftRight') ? WALK_MUL : 1, duckMul = 1 + (CROUCH_MUL - 1) * P.duck;
+  if (w.val && w.val.ads && !w.scope && P.ads) maxS *= w.val.ads.run;
+  const walk = K('ShiftLeft') || K('ShiftRight') ? (val ? VAL.walk : WALK_MUL) : 1, duckMul = 1 + ((val ? VAL.crouch : CROUCH_MUL) - 1) * P.duck;
   P.walking = walk < 1;
   maxS *= Math.min(walk, duckMul);
+  P.moveCap = maxS / w.speed;
   // Agachado com luneta, a luneta não corta mais a velocidade: a AWP anda como agachada sem luneta (68 u/s, o dobro de
   // antes), que é o limite em que ela continua precisa (34% de 200 u/s). Em pé com luneta: 110 u/s; com Shift: 56 u/s.
-  if (P.zoom && w.scopedSpeed < w.speed) maxS = Math.max(maxS, Math.min(w.scopedSpeed * walk, w.speed * Math.min(walk, duckMul)));
-  if (t < P.tagUntil) maxS *= 0.45;
+  if (!val && P.zoom && w.scopedSpeed < w.speed) maxS = Math.max(maxS, Math.min(w.scopedSpeed * walk, w.speed * Math.min(walk, duckMul)));
+  if (t < P.tagUntil) maxS *= val ? VAL.tag : 0.45;
   P.physTime = Math.min((P.physTime || 0) + dt, .0625);
   if (!P.prevPos) P.prevPos = new V3().copy(P.pos);
   while (P.physTime >= PHYS_STEP) {
@@ -3164,10 +3351,10 @@ function playerInput(dt, t) {
     // Aterrissagem do CS2: cair com velocidade v (u/s) dá b = clamp(1 + v·0,0005; 0,2; 1). No chão, a velocidade máxima
     // fica em b² e volta em ~1,1/s; o pulo seguinte sai com força b, que volta 0,6/s. Sem a estamina antiga.
     const wasGround = P.onGround, vy0 = P.vel.y, lb = P.landB ?? 1, lt = P.landT ?? 1;
-    const groundK = Math.min(1, lb * lb + lt * 1.111189365386963), jumpK = Math.min(1, lb + clamp(lt, 0, 1) * .6000000238418579);
+    const groundK = val ? 1 : Math.min(1, lb * lb + lt * 1.111189365386963), jumpK = Math.min(1, lb + clamp(lt, 0, 1) * .6000000238418579);
     physics(P, -sy * sz + cy * sx, -cy * sz - sy * sx, maxS * groundK, jump, PHYS_STEP, ACCEL_BASE);
     if (jump && jumpK < 1) P.vel.y -= JUMP_V * (1 - jumpK);
-    if (!wasGround && P.onGround) { P.landB = clamp(1 + (vy0 / .0254) * .0005000000237487257, .2, 1); P.landT = 0; }
+    if (!wasGround && P.onGround) { P.landB = clamp(1 + (vy0 / .0254) * .0005000000237487257, .2, 1); P.landT = 0; P.landAt = ts; }
     else if (P.onGround) P.landT = lt + PHYS_STEP;
     if (jump) P.jumpUntil = 0;
     P.landSpread *= Math.exp(-PHYS_STEP * 16);
@@ -3179,7 +3366,7 @@ function playerInput(dt, t) {
 function selectWeapon(k) {
   if (!ORDER.includes(k) || k === P.weapon || !P.alive) return;
   P.lastW = P.weapon; P.weapon = k; P.drawEnd = now() + W[k].draw; P.reloadEnd = 0; P.zoom = 0; P.shots = 0; applyFov();
-  P.recoilP = P.recoilY = P.spread = P.kick = P.swing = 0; csReset(P);
+  P.recoilP = P.recoilY = P.spread = P.kick = P.swing = 0; csReset(P); valReset(P); P.ads = false; P.adsK = 0;
   P.inspT = 0; P.kAnim = null; P.knifeSide = 0; P.nadePrep = null; if (W[k].melee) beginKnifeAnimation('draw',now());
   P.deagleShot=null;P.deagleDrawKey=0;P.deagleDrawStage=0;
 }
@@ -3212,13 +3399,18 @@ function vmKickStep(dt) {
 }
 // Recuo do tiro: impulso do aim punch pela tabela da arma (como no CS). Agachado no chão, o impulso é 15% menor
 // (pedido do jogo, não é regra do CS). O coice visual da arma na mão acompanha.
-function applyRecoil(w, t = now()) {
+function applyRecoil(w, t = now(), alt = false) {
   const k = w.key || P.weapon, ck = P.crouch && P.onGround ? CROUCH_RECOIL : 1;
-  if (w.cs) csFired(P, k, t, csMode(P, k), ck);
+  if (w.val) { if (alt) valAltFired(P, k, t); else valFired(P, k, t, adsOn(P)); }
+  else if (w.cs) csFired(P, k, t, csMode(P, k), ck);
   P.kick = 1; vmKickImpulse(P.weapon);
 }
 // Aplica o punch acumulado ao tiro (2×) e à câmera (a câmera usa a fração de viewRecoilScale).
-function syncPunch() { const s = P.aim; if (!s) { P.recoilP = P.recoilY = 0; return; } P.recoilP = CS_PUNCH.scale * s.up * DEG; P.recoilY = -CS_PUNCH.scale * s.right * DEG; P.shots = s.idx; }
+// Valorant: o recuo acumulado (graus) vai inteiro para a bala; a câmera mostra parte dele sem mira e tudo com a mira.
+function syncPunch(t = now()) {
+  const w = W[P.weapon];
+  if (w && w.val) { const s = P.vaim && P.vaim.k === P.weapon ? valRecover(P, P.weapon, t) : null; P.recoilP = s ? s.pitch * DEG : 0; P.recoilY = s ? -s.yaw * DEG : 0; P.shots = s ? s.n : 0; return; }
+  const s = P.aim; if (!s) { P.recoilP = P.recoilY = 0; return; } P.recoilP = CS_PUNCH.scale * s.up * DEG; P.recoilY = -CS_PUNCH.scale * s.right * DEG; P.shots = s.idx; }
 // Solavanco de câmera ao tomar tiro: menor e com teto, para tiros seguidos não sacudirem a tela.
 function hurtPunch() { P.punch = Math.min(P.punch + .009, .022); }
 function eyePos() { return [P.pos.x, P.pos.y + P.eyeOff, P.pos.z]; }
@@ -3262,7 +3454,7 @@ function toggleScope(t) {
   completeReload(t);
   if (!w.scope||!P.alive||t<P.drawEnd||t<P.nextFire||P.reloadEnd) return false;
   if (!P.ammo[P.weapon].mag) { startReload(t); return false; }
-  if (!P.zoom) P.zoomAt = t; P.zoom=(P.zoom+1)%3; applyFov(); AU.scope(P.weapon,skinOf(P.weapon),P.zoom);
+  if (!P.zoom) P.zoomAt = t; P.zoom=(P.zoom+1)%(w.val?2:3); applyFov(); AU.scope(P.weapon,skinOf(P.weapon),P.zoom);
   return true;
 }
 function inspect() {
@@ -3301,36 +3493,60 @@ function shoot(t, heavy) {
   if (infiniteMagazine()) am.mag=w.mag;
   if (am.mag <= 0) { AU.dry(); P.nextFire = t + 250; startReload(t); return; }
   if(P.weapon==='pistol')beginDeagleShot(t);
-  if (!infiniteMagazine()) am.mag--; P.nextFire = t + w.rof; P.lastShot = t;
+  // Valorant: cadência da mira (ADS) mais lenta; Classic no botão direito gasta 3 balas num tiro de 3 chumbos;
+  // Bucky no botão direito lança um cartucho que estoura em 5 chumbos a 7,5 m.
+  const v = w.val, ads = adsOn(P), alt = !!(heavy && v && (v.alt || v.air)), take = alt && v.alt ? Math.min(am.mag, v.alt.pellets) : 1;
+  if (!infiniteMagazine()) am.mag -= take;
+  P.nextFire = t + (v ? 1000 / (alt && v.alt ? v.alt.rps : ads && v.ads ? v.ads.rps : v.rps) : w.rof); P.lastShot = t;
   if(prefireOn())prefireBegin(t);
   const aim = aimbotEnabled() ? aimbotTarget(e, t) : null;
   if (aim) {
     const d=aim.direction;
     P.yaw=Math.atan2(-d[0],-d[2]); P.pitch=Math.asin(clamp(d[1],-1,1));
-    P.recoilP=P.recoilY=P.punch=0; if (P.aim) { P.aim.up = P.aim.right = P.aim.vu = P.aim.vr = 0; }
+    P.recoilP=P.recoilY=P.punch=0; if (P.aim) { P.aim.up = P.aim.right = P.aim.vu = P.aim.vr = 0; } if (P.vaim) P.vaim.pitch = P.vaim.yaw = 0;
   }
   // Precisão do CS: base + penalidade acumulada + movimento + ar; logo depois de abrir a luneta, ainda carrega parte da
   // imprecisão sem luneta. O desvio é o spread do CS (raio uniforme, concentrado no centro) somado ao recuo (2× o punch).
-  syncPunch();
-  const mode = csMode(P, P.weapon), inac = shotInaccuracy(P, w, P.zoom > 0, 0, t);
-  const [ox, oy] = w.cs ? csSpreadOffset(inac, w.cs.spread[mode]) : [0, 0];
+  syncPunch(t);
+  let ox = 0, oy = 0, volley = w.pellets ? w : null;
+  if (v) {
+    // Valorant: spread do calor do spray + movimento; parado puxa para o centro (Error Power), andando fica uniforme.
+    if (alt && v.alt) volley = { ...w, pellets: take, pelletSpread: valSpread(P, P.weapon, false, t, true).total * DEG };
+    else { const sp = valSpread(P, P.weapon, ads, t); [ox, oy] = valSpreadOffset(sp.total, sp.power); if (w.pellets) volley = { ...w, pelletSpread: v.pelletSpread[P.crouch && P.onGround ? 1 : 0] * DEG }; }
+  } else {
+    const mode = csMode(P, P.weapon), inac = shotInaccuracy(P, w, P.zoom > 0, 0, t);
+    if (w.cs) [ox, oy] = csSpreadOffset(inac, w.cs.spread[mode]);
+  }
   const dir = aim ? aim.direction : dirFrom(P.yaw + P.recoilY + ox, P.pitch + P.recoilP + oy);
   const mz = muzzleWorld();
   let end;
-  if (w.pellets && !aim) {
+  if (alt && v.air && !aim) {
+    // Cartucho da Bucky: voa reto até 7,5 m (ou até a parede) e estoura em 5 chumbos; se acertar alguém antes, dá um chumbo.
+    const yaw = P.yaw + P.recoilY + ox, pitch = P.pitch + P.recoilP + oy, d0 = dirFrom(yaw, pitch), first = trace(e, d0, v.air.at, targets);
+    const aw = { ...w, pellets: v.air.pellets, pelletSpread: v.air.spread * DEG, val: { ...v, dmg: v.air.dmg } };
+    const helmetOf = r => { const victim = r.actor ? DM.byId.get(r.actor) : G.mode === 'bot' ? BOT : OPP.cur; return victim && victim.helmet; };
+    if (first && first.part) { end = first.point; tracer(mz, end, 45); dealDamage(damageFor(aw, first.part, false, first.t), first.part, P.weapon, first.actor); }
+    else {
+      const at = first ? Math.max(.1, first.t - .15) : v.air.at, o = [e[0] + d0[0] * at, e[1] + d0[1] * at, e[2] + d0[2] * at];
+      tracer(mz, o, 45); end = o;
+      const hits = pelletVolley(o, yaw, pitch, aw, targets, null, (r, d, i) => { if (i < 3) tracer(o, r ? r.point : [o[0] + d[0] * 40, o[1] + d[1] * 40, o[2] + d[2] * 40], 45); if (r && !r.part && i < 3) addDecal(r.point, r.normal); }, helmetOf);
+      for (const h of hits.values()) dealDamage(h.dmg, h.part, P.weapon, h.actor);
+    }
+    applyRecoil(w, t);
+  } else if (volley && !aim) {
     // Escopeta: cada chumbo é um raio; o dano soma por vítima e conta o melhor ponto atingido.
     const yaw = P.yaw + P.recoilY + ox, pitch = P.pitch + P.recoilP + oy;
     let smoked = false;
-    const hits = pelletVolley(e, yaw, pitch, w, targets, null, (r, d, i) => { if (r && r.part && smokeBlocks(e, r.point)) smoked = true; if (i < 4) tracer(mz, r ? r.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60], 45); if (r && !r.part && i < 5) addDecal(r.point, r.normal); },
+    const hits = pelletVolley(e, yaw, pitch, volley, targets, null, (r, d, i) => { if (r && r.part && smokeBlocks(e, r.point)) smoked = true; if (i < 4) tracer(mz, r ? r.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60], 45); if (r && !r.part && i < 5) addDecal(r.point, r.normal); },
       r => { const victim = r.actor ? DM.byId.get(r.actor) : G.mode === 'bot' ? BOT : OPP.cur; return victim && victim.helmet; });
     end = mz; HIT.smoke = smoked;
     for (const h of hits.values()) dealDamage(h.dmg, h.part, P.weapon, h.actor);
     HIT.smoke = false;
-    applyRecoil(w, t);
+    applyRecoil(w, t, alt);
   } else {
     const res = aim || trace(e, dir, 300, targets);
     applyRecoil(w, t);
-    if (aim) { P.recoilP=P.recoilY=0; if (P.aim) P.aim.up = P.aim.right = P.aim.vu = P.aim.vr = 0; }
+    if (aim) { P.recoilP=P.recoilY=0; if (P.aim) P.aim.up = P.aim.right = P.aim.vu = P.aim.vr = 0; if (P.vaim) P.vaim.pitch = P.vaim.yaw = 0; }
     end = res ? res.point : [e[0] + dir[0] * 300, e[1] + dir[1] * 300, e[2] + dir[2] * 300];
     tracer(mz, end, 45, skinTracer(skinOf(P.weapon)));
     if (res) { if (res.part) {const victim=res.actor ? DM.byId.get(res.actor) : G.mode==='bot' ? BOT : OPP.cur;HIT.smoke=smokeBlocks(e,res.point);dealDamage(damageFor(w,res.part,victim&&victim.helmet,res.t),res.part,P.weapon,res.actor);HIT.smoke=false;} else addDecal(res.point, res.normal); }
@@ -3357,6 +3573,7 @@ function dealDamage(dmg, part, wkey, actorId) {
 // Colete: no corpo, o dano cai conforme a penetração da arma; com capacete, protege a cabeça (o corte da cabeça já vem
 // de damageFor). Cada acerto gasta metade do dano em colete. Pernas e quedas passam direto.
 function armorCut(e, amount, part, weapon) {
+  if (W[weapon]?.val) return e && e.armor > 0 ? valShield(e, amount) : amount;
   if (!(e && e.armor > 0) || weapon === 'c4' || weapon === 'fall' || !(part === 'body' || part === 'stomach' || (part === 'head' && e.helmet))) return amount;
   if (part === 'body' || part === 'stomach') amount *= W[weapon]?.grenade ? .5 : (W[weapon]?.helmetPen ?? .6);
   e.armor = Math.max(0, e.armor - Math.round(amount * .5)); if (e.inv) e.inv.armor = e.armor;
@@ -3401,22 +3618,28 @@ function updateWeapon(dt, t) {
   }
   if (canAct && !w.melee && am.mag === 0 && am.res > 0 && t >= P.nextFire) startReload(t);
   const trig = w.auto || w.melee ? P.m1 : P.m1Press;
-  // Rajada (Glock e FAMAS): botão direito dispara 3 tiros seguidos e espera um pouco antes da próxima.
+  // Rajada da Bulldog (Galil/FAMAS) com a mira: cada clique dispara 3 tiros a 13,3/s; 2,1 rajadas por segundo.
+  const vb = w.val && w.val.ads && w.val.ads.burst && adsOn(P) ? w.val.ads.burst : null;
   if (P.burstLeft > 0 && (P.burstW !== P.weapon || !canAct || P.reloadEnd)) P.burstLeft = 0;
   if (canAct && t >= P.nextFire && !P.burstLeft) {
     if (w.melee && (P.m2 || P.m2Press)) shoot(t,true);
-    else if (w.burst && P.m2Press && P.ammo[P.weapon].mag > 0) { P.burstLeft = w.burst.n; P.burstW = P.weapon; P.burstAt = t; }
-    else if (trig) shoot(t,false);
+    else if (w.val && (w.val.alt || w.val.air) && P.m2Press && P.ammo[P.weapon].mag > 0) shoot(t,true);
+    else if (vb && P.m1Press && P.ammo[P.weapon].mag > 0) { P.burstLeft = vb.n; P.burstW = P.weapon; P.burstAt = t; P.burstCfg = { gap: vb.gap, after: vb.every - (vb.n - 1) * vb.gap }; }
+    else if (trig && !vb) shoot(t,false);
   }
   if (P.burstLeft > 0 && t >= P.burstAt) {
     P.inBurst = true; shoot(t,false); P.inBurst = false; P.burstLeft--;
     if (P.ammo[P.weapon].mag <= 0) P.burstLeft = 0;
-    P.burstAt = t + w.burst.gap; P.nextFire = P.burstLeft ? P.burstAt : t + w.burst.after;
+    const bc = P.burstCfg; P.burstAt = t + bc.gap; P.nextFire = P.burstLeft ? P.burstAt : t + bc.after;
   }
   P.m1Press = false; P.m2Press = false;
   // Aim punch, índice do recuo e precisão do CS evoluem a cada quadro (punch em passos de 1/128 s).
-  if (w.cs) csTick(P, P.weapon, dt, t); else if (P.aim) { P.aim.acc = Math.min(P.aim.acc + dt, .25); while (P.aim.acc >= CS_PUNCH.step) { P.aim.acc -= CS_PUNCH.step; csPunchStep(P.aim, CS_PUNCH.step); } }
-  syncPunch();
+  // Mira (ADS) do Valorant: botão direito liga/desliga; entra no tempo da arma; sai ao recarregar, sacar ou morrer.
+  if (!(w.val && w.val.ads && !w.scope) || !P.alive || P.reloadEnd || t < P.drawEnd) P.ads = false;
+  { const v = w.val, ms = v && v.ads ? v.ads.ms : 200, before = P.adsK || 0; P.adsK = clamp(before + (P.ads ? 1 : -1) * dt * 1000 / ms, 0, 1); if (P.adsK !== before) applyFov(); }
+  if (w.val) valRecover(P, P.weapon, t);
+  else if (w.cs) csTick(P, P.weapon, dt, t); else if (P.aim) { P.aim.acc = Math.min(P.aim.acc + dt, .25); while (P.aim.acc >= CS_PUNCH.step) { P.aim.acc -= CS_PUNCH.step; csPunchStep(P.aim, CS_PUNCH.step); } }
+  syncPunch(t);
   P.kick *= Math.exp(-dt * (P.weapon === 'pistol' ? 10 : 14)); P.swing *= Math.exp(-dt * 9); P.punch *= Math.exp(-dt * 10);
 }
 
@@ -3527,7 +3750,7 @@ function botHopClear(b, wx, wz) {
 function botPhysics(b, wx, wz, speed, dt, t, brake = false) {
   if (b.knifeOut) speed = W.knife.speed;
   if (b.crouch) speed *= CROUCH_MUL;
-  if (t < b.tagUntil) speed *= .45;
+  if (t < b.tagUntil) speed *= VAL.tag;
   b.physTime = Math.min(b.physTime + dt, .0625);
   while (b.physTime >= PHYS_STEP) {
     let x = wx, z = wz, jump = false;
@@ -3999,10 +4222,11 @@ function dmDamage(victim,amount,part,weapon,attacker,t){
   const team=DM.mode==='team';
   if(!DM.active||DM.phase!=='live'||(!team&&t>=DM.endsAt)||!victim||!victim.alive||!attacker||attacker===victim||(!attacker.alive&&!W[weapon]?.grenade&&weapon!=='c4')||t<victim.safeUntil||dmAllies(victim,attacker))return 0;
   // Colete (comprado no Plant the Bomb; padrão nos outros modos): reduz o dano no corpo conforme a penetração da arma e se desgasta.
-  amount=armorCut(victim,amount,part,weapon);
+  // Jogador remoto: o colete é dele, e quem aplica é a máquina dele ao receber o acerto (não aplicar duas vezes).
+  if(!victim.remote)amount=armorCut(victim,amount,part,weapon);
   // Brutus: 10% a menos de dano enquanto a habilidade dura, menos em headshots.
   if(team&&ARENA.bomb&&victim.op==='brutus'&&t<(victim.toughUntil||0)&&part!=='head')amount*=1-BRUTUS.cut;
-  const damage=Math.min(victim.hp,Math.max(0,Math.round(amount)));if(!damage)return 0;
+  const damage=victim.remote?Math.min(500,Math.max(0,Math.round(amount))):Math.min(victim.hp,Math.max(0,Math.round(amount)));if(!damage)return 0;
   // Jogador remoto (2v2 online): a vida dele é de quem controla; o acerto vai pela rede.
   if(victim.remote){teamSendHit(victim,damage,part,weapon,attacker);return damage;}
   victim.hp-=damage;victim.tagUntil=t+350;victim.lastAttacker=attacker.id;
@@ -5959,7 +6183,7 @@ function arenaOnData(from, m) {
   else if (m.t === 'e' && typeof m.k === 'string') {
     const d = m.d || {};
     if (m.k === 'hit') {
-      if (!fin(d.d) || d.d <= 0 || d.d > 500 || !['head', 'body', 'leg'].includes(d.p) || !W[d.w] || d.m !== match || (ARENA.kind === 'team' && d.r !== ARENA.r)) return;
+      if (!fin(d.d) || d.d <= 0 || d.d > 500 || !['head', 'body', 'stomach', 'leg'].includes(d.p) || !W[d.w] || d.m !== match || (ARENA.kind === 'team' && d.r !== ARENA.r)) return;
       const attackerId = ARENA.host ? from : d.from, victim = DM.byId.get(d.to), attacker = DM.byId.get(attackerId);
       if (!victim || !attacker || (!ARENA.host && d.to !== G.me)) return;
       dmDamage(victim, d.d, d.p, d.w, attacker, t);
@@ -6124,7 +6348,6 @@ function updateOpp(dt, t) {
 
 /* ================= Câmera e viewmodel ================= */
 function vfovFromH(h) { return 2 * Math.atan(Math.tan(h * DEG / 2) * 0.75) / DEG; }
-function zoomH() { return P.zoom === 1 ? 40 : (P.zoom === 2 ? (P.weapon === 'ssg' ? 15 : 10) : S.fov); }
 function applyFov() { camera.fov = vfovFromH(zoomH()); camera.updateProjectionMatrix(); }
 function updateCamera(dt, t) {
   if (specCamera(dt, t)) return;
@@ -6189,7 +6412,17 @@ function updateVM(dt, t) {
     if (P.kAnim && t >= P.kAnim.t0 + P.kAnim.duration) P.kAnim = null;
   }
   offsetViewmodel(vmRoot.position);
+  // Mira (ADS) do Valorant: a arma vai para o centro da tela, com a mira de ferro na linha do olho, e acompanha o recuo.
+  const ad = w.val && w.val.ads && !w.scope ? P.adsK || 0 : 0;
+  if (ad > 0) {
+    const fit = VM_FIT[P.weapon] || {}, k = VM_SIZE * (fit.s || 1), e = ad * ad * (3 - 2 * ad), sight = VM_ADS[P.weapon] || VM_ADS.rifle;
+    const ax = -((1 - k) * VM_ANCHOR[0] + (fit.x || 0)) / k, ay = -((1 - k) * VM_ANCHOR[1] + (fit.y || 0)) / k - sight[0];
+    vmRoot.position.x += (ax - vmRoot.position.x) * e; vmRoot.position.y += (ay - vmRoot.position.y) * e; vmRoot.position.z += (b[2] + sight[1] - vmRoot.position.z) * e;
+    vmRoot.rotation.y *= 1 - e; vmRoot.rotation.z *= 1 - e;
+  }
 }
+// Altura da mira de ferro acima da raiz da arma e quanto ela chega perto do olho, por arma (ajuste visual).
+const VM_ADS = { rifle: [.045, .02], m4a4: [.05, .02], m4a1s: [.05, .02], galil: [.045, .02], famas: [.06, .02], ump: [.045, .04] };
 
 /* ================= HUD ================= */
 const el = { aliveMe:$('aliveMe'),aliveOp:$('aliveOp'),armorValue:$('armorValue'),helmet:$('helmetIndicator'),healthFill:$('healthFill'),ammobox:$('ammobox'),weaponStatus:$('weaponStatus'),weaponTrack:$('weaponTrack'),weaponFill:$('weaponFill'),abState:$('abState'),ability: $('ability'), abName: $('abName'), abIcon: $('abIcon'), abCd: $('abCd'), loc: $('loc'), bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'),  dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
@@ -6410,7 +6643,7 @@ function updateHUD(dt, t) {
   }
   if (showXH) {
     let extra = 0;
-    if (S.ch.style === 'dynamic' && !w.melee) { const a = inaccuracy(P, w, P.zoom > 0, 0); extra = Math.min(60, Math.tan(a) / Math.tan(camera.fov * DEG / 2) * innerHeight / 2); }
+    if (S.ch.style === 'dynamic' && !w.melee) { const a = inaccuracy(P, w, adsOn(P), 0); extra = Math.min(60, Math.tan(a) / Math.tan(camera.fov * DEG / 2) * innerHeight / 2); }
     renderXH(el.xh, S.ch, extra);
   }
   fpsN++; if (t - fpsT >= 500) { fpsV = Math.round(fpsN * 1000 / (t - fpsT)); fpsN = 0; fpsT = t; }
@@ -6793,7 +7026,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ================= Entrada ================= */
-function sensK() { let k = S.sens * 0.022 * DEG; if (P.zoom) k *= (zoomH() / S.fov) * S.zoomRatio; return k; }
+function sensK() { let k = S.sens * 0.022 * DEG; if (P.zoom || (P.adsK > 0 && W[P.weapon]?.val)) k *= (zoomH() / S.fov) * S.zoomRatio; return k; }
 document.addEventListener('mousemove', e => {
   if (!locked) return;
   const dx = e.movementX || 0, dy = e.movementY || 0;
@@ -6816,6 +7049,8 @@ document.addEventListener('mousedown', e => {
   else if (e.button === 2) {
     const w = W[P.weapon];
     if (w.scope) toggleScope(now());
+    else if (w.val && w.val.ads) { if (P.alive && !P.reloadEnd) P.ads = !P.ads; }
+    else if (w.val && (w.val.alt || w.val.air)) { P.m2Press = true; updateWeapon(0, now()); }
     else if (w.melee) { P.m2 = P.m2Press = true; updateWeapon(0, now()); }
     else if (w.grenade || w.medgun) { P.m2Press = true; updateWeapon(0, now()); }
   }
