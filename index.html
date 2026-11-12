@@ -1490,7 +1490,11 @@ function hitboxesAt(x, y, z, crouch) {
 }
 const dirFrom = (yaw, pitch) => [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
 
-function physics(e, wx, wz, maxS, jump, dt) {
+// accelGoal: base da aceleração no chão. Como no CS, a aceleração usa 250 u/s (ou a velocidade da arma, se maior), e não a
+// velocidade-alvo: senão, com alvo baixo (agachado, andando, luneta) a aceleração perde para o piso do atrito (80 u/s) e o
+// boneco quase não sai do lugar. A velocidade máxima continua sendo a da arma com os fatores.
+const ACCEL_BASE = 250 * .0254;
+function physics(e, wx, wz, maxS, jump, dt, accelGoal = maxS) {
   const wl = Math.hypot(wx, wz);
   if (wl > 1) { wx /= wl; wz /= wl; }
   const jumping = e.onGround && jump;
@@ -1506,7 +1510,7 @@ function physics(e, wx, wz, maxS, jump, dt) {
     if (wl > 0.01) {
       const k = Math.min(wl, 1), dx = wx / k, dz = wz / k, ws = maxS * k;
       const add = ws - (e.vel.x * dx + e.vel.z * dz);
-      if (add > 0) { const as = Math.min(ACCEL * ws * dt, add); e.vel.x += as * dx; e.vel.z += as * dz; }
+      if (add > 0) { const as = Math.min(ACCEL * Math.max(accelGoal, maxS) * k * dt, add); e.vel.x += as * dx; e.vel.z += as * dz; }
     }
   } else if (wl > 0.01) {
     const k = Math.min(wl, 1), dx = wx / k, dz = wz / k;
@@ -2999,6 +3003,9 @@ function playerInput(dt, t) {
   if (P.zoom) maxS = w.scopedSpeed || maxS;
   const walk = K('ShiftLeft') || K('ShiftRight') ? WALK_MUL : 1, duckMul = 1 + (CROUCH_MUL - 1) * P.duck;
   maxS *= Math.min(walk, duckMul);
+  // Agachado com luneta, a luneta não corta mais a velocidade: a AWP anda como agachada sem luneta (68 u/s, o dobro de
+  // antes), que é o limite em que ela continua precisa (34% de 200 u/s). Em pé com luneta segue nos 100 u/s.
+  if (P.zoom && w.scopedSpeed < w.speed) maxS = Math.max(maxS, Math.min(w.scopedSpeed * walk, w.speed * Math.min(walk, duckMul)));
   if (t < P.tagUntil) maxS *= 0.45;
   P.physTime = Math.min((P.physTime || 0) + dt, .0625);
   if (!P.prevPos) P.prevPos = new V3().copy(P.pos);
@@ -3009,7 +3016,7 @@ function playerInput(dt, t) {
     let sx = 0, sz = 0;
     if (canMove) { if (keyHeldAt('KeyW', ts)) sz += 1; if (keyHeldAt('KeyS', ts)) sz -= 1; if (keyHeldAt('KeyD', ts)) sx += 1; if (keyHeldAt('KeyA', ts)) sx -= 1; }
     P.prevPos.copy(P.pos);
-    physics(P, -sy * sz + cy * sx, -cy * sz - sy * sx, maxS, jump, PHYS_STEP);
+    physics(P, -sy * sz + cy * sx, -cy * sz - sy * sx, maxS, jump, PHYS_STEP, ACCEL_BASE);
     if (jump) P.jumpUntil = 0;
     P.landSpread *= Math.exp(-PHYS_STEP * 16);
     P.physTime -= PHYS_STEP;
@@ -6555,10 +6562,13 @@ function radarMarkers(t){
 function radarSites(){return MAP.plant?(MAP.plant.sites||[MAP.plant.site]).filter(Boolean):[];}
 function updateTacticalRadar(t){
   const visible=!!G.mode&&(G.mode!=='aimbotz'||prefireOn());setH($('tacticalRadar'),!visible);
-  if(!visible)return;if(RADAR.current!==MAP.id){RADAR.current=MAP.id;RADAR.nextAt=0;}if(t<RADAR.nextAt)return;RADAR.nextAt=t+80;
-  setT($('radarMapName'),areaName(P.pos.x,P.pos.y,P.pos.z)||MAP.name);
+  if(!visible)return;if(RADAR.current!==MAP.id){RADAR.current=MAP.id;RADAR.nextAt=0;}
+  // O radar é redesenhado a cada quadro (é só a imagem do mapa girada e os pontos), com a posição suavizada da câmera;
+  // só o nome da área, que procura a região do mapa, atualiza a cada 0,1 s.
+  if(t>=RADAR.nextAt){RADAR.nextAt=t+100;setT($('radarMapName'),areaName(P.pos.x,P.pos.y,P.pos.z)||MAP.name);}
+  const rp=renderPos();
   const c=$('radarCanvas'),bomb=bombOn()?(BOMB.planted&&!BOMB.planted.defused&&!BOMB.planted.blown?BOMB.planted:sideOf(P)==='t'?BOMB.dropped:null):null;
-  HudRadar.drawRadar(c.getContext('2d'),radarMap(),{size:c.width,range:clamp(Math.max(AX,AZ)*.75,20,35),pose:{x:P.pos.x,z:P.pos.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),bomb,alive:P.alive});
+  HudRadar.drawRadar(c.getContext('2d'),radarMap(),{size:c.width,range:clamp(Math.max(AX,AZ)*.75,20,35),pose:{x:rp.x,z:rp.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),bomb,alive:P.alive});
 }
 function openMinimap(){if(MINI.open||!bombOn())return;MINI.open=true;el.hud.classList.add('finder-open');$('minimap').hidden=false;P.m1=P.m2=P.m1Press=P.m2Press=false;keys.clear();BUY.x=innerWidth/2;BUY.y=innerHeight/2;$('vcursor').hidden=false;moveVCursor();drawMinimap(now());}
 function closeMinimap(){if(!MINI.open)return;MINI.open=false;el.hud.classList.remove('finder-open');$('minimap').hidden=true;$('vcursor').hidden=!BUY.open&&!SHOP.open;}

@@ -180,7 +180,7 @@ Placar e tempo ficam reunidos no topo. Vida, proteção e munição têm número
 
 Ao acertar um tiro aparece só o **hitmarker** (o X no centro), sem número de dano. Ele não aparece quando o tiro atravessa uma smoke: o dano conta, mas você não fica sabendo pelo X. Dá para desligar em **Configurações → Vídeo → Hitmarker**.
 
-O radar é circular e gira com a câmera, mantendo a mesma escala nos dois eixos. Aparece nos duelos, times, DM, TDM e Prefire. Mostra você, aliados vivos e as últimas posições reveladas pela varredura do Finder; não revela adversários sem essa habilidade. Os sites A/B e a bomba seguem o estado da partida. A geometria é desenhada uma vez por mapa e reutilizada; o radar atualiza no máximo a cada 80 ms, sem uma segunda câmera 3D. A HUD usa a resolução da tela mesmo com a resolução 3D reduzida. O Finder conserva a escolha de área de 10 m no mapa completo circular.
+O radar é redesenhado a cada quadro, com a posição suavizada da câmera; antes ele atualizava só a cada 80 ms e parecia travado. O radar é circular e gira com a câmera, mantendo a mesma escala nos dois eixos. Aparece nos duelos, times, DM, TDM e Prefire. Mostra você, aliados vivos e as últimas posições reveladas pela varredura do Finder; não revela adversários sem essa habilidade. Os sites A/B e a bomba seguem o estado da partida. A geometria é desenhada uma vez por mapa e reutilizada; o radar atualiza no máximo a cada 80 ms, sem uma segunda câmera 3D. A HUD usa a resolução da tela mesmo com a resolução 3D reduzida. O Finder conserva a escolha de área de 10 m no mapa completo circular.
 
 Testes do radar: `node --test tests/hud-radar.test.cjs`.
 
@@ -311,6 +311,12 @@ A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante 
 | Counter-strafe (apertar a tecla oposta) até a mira ficar precisa | 0,04–0,09 s |
 
 Segurando a tecla oposta por mais tempo, o boneco começa a andar para o outro lado, como no CS.
+
+**Agachado e andando com Shift**, o boneco chega de fato à velocidade certa: 34% e 52% da velocidade da arma (AK agachada a 73 u/s, AWP agachada a 68 u/s).
+
+Antes, a aceleração era proporcional à velocidade-alvo e, com alvos baixos, perdia para o piso do atrito (80 u/s). A AWP agachada com luneta andava a uns 3 u/s, e a AK agachada não passava de ~49 u/s. Agora, como no CS, a aceleração usa 250 u/s (ou a velocidade da arma, se maior), e o boneco chega à velocidade de agachado em menos de 0,1 s.
+
+Agachado, a **luneta** também não corta mais a velocidade: a AWP anda como agachada sem luneta (68 u/s), que é o limite em que ela continua precisa. Em pé com luneta, segue nos 100 u/s.
 
 A sensação de "deslizar" vinha da tela, e não da física. A física roda em passos fixos de 1/128 s, e a câmera mostrava a posição do último passo. Com isso, a 60 FPS alguns quadros andavam o dobro de outros e, a 144 FPS, alguns quadros não andavam nada. Agora a câmera interpola entre os dois últimos passos, como o CS faz, e o deslocamento por quadro fica regular em qualquer FPS.
 

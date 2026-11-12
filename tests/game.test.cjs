@@ -903,8 +903,13 @@ test('the same input at 30, 60 and 144 FPS yields the same simulation result', (
 test('stopping matches CS2 numbers: 215 u/s top speed with the AK, ~0.2 s to be accurate after release, under 0.09 s with a counter-strafe', () => {
   const g = game(); g.spawnSelf(0); const cx = g.context, W = g.W.rifle;
   assert.ok(Math.abs(W.speed / .0254 - 215) < .1, 'AK a 215 u/s');
-  const run = () => { g.P.vel.set(0, 0, 0); g.P.onGround = true; for (let i = 0; i < 128; i++) cx.physics(g.P, 1, 0, W.speed, false, g.PHYS_STEP); };
-  const until = (wx, cond) => { let n = 0; while (!cond() && n < 400) { cx.physics(g.P, wx, 0, W.speed, false, g.PHYS_STEP); n++; } return n * 1000 / 128; };
+  const A = vm.runInContext('ACCEL_BASE', cx);
+  const run = (max = W.speed, acc = A) => { g.P.vel.set(0, 0, 0); g.P.onGround = true; for (let i = 0; i < 128; i++) cx.physics(g.P, 1, 0, max, false, g.PHYS_STEP, acc); };
+  const until = (wx, cond) => { let n = 0; while (!cond() && n < 400) { cx.physics(g.P, wx, 0, W.speed, false, g.PHYS_STEP, A); n++; } return n * 1000 / 128; };
+  // Agachado (34%) e andando (52%) chegam à velocidade certa em pouco tempo: a aceleração usa 250 u/s, como no CS.
+  { g.P.vel.set(0, 0, 0); g.P.onGround = true; let n = 0; while (g.P.vel.x < W.speed * .34 - 1e-6 && n < 128) { cx.physics(g.P, 1, 0, W.speed * .34, false, g.PHYS_STEP, A); n++; } assert.ok(n * 1000 / 128 < 120, 'agachada chega rápido: ' + n); }
+  run(W.speed * .34, A); assert.ok(Math.abs(g.P.vel.x / .0254 - 73.1) < .5, 'AK agachada: ' + g.P.vel.x / .0254);
+  run(W.speed * .52, A); assert.ok(Math.abs(g.P.vel.x / .0254 - 111.8) < .5, 'AK andando: ' + g.P.vel.x / .0254);
   run(); assert.ok(Math.abs(Math.hypot(g.P.vel.x, g.P.vel.z) - W.speed) < 1e-6, 'chega à velocidade máxima');
   const release = until(0, () => Math.hypot(g.P.vel.x, g.P.vel.z) < W.speed * .34);
   run(); const counter = until(-1, () => g.P.vel.x < W.speed * .34);
@@ -1597,6 +1602,18 @@ test('crouching cuts recoil by 15%, and each shot kicks the gun back on a smooth
   g.P.vmKick = { z: 0, v: 0 }; cx.vmKickImpulse('sniper'); let awpPeak = 0; for (let i = 0; i < 30; i++) awpPeak = Math.max(awpPeak, cx.vmKickStep(1 / 60));
   g.P.vmKick = { z: 0, v: 0 }; cx.vmKickImpulse('ump'); let umpPeak = 0; for (let i = 0; i < 30; i++) umpPeak = Math.max(umpPeak, cx.vmKickStep(1 / 60));
   assert.ok(awpPeak > umpPeak * 2, 'AWP dá um coice bem maior que a UMP');
+});
+test('AWP scoped and crouched really walks (68 u/s, like crouching unscoped; it barely moved before) and stays precise', () => {
+  const speedWith = (weapon, zoom, crouch) => { const g = game(); g.S.loadout.rifle = weapon; g.spawnSelf(0); g.selectWeapon(weapon); g.P.drawEnd = 0; g.P.zoom = zoom;
+    g.keys.add('KeyD'); if (crouch) g.keys.add('KeyC');
+    for (let i = 0; i < 240; i++) { g.P.zoom = zoom; g.playerInput(1 / 120, 10000 + i * 1000 / 120); }
+    return { v: Math.hypot(g.P.vel.x, g.P.vel.z), g }; };
+  const u = v => v / .0254, awp = speedWith('sniper', 1, true);
+  assert.ok(Math.abs(u(awp.v) - 68) < 1, 'AWP mirando agachada: ' + u(awp.v));
+  assert.ok(Math.abs(u(speedWith('sniper', 0, true).v) - 68) < 1, 'agachada sem luneta continua 68 u/s');
+  assert.ok(Math.abs(u(speedWith('sniper', 1, false).v) - 100) < 1, 'em pé com luneta continua 100 u/s');
+  assert.ok(awp.g.inaccuracy(awp.g.P, awp.g.W.sniper, true, 0) < .001, 'continua precisa');
+  assert.ok(Math.abs(u(speedWith('ssg', 1, true).v) - u(speedWith('ssg', 0, true).v)) < 1, 'Scout: a luneta não muda a velocidade');
 });
 test('AWP accuracy follows CS: precise only when (almost) still, wild while moving scoped, quickscope needs a moment', () => {
   const g = game(), w = g.W.sniper, e = { vel: { x: 0, z: 0 }, onGround: true, crouch: false, landSpread: 0 };
