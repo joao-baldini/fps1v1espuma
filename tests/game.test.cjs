@@ -49,7 +49,7 @@ function game(saved) {
     Math: Object.assign(Object.create(Math), { random: () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296) }),
     OPP: { cur: null, flashUntil: 0 }, keys, K: key => keys.has(key), locked: true,
     AU: new Proxy({}, { get: () => () => {} }),
-    applyFov() {}, hitmark() {}, dmgNumber() {}, dmgDir() {}, flashRed() {}, addDecal() {}, tracer() {},
+    applyFov() {}, hitmark() {}, dmgDir() {}, flashRed() {}, addDecal() {}, tracer() {},
     remoteShotFx() {}, banner() {}, killBanner() {}, healFx() {}, spat: () => ({ v:.5, pan:0 }), addFeed: (killer,victim,w,hs) => events.push({topic:'feed',killer,victim,w,hs}),
     netSend: e => events.push(e), emit: (topic, data) => events.push({ topic, data }),
     botEmit: (topic, data) => events.push({ topic, data }),
@@ -245,7 +245,7 @@ test('AWP and headshots use lightweight synthesis and retain skin sounds without
   }
 });
 
-test('AWP and the simple shared M4 bodies stay within a small triangle budget and support every skin', () => {
+test('detailed weapon models: every gun stays within a triangle budget, supports every skin and keeps the Deagle untouched', () => {
   const g=game(),cx=g.context;
   cx.THREE.Color=class {
     constructor(hex){this.setHex(hex||0);}
@@ -255,20 +255,36 @@ test('AWP and the simple shared M4 bodies stay within a small triangle budget an
   cx.basicMat={};cx.geoFrom=out=>out;
   vm.runInContext(section('const FACES =','function geoFrom'),cx);
   vm.runInContext(section('function weaponMesh(','/* ================= Mapas'),cx);
-  vm.runInContext(section('const GUNS =','const ARMS ='),cx);
+  vm.runInContext(section('// Modelos das armas:','// braços: mão'),cx);
   const guns=vm.runInContext('GUNS',cx);
-  assert.deepEqual(guns.m4a4.slice(0,9),guns.m4a1s.slice(0,9));
-  assert.ok(guns.m4a4[0][1][0]-guns.m4a4[0][0][0]>.06);
-  assert.equal(Math.min(...guns.m4a4.map(p=>p[0][2])),-.78);
-  assert.equal(Math.min(...guns.m4a1s.map(p=>p[0][2])),-.94);
-  for(const key of ['sniper','m4a4','m4a1s'])for(const skin of ['padrao','neon','brasa','glacial']){
-    const model=cx.boxModel(cx.skinPartsFor(key,skin,guns[key])),geo=model.geometry;
-    assert.ok(geo.p.every(Number.isFinite));assert.ok(geo.n.every(Number.isFinite));assert.ok(geo.c.every(Number.isFinite));
-    assert.equal(geo.p.length,geo.n.length);assert.equal(geo.p.length,geo.c.length);
-    assert.ok(geo.p.length/9<(key==='sniper'?1400:200),key+' '+skin);
-    if(key!=='sniper'&&skin==='padrao')assert.equal(geo.p.length/9,120);
-    for(let i=0;i<geo.n.length;i+=3)assert.ok(Math.abs(Math.hypot(geo.n[i],geo.n[i+1],geo.n[i+2])-1)<1e-8);
+  // Perfil côncavo (um L): o corte em orelhas cobre exatamente a área do contorno, sem triângulos para fora.
+  const L=cx.weaponShape([[0,0],[.2,0],[.2,.05],[.05,.05],[.05,.2],[0,.2]],.01,0x808080)[3];
+  let area=0;
+  const v=L.vertices,cap=[];for(let i=0;i<L.indices.length;i+=3){const [a,b,c]=[L.indices[i],L.indices[i+1],L.indices[i+2]];if(a<6&&b<6&&c<6)cap.push([a,b,c]);}
+  for(const [a,b,c] of cap){const A=[v[a*3+2],v[a*3+1]],B=[v[b*3+2],v[b*3+1]],C=[v[c*3+2],v[c*3+1]];area+=Math.abs((B[0]-A[0])*(C[1]-A[1])-(B[1]-A[1])*(C[0]-A[0]))/2;}
+  assert.equal(cap.length,4);assert.ok(Math.abs(area-(.2*.05+.05*.15))<1e-9,String(area));
+  // As duas M4 dividem o corpo; muda só a frente (trilhos e quebra-chamas na M4A4, guarda-mão fino e silenciador na M4A1-S).
+  const body=vm.runInContext('M4_BODY.length',cx);assert.ok(body>20);
+  for(let i=0;i<body;i++){assert.equal(guns.m4a4[i],guns.m4a1s[i]);}
+  const minZ=k=>Math.min(...guns[k].map(p=>p[0][2]));
+  assert.ok(Math.abs(minZ('m4a4')+.785)<1e-9);assert.ok(minZ('m4a1s')<-.94&&minZ('m4a1s')>-.95);
+  const tris=k=>cx.boxModel(guns[k]).geometry.p.length/9;
+  for(const key of ['rifle','m4a4','m4a1s','galil','famas','ump','bucky','ssg','sniper','usps','glock','medgun','he','flash','smoke','c4']){
+    assert.ok(tris(key)>(['he','flash','smoke','c4'].includes(key)?150:300),key+' tem detalhe: '+tris(key));
+    for(const skin of ['padrao','neon','brasa','glacial']){
+      const geo=cx.boxModel(cx.skinPartsFor(key,skin,guns[key])).geometry;
+      assert.ok(geo.p.every(Number.isFinite));assert.ok(geo.n.every(Number.isFinite));assert.ok(geo.c.every(Number.isFinite));
+      assert.equal(geo.p.length,geo.n.length);assert.equal(geo.p.length,geo.c.length);
+      assert.ok(geo.p.length/9<1500,key+' '+skin+' '+geo.p.length/9);
+      for(let i=0;i<geo.n.length;i+=3)assert.ok(Math.abs(Math.hypot(geo.n[i],geo.n[i+1],geo.n[i+2])-1)<1e-6);
+    }
   }
+  // AK Sublime: mesmo modelo da AK, recolorido em marfim, ouro e ciano.
+  const sub=cx.skinPartsFor('rifle','sublime',guns.rifle);assert.ok(sub.length>guns.rifle.length);
+  for(let i=0;i<guns.rifle.length;i++)assert.equal(sub[i][3],guns.rifle[i][3]);
+  assert.ok(sub.some(p=>p[2]===0xefe7d6)&&sub.some(p=>p[2]===0xd9a93a)&&sub.some(p=>p[2]===0x5ff6ff));
+  // Deagle e seu ferrolho continuam com os mesmos perfis.
+  assert.equal(guns.pistol.length,12);assert.equal(vm.runInContext('DEAGLE_SLIDE.length',cx),13);
 });
 
 test('Deagle draw follows the reference turn and joins the support hand before the firing gate opens',()=>{
@@ -1278,6 +1294,20 @@ test('flash blinds who looks at it much longer than who turns away, and smoke hi
   assert.equal(vm.runInContext('seeLine([-8, 1.6, 30], [8, 1.6, 30])', cx), true);
   run(22000, 19000); assert.equal(N.clouds.length, 0);
 });
+test('hitmarker: no damage numbers, no marker through smoke, and it can be turned off', () => {
+  const { g, cx, bot, actors, N } = nadeWorld();
+  const foe = bot(0, 0, -8, Math.PI); actors([g.P, foe]); cx.dmRefreshTargets();
+  const marks = []; cx.hitmark = kind => marks.push({ kind, smoke: vm.runInContext('HIT.smoke', cx) });
+  const fire = t => { g.selectWeapon('rifle'); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.ammo.rifle.mag = 30; g.P.yaw = 0; g.P.pitch = -.04; g.P.vel.set(0, 0, 0); g.P.shots = 0; g.P.recoilP = g.P.recoilY = 0; foe.hp = 100; foe.alive = true; g.shoot(t, false); return 100 - foe.hp; };
+  assert.ok(fire(20000) > 0, 'o tiro acerta'); assert.equal(marks.length, 1); assert.equal(marks[0].smoke, false);
+  N.clouds.push({ x: 0, y: 1.5, z: -4, r: 3, t0: 0, until: Infinity });
+  marks.length = 0; assert.ok(fire(21000) > 0, 'pela smoke o dano continua');
+  assert.ok(marks.every(m => m.smoke), 'pela smoke o hitmarker não aparece');
+  assert.equal(vm.runInContext('HIT.smoke', cx), false, 'a marca da smoke só vale durante o tiro');
+  const html = readFileSync(resolve(__dirname, '..', 'index.html'), 'utf8');
+  assert.ok(!/id="dmgn"|dmgNumber/.test(html), 'sem número de dano');
+  assert.match(html, /data-k="hitmarker"/); assert.match(html, /if \(!S\.hitmarker \|\| HIT\.smoke\) return;/);
+});
 test('grenades throw like CS: pressing pulls the pin and holds, releasing swings the arm and the grenade leaves mid-throw; the last one switches back to a gun', () => {
   const { g, cx } = nadeWorld();
   g.P.nades = { he: 1, flash: 0, smoke: 0 }; g.ORDER.splice(0, g.ORDER.length, 'rifle', 'pistol', 'knife', 'he');
@@ -1743,6 +1773,11 @@ test('Plant the Bomb: Glock is the Attackers starting pistol, USP-S the Defender
   assert.equal(ev('bombBuyBlock')(t1, 'famas', t), 'Só Defensores'); assert.equal(ev('bombBuyBlock')(c1, 'galil', t), 'Só Atacantes');
   assert.ok(cx.bombBuy(t1, 'galil', t)); assert.equal(t1.inv.primary, 'galil'); assert.equal(t1.money, 9000 - 1800);
   assert.ok(cx.bombBuy(c1, 'famas', t)); assert.equal(c1.inv.primary, 'famas'); assert.equal(c1.money, 9000 - 2050);
+  // A loja não lista o que é exclusivo do outro lado.
+  const listed = e => [...ev('shopColsFor')(e).flatMap(([, items]) => items)];
+  assert.deepEqual(listed(t1).filter(i => ['glock', 'galil', 'rifle', 'usps', 'famas', 'm4a4', 'm4a1s', 'kit'].includes(i)).sort().join(), 'galil,glock,rifle');
+  assert.deepEqual(listed(c1).filter(i => ['glock', 'galil', 'rifle', 'usps', 'famas', 'm4a4', 'm4a1s', 'kit'].includes(i)).sort().join(), 'famas,kit,m4a1s,m4a4,usps');
+  for (const e of [t1, c1]) for (const i of ['pistol', 'ump', 'bucky', 'ssg', 'sniper', 'he', 'flash', 'smoke', 'kevlar', 'helmet']) assert.ok(listed(e).includes(i), i);
 });
 test('stairs: the player runs up a covered Guard staircase at full speed instead of being bounced by the step edges', () => {
   const { g, cx, step } = bombWorld('guard');
@@ -2013,13 +2048,26 @@ test('Plant the Bomb weapon drops: G drops the gun in hand with its ammo, the de
   g.P.pos.set(awp.x, awp.y, awp.z); assert.equal(ev(`weaponSwapNear(${t + 2600})`), true);
   assert.equal(g.P.inv.primary, 'sniper'); assert.ok(ev('WDROP.list').some(d => d.w === rifle), 'a sua arma ficou no chão');
 });
-test('spectator: when dead in team modes the camera follows the living, allies first, and click cycles through them', () => {
+test('spectator: when dead you watch living teammates in first person, never the enemy, cycling with Mouse 1 and Mouse 2', () => {
   const { g, cx, step } = bombWorld();
   const ev = s => vm.runInContext(s, cx);
   let t = step(10000, 1500);
   g.P.alive = false; g.P.deathT = t - 2000;
-  const list = ev('specTargets()'); assert.ok(list.length >= 2); assert.equal(list[0].ally, true, 'aliado primeiro');
-  assert.ok(list.every(e => e.id !== ev('G.me')));
+  const allies = ev('DM.actors.filter(e=>e!==P&&e.alive&&dmAllies(P,e)).length');
+  const list = ev('specTargets()'); assert.equal(list.length, allies); assert.ok(list.length >= 1);
+  assert.ok(list.every(e => e.ally && e.id !== ev('G.me')), 'só companheiros vivos');
   assert.equal(ev(`specActive(${t})`), true); assert.equal(ev(`specActive(${g.P.deathT + 500})`), false, 'primeiro a câmera da morte');
-  const first = ev('specCurrent()').id; ev('specNext()'); assert.notEqual(ev('SPEC.id'), first);
+  if (!cx.camera) { const v = () => ({ x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }); cx.camera = { position: v(), rotation: v() }; }
+  const s = ev('specCurrent()'); ev(`specCamera(1/30,${t})`);
+  assert.equal(ev('SPEC.view'), s.id); const cam = ev('[camera.position.x,camera.position.y,camera.position.z]');
+  assert.ok(Math.hypot(cam[0] - s.x, cam[2] - s.z) < 1e-6 && Math.abs(cam[1] - s.y - 1.62) < .6, 'câmera nos olhos do companheiro');
+  // Morto o último aliado, não sobra ninguém para assistir (o inimigo nunca entra na lista).
+  ev('for(const e of DM.actors)if(e!==P&&dmAllies(P,e))e.alive=false');
+  assert.equal(ev('specTargets().length'), 0); assert.equal(ev('specCurrent()'), null);
+  ev(`specCamera(1/30,${t})`); assert.equal(ev('SPEC.view'), null);
+  // Com mais companheiros, Mouse 1 avança e Mouse 2 volta.
+  const ids = ['a', 'b', 'c']; cx.__fake = ids.map(id => ({ id, alive: true, pos: { x: 0, y: 0, z: 0 }, yaw: 0, team: g.P.team }));
+  ev('DM.actors.push(...__fake)'); const order = ev('specTargets()').map(e => e.id);
+  ev('SPEC.id=null;specCurrent()'); assert.equal(ev('SPEC.id'), order[0]);
+  ev('specNext(1)'); assert.equal(ev('SPEC.id'), order[1]); ev('specNext(-1)'); ev('specNext(-1)'); assert.equal(ev('SPEC.id'), order[order.length - 1]);
 });

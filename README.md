@@ -47,7 +47,7 @@ Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu
 - **Partida:** primeiro a 9 rodadas, troca de lado depois da 8ª (a economia recomeça); 8 a 8 termina empatado.
 - **Tempos:** 10 s de preparação, compra até 20 s depois do início da rodada, 1:30 de rodada, bomba de 40 s. Plantar leva 3,2 s; desarmar leva 10 s, ou 5 s com kit.
 - **Economia (Wingman):** $800 iniciais e teto de $8.000. A vitória paga $2.750 por eliminação ou tempo esgotado e $3.000 por desarme ou detonação. A derrota paga $2.000, $2.300, $2.600 e no máximo $2.900 por derrotas seguidas, voltando ao início quando o time vence; os Atacantes que plantaram e perderam ganham mais $600. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
-- **Loja (B):** pistolas, SMG e escopeta, rifles (AK, Galil e Glock só para Atacantes; M4, FAMAS e USP-S só para Defensores). Como no CS, os Atacantes começam com a Glock e os Defensores com a USP-S. Os bots compram a Galil ou a FAMAS quando não dá para o rifle cheio com colete, precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para Defensores). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
+- **Loja (B):** pistolas, SMG e escopeta, rifles (AK, Galil e Glock só para Atacantes; M4, FAMAS, USP-S e kit só para Defensores). A loja só lista o que o seu lado pode comprar. Como no CS, os Atacantes começam com a Glock e os Defensores com a USP-S. Os bots compram a Galil ou a FAMAS quando não dá para o rifle cheio com colete, precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para Defensores). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
 - **Teclas:** 1 primária, 2 pistola, 3 faca, 4 alterna granadas, 5 bomba. Plante segurando **E** no bombsite (ou o clique com a C4 na mão) e desarme segurando **E** perto da bomba. Quem carrega a bomba e morre deixa ela no chão; um Atacante pega passando por cima.
 - **Bots:** compram conforme o dinheiro, carregam e plantam a bomba, desarmam, buscam a bomba caída e usam smoke, flash e HE. Eles jogam em equipe:
   - **Estudo do mapa:** na primeira rodada de cada mapa, os bots estudam cada bombsite. Eles acham as entradas por onde os Atacantes chegam, um ponto de reunião escondido antes de cada entrada, posições de defesa com cobertura e visão da entrada, e posições dentro do site viradas para a volta dos Defensores.
@@ -67,7 +67,7 @@ Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu
     - **Doctor:** cura quem estiver abaixo de 60 de vida fora da troca de tiros.
   - **Destravar:** um bot que empaca numa fresta da colisão (comum nos mapas convertidos) dá um passo para o lado, corta aquela ligação da navegação e recalcula a rota sem isolar o destino.
 - **Armas no chão:** **G** larga a arma que está na mão (ou a C4). Quem morre deixa cair a melhor arma que tinha: a primária ou, sem ela, a pistola. Passar por cima pega a arma se o espaço dela estiver vazio; com o espaço ocupado, **E** troca pela sua, que fica no chão. Quem largou a arma só consegue pegar de volta depois de 1,5 s. Os bots sem primária vão buscar uma arma caída a até 14 m, exceto quem está com a bomba ou desarmando. As armas somem na troca de rodada.
-- **Assistir:** quem morre passa a assistir, por cima do ombro, um companheiro ainda vivo (ou o inimigo, se não sobrar nenhum). O clique ou o Espaço trocam a pessoa assistida. Vale também no 1v1, 2v2 e XvX.
+- **Assistir:** quem morre passa a ver, em primeira pessoa, o que um companheiro ainda vivo vê: a mira dele e a arma dele na mão, com o coice e o clarão dos tiros. **Mouse 1** passa para o próximo companheiro e **Mouse 2** volta. Não dá para assistir o time inimigo; sem companheiro vivo (ou no 1v1), a câmera fica parada onde você morreu. Vale no 2v2, no XvX e no Plant the Bomb.
 - **HUD:** dinheiro, colete, C4, barra de plantar/desarmar e o nome da área onde você está. Com a bomba plantada não há contagem: no lugar do relógio aparece o ícone da C4, que pisca junto com o bipe, cada vez mais rápido, como no CS e no Valorant. O bipe sai da bomba: de longe (mais de 38 m) não se ouve, e o volume aumenta conforme você se aproxima, vindo do lado em que ela está.
 - **Abismo:** quem cai do prédio (o 39º andar do Elysion) morre depois de cerca de 2 s de queda. A morte entra no placar sem dar abate a ninguém e aparece como QUEDA no feed. Se a pessoa estava com a bomba, ela fica no último chão firme onde pisou.
 - **Granadas:** como no CS. Apertar o botão puxa o pino: o braço recua e fica armado enquanto o botão estiver apertado. Ao soltar, o braço arremessa e a granada só sai da mão no meio do movimento. Um clique rápido espera o pino sair. O esquerdo joga longe, o direito joga perto e os dois juntos jogam a meia distância.
@@ -118,6 +118,28 @@ Dois times de 2 a 8 (você e bots contra bots) nos mapas de DM, com renascimento
 
 Clique esquerdo lança a granada longe; o direito joga perto. As granadas quicam nas paredes e no chão. UMP-45 e Bucky entram no slot primário em todos os modos; as granadas são compradas no Plant the Bomb.
 
+### Modelos das armas
+
+Todas as armas, menos a Desert Eagle e a Karambit, ganharam modelos mais detalhados. Em vez de caixas, cada peça é um perfil lateral recortado (côncavo quando precisa), tubos facetados para canos, silenciadores e lunetas, e caixas pequenas para os detalhes:
+
+- **AK-47:** caixa com tampa e mola, guarda-mão de madeira em duas partes com ranhuras, carregador curvo, alça de mira, massa com orelhas e freio de boca.
+- **M4A4 e M4A1-S:** dividem o mesmo corpo (trilho com dentes, alça rebatível, retém, janela de ejeção, tubo do amortecedor e coronha retrátil). A M4A4 tem guarda-mão de trilhos, massa em A e quebra-chamas; a M4A1-S, guarda-mão fino e silenciador com anéis.
+- **Galil AR, FAMAS, UMP-45, Bucky e SSG 08:**
+  - **Galil:** alavanca de manejo para cima e coronha esqueleto.
+  - **FAMAS:** alça comprida e bipé dobrado nos lados.
+  - **UMP:** guarda-mão vazado e coronha rebatível.
+  - **Bucky:** telha estriada, tubo de cartuchos e mira de pérola.
+  - **SSG:** cano facetado, freio de boca e luneta com torres.
+- **USP-S e Glock-18:** ferrolho com serrilhas, armação com trilho, cabo texturizado e miras. A USP-S tem cão e silenciador; a Glock tem pontos brancos e o seletor de rajada.
+- **AWP:** ganhou o quebra-chamas vazado, os pontos de bandoleira e a tampa da culatra.
+- **Granadas:** HE redonda, flash e smoke cilíndricas, todas com alavanca, espoleta e argola do pino.
+- **C4, pistola do Doctor e Butterfly:**
+  - **C4:** três tijolos, painel com visor e teclado, e fios.
+  - **Pistola do Doctor:** frasco de vidro com tampas, cruz médica e cilindro de gás.
+  - **Butterfly:** já tinha lâmina e cabos vazados detalhados e ficou como estava.
+
+Mãos e boca do cano continuam nos mesmos pontos. As skins recolorem os modelos novos, e a AK Sublime agora usa o modelo novo da AK em marfim e ouro, com as ranhuras e a janela de ejeção em energia ciano. Cada arma fica abaixo de 1.500 triângulos.
+
 ## Deathmatch
 
 Em **Modo de jogo**, escolha **DM**. Selecione **Medina**, **Dust II**, **Depósito** ou **Borgo**, a categoria de armas e a dificuldade. Para jogar sozinho, use **Jogar DM com bots**. Para jogar com amigos, todos digitam o mesmo código e clicam em **Entrar na sala de DM**. Quem chega primeiro cria a sala e define o mapa. Cada pessoa que entra assume a vaga de um bot durante a partida, e um bot volta se alguém sai. A categoria limita as armas de todos, e a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento, e a opção de capacete vale para todos eles.
@@ -155,6 +177,8 @@ Em **Preferências → Posição da arma → Mão da arma**, escolha **Mão dire
 
 Placar e tempo ficam reunidos no topo. Vida, proteção e munição têm números separados e sem caixas individuais. A recarga conserva a contagem de balas visível e mostra seu progresso; armas de precisão também indicam o intervalo até o próximo disparo. A habilidade mostra a tecla, o estado real e o progresso do cooldown. FPS aparece somente quando a opção está ativa; os dados de conexão aparecem nas partidas online.
 
+Ao acertar um tiro aparece só o **hitmarker** (o X no centro), sem número de dano. Ele não aparece quando o tiro atravessa uma smoke: o dano conta, mas você não fica sabendo pelo X. Dá para desligar em **Configurações → Vídeo → Hitmarker**.
+
 O radar é circular e gira com a câmera, mantendo a mesma escala nos dois eixos. Aparece nos duelos, times, DM, TDM e Prefire. Mostra você, aliados vivos e as últimas posições reveladas pela varredura do Finder; não revela adversários sem essa habilidade. Os sites A/B e a bomba seguem o estado da partida. A geometria é desenhada uma vez por mapa e reutilizada; o radar atualiza no máximo a cada 80 ms, sem uma segunda câmera 3D. A HUD usa a resolução da tela mesmo com a resolução 3D reduzida. O Finder conserva a escolha de área de 10 m no mapa completo circular.
 
 Testes do radar: `node --test tests/hud-radar.test.cjs`.
@@ -174,7 +198,7 @@ Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de
 | Skin | Armas | Visual | Sons |
 |---|---|---|---|
 | Padrão | todas | original | originais |
-| Sublime | só AK-47 | modelo próprio em marfim, frisos dourados e filetes de energia ciano, inspirado na linha Prime (Sublime em português) do Valorant | tiro elétrico; sinos ao abater |
+| Sublime | só AK-47 | o modelo da AK em marfim e ouro, com ranhuras e filetes de energia ciano, inspirado na linha Prime (Sublime em português) do Valorant | tiro elétrico; sinos ao abater |
 | Pulso Neon | armas de fogo | azul-marinho com filetes ciano e magenta | laser sintetizado; bipes de fliperama |
 | Brasa | armas de fogo | carvão com filetes laranja e dourado | estampido grave com estalos; gongo |
 | Glacial | armas de fogo | branco gelo e azul | disparo cristalino; sinos de gelo |

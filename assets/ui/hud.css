@@ -3,7 +3,6 @@
 #hud::before{content:"";position:absolute;z-index:-1;inset:auto 0 0;height:142px;background:linear-gradient(0deg,#0b141ba8,transparent);pointer-events:none}
 .xh{left:50%;top:50%;width:0;height:0;position:absolute}.xh i{position:absolute;display:block;background:var(--c,#3cff6e)}
 #hitm{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;transform:rotate(45deg)}#hitm i{position:absolute;background:#fff;width:2px;height:7px;left:-1px}#hitm i:nth-child(1){top:-14px}#hitm i:nth-child(2){top:7px}#hitm i:nth-child(3){width:7px;height:2px;left:-14px;top:-1px}#hitm i:nth-child(4){width:7px;height:2px;left:7px;top:-1px}#hitm.kill i{background:#efc5b7}#hitm.head i{background:#edd5a6}
-#dmgn{position:absolute;left:50%;top:calc(50% + 27px);transform:translateX(-50%);font:500 20px/1 var(--ui-font);color:#fff;opacity:0}#dmgn.head{color:#edd5a6}
 #dmgdir{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}#dmgdir i{position:absolute;left:-50px;top:-142px;width:100px;height:8px;border-radius:50% 50% 0 0;background:#db8d7bb3}
 
 /* One score group, with the round clock as its center. */
