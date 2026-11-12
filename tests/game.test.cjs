@@ -762,6 +762,13 @@ test('old settings migrate and invalid equipment falls back to usable slots', ()
   assert.equal(kept.S.loadout.rifle, 'm4a4'); assert.equal(kept.S.loadout.sniper, undefined);
 });
 
+test('every element the page script looks up by id exists in the HTML (a missing one stops the whole page)', () => {
+  const html = readFileSync(resolve(__dirname, '..', 'index.html'), 'utf8');
+  const ids = new Set([...html.matchAll(/\bid=["']([\w-]+)["']/g)].map(m => m[1]));
+  const refs = new Set([...html.matchAll(/\$\(\s*'([\w-]+)'\s*\)/g), ...html.matchAll(/getElementById\(\s*'([\w-]+)'\s*\)/g)].map(m => m[1]));
+  assert.ok(refs.size > 50);
+  assert.deepEqual([...refs].filter(id => !ids.has(id)), []);
+});
 test('modes: 1v1, 2v2 and XvX become Elimination; the 2v2 Plant the Bomb becomes Wingman and 5v5 becomes Plant the Bomb', () => {
   const mig = o => { const g = game(o); return [g.S.mode, g.S.xvx.mine, g.S.xvx.foes, vm.runInContext('isBombMode()', g.context)]; };
   assert.deepEqual(mig({ mode: '1v1', xvx: { mine: 3, foes: 4 } }), ['elim', 1, 1, false]);

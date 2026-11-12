@@ -135,7 +135,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
           <button id="btnJoin" class="primary" type="button" hidden>Entrar na sala 1v1</button>
           <button id="btnBot" class="primary" type="button">Treinar contra bot</button>
           <button id="btnDm" class="primary" type="button" hidden>Jogar DM com bots</button>
-          <button id="btnPractice" class="primary" type="button" hidden>Jogar Practice</button>
+          <button id="btnAimbotz" class="primary" type="button" hidden>Jogar Practice</button>
         </div>
         <p id="mpStatus" class="warn" hidden></p>
 
@@ -4340,7 +4340,7 @@ function aimbotzPaintButton(ctx,b,chosen,label,disabled=false) {
 function aimbotzDrawBoard() {
   if (!aimbotzBoard) aimbotzBoard=aimbotzCreatePanel(AIMBOTZ_BOARD);
   const {texture,ctx}=aimbotzBoard;
-  aimbotzPanelHeader(aimbotzBoard,AIMBOTZ_BOARD,'AIMBOTZ');
+  aimbotzPanelHeader(aimbotzBoard,AIMBOTZ_BOARD,'PRACTICE');
   ctx.fillStyle = '#d4dce5'; ctx.fillText('CONTAGEM DE BOTS', 32, 129); ctx.fillText('ARMA', 32, 189);
   ctx.textAlign='right';ctx.font='bold 18px Arial, sans-serif';ctx.fillText('ARMA + FACA FIXA · TECLAS 1 / 3 / Q',928,189);
   ctx.textAlign = 'center'; ctx.fillStyle = '#ffbc76'; ctx.font = 'bold 44px Arial, sans-serif';
