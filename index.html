@@ -393,7 +393,7 @@ const W = {
             base: .0028, move: .07, air: .22, shotSpread: .028, recover: 5, kickP: .052, kickY: .013, helmetPen: .932, draw: 800, snd: 'pistol' },
   knife:  { name: 'Karambit', melee: true, dmg: 40, heavy: 65, rof: 450, heavyRof: 1000, range: 1.9, speed: 6.35, draw: 800, snd: 'knife' },
   sniper: { name: 'AWP', dmg: 115, mult: { head: 4, body: 1, leg: .75 }, rof: 1460, mag: 10, res: 30, reload: 3600, speed: 5.08, auto: false,
-            base: .0004, noscope: .07, move: .17, air: .3, shotSpread: 0, recover: 6, kickP: .054, kickY: .011, scope: true, scopedSpeed: 2.54, zoomMs: 220, helmetPen: .975, draw: 1000, snd: 'sniper' },
+            base: .0004, noscope: .07, move: .17, air: .3, shotSpread: 0, recover: 6, kickP: .054, kickY: .011, scope: true, scopedSpeed: 2.794, scopedWalkSpeed: 1.4224, zoomMs: 220, helmetPen: .975, draw: 1000, snd: 'sniper' },
   m4a4: { name: 'M4A4', dmg: 33, mult: { head: 4, body: 1, leg: .75 }, rof: 90, mag: 30, res: 90, reload: 3100, speed: 5.715, auto: true,
     base: .0014, move: .065, air: .22, shotSpread: .0028, recover: 7, pattern: true, recoilScale: .69, helmetPen: .7, headshotKillRange: 35, draw: 550, snd: 'm4a4' },
   m4a1s: { name: 'M4A1-S', dmg: 38, mult: { head: 3.475, body: 1, leg: .75 }, rof: 100, mag: 20, res: 80, reload: 3100, speed: 5.715, auto: true,
@@ -1553,12 +1553,25 @@ function inaccuracy(e, w, zoomed, extra) {
   const sp = Math.hypot(e.vel.x, e.vel.z);
   if (w.scope) {
     // Como no CS: acima de 34% da velocidade da arma o tiro abre rápido; com scope a velocidade cai pela metade,
-    // mas mesmo andando de scope (100 u/s na AWP) o tiro sai torto. Parado (ou contra-strafe) volta a ser preciso.
+    // mas mesmo andando de scope (110 u/s na AWP) o tiro sai torto. Parado (ou contra-strafe) volta a ser preciso.
     const top = zoomed ? Math.max(w.scopedSpeed, w.speed * .5) : w.speed;
     a += w.move * clamp((sp - w.speed * .34) / Math.max(.01, top - w.speed * .34), 0, 1);
   } else a += w.move * Math.pow(clamp((sp - w.speed * .34) / (w.speed * .66), 0, 1), 1.5);
   if (!e.onGround) a += w.air * (w === W.ssg ? clamp(Math.abs(e.vel.y) / 3, .12, 1) : 1);
   return a + extra + (e.landSpread || 0);
+}
+
+// The shot cone and scope feedback share movement, landing and scope-in settling.
+function shotInaccuracy(e,w,zoomed,extra,t){
+  const settle=w.scope&&zoomed&&w.zoomMs?clamp(1-(t-(e.zoomAt||0))/w.zoomMs,0,1):0;
+  return inaccuracy(e,w,zoomed,extra)+(settle?settle*(w.noscope-w.base):0)+(e.inBurst&&w.burst?w.burst.spread:0);
+}
+function scopeLineState(e,w,t,height,fov){
+  const baseline=w.base*(e.crouch && e.onGround ? .75 : 1);
+  const excess=Math.max(0,shotInaccuracy(e,w,true,e.spread||0,t)-baseline);
+  const pixels=Math.tan(excess)*height/(2*Math.tan(fov*DEG/2));
+  const blur=Math.min(8,Math.sqrt(Math.max(0,pixels))*.22);
+  return {blur,width:1+blur*1.65,opacity:1-Math.min(.18,blur*.023)};
 }
 
 /* ================= Áudio sintetizado ================= */
@@ -2286,7 +2299,7 @@ function buildKarambit() {
 // Eixo: pino na origem, lâmina para -x, cabos para +x, dorso em +y.
 const BUTTERFLY_SIZE = .90, BUTTERFLY_GAP = .0085;
 // Mesma mão e mesmo lugar da Deagle (bloco de pele no tamanho das armas, embaixo à direita), faca para a frente e à esquerda.
-const BUTTERFLY_VIEW = { scale: 1, right: [-.01,-.02,.02], rightRot: [0,0,0], holder: [-.035,.01,-.03], holderRot: [-.4,-.8,-.3], left: [-.24,-.17,.10], leftRot: [0,0,0], elbows: [[.16,-.33,.32],[-.30,-.40,.32]] };
+const BUTTERFLY_VIEW = { scale: 1, right: [-.01,-.02,.02], rightRot: [0,0,0], holder: [-.035,.01,-.03], holderRot: [-.4,-.8,-.3], left: [-.42,-.09,.02], leftRot: [0,.12,-.08], elbows: [[.16,-.33,.32],[-.84,-.50,.32]] };
 let butterflyGeo = null;
 function mergeKnifeParts(parts) {
   const p=[],n=[],c=[];
@@ -3001,10 +3014,10 @@ function playerInput(dt, t) {
   const w = W[P.weapon];
   let maxS = w.speed;
   if (P.zoom) maxS = w.scopedSpeed || maxS;
-  const walk = K('ShiftLeft') || K('ShiftRight') ? WALK_MUL : 1, duckMul = 1 + (CROUCH_MUL - 1) * P.duck;
+  const walk = K('ShiftLeft') || K('ShiftRight') ? (P.zoom && w.scopedWalkSpeed ? w.scopedWalkSpeed / w.scopedSpeed : WALK_MUL) : 1, duckMul = 1 + (CROUCH_MUL - 1) * P.duck;
   maxS *= Math.min(walk, duckMul);
   // Agachado com luneta, a luneta não corta mais a velocidade: a AWP anda como agachada sem luneta (68 u/s, o dobro de
-  // antes), que é o limite em que ela continua precisa (34% de 200 u/s). Em pé com luneta segue nos 100 u/s.
+  // antes), que é o limite em que ela continua precisa (34% de 200 u/s). Em pé com luneta: 110 u/s; com Shift: 56 u/s.
   if (P.zoom && w.scopedSpeed < w.speed) maxS = Math.max(maxS, Math.min(w.scopedSpeed * walk, w.speed * Math.min(walk, duckMul)));
   if (t < P.tagUntil) maxS *= 0.45;
   P.physTime = Math.min((P.physTime || 0) + dt, .0625);
@@ -3154,8 +3167,7 @@ function shoot(t, heavy) {
     P.yaw=Math.atan2(-d[0],-d[2]); P.pitch=Math.asin(clamp(d[1],-1,1));
     P.recoilP=P.recoilY=P.punch=0;
   }
-  const settle = w.scope && P.zoom && w.zoomMs ? clamp(1 - (t - (P.zoomAt || 0)) / w.zoomMs, 0, 1) : 0;
-  const inac = inaccuracy(P, w, P.zoom > 0, P.spread) + (settle ? settle * (w.noscope - w.base) : 0) + (P.inBurst && w.burst ? w.burst.spread : 0);
+  const inac = shotInaccuracy(P,w,P.zoom>0,P.spread,t);
   const rr = inac * Math.sqrt(Math.random()), th = Math.random() * TAU;
   const dir = aim ? aim.direction : dirFrom(P.yaw + P.recoilY + Math.cos(th) * rr, P.pitch + P.recoilP + Math.sin(th) * rr);
   const mz = muzzleWorld();
@@ -4222,6 +4234,7 @@ function prefireDamage(victim,amount,part,weapon,attacker,t){
   else if(attacker===P){AU.hit(part==='head',false,skinOf(weapon));hitmark(part==='head'?'head':'');}
   if(victim.hp===0){
     victim.alive=false;victim.vel.set(0,0,0);victim.respawnAt=Infinity;victim.fireReady=false;victim.reloadEnd=0;
+    addFeed(attacker.id,victim.id,weapon,part==='head');
     if(victim===P){
       P.zoom=0;P.m1=P.m2=P.m1Press=P.m2Press=false;applyFov();
       PREFIRE.phase='dead';PREFIRE.retryAt=t+1400;
@@ -4287,11 +4300,11 @@ function aimbotzSetBots(value) {
   for (let i = DM.actors.length - 1; i < S.aimbotzBots; i++) {
     const [x, z] = aimbotzSpawnSpot(null, AIMBOTZ_TARGETS[i]);
     const bot = {
-      id: 'T' + (i + 1), pos: new V3(x, groundAt(x, z), z), vel: new V3(),
+      id: 'T' + (i + 1), name: 'Alvo ' + (i + 1), pos: new V3(x, groundAt(x, z), z), vel: new V3(),
       yaw: Math.atan2(x, z - AIMBOTZ_SPAWN[1]), hp: 100, alive: true, onGround: true,
       color: Object.values(PCOLORS)[i % 7],
     };
-    DM.actors.push(bot); DM.byId.set(bot.id, bot);
+    DM.actors.push(bot); DM.byId.set(bot.id, bot);G.names[bot.id]=bot.name;
   }
   dmRefreshTargets();
 }
@@ -4331,6 +4344,7 @@ function aimbotzHit(damage, part, weapon, id) {
     dmRefreshTargets();
     const score = stat(G.me);
     score.k++; if (part === 'head') score.hs++;
+    addFeed(G.me,target.id,weapon,part==='head');
     onMyKill(weapon);
   } else hitmark(part === 'head' ? 'head' : '');
 }
@@ -6244,6 +6258,10 @@ function updateHUD(dt, t) {
   const mag=P.ammo[P.weapon]?.mag;el.ammobox.classList.toggle('low-ammo',!infiniteMagazine()&&!w.melee&&mag>0&&mag<=Math.ceil(w.mag*.2));el.ammobox.classList.toggle('empty',!infiniteMagazine()&&!w.melee&&mag===0);
   const showXH = P.alive && !P.zoom;
   setH(el.xh, !showXH); setH(el.scope, !(P.zoom && P.alive));
+  if(P.zoom&&P.alive&&w.scope){
+    const state=scopeLineState(P,w,t,innerHeight,camera.fov),key=[state.blur,state.width,state.opacity].map(n=>n.toFixed(2)).join('|');
+    if(el.scope._lines!==key){el.scope._lines=key;el.scope.style.setProperty('--scope-blur',state.blur.toFixed(2)+'px');el.scope.style.setProperty('--scope-width',state.width.toFixed(2)+'px');el.scope.style.setProperty('--scope-opacity',state.opacity.toFixed(2));}
+  }
   if (showXH) {
     let extra = 0;
     if (S.ch.style === 'dynamic' && !w.melee) { const a = inaccuracy(P, w, false, P.spread); extra = Math.min(60, Math.tan(a) / Math.tan(camera.fov * DEG / 2) * innerHeight / 2); }

@@ -243,6 +243,8 @@ As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão em blo
 
 O bot pode usar qualquer uma das armas de fogo, com sua própria cadência, carregador e recarga. O capacete aparece no personagem; com a opção de colete e capacete ligada, todos nascem protegidos. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância.
 
+As duas facas mostram a mão livre do lado oposto à arma, inclusive na preferência de mão esquerda. A mão livre da Butterfly foi levantada e afastada do centro para ficar dentro da tela com o tamanho atual das armas.
+
 As facas têm animações distintas de puxada, inspeção, corte e estocada. As duas facas usam o mesmo acabamento das armas, cor chapada com tom fixo por face, mas com contornos em curvas contínuas em vez de blocos. A Butterfly segue a do CS2: lâmina clip point com swedge côncavo até a ponta e chanfro claro no fio, tang com kicker e choil, dois cabos vazados com três rasgos cada, ponta redonda no pino, pinos aparentes e trava no cabo seguro. A mão da Butterfly usa o mesmo bloco, tamanho e lugar da mão das armas (como a Deagle, embaixo à direita), com a lâmina saindo para a frente e para a esquerda. A puxada de 0,8 s é a abertura básica de balisong, no tempo do vídeo de referência: a mão sobe com a faca fechada em pé e de frente para a câmera, o cabo solto cai e dá a volta inteira enquanto a lâmina gira meia volta por cima do punho, os dois cabos fecham na palma e o pulso vira a lâmina para a frente. A inspeção, mais simples, dura 3,0 s: o punho vira a faca de frente, a lâmina aponta para cima com os cabos abertos em V por cerca de 1,3 s, a lâmina dá uma volta e a faca volta ao repouso. O corte vai da direita para a esquerda, o corte de volta faz o caminho inverso e a estocada empurra a lâmina para a frente. Os cortes alternam de direção; o botão direito faz uma estocada. Segurar o botão repete o ataque na cadência da faca. Atacar interrompe a inspeção com uma transição curta. A Deagle tem ferrolho móvel, recuo visual mais forte e som mais grave. São recriações estilizadas em geometria do próprio jogo.
 
 A Karambit segue o contorno da karambit do CS, traçado de uma foto: anel no pomo, cabo com três sulcos para os dedos e guarda, jimping no dorso e garra em curva contínua com chanfro claro no fio côncavo. Pegada, puxada e inspeção foram medidas quadro a quadro num vídeo de referência do CS2. Em repouso aparecem as duas mãos, com o punho direito na horizontal, mais à direita e embaixo, o anel à esquerda e a garra à direita, com a concavidade virada para a frente e vista na diagonal de cima. A puxada dura 0,8 s (24 quadros a 30 fps): a mão sobe pela direita, a faca dá uma volta completa no indicador e desce ao repouso enquanto a esquerda entra. A inspeção dura 3,0 s: levanta o punho e vira a faca no indicador. Na exibição, que dura cerca de 1,2 s, a faca vira no eixo do cabo e fica por cima da mão: o anel em cima, o cabo atravessando o punho e a garra saindo por baixo, curvada para a esquerda. Depois volta girando ao repouso. Cortes e golpe forte cruzam a tela.
@@ -298,7 +300,7 @@ Valores de perto. M4A4 e M4A1-S matam com um headshot até 35 metros, inclusive 
 
 ## Movimento e precisão
 
-Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocidade da arma. Andando de scope (100 u/s na AWP) o tiro sai torto; parado, com contra-strafe ou andando devagar com Shift ele volta a ser preciso, e agachado ajuda. Logo depois de abrir o scope, o tiro ainda carrega parte da imprecisão sem scope por cerca de 0,22 s.
+Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocidade da arma. Andando de scope (110 u/s na AWP) o tiro sai torto; parado, com contra-strafe ou andando devagar com Shift ele volta a ser preciso, e agachado ajuda. Logo depois de abrir o scope, o tiro ainda carrega parte da imprecisão sem scope por cerca de 0,22 s. As linhas da luneta ficam progressivamente desfocadas conforme a imprecisão real: movimento, salto, aterrissagem e estabilização ao abrir a luneta. Parado, agachado ou andando com Shift, voltam a ficar nítidas quando a arma estabiliza. O indicador usa a mesma função de cone dos disparos e adapta a intensidade ao FOV e à altura da tela. A referência do blur ligado à precisão é a [documentação da Valve](https://blog.counter-strike.net/2016/10/16296/).
 
 A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante em que a recarga termina, a munição é atualizada antes de liberar a luneta, sem precisar esperar outro quadro.
 
@@ -316,7 +318,7 @@ Segurando a tecla oposta por mais tempo, o boneco começa a andar para o outro l
 
 Antes, a aceleração era proporcional à velocidade-alvo e, com alvos baixos, perdia para o piso do atrito (80 u/s). A AWP agachada com luneta andava a uns 3 u/s, e a AK agachada não passava de ~49 u/s. Agora, como no CS, a aceleração usa 250 u/s (ou a velocidade da arma, se maior), e o boneco chega à velocidade de agachado em menos de 0,1 s.
 
-Agachado, a **luneta** também não corta mais a velocidade: a AWP anda como agachada sem luneta (68 u/s), que é o limite em que ela continua precisa. Em pé com luneta, segue nos 100 u/s.
+Agachado, a **luneta** também não corta mais a velocidade: a AWP anda como agachada sem luneta (68 u/s), que é o limite em que ela continua precisa. Em pé com luneta, a AWP anda a 110 u/s; com luneta e Shift, a 56 u/s. Essa exceção é só da AWP; os multiplicadores das outras armas continuam iguais.
 
 A sensação de "deslizar" vinha da tela, e não da física. A física roda em passos fixos de 1/128 s, e a câmera mostrava a posição do último passo. Com isso, a 60 FPS alguns quadros andavam o dobro de outros e, a 144 FPS, alguns quadros não andavam nada. Agora a câmera interpola entre os dois últimos passos, como o CS faz, e o deslocamento por quadro fica regular em qualquer FPS.
 
@@ -372,6 +374,8 @@ Use **Configurações**, no topo do menu, para abrir a tela de mouse, mira, arma
 - **Vídeo:** FOV (horizontal 4:3, CS = 90), escala de resolução, ajuste automático de resolução e contador de FPS.
 
 Tudo fica salvo no navegador.
+
+O killfeed também funciona no Practice e no Prefire, com o nome do alvo/spot, a arma e o headshot. Aparece uma única vez no abate; o respawn imediato do Practice continua igual.
 
 O killfeed identifica headshots com um ícone vetorial de cabeça e projétil, com descrição acessível, no lugar do texto **HS**. Nos últimos três segundos de preparação há um tick curto por segundo, e o fim da rodada tem um aviso de dois tons. Os sons seguem o volume geral; retransmissões online e pequenas correções de relógio não repetem os avisos. Ao voltar de uma aba oculta, os ticks perdidos não são reproduzidos em sequência.
 

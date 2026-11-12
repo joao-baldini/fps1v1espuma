@@ -62,7 +62,7 @@
 #blindfx,#smokefx,#redflash,.edgefx{position:absolute;inset:0;pointer-events:none}#blindfx{background:#fff;opacity:0;z-index:6}#smokefx{background:#b9bdc1;opacity:0;z-index:5}#redflash{background:radial-gradient(ellipse at center,transparent 57%,#a9503e45);opacity:0}
 .edgefx{z-index:0;opacity:0;visibility:hidden;--ec:167,139,250;background:radial-gradient(ellipse at center,transparent 76%,rgba(var(--ec),.18));box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;transition:opacity .2s}
 @keyframes edgePulse{0%{opacity:0;visibility:visible}14%{opacity:1;visibility:visible}100%{opacity:0;visibility:visible}}
-#scope{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent 0,transparent 44vmin,#000 44.2vmin)}#scope::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#000}#scope::after{content:"";position:absolute;top:0;bottom:0;left:50%;width:1px;background:#000}
+#scope{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent 0,transparent 44vmin,#000 44.2vmin)}#scope::before,#scope::after{content:"";position:absolute;background:#000;filter:blur(var(--scope-blur,0px));opacity:var(--scope-opacity,1);pointer-events:none}#scope::before{left:0;right:0;top:50%;height:var(--scope-width,1px);transform:translateY(-50%)}#scope::after{top:0;bottom:0;left:50%;width:var(--scope-width,1px);transform:translateX(-50%)}
 
 /* The shop keeps its existing controls and pointer routing. */
 #shop{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1000px,94vw);max-height:90dvh;overflow-y:auto;z-index:20;pointer-events:auto;border-radius:10px;color:#e7eeee;text-shadow:none}

@@ -1611,10 +1611,73 @@ test('AWP scoped and crouched really walks (68 u/s, like crouching unscoped; it 
   const u = v => v / .0254, awp = speedWith('sniper', 1, true);
   assert.ok(Math.abs(u(awp.v) - 68) < 1, 'AWP mirando agachada: ' + u(awp.v));
   assert.ok(Math.abs(u(speedWith('sniper', 0, true).v) - 68) < 1, 'agachada sem luneta continua 68 u/s');
-  assert.ok(Math.abs(u(speedWith('sniper', 1, false).v) - 100) < 1, 'em pé com luneta continua 100 u/s');
+  assert.ok(Math.abs(u(speedWith('sniper', 1, false).v) - 110) < 1, 'em pé com luneta chega a 110 u/s');
   assert.ok(awp.g.inaccuracy(awp.g.P, awp.g.W.sniper, true, 0) < .001, 'continua precisa');
   assert.ok(Math.abs(u(speedWith('ssg', 1, true).v) - u(speedWith('ssg', 0, true).v)) < 1, 'Scout: a luneta não muda a velocidade');
 });
+test('AWP scoped movement reaches 110 u/s or 56 with Shift at 30, 60 and 144 FPS, leaving crouch and other weapons intact', () => {
+  const move=(weapon,zoom,shift,crouch,fps)=>{
+    const g=game();g.S.loadout.rifle=weapon;g.spawnSelf(0);g.selectWeapon(weapon);g.P.drawEnd=0;
+    g.keys.add('KeyD');if(shift)g.keys.add('ShiftLeft');if(crouch)g.keys.add('KeyC');
+    for(let i=0;i<fps*2;i++){g.P.zoom=zoom;g.playerInput(1/fps,10000+i*1000/fps);}
+    return Math.hypot(g.P.vel.x,g.P.vel.z)/.0254;
+  };
+  for(const fps of [30,60,144]){
+    for(const shift of [false,true])assert.ok(Math.abs(move('sniper',1,shift,false,fps)-(shift?56:110))<.1);
+    assert.ok(Math.abs(move('sniper',1,false,true,fps)-68)<.1);
+    assert.ok(Math.abs(move('sniper',0,true,false,fps)-104)<.1);
+    assert.ok(Math.abs(move('rifle',0,true,false,fps)-215*.52)<.1);
+  }
+});
+
+test('scope lines track movement, air and landing inaccuracy and become crisp again at rest or Shift speed',()=>{
+  const g=game(),cx=g.context,w=g.W.sniper,e={vel:new Vec(),onGround:true,crouch:false,landSpread:0,spread:0,zoomAt:10000};
+  const state=()=>cx.scopeLineState(e,w,11000,900,30);
+  assert.equal(state().blur,0);assert.equal(state().width,1);
+  e.vel.x=w.scopedSpeed;const moving=state();assert.ok(moving.blur>1&&moving.blur<8);
+  e.vel.x=w.scopedWalkSpeed;assert.equal(state().blur,0);
+  e.vel.x=0;e.onGround=false;const airborne=state();assert.ok(airborne.blur>moving.blur);
+  e.onGround=true;e.landSpread=.03;assert.ok(state().blur>0);e.landSpread=0;assert.equal(state().blur,0);
+  e.crouch=true;assert.equal(state().blur,0);assert.ok(airborne.width>moving.width);
+});
+
+test('scope blur includes the real scope-in settle time and scales with FOV and screen height',()=>{
+  const g=game(),cx=g.context,w=g.W.sniper,e={vel:new Vec(),onGround:true,crouch:false,landSpread:0,spread:0,zoomAt:10000};
+  const at=t=>cx.scopeLineState(e,w,t,900,30).blur;
+  assert.ok(at(10000)>at(10110));assert.ok(at(10110)>0);assert.equal(at(10220),0);
+  e.landSpread=.01;
+  assert.ok(cx.scopeLineState(e,w,11000,1080,30).blur>cx.scopeLineState(e,w,11000,720,30).blur);
+  assert.ok(cx.scopeLineState(e,w,11000,900,15).blur>cx.scopeLineState(e,w,11000,900,30).blur);
+});
+
+test('shared scope feedback preserves the exact previous shot cone, including bursts and every weapon',()=>{
+  const g=game(),cx=g.context,e={vel:new Vec(1.9,.5,0),onGround:false,crouch:true,landSpread:.02,zoomAt:10000,inBurst:true};
+  for(const w of Object.values(g.W).filter(w=>!w.melee&&!w.grenade&&!w.bomb&&!w.medgun))for(const zoomed of [false,true])for(const t of [10000,10110,10220,11000]){
+    const settle=w.scope&&zoomed&&w.zoomMs?Math.max(0,1-(t-e.zoomAt)/w.zoomMs):0;
+    const previous=g.inaccuracy(e,w,zoomed,.01)+(settle?settle*(w.noscope-w.base):0)+(e.inBurst&&w.burst?w.burst.spread:0);
+    assert.equal(cx.shotInaccuracy(e,w,zoomed,.01,t),previous);
+  }
+});
+
+test('Practice sends a killfeed event only on a kill, with weapon, headshot and a named instant-respawn target',()=>{
+  const g=game(),cx=g.context;cx.G.mode='aimbotz';g.spawnSelf(0,[0,9,0]);cx.aimbotzSetup();
+  const target=g.DM.actors[1];assert.equal(cx.G.names[target.id],target.name);assert.ok(target.name.startsWith('Alvo '));
+  cx.aimbotzHit(40,'body','rifle',target.id);assert.equal(g.events.filter(e=>e.topic==='feed').length,0);
+  cx.aimbotzHit(100,'head','sniper',target.id);
+  assert.deepEqual(g.events.filter(e=>e.topic==='feed'),[{topic:'feed',killer:cx.G.me,victim:target.id,w:'sniper',hs:true}]);
+  assert.equal(g.DM.byId.get(target.id).hp,100);assert.equal(g.DM.byId.get(target.id).alive,true);
+});
+
+test('Prefire sends one feed event per target and also reports the player death without duplicate corpse hits',()=>{
+  const g=prefireFixture(),cx=g.context,target=g.DM.bots[0];
+  cx.aimbotzHit(20,'body','rifle',target.id);assert.equal(g.events.filter(e=>e.topic==='feed').length,0);
+  cx.aimbotzHit(100,'head','pistol',target.id);cx.aimbotzHit(100,'head','pistol',target.id);
+  assert.deepEqual(g.events.filter(e=>e.topic==='feed'),[{topic:'feed',killer:cx.G.me,victim:target.id,w:'pistol',hs:true}]);
+  const other=g.DM.bots[1];cx.prefireDamage(g.P,100,'body','m4a4',other,10010);cx.prefireDamage(g.P,100,'body','m4a4',other,10011);
+  assert.equal(g.events.filter(e=>e.topic==='feed').length,2);
+  assert.deepEqual(g.events.filter(e=>e.topic==='feed')[1],{topic:'feed',killer:other.id,victim:g.P.id,w:'m4a4',hs:false});
+});
+
 test('AWP accuracy follows CS: precise only when (almost) still, wild while moving scoped, quickscope needs a moment', () => {
   const g = game(), w = g.W.sniper, e = { vel: { x: 0, z: 0 }, onGround: true, crouch: false, landSpread: 0 };
   const at = (speed, zoomed, crouch = false) => { e.vel.x = speed; e.crouch = crouch; return g.inaccuracy(e, w, zoomed, 0); };
