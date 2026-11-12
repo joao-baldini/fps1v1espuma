@@ -1,10 +1,10 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com **Elimination** (1 a 8 por time), **Plant the Bomb** (5v5), **Wingman** (2v2), **TDM**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, dois mapas de Wingman e dois mapas de Plant the Bomb. O menu usa prévias dos mapas em WebP.
+FPS inspirado no CS2 que roda no navegador, com **Elimination** (1 a 8 por time), **Plant the Bomb** (5v5), **Wingman** (2v2), **TDM**, **DM** e treino de mira no **Practice**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, dois mapas de Wingman e dois mapas de Plant the Bomb. O menu usa prévias dos mapas em WebP.
 
 ## Modos de jogo
 
-Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de miniaturas. O mapa escolhido aparece em destaque. A configuração da partida e o botão **Jogar** ficam juntos ao lado da prévia em 16:9; **Contra bots** ou **Com amigos** aparece nos modos que aceitam sala online. O Aimbotz entra direto no treino. **Configurações** abre uma tela própria; **Seu equipamento** expande um resumo do loadout e o acesso ao arsenal.
+Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de miniaturas. O mapa escolhido aparece em destaque. A configuração da partida e o botão **Jogar** ficam juntos ao lado da prévia em 16:9; **Contra bots** ou **Com amigos** aparece nos modos que aceitam sala online. O Practice entra direto no treino. **Configurações** abre uma tela própria; **Seu equipamento** expande um resumo do loadout e o acesso ao arsenal.
 
 | Modo | Sozinho | Online |
 |---|---|---|
@@ -13,7 +13,7 @@ Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de min
 | Wingman | Plant the Bomb 2 contra 2 em Guard ou Elysion, regras do Wingman; você e um bot contra dois bots | — |
 | TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
-| Aimbotz | Treino livre de mira com 1 a 12 bots | — |
+| Practice | Treino livre de mira com 1 a 12 bots | — |
 
 **Modos antigos:** 1v1, 2v2 e XvX viraram um modo só, o **Elimination**: ao clicar nele você já escolhe quantos jogadores tem em cada time, e um duelo é só o 1 contra 1. O antigo Plant the Bomb 2v2 virou o **Wingman**, e o antigo 5v5 virou o **Plant the Bomb**. Configurações salvas migram sozinhas (quem estava no 1v1 cai no Elimination 1v1, no 2v2 cai no 2v2).
 
@@ -158,15 +158,15 @@ Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e 
 
 Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e em todos os mapas próprios os spawns iniciais são escolhidos sem que nenhum par de participantes se enxergue. Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da travessia do CT na Dust II. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
 
-## Aimbotz
+## Practice (antigo Aimbotz)
 
-Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos.
+Escolha **Practice** no menu e clique em **Jogar Practice**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos.
 
-Vire para os quadros atrás do ponto inicial e mire e clique nos controles. No quadro **Aimbotz**, **− / +** muda a quantidade de bots e os nomes escolhem uma das armas de fogo. Você sempre mantém a faca do seu equipamento, sem opção de faca no quadro: **1** puxa a arma escolhida, **3** puxa a faca e **Q** alterna entre elas. A rodinha também alterna, caso não esteja configurada para pular. **2 / 4** também voltam à arma de treino.
+Vire para os quadros atrás do ponto inicial e mire e clique nos controles. No quadro **Practice**, **− / +** muda a quantidade de bots e os nomes escolhem uma das armas de fogo. Você sempre mantém a faca do seu equipamento, sem opção de faca no quadro: **1** puxa a arma escolhida, **3** puxa a faca e **Q** alterna entre elas. A rodinha também alterna, caso não esteja configurada para pular. **2 / 4** também voltam à arma de treino.
 
-A reserva é ilimitada. Por padrão, os carregadores e as recargas continuam normais. Ative **Munição sem recarga** no quadro para manter o carregador cheio: o HUD mostra **∞**, e uma recarga em andamento é encerrada. Isso preserva a cadência, o recuo e as regras de luneta e vale somente no Aimbotz.
+A reserva é ilimitada. Por padrão, os carregadores e as recargas continuam normais. Ative **Munição sem recarga** no quadro para manter o carregador cheio: o HUD mostra **∞**, e uma recarga em andamento é encerrada. Isso preserva a cadência, o recuo e as regras de luneta e vale somente no Practice.
 
-O quadro pequeno **Prefire** abre o percurso da **Inferno: Banana → B → CT → Truck**. O nascimento fica protegido atrás da curva, perto da T Ramp. Você pode preparar a arma sem receber tiros: sair da área inicial de 2,5 m, com a arma pronta, ou disparar inicia o treino e o cronômetro. São 15 defensores fixos, com 100 de vida, que reagem e atiram somente com visão do jogador. A primeira abertura expõe apenas o defensor dos Logs; os demais alvos da Banana ficam mais recuados. Cada alvo morto desaparece sem renascer durante o percurso. O placar mostra abatidos, restantes e o tempo decorrido, sem limite. Esc pausa o treino; morrer reinicia todos os alvos e zera o tempo, retornando à preparação segura. Ao eliminar os 15, um aviso sonoro confirma a conclusão e o jogo retorna automaticamente ao Aimbotz normal. A arma, a faca, a opção de munição e o viewmodel escolhidos são mantidos.
+O quadro pequeno **Prefire** abre o percurso da **Inferno: Banana → B → CT → Truck**. O nascimento fica protegido atrás da curva, perto da T Ramp. Você pode preparar a arma sem receber tiros: sair da área inicial de 2,5 m, com a arma pronta, ou disparar inicia o treino e o cronômetro. São 15 defensores fixos, com 100 de vida, que reagem e atiram somente com visão do jogador. A primeira abertura expõe apenas o defensor dos Logs; os demais alvos da Banana ficam mais recuados. Cada alvo morto desaparece sem renascer durante o percurso. O placar mostra abatidos, restantes e o tempo decorrido, sem limite. Esc pausa o treino; morrer reinicia todos os alvos e zera o tempo, retornando à preparação segura. Ao eliminar os 15, um aviso sonoro confirma a conclusão e o jogo retorna automaticamente ao Practice normal. A arma, a faca, a opção de munição e o viewmodel escolhidos são mantidos.
 
 Esse trecho usa a geometria física do VPK fornecido, convertida offline e recortada, com cores chapadas e o shader de grade do jogo. O restante da Inferno, materiais e texturas do CS2 não são carregados. Detalhes da conversão em [assets/maps/README.md](assets/maps/README.md).
 

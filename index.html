@@ -91,7 +91,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
       <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Guard e Elysion</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><span class="mode-copy"><b>Aimbotz</b><small>Encontre sua mira</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><span class="mode-copy"><b>Practice</b><small>Encontre sua mira</small></span></button>
     </div>
 
         <details class="lobby-equipment" id="equipmentField"><summary>Seu equipamento</summary><div class="equipment-head"><button id="btnLoadout" type="button">Editar no arsenal</button></div><span class="sr-only" id="loadoutSummary"></span><div class="loadout-mini" id="loadoutMini" aria-hidden="true"></div></details>
@@ -135,7 +135,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
           <button id="btnJoin" class="primary" type="button" hidden>Entrar na sala 1v1</button>
           <button id="btnBot" class="primary" type="button">Treinar contra bot</button>
           <button id="btnDm" class="primary" type="button" hidden>Jogar DM com bots</button>
-          <button id="btnAimbotz" class="primary" type="button" hidden>Jogar Aimbotz</button>
+          <button id="btnPractice" class="primary" type="button" hidden>Jogar Practice</button>
         </div>
         <p id="mpStatus" class="warn" hidden></p>
 
@@ -189,7 +189,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
     <label class="preference-toggle"><span><b>Suavizar tremor dos disparos</b><small>Ative para reduzir o movimento da câmera ao atirar.</small></span><input type="checkbox" data-k="smoothRecoil" aria-label="Suavizar tremor dos disparos"></label>
     <p class="note">Altera só a câmera. A precisão, o dano e o spray das balas continuam iguais.</p>
     <div class="viewmodel-preferences">
-      <div><h3>Posição da arma</h3><p class="note">O quadro do Aimbotz usa estes mesmos valores.</p></div>
+      <div><h3>Posição da arma</h3><p class="note">O quadro do Practice usa estes mesmos valores.</p></div>
       <label class="fld"><span>Mão da arma</span><select data-k="weaponHand" aria-label="Mão da arma"><option value="right">Mão direita</option><option value="left">Mão esquerda</option></select><small>Troca na hora para todas as armas e facas.</small></label>
       <div class="viewmodel-fields">
         <label class="fld"><span>X · Lateral</span><input type="number" data-k="viewmodel.x" min="-2" max="2.5" step="0.1" aria-label="Viewmodel X lateral"><small>Esquerda / direita</small></label>
@@ -1254,7 +1254,7 @@ for (const id of ['guard','elysion']) {
 
 if (!MAPS[S.dmMap]?.dm) S.dmMap = 'deathmatch';
 MAPS.aimbotz = {
-  name: 'Aimbotz', theme: 'azul', ax: 18, az: 14, practice: true,
+  name: 'Practice', theme: 'azul', ax: 18, az: 14, practice: true,
   build(B, K) {
     B.solid([-18, 0, 7], [18, .28, 14], K.plat);
   },
@@ -4198,7 +4198,7 @@ function prefireDamage(victim,amount,part,weapon,attacker,t){
       if(PREFIRE.killed===INFERNO_PREFIRE.spots.length){
         PREFIRE.phase='complete';PREFIRE.returnAt=t+1800;G.view.ph='freeze';
         P.m1=P.m2=P.m1Press=P.m2Press=false;P.vel.set(0,0,0);AU.roundEnd();
-        banner('Percurso concluído',prefireTime(PREFIRE.elapsed)+' · 15/15 · voltando ao Aimbotz','',1800);
+        banner('Percurso concluído',prefireTime(PREFIRE.elapsed)+' · 15/15 · voltando ao Practice','',1800);
       }
     }
     dmRefreshTargets();
@@ -4841,7 +4841,7 @@ const SHOP_COLS = [['Pistolas', ['glock', 'usps', 'pistol']], ['SMG e escopeta',
 // Fora do Plant the Bomb a loja é grátis e tem todas as armas dos dois lados, sem granadas nem equipamento (colete e capacete são padrão).
 const shopColsFor = e => !bombOn() ? SHOP_COLS.filter(([title]) => title !== 'Granadas' && title !== 'Equipamento')
   : SHOP_COLS.map(([title, items]) => [title, items.filter(i => !SIDE_ONLY[i] || SIDE_ONLY[i] === sideOf(e))]).filter(([, items]) => items.length);
-// Loja grátis: 1v1, 2v2, XvX, DM e TDM (não no Aimbotz/Prefire, que têm a própria escolha de arma).
+// Loja grátis: 1v1, 2v2, XvX, DM e TDM (não no Practice/Prefire, que têm a própria escolha de arma).
 const freeShopOn = () => !!G.mode && !bombOn() && G.mode !== 'aimbotz';
 // Escolher na loja grátis equipa a arma no slot dela (fica salva no seu equipamento) e já põe na mão. No DM, só a categoria da partida.
 function buyAllowed(k) { return !(G.mode === 'dm' && DM.active) || W[k].melee || DM_POOLS[DM.category].includes(k); }
@@ -6149,7 +6149,7 @@ function updateHUD(dt, t) {
   else if (v.ph === 'end') { label = 'fim da rodada'; time = '0:00'; }
   else if (v.ph === 'over') { label = 'fim de jogo'; time = fmtTime(Math.max(0, v.endsAt - t)); }
   if(G.mode==='dm'){label=DM.phase==='freeze'?'prepare-se':DM.phase==='over'?(DM.tdm?'fim do TDM':'fim do DM'):(DM.tdm?'team deathmatch':'deathmatch');if(DM.phase==='over')time='0:00';}
-  if (G.mode === 'aimbotz') { label = 'Aimbotz'; time = '∞'; }
+  if (G.mode === 'aimbotz') { label = 'Practice'; time = '∞'; }
   if(prefireOn()){label=PREFIRE.phase==='ready'?'avance para iniciar':PREFIRE.phase==='complete'?'Prefire concluído':PREFIRE.phase==='dead'?'reiniciando':'Prefire · Inferno';time=prefireTime(PREFIRE.elapsed);cls='';}
   let bombIcon = false;
   if (bombOn()) {
@@ -6677,7 +6677,7 @@ function showMenu(on) {
   $('inName').readOnly = !!G.mode;
   $('btnDmBoard').hidden=G.mode!=='dm';
   $('pauseNote').hidden = $('btnMenuArsenal').disabled = $('btnArsenal').disabled = G.mode === 'aimbotz';
-  if (G.mode === 'aimbotz') $('pauseInfo').textContent = prefireOn()?'Prefire · Inferno · '+PREFIRE.killed+'/15 · treino pausado':'Aimbotz · ' + S.aimbotzBots + ' bots';
+  if (G.mode === 'aimbotz') $('pauseInfo').textContent = prefireOn()?'Prefire · Inferno · '+PREFIRE.killed+'/15 · treino pausado':'Practice · ' + S.aimbotzBots + ' bots';
   else if (G.mode) $('pauseInfo').textContent = (G.mode === 'online' ? 'Sala ' + NET.code + (G.opp ? ' · contra ' + nameOf(G.opp) : ' · esperando oponente') : G.mode==='dm'?(ARENA.net?'Sala DM '+ARENA.code:'Deathmatch · 9 bots '+LEVELS[DM.level].label)+' · '+DM_LABELS[DM.category]+' · o tempo continua no menu':G.mode==='team'?(ARENA.net?'Sala '+teamLabel()+' '+ARENA.code+(ARENA.host?' · '+arenaHumans().length+'/'+arenaCapacity()+' pessoas':''):teamLabel()+' com bots '+LEVELS[DM.level].label):'Treino contra bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label) + ' · ' + MAP.name;
 }
 function resetSession(spawn = null) {
@@ -6711,7 +6711,7 @@ async function startSession(mode, opts = {}) {
     G.view.ph = 'practice'; G.view.mp = MAP.id; P.pitch = -.02;
     aimbotzSetup(); dmEnsureRender(); dmRender(now()); aimbotzDrawBoard();
     showMenu(false); lock();
-    banner('Aimbotz', 'Quadros atrás de você: bots, armas, munição e viewmodel. 1 / 3 ou Q troca arma e faca.', '', 4500);
+    banner('Practice', 'Quadros atrás de você: bots, armas, munição e viewmodel. 1 / 3 ou Q troca arma e faca.', '', 4500);
     return;
   }
   if(mode==='dm'){
@@ -6762,7 +6762,7 @@ const MODE_MENU = {
   bomb: ['Plant the Bomb', '5 contra 5 em Palace e Factory. Atacantes plantam, Defensores defendem.'],
   wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Guard e Elysion, com as regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
-  aimbotz: ['Aimbotz', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
+  aimbotz: ['Practice', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
 };
 const MAP_CARD_DETAILS = {
   caixas: 'Arena aberta com caixas',
