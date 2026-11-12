@@ -66,6 +66,8 @@ Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu
     - **Detector:** de defesa, coloca o alarme na entrada que marca e volta para a posição. De ataque, coloca o alarme na reunião, vigiando as costas do grupo, e perto da bomba depois de plantar.
     - **Doctor:** cura quem estiver abaixo de 60 de vida fora da troca de tiros.
   - **Destravar:** um bot que empaca numa fresta da colisão (comum nos mapas convertidos) dá um passo para o lado, corta aquela ligação da navegação e recalcula a rota sem isolar o destino.
+- **Armas no chão:** **G** larga a arma que está na mão (ou a C4). Quem morre deixa cair a melhor arma que tinha: a primária ou, sem ela, a pistola. Passar por cima pega a arma se o espaço dela estiver vazio; com o espaço ocupado, **E** troca pela sua, que fica no chão. Quem largou a arma só consegue pegar de volta depois de 1,5 s. Os bots sem primária vão buscar uma arma caída a até 14 m, exceto quem está com a bomba ou desarmando. As armas somem na troca de rodada.
+- **Assistir:** quem morre passa a assistir, por cima do ombro, um companheiro ainda vivo (ou o inimigo, se não sobrar nenhum). O clique ou o Espaço trocam a pessoa assistida. Vale também no 1v1, 2v2 e XvX.
 - **HUD:** dinheiro, colete, C4, barra de plantar/desarmar e o nome da área onde você está. Com a bomba plantada não há contagem: no lugar do relógio aparece o ícone da C4, que pisca junto com o bipe, cada vez mais rápido, como no CS e no Valorant. O bipe sai da bomba: de longe (mais de 38 m) não se ouve, e o volume aumenta conforme você se aproxima, vindo do lado em que ela está.
 - **Abismo:** quem cai do prédio (o 39º andar do Elysion) morre depois de cerca de 2 s de queda. A morte entra no placar sem dar abate a ninguém e aparece como QUEDA no feed. Se a pessoa estava com a bomba, ela fica no último chão firme onde pisou.
 - **Granadas:** como no CS. Apertar o botão puxa o pino: o braço recua e fica armado enquanto o botão estiver apertado. Ao soltar, o braço arremessa e a granada só sai da mão no meio do movimento. Um clique rápido espera o pino sair. O esquerdo joga longe, o direito joga perto e os dois juntos jogam a meia distância.
@@ -257,7 +259,7 @@ A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante 
 
 Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%.
 
-Os bonecos têm passada nas oito direções: as pernas giram no quadril, alternadas, na direção em que o boneco anda (de lado a passada é menor), e a amplitude acompanha a velocidade. O tronco inclina de leve para onde anda e balança com a passada. A cabeça fica sempre na mesma altura, e a arma acompanha o tronco. Vale para bots, pessoas online e o oponente do 1v1.
+Os bonecos têm passada nas oito direções, no estilo do Valorant: as pernas giram no quadril, alternadas, na direção em que o boneco anda (de lado a passada é menor). Correndo, os passos são largos (cerca de 1 m) e, andando com Shift, curtos (cerca de 0,5 m). O comprimento do passo segue a abertura das pernas, então o pé não escorrega nem treme. A direção e a velocidade usadas na animação são suavizadas e vêm da velocidade real do boneco, não da diferença de posição a cada quadro. O tronco só inclina de leve para onde anda, sem girar. A cabeça fica sempre na mesma altura, e a arma acompanha o tronco. Vale para bots, pessoas online e o oponente do 1v1.
 
 Degraus e escadas sobem sozinhos, até 0,5 m por degrau, sem perder velocidade. Nos mapas convertidos (Guard e Elysion), a física sobe só o necessário para cada degrau, para a cabeça não bater no teto de escadas cobertas. Ela também trata a quina do degrau como degrau, e não como rampa: antes, a quina jogava o boneco para cima e ele subia a escada se arrastando.
 
@@ -285,6 +287,8 @@ A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atir
 | Mouse 2 | Luneta da AWP ou Scout / golpe forte da faca |
 | 1 2 3 4 | Rifle, pistola, faca e precisão do equipamento escolhido |
 | Q / rodinha | Última arma / trocar arma |
+| G | Largar a arma na mão |
+| E | Pegar/trocar a arma do chão; plantar e desarmar a bomba |
 | R | Recarregar |
 | F | Inspecionar (giros da Karambit e Butterfly) |
 | B | Arsenal: grade de armas e skins |

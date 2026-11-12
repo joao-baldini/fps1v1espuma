@@ -15,7 +15,7 @@ As cores chapadas vêm das médias RGB dos materiais do BSP e dos materiais embu
 Algumas colisões do port bloqueavam o movimento sem nada desenhado. `SOURCE_FIXES`, no `index.html`, encontra essas peças pela caixa de colisão (não pelo índice, que muda ao regenerar), desenha um visual e tira o bit de tiro delas:
 
 - **Vidro no andar de cima:** dois guarda-corpos entre os pilares da beira do salão (x 3,3–8,2 e 9,4–14,3; z −22,5; 1,09 m de altura). São transparentes, com um perfil no alto, e o tiro passa.
-- **Cortina preta na passagem para o terraço:** em x 18,75, fecha do chão ao teto entre z −22,2 e −20,5. Entre z −20,5 e −17,1 vira só a faixa de cima, sobre a passagem (3,25–5,28 m). É feita de faixas em zigue-zague, como pregas, e o tiro passa.
+- **Cortina preta na passagem para o terraço:** em x 18,75, fecha do chão ao teto entre z −22,2 e −20,5. Entre z −20,5 e −17,1 vira só a faixa de cima, sobre a passagem (3,25–5,28 m). Dali até o pilar do prédio da direita (z −17,1 a −6,6) havia outra placa invisível, do chão ao teto, que agora também é cortina. Atrás das pregas (faixas de uns 25 cm, levemente sobrepostas) há um painel contínuo, para não sobrar fresta entre elas. O tiro passa por toda a cortina, mas ela continua bloqueando a passagem.
 
 ## Recorte Wingman do Elysion
 

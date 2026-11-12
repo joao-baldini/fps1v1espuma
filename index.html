@@ -1200,6 +1200,8 @@ const SOURCE_FIXES = {
     // Cortina preta na passagem para o terraço: do chão ao teto onde fecha, e só a faixa de cima sobre a passagem.
     { look: 'curtain', box: [18.686, -0.203, -22.217, 18.813, 5.283, -20.464], draw: [18.75, 0, -22.217, 18.75, 5.283, -20.464] },
     { look: 'curtain', box: [18.711, 3.251, -20.464, 18.762, 5.283, -17.137], draw: [18.75, 3.251, -20.464, 18.75, 5.283, -17.137] },
+    // Resto da parede até o pilar do prédio da direita: outra placa invisível do chão ao teto.
+    { look: 'curtain', box: [18.711, 0, -17.137, 18.736, 5.283, -6.57], draw: [18.75, 0, -17.137, 18.75, 5.283, -6.57] },
   ],
 };
 let FIX_MATS = null;
@@ -1218,10 +1220,12 @@ function applySourceFixes(id, parent) {
       const pane = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? len : .02, h, along === 'x' ? .02 : len), FIX_GLASS); pane.position.set(cx, y0 + h / 2, cz); pane.renderOrder = 2; parent.add(pane);
       const rail = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? len : .05, .04, along === 'x' ? .05 : len), FIX_GLASS_EDGE); rail.position.set(cx, y1 - .02, cz); parent.add(rail);
     } else {
-      // Cortina: faixas verticais de 25 cm em zigue-zague, como pregas de tecido.
-      const n = Math.max(1, Math.round(len / .25)), w = len / n;
-      for (let k = 0; k < n; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? w : .03, h, along === 'x' ? .03 : w), FIX_CURTAIN[k % 2]), off = (k % 2 ? .025 : -.025), t = -len / 2 + w * (k + .5);
-        m.position.set(along === 'x' ? cx + t : cx + off, y0 + h / 2, along === 'x' ? cz + off : cz + t); parent.add(m); }
+      // Cortina: forro contínuo (sem frestas) e, na frente e atrás dele, faixas verticais de 25 cm em zigue-zague,
+      // um pouco sobrepostas, como pregas de tecido. Encosta 2 cm além das pontas para fechar com a parede e o teto.
+      const L = len + .04, H = h + .03, n = Math.max(1, Math.round(len / .25)), w = len / n;
+      const back = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? L : .02, H, along === 'x' ? .02 : L), FIX_CURTAIN[0]); back.position.set(cx, y0 + H / 2 - .005, cz); parent.add(back);
+      for (let k = 0; k < n; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? w * 1.12 : .03, H, along === 'x' ? .03 : w * 1.12), FIX_CURTAIN[k % 2]), off = (k % 2 ? .028 : -.028), t = -len / 2 + w * (k + .5);
+        m.position.set(along === 'x' ? cx + t : cx + off, y0 + H / 2 - .005, along === 'x' ? cz + off : cz + t); parent.add(m); }
     }
   }
 }
@@ -3615,31 +3619,39 @@ function meshesToGeometry(root){
   root.traverse(o=>{if(!o.isMesh)return;const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrixWorld);parts.push([g,g.attributes.color?null:o.material.color.getHex()]);});
   const merged=mergeKnifeParts(parts);for(const [g] of parts)g.dispose();merged.computeBoundingSphere();return merged;
 }
-// Passada nas oito direções: a fase avança com a distância andada e a amplitude acompanha a velocidade.
-// A direção (frente/lado) é medida no referencial do boneco; parado, as pernas voltam ao lugar.
-const GAIT = { stride: 5.2, swing: .5, side: .62 };
-function gaitUpdate(g, x, z, yaw, dt, crouch) {
-  if (dt > 0 && g.px !== undefined) { const ivx = (x - g.px) / dt, ivz = (z - g.pz) / dt, k = Math.min(1, dt * 12); if (Math.hypot(ivx, ivz) < 15) { g.vx += (ivx - g.vx) * k; g.vz += (ivz - g.vz) * k; } }
-  g.px = x; g.pz = z; g.vx = g.vx || 0; g.vz = g.vz || 0;
+// Passada nas oito direções, no estilo do Valorant: correndo a perna abre mais e o passo fica largo; andando (Shift ou
+// agachado) a passada é curta. O comprimento do passo sai da abertura da perna (2·L·sen A), então a cadência fica
+// natural (cerca de 2,6 passadas por segundo correndo) em vez de um tremelique rápido. Direção e velocidade são suavizadas.
+const GAIT = { leg: .8, run: .7, walk: .34, side: .7 };
+function gaitUpdate(g, x, z, yaw, dt, crouch, vel) {
+  let vx, vz;
+  if (vel) { vx = vel.x; vz = vel.z; }
+  else if (dt > 0 && g.px !== undefined) { vx = (x - g.px) / dt; vz = (z - g.pz) / dt; if (Math.hypot(vx, vz) > 15) vx = vz = 0; }
+  g.px = x; g.pz = z; if (vx === undefined) { vx = g.vx || 0; vz = g.vz || 0; }
+  const k = Math.min(1, dt * (vel ? 14 : 7)); g.vx = (g.vx || 0) + (vx - (g.vx || 0)) * k; g.vz = (g.vz || 0) + (vz - (g.vz || 0)) * k;
   const sp = Math.hypot(g.vx, g.vz), sn = Math.sin(yaw), cs = Math.cos(yaw), f = -(g.vx * sn + g.vz * cs), r = g.vx * cs - g.vz * sn;
-  const target = sp > .35 ? Math.min(1, sp / 5.5) * (crouch ? .6 : 1) : 0;
-  g.amp = (g.amp || 0) + (target - (g.amp || 0)) * Math.min(1, dt * 8);
-  if (sp > .2) { g.f = f / sp; g.r = r / sp; } else if (g.f === undefined) { g.f = 1; g.r = 0; }
-  g.phase = ((g.phase || 0) + sp * dt * GAIT.stride) % TAU;
+  // Abertura alvo: até a velocidade de andar (Shift) passo curto; daí até correr abre até a passada larga.
+  const run = clamp((sp - 2.4) / 3, 0, 1), target = sp > .45 ? (GAIT.walk + (GAIT.run - GAIT.walk) * run) * (crouch ? .7 : 1) * Math.min(1, sp / 1.2) : 0;
+  g.amp = (g.amp || 0) + (target - (g.amp || 0)) * Math.min(1, dt * 6);
+  if (sp > .6) { const kd = Math.min(1, dt * 8); g.f = (g.f ?? 1) + (f / sp - (g.f ?? 1)) * kd; g.r = (g.r ?? 0) + (r / sp - (g.r ?? 0)) * kd; }
+  else if (g.f === undefined) { g.f = 1; g.r = 0; }
+  // Uma volta da fase = dois passos; cada passo mede 2·L·sen(abertura).
+  const step = 2 * GAIT.leg * Math.max(Math.sin(Math.max(g.amp, .2)), .2);
+  g.phase = ((g.phase || 0) + sp * dt * Math.PI / step) % TAU;
   return g;
 }
 // Ângulo da perna (lado 1 ou -1): pernas alternadas; de lado a passada é menor para as pernas não se cruzarem demais.
-function gaitLeg(g, side) { const mix = Math.abs(g.f) + Math.abs(g.r) * GAIT.side; return side * Math.sin(g.phase) * GAIT.swing * g.amp * mix / Math.max(1e-3, Math.abs(g.f) + Math.abs(g.r)); }
+function gaitLeg(g, side) { const fa = Math.abs(g.f), ra = Math.abs(g.r), mix = (fa + ra * GAIT.side) / Math.max(1e-3, fa + ra); return side * Math.sin(g.phase) * g.amp * mix; }
 function dmRender(t, dt = 0){
   const r=DM.render;if(!r)return;for(const mesh of r.meshes){mesh.count=0;mesh.visible=true;}
   // Matriz de uma peça: posição e direção do boneco, pivô no quadril (pernas giram e encolhem ao agachar; tronco inclina).
   function rigMatrix(out,b,px,py,off,q,sy){const M=r.rigM;M.yaw.makeRotationY(b.yaw).setPosition(b.pos.x,b.pos.y,b.pos.z);M.loc.compose(M.v.set(px,py+off,0),q,M.s.set(1,sy,1));M.back.makeTranslation(-px,-py,0);return out.multiplyMatrices(M.yaw,M.loc).multiply(M.back);}
   function rigHull(out,base,hull,sy,w){const u=hull.userData,c=u.c,sz=u.s;return out.copy(base).multiply(r.rigM.loc.makeTranslation(c.x,c.y,c.z)).multiply(r.rigM.back.makeScale(1+2*w/sz.x,1+2*w/(sz.y*sy),1+2*w/sz.z));}
   function renderRig(rig,b,ally,drop){
-    const g=b.gait||(b.gait={});gaitUpdate(g,b.pos.x,b.pos.z,b.yaw,dt,b.crouch);
-    const M=r.rigM,hipY=rig.hipY,sy=(hipY-drop)/hipY,sw=Math.sin(g.phase)*g.amp;
+    const g=b.gait||(b.gait={});gaitUpdate(g,b.pos.x,b.pos.z,b.yaw,dt,b.crouch,b.remote?null:b.vel);
+    const M=r.rigM,hipY=rig.hipY,sy=(hipY-drop)/hipY;
     // Tronco: inclina para onde anda e balança de leve com a passada. A cabeça não sobe nem desce.
-    M.e.set(-.07*g.f*g.amp,.06*sw,-.05*g.r*g.amp+.02*sw,'YXZ');M.qb.setFromEuler(M.e);
+    M.e.set(-.06*g.f*g.amp,0,-.04*g.r*g.amp,'YXZ');M.qb.setFromEuler(M.e);
     const dist=Math.hypot(b.pos.x-camera.position.x,b.pos.y+1-camera.position.y,b.pos.z-camera.position.z),w=ally?clamp(dist*.005,.011,.24):clamp(dist*.0021,.005,.11);
     for(const part of rig.parts){
       if(part.kind==='helmet'&&!b.helmet)continue;
@@ -4388,7 +4400,7 @@ const bombPistol = e => sideOf(e) === 't' ? 'glock' : 'usps';
 function bombResetGear(e) { e.inv = { primary: null, secondary: bombPistol(e), armor: 0, helmet: false, kit: false }; e.nades = { he: 0, flash: 0, smoke: 0 }; }
 // Inventário em ordem de teclas: 1 primária, 2 pistola, 3 faca, 4 granadas, 5 bomba.
 function bombOrder(e) {
-  const o = []; if (e.inv.primary) o.push(e.inv.primary); o.push(e.inv.secondary || bombPistol(e)); o.push((e === P ? S.loadout.knife : 'knife'));
+  const o = []; if (e.inv.primary) o.push(e.inv.primary); if (e.inv.secondary) o.push(e.inv.secondary); o.push((e === P ? S.loadout.knife : 'knife'));
   for (const g of GRENADES) if (e.nades[g] > 0) o.push(g);
   if (BOMB.carrier === e.id) o.push('c4');
   return o;
@@ -4400,7 +4412,7 @@ function bombEquip(e, t, fresh) {
     ORDER.splice(0, ORDER.length, ...bombOrder(P));
     if (!keep || !ORDER.includes(P.weapon)) { P.weapon = ORDER[0]; P.drawEnd = t + W[P.weapon].draw; P.kAnim = null; P.reloadEnd = 0; if (W[P.weapon].melee) beginKnifeAnimation('draw', t); applyFov(); }
     if (!ORDER.includes(P.lastW) || P.lastW === P.weapon) P.lastW = ORDER.find(k => k !== P.weapon) || P.weapon;
-  } else if (!e.remote) { const w = e.inv.primary || e.inv.secondary || bombPistol(e); if (e.w !== w || fresh) { e.w = w; e.mag = W[w].mag; e.reloadEnd = 0; } }
+  } else if (!e.remote) { const w = e.inv.primary || e.inv.secondary || 'knife'; if (e.w !== w || fresh) { e.w = w; e.mag = W[w].mag; e.reloadEnd = 0; } }
 }
 function bombGive(e, item) {
   if (W[item] && !W[item].grenade) { if (CATEGORIES.pistol.includes(item)) e.inv.secondary = item; else e.inv.primary = item; if (e === P) refillOne(P, item); }
@@ -4486,7 +4498,7 @@ function bombNextRound(t) {
     BOMB.tTeam = 1 - BOMB.tTeam; BOMB.streak = [0, 0]; ARENA.halftime = true;
     for (const e of DM.actors) { e.money = BOMB.start; bombResetGear(e); e.aliveEnd = false; }
   } else ARENA.halftime = false;
-  BOMB.planted = BOMB.dropped = null; BOMB.plantedBy = null; BOMB.beepAt = 0; bombClearGfx(); opsResetRound();
+  BOMB.planted = BOMB.dropped = null; BOMB.plantedBy = null; BOMB.beepAt = 0; bombClearGfx(); opsResetRound(); weaponDropsClear();
   for (const e of DM.actors) { if (!e.aliveEnd || !e.inv) bombResetGear(e); e.aliveEnd = false; e.plantUntil = e.defuseUntil = 0; }
   ARENA.sd = {};
   for (const side of ['t', 'ct']) {
@@ -4556,12 +4568,70 @@ function bombExplode(t) {
 function bombOnDeath(victim, t) {
   if (!bombOn()) return;
   victim.plantUntil = victim.defuseUntil = 0;
+  // Cai a arma mais forte: a primária; sem ela, a pistola.
+  if (victim.inv && !victim.remote) { const w = victim.inv.primary || victim.inv.secondary; if (w && weaponDropAt(victim, w, t, false)) victim.inv[dropSlot(w)] = null; }
   if (BOMB.carrier === victim.id) { BOMB.carrier = null; BOMB.dropped = { x: victim.pos.x, y: groundAt(victim.pos.x, victim.pos.z,victim.pos.y), z: victim.pos.z }; if (victim === P) { const i = ORDER.indexOf('c4'); if (i >= 0) ORDER.splice(i, 1); } }
 }
 function bombPickup(t) {
   const d = BOMB.dropped; if (!d || BOMB.planted) return;
   for (const e of DM.actors) if (e.alive && sideOf(e) === 't' && Math.hypot(e.pos.x - d.x, e.pos.z - d.z) < 1.1 && Math.abs(e.pos.y - d.y) < 1.2) {
     BOMB.carrier = e.id; BOMB.dropped = null; if (e === P) { bombEquip(P, t, false); banner('Você pegou a bomba', 'Tecla 5 · segure o clique no bombsite', '', 1800); } return;
+  }
+}
+/* ---------- Armas no chão (Plant the Bomb) ----------
+   G larga a arma da mão (a C4 também). Quem morre deixa cair a arma mais forte (a primária; sem ela, a pistola).
+   Passar por cima pega se o slot estiver vazio; E troca pela arma do mesmo slot. A munição vai junto. */
+const WDROP = { list: [], next: 1 };
+const dropSlot = w => CATEGORIES.pistol.includes(w) ? 'secondary' : 'primary';
+const droppable = w => !!(W[w] && !W[w].melee && !W[w].grenade && !W[w].medgun && !W[w].bomb);
+function weaponDropAt(e, w, t, toss) {
+  if (!droppable(w)) return null;
+  const am = e === P ? (P.ammo && P.ammo[w]) : null, mag = am ? am.mag : e.w === w ? e.mag : W[w].mag, res = am ? am.res : W[w].res;
+  // Cai um pouco à frente (ou aos pés), sem atravessar parede.
+  const yaw = e.yaw, dist = toss ? 1.4 : .35, eye = [e.pos.x, e.pos.y + 1.1, e.pos.z], dir = [-Math.sin(yaw), 0, -Math.cos(yaw)], hit = traceMap(eye, dir, dist + .3);
+  const d = hit ? Math.max(0, hit.t - .3) : dist, x = e.pos.x + dir[0] * d, z = e.pos.z + dir[2] * d, y = groundAt(x, z, e.pos.y + .6);
+  const drop = { id: WDROP.next++, w, x, y: fin(y) && Math.abs(y - e.pos.y) < 2 ? y : e.pos.y, z, yaw: Math.random() * TAU, mag, res, t, by: e.id, mesh: null };
+  WDROP.list.push(drop); return drop;
+}
+// G: larga a arma da mão. Sem a pistola, o slot 2 fica vazio até pegar outra.
+function playerDropWeapon(t) {
+  if (!bombOn() || !P.alive) return;
+  if (P.weapon === 'c4' && BOMB.carrier === P.id) {
+    const f = [-Math.sin(P.yaw), 0, -Math.cos(P.yaw)], x = P.pos.x + f[0] * 1.1, z = P.pos.z + f[2] * 1.1;
+    BOMB.carrier = null; BOMB.dropped = { x, y: groundAt(x, z, P.pos.y + .6), z, t }; bombEquip(P, t, false); return;
+  }
+  const w = P.weapon; if (!droppable(w) || !P.inv || P.inv[dropSlot(w)] !== w) return;
+  weaponDropAt(P, w, t, true); P.inv[dropSlot(w)] = null; bombEquip(P, t, false); AU.swish && AU.swish();
+}
+function weaponTake(e, d, t) {
+  const slot = dropSlot(d.w); e.inv[slot] = d.w;
+  if (e === P) { if (!P.ammo) refillAmmo(P); P.ammo[d.w] = { mag: d.mag, res: d.res }; bombEquip(P, t, false); opNotice('Pegou ' + W[d.w].name); AU.clink && AU.clink(.6, 0); }
+  else { bombEquip(e, t, false); if (e.w === d.w) e.mag = d.mag; }
+  WDROP.list.splice(WDROP.list.indexOf(d), 1); if (d.mesh) scene.remove(d.mesh);
+}
+const dropNear = (e, d, r = 1.05) => Math.hypot(e.pos.x - d.x, e.pos.z - d.z) < r && Math.abs(e.pos.y - d.y) < 1.3;
+function weaponPickups(t) {
+  for (const e of DM.actors) {
+    if (!e.alive || e.remote || !e.inv) continue;
+    for (const d of WDROP.list) if (!e.inv[dropSlot(d.w)] && t > d.t + (d.by === e.id ? 1500 : 250) && dropNear(e, d)) { weaponTake(e, d, t); break; }
+  }
+}
+// E perto de uma arma no chão: troca pela do mesmo slot (a sua cai no lugar).
+function weaponSwapNear(t) {
+  if (!bombOn() || !P.alive || !P.inv) return false;
+  const d = WDROP.list.filter(d => dropNear(P, d, 1.4) && t > d.t + 300).sort((a, b) => Math.hypot(P.pos.x - a.x, P.pos.z - a.z) - Math.hypot(P.pos.x - b.x, P.pos.z - b.z))[0];
+  if (!d) return false;
+  const old = P.inv[dropSlot(d.w)]; if (old) { const dropped = weaponDropAt(P, old, t, false); if (dropped) dropped.t = t; P.inv[dropSlot(d.w)] = null; }
+  weaponTake(P, d, t); if (P.inv[dropSlot(d.w)] === d.w) selectWeapon(d.w); return true;
+}
+function weaponDropsClear() { for (const d of WDROP.list) if (d.mesh) scene.remove(d.mesh); WDROP.list.length = 0; }
+// Arma deitada no chão, com o mesmo modelo da terceira pessoa.
+function weaponDropsRender(t) {
+  if (!THREE.BoxGeometry) return;
+  for (const d of WDROP.list) {
+    if (d.mesh) continue;
+    const m = new THREE.Mesh(boxModel(thirdPersonParts(d.w)).geometry, basicMat), g = new THREE.Group();
+    m.scale.setScalar(.85); m.rotation.set(0, 0, Math.PI / 2); m.position.set(0, .04, 0); g.add(m); g.rotation.y = d.yaw; g.position.set(d.x, d.y, d.z); scene.add(g); d.mesh = g;
   }
 }
 // Plantar (Terrorista com a bomba, no site, parado) e desarmar (SWAT perto da bomba): segurar E ou o clique com a C4.
@@ -4583,7 +4653,7 @@ const playerBusy = () => bombOn() && P.alive && (P.plantUntil > 0 || P.defuseUnt
 function bombSlotKey(code) {
   const n = +code.slice(5), o = ORDER;
   if (n === 1 && P.inv.primary) selectWeapon(P.inv.primary);
-  else if (n === 2) selectWeapon(P.inv.secondary || bombPistol(P));
+  else if (n === 2 && P.inv.secondary) selectWeapon(P.inv.secondary);
   else if (n === 3) selectWeapon(o.find(k => W[k].melee));
   else if (n === 4) { const nades = o.filter(k => W[k].grenade); if (nades.length) selectWeapon(nades[(nades.indexOf(P.weapon) + 1) % nades.length]); }
   else if (n === 5 && o.includes('c4')) selectWeapon('c4');
@@ -4709,6 +4779,11 @@ function bombGoalCell(b, t) {
   const plan = BRAIN.plan, ai = b.ai, side = sideOf(b), cell = q => q.id != null ? q.id : dmCell(q.x, q.z, q.y), p = BOMB.planted;
   const S = planSite();
   if (!plan || !ai || !S) { const c = MAP.plant.site; return dmCell((c.x0 + c.x1) / 2, (c.z0 + c.z1) / 2); }
+  // Sem primária: busca uma arma caída por perto (fora de quem carrega a bomba no ataque ou desarma no retake).
+  if (b.inv && !b.inv.primary && BOMB.carrier !== b.id && !(plan.retake && plan.retake.defuser === b.id)) {
+    const d = WDROP.list.filter(d => dropSlot(d.w) === 'primary' && Math.hypot(d.x - b.pos.x, d.z - b.pos.z) < 14 && Math.abs(d.y - b.pos.y) < 2).sort((u, v) => Math.hypot(u.x - b.pos.x, u.z - b.pos.z) - Math.hypot(v.x - b.pos.x, v.z - b.pos.z))[0];
+    if (d) return dmCell(d.x, d.z, d.y);
+  }
   if (p && !p.defused) {
     if (side === 't') return cell(ai.guard || p);
     const r = plan.retake; if (!r) return dmCell(p.x, p.z, p.y);
@@ -4865,7 +4940,7 @@ function bombTick(dt, t) {
   } else if (DM.phase === 'over' && t >= ARENA.roundEnd) bombNewMatch(t);
   const L = LEVELS[DM.level] || LEVELS.medio;
   if (DM.phase === 'live') { bombBrainTick(t); for (const b of DM.bots) dmBotMove(b, dt, t, L); }
-  bombPickup(t); bombPlayerAction(dt, t); bombBotsAct(dt, t); opsCooldownTick(t); dartsTick(t); botsUseAbilities(t); scanTick(t); alarmsTick(t);
+  bombPickup(t); weaponPickups(t); weaponDropsRender(t); bombPlayerAction(dt, t); bombBotsAct(dt, t); opsCooldownTick(t); dartsTick(t); botsUseAbilities(t); scanTick(t); alarmsTick(t);
   dmRefreshTargets();
   if (DM.phase === 'live') { for (const b of DM.bots) if (!b.plantUntil && !b.defuseUntil) dmBotFire(b, t, L); bombCheck(t); }
   bombRenderObj(t);
@@ -5365,6 +5440,19 @@ function arenaNetStop() {
   try { c && c.close(); } catch (e) {} try { p && p.destroy(); } catch (e) {}
 }
 
+// Espectador (1v1, 2v2, XvX e Plant the Bomb): morto, depois de um instante a câmera segue quem ainda está vivo, por trás
+// do ombro (aliados primeiro). Clique ou Espaço troca de pessoa. A câmera não atravessa paredes.
+const SPEC = { id: null, yaw: null };
+function specTargets() {
+  const pack = (id, x, y, z, yaw, pitch, crouch, ally) => ({ id, name: nameOf(id), x, y, z, yaw, pitch: pitch || 0, crouch: !!crouch, ally });
+  if (G.mode === 'team') return DM.actors.filter(e => e !== P && e.alive).sort((a, b) => (dmAllies(P, b) ? 1 : 0) - (dmAllies(P, a) ? 1 : 0)).map(e => pack(e.id, e.pos.x, e.pos.y, e.pos.z, e.yaw, e.pitch, e.crouch, dmAllies(P, e)));
+  if (G.mode === 'bot' && BOT.alive) return [pack(G.opp, BOT.pos.x, BOT.pos.y, BOT.pos.z, BOT.yaw, BOT.pitch, BOT.crouch, false)];
+  if (G.mode === 'online' && OPP.cur && OPP.cur.a) return [pack(G.opp, OPP.cur.x, OPP.cur.y, OPP.cur.z, OPP.cur.yaw, 0, OPP.cur.c, false)];
+  return [];
+}
+const specActive = t => !P.alive && !!G.mode && ['team', 'bot', 'online'].includes(G.mode) && t - (P.deathT || 0) > 1300;
+function specCurrent() { const list = specTargets(); if (!list.length) { SPEC.id = null; return null; } let cur = list.find(e => e.id === SPEC.id); if (!cur) { cur = list[0]; SPEC.id = cur.id; SPEC.yaw = null; } return cur; }
+function specNext() { const list = specTargets(); if (!list.length) return; const i = list.findIndex(e => e.id === SPEC.id); SPEC.id = list[(i + 1) % list.length].id; SPEC.yaw = null; }
 /* ================= Oponente na tela ================= */
 function spat(x, z) {
   const dx = x - P.pos.x, dz = z - P.pos.z, d = Math.hypot(dx, dz) || 0.001;
@@ -5388,10 +5476,10 @@ function updateOpp(dt, t) {
   oppGroup.rotation.set(-OPP.fall * Math.PI / 2 * 0.95, s.yaw, 0, 'YXZ');
   oppLegs.scale.y = 1 - 0.8 * OPP.crouchK; oppUpper.position.y = -TUCK * OPP.crouchK;
   // Passada do oponente nas oito direções (a cabeça fica na mesma altura; o tronco só inclina de leve).
-  const og = OPP.gait || (OPP.gait = {}); gaitUpdate(og, s.x, s.z, s.yaw, dt, !!s.c); const osw = Math.sin(og.phase) * og.amp;
+  const og = OPP.gait || (OPP.gait = {}); gaitUpdate(og, s.x, s.z, s.yaw, dt, !!s.c, G.mode === 'bot' ? BOT.vel : null);
   const oax = new THREE.Vector3(og.f, 0, og.r); if (oax.lengthSq() < 1e-6) oax.set(1, 0, 0); oax.normalize();
   oppHipL.quaternion.setFromAxisAngle(oax, gaitLeg(og, 1)); oppHipR.quaternion.setFromAxisAngle(oax, gaitLeg(og, -1));
-  oppUpper.rotation.set(-.07 * og.f * og.amp, .06 * osw, -.05 * og.r * og.amp + .02 * osw, 'YXZ');
+  oppUpper.rotation.set(-.06 * og.f * og.amp, 0, -.04 * og.r * og.amp, 'YXZ');
   oppFlash.visible = t < OPP.flashUntil && !W[s.w].silenced;
   oppHelmet.visible = !!s.helmet;
   for (const k of ALL_WEAPONS) oppGuns[k].visible = k === s.w;
@@ -5410,6 +5498,14 @@ function vfovFromH(h) { return 2 * Math.atan(Math.tan(h * DEG / 2) * 0.75) / DEG
 function zoomH() { return P.zoom === 1 ? 40 : (P.zoom === 2 ? (P.weapon === 'ssg' ? 15 : 10) : S.fov); }
 function applyFov() { camera.fov = vfovFromH(zoomH()); camera.updateProjectionMatrix(); }
 function updateCamera(dt, t) {
+  if (specActive(t)) {
+    const s = specCurrent();
+    if (s) {
+      if (SPEC.yaw === null) SPEC.yaw = s.yaw; SPEC.yaw += angDiff(SPEC.yaw, s.yaw) * Math.min(1, dt * 8);
+      const head = [s.x, s.y + (s.crouch ? 1.05 : 1.6), s.z], back = [Math.sin(SPEC.yaw) * 2.4, .35, Math.cos(SPEC.yaw) * 2.4], len = Math.hypot(...back), dir = back.map(v => v / len), hit = traceMap(head, dir, len), d = hit ? Math.max(.25, hit.t - .2) : len;
+      camera.position.set(head[0] + dir[0] * d, head[1] + dir[1] * d, head[2] + dir[2] * d); camera.rotation.set(-.12 + s.pitch * .4, SPEC.yaw, 0); return;
+    }
+  }
   const dk = P.alive ? 0 : clamp((t - P.deathT) / 500, 0, 1);
   camera.position.set(P.pos.x, P.pos.y + P.eyeOff * (1 - 0.75 * dk), P.pos.z);
   // A preferência muda só o recuo visível; as balas seguem o recuo inteiro nas duas opções.
@@ -5651,6 +5747,7 @@ function updateHUD(dt, t) {
     else if (P.alive && BOMB.carrier === G.me && DM.phase === 'live') msg = bombInSite(P.pos.x, P.pos.z,P.pos.y) ? 'No bombsite · segure E (ou o clique com a C4) para plantar' : 'Você está com a bomba · leve até '+(MAP.plant.sites?.length>1?'A ou B':'o bombsite A');
     else if (P.alive && sideOf(P) === 'ct' && BOMB.planted && !BOMB.planted.defused && DM.phase === 'live') msg = 'Bomba plantada · segure E perto dela para desarmar' + (P.inv && P.inv.kit ? ' (kit: 5 s)' : ' (10 s)');
     else if (P.alive && sideOf(P) === 't' && BOMB.dropped) msg = 'A bomba caiu · pegue passando por cima';
+    if (!msg && P.alive) { const d = WDROP.list.find(d => dropNear(P, d, 1.4)); if (d) msg = 'E · pegar ' + W[d.w].name + (P.inv && P.inv[dropSlot(d.w)] ? ' (troca pela sua)' : ''); }
     if (msg) { setT(el.wait, msg); setH(el.wait, false); }
   }
   if (bombOn() && P.op) {
@@ -5707,7 +5804,7 @@ function updateHUD(dt, t) {
   if (!P.alive && G.mode&&!(G.mode==='dm'&&DM.phase==='over')) {
     setH(el.dead, false);
     const kb = P.killedBy;
-    setT(el.dead, 'Você morreu' + (kb && kb.w === 'fall' ? ' · caiu no abismo' : kb ? ' · ' + nameOf(G.mode==='dm'||G.mode==='team'?kb.killer:G.opp) + ' com ' + (WSHORT[kb.w] || 'AK') + (kb.h ? ' · HS' : '') : '')+(G.mode==='team'?' · aguarde a próxima rodada':'')+(G.mode==='dm'&&DM.phase!=='over'&&!fin(P.respawnAt)?' · aguardando o spawn':'')+(G.mode==='dm'&&DM.phase!=='over'&&fin(P.respawnAt)?' · respawn em '+Math.max(0,(P.respawnAt-t)/1000).toFixed(1)+' s':''));
+    setT(el.dead, 'Você morreu' + (kb && kb.w === 'fall' ? ' · caiu no abismo' : kb ? ' · ' + nameOf(G.mode==='dm'||G.mode==='team'?kb.killer:G.opp) + ' com ' + (WSHORT[kb.w] || 'AK') + (kb.h ? ' · HS' : '') : '')+(G.mode==='team'?' · aguarde a próxima rodada':'')+(specActive(t)&&SPEC.id?' · assistindo '+nameOf(SPEC.id)+' (clique ou Espaço troca)':'')+(G.mode==='dm'&&DM.phase!=='over'&&!fin(P.respawnAt)?' · aguardando o spawn':'')+(G.mode==='dm'&&DM.phase!=='over'&&fin(P.respawnAt)?' · respawn em '+Math.max(0,(P.respawnAt-t)/1000).toFixed(1)+' s':''));
   } else setH(el.dead, true);
 }
 
@@ -6064,6 +6161,7 @@ document.addEventListener('mousedown', e => {
   if (MINI.open) { if (e.button === 0) { const at = minimapWorld(BUY.x, BUY.y); if (at && finderScan(P, at[0], at[1], now())) closeMinimap(); } else closeMinimap(); return; }
   if (SHOP.open) { if (BUY.hover && e.button === 0) BUY.hover.click(); else if (BUY.hover && e.button === 2 && BUY.hover.dataset.item && bombSell(P, BUY.hover.dataset.item, now())) { renderShop(now()); moveVCursor(); } return; }
   if (BUY.open) { if (e.button === 0 && BUY.hover) BUY.hover.click(); return; }
+  if (!P.alive && e.button === 0 && specActive(now())) { specNext(); return; }
   if (e.button === 0) {
     if (G.mode === 'aimbotz' && aimbotzClickBoard()) return;
     P.m1 = true; P.m1Press = true; updateWeapon(0, now());
@@ -6096,8 +6194,10 @@ document.addEventListener('keydown', e => {
   if (bombOn() && /^Digit[1-5]$/.test(e.code)) bombSlotKey(e.code);
   else if (bombOn() && e.code === 'KeyB') openShop();
   else if (bombOn() && e.code === 'KeyX') useAbility(now());
+  else if (bombOn() && e.code === 'KeyG') playerDropWeapon(now());
+  else if (bombOn() && e.code === 'KeyE' && weaponSwapNear(now())) {}
   else if (SLOT[e.code]) selectWeapon(G.mode==='aimbotz'?(SLOT[e.code]==='knife'?S.loadout.knife:S.aimbotzWeapon):(P.loadout||S.loadout)[SLOT[e.code]]);
-  else if (e.code === 'Space') P.jumpUntil = now() + 100;
+  else if (e.code === 'Space') { if (!P.alive && specActive(now())) specNext(); else P.jumpUntil = now() + 100; }
   else if (e.code === 'KeyQ') selectWeapon(P.lastW);
   else if (e.code === 'KeyR') { P.inspT = 0; startReload(now()); }
   else if (e.code === 'KeyF') inspect();

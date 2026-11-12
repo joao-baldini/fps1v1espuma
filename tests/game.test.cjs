@@ -1983,4 +1983,43 @@ test('Elysion: the upper-floor glass railings and the black terrace curtain bloc
   assert.equal(shotHit([18.1, 1.2, -21.3], [1, 0, 0], 1.2), null, 'tiro atravessa a cortina embaixo');
   assert.equal(shotHit([18.1, 4.2, -18.8], [1, 0, 0], 1.2), null, 'tiro atravessa a faixa de cima');
   assert.equal(W.overlap(18.75, .02, -21.3, 1.8, .3, 1), true, 'a cortina bloqueia o boneco');
+  assert.equal(shotHit([18.4, 1.2, -12], [1, 0, 0], .36), null, 'tiro atravessa a cortina até o pilar');
+  assert.equal(W.overlap(18.75, .02, -12, 1.8, .3, 1), true, 'e continua bloqueando o boneco');
+});
+test('walking gait: running opens wider steps than walking, at a natural cadence instead of a fast jitter', () => {
+  const g = game(), cx = g.context;
+  const measure = speed => { const gait = {}; let x = 0, crossings = 0, last = 0; for (let i = 0; i < 240; i++) { x += speed / 60; cx.gaitUpdate(gait, 0, x, Math.PI, 1 / 60, false, { x: 0, z: speed }); const L = cx.gaitLeg(gait, 1); if (i > 60 && Math.sign(L) !== Math.sign(last) && last) crossings++; last = L; } return { amp: gait.amp, stepsPerSecond: crossings / 3 }; };
+  const run = measure(5.6), walk = measure(2.9);
+  assert.ok(run.amp > walk.amp + .15, `correndo abre mais: ${run.amp.toFixed(2)} x ${walk.amp.toFixed(2)}`);
+  assert.ok(run.stepsPerSecond > 3 && run.stepsPerSecond < 6.5, 'cadência correndo ' + run.stepsPerSecond);
+  assert.ok(walk.stepsPerSecond > 2 && walk.stepsPerSecond < 5.5, 'cadência andando ' + walk.stepsPerSecond);
+});
+test('Plant the Bomb weapon drops: G drops the gun in hand with its ammo, the dead drop their best gun, walking over picks up into an empty slot and E swaps', () => {
+  const { g, cx, step } = bombWorld();
+  const ev = s => vm.runInContext(s, cx);
+  let t = step(10000, 1500);
+  g.P.money = 9000; const rifle = ev('sideOf(P)') === 't' ? 'rifle' : 'm4a4';
+  assert.ok(cx.bombBuy(g.P, rifle, t)); g.selectWeapon(rifle); g.P.ammo[rifle].mag = 17;
+  ev(`playerDropWeapon(${t})`);
+  assert.equal(g.P.inv.primary, null); assert.ok(!g.ORDER.includes(rifle)); assert.notEqual(g.P.weapon, rifle);
+  const drop = ev('WDROP.list')[0]; assert.equal(drop.w, rifle); assert.equal(drop.mag, 17);
+  // quem largou não pega de volta na hora; depois, passando por cima, pega com a munição
+  g.P.pos.set(drop.x, drop.y, drop.z); ev(`weaponPickups(${t + 200})`); assert.equal(g.P.inv.primary, null);
+  ev(`weaponPickups(${t + 2000})`); assert.equal(g.P.inv.primary, rifle); assert.equal(g.P.ammo[rifle].mag, 17); assert.equal(ev('WDROP.list.length'), 0);
+  // E troca: a sua cai, a do chão vem
+  const foe = ev('DM.actors.find(e=>e.team!==P.team)'); foe.inv.primary = 'sniper'; foe.alive = true; foe.pos.set(g.P.pos.x + 3, g.P.pos.y, g.P.pos.z);
+  ev(`bombOnDeath(DM.actors.find(e=>e.team!==P.team),${t + 2100})`);
+  const awp = ev('WDROP.list').find(d => d.w === 'sniper'); assert.ok(awp, 'morto deixa cair a arma mais forte'); assert.equal(foe.inv.primary, null);
+  g.P.pos.set(awp.x, awp.y, awp.z); assert.equal(ev(`weaponSwapNear(${t + 2600})`), true);
+  assert.equal(g.P.inv.primary, 'sniper'); assert.ok(ev('WDROP.list').some(d => d.w === rifle), 'a sua arma ficou no chão');
+});
+test('spectator: when dead in team modes the camera follows the living, allies first, and click cycles through them', () => {
+  const { g, cx, step } = bombWorld();
+  const ev = s => vm.runInContext(s, cx);
+  let t = step(10000, 1500);
+  g.P.alive = false; g.P.deathT = t - 2000;
+  const list = ev('specTargets()'); assert.ok(list.length >= 2); assert.equal(list[0].ally, true, 'aliado primeiro');
+  assert.ok(list.every(e => e.id !== ev('G.me')));
+  assert.equal(ev(`specActive(${t})`), true); assert.equal(ev(`specActive(${g.P.deathT + 500})`), false, 'primeiro a câmera da morte');
+  const first = ev('specCurrent()').id; ev('specNext()'); assert.notEqual(ev('SPEC.id'), first);
 });
