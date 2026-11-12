@@ -71,16 +71,31 @@ O VPK, a ferramenta de extração e os arquivos intermediários ficam fora do re
 
 ## Palace e Factory · 5v5
 
-Os ZIPs fornecidos contêm `source/DVORETS.glb` e `source/warface map.glb`, sem imagens ou texturas incorporadas. `tools/gltf.mjs` lê os buffers GLB e aplica as transformações dos nós, inclusive as escalas não uniformes dos modelos. `tools/import-warface-maps.mjs` converte os triângulos diretamente, sem redesenhar as rotas. Uma escala uniforme de 1,25 adapta os vãos à altura do jogador; Factory é girado para corresponder à vista original. Palace tem cerca de **2.480 triângulos** e Factory, **2.556**. Geometria, colisões e navegação são carregadas somente ao entrar na partida.
+Os ZIPs fornecidos contêm `source/DVORETS.glb` e o Factory, sem imagens ou texturas incorporadas.
+
+**Factory 5v5 — autoria:** mapa próprio de **guilhxrme e João**, conforme a declaração do usuário e os metadados do arquivo `source/Factory_5v5_guilhxrme_Joao.glb` (ZIP `Factory_5v5_guilhxrme_Joao.zip`). Os campos `asset.copyright` e `asset.extras` (`title`, `authors`, `creator`, `project`) e os `extras` da cena trazem esses nomes; o jogo não altera esses metadados. O mapa foi recriado a partir desse arquivo (hash de origem `31da400e…` em `factory-source.json`). O crédito "Factory 5v5 · guilhxrme e João" aparece no menu e no início da partida.
+
+`tools/gltf.mjs` lê os buffers GLB e aplica as transformações dos nós, inclusive as escalas não uniformes dos modelos. `tools/import-warface-maps.mjs` converte os triângulos diretamente, sem redesenhar as rotas. Depois das transformações do GLB, cada mapa recebe uma escala própria, horizontal e vertical. Factory também é girado para corresponder à vista original.
+
+- **Palace:** usa 1,25 em tudo.
+- **Factory:** usa **1,5 na horizontal e a altura original do modelo (1,0)**. Com 1,25 em tudo, as paredes chegavam a ~5,7 m (mais de três vezes a altura do jogador), as caixas a 2,5 m e o mapa ficava com 36 × 58 m, pequeno para 5 contra 5. Agora:
+  - as paredes têm ~4,5 m, e caixas e contêineres, 2 m;
+  - os tanques têm 5,3 e 7,5 m de altura, com seção redonda;
+  - o mapa tem 69 × 43 m;
+  - as passagens mais estreitas passaram de ~3,4 m para ~4,0 m;
+  - os trechos cobertos têm teto de 2,1 a 2,7 m;
+  - as escadas ficaram mais suaves.
+
+Palace tem cerca de **2.480 triângulos** e Factory, **2.556**. Geometria, colisões e navegação são carregadas somente ao entrar na partida.
 
 Conforme a preferência do usuário, as cores seguem a aparência original do Warface, adaptada ao acabamento chapado do jogo: pedra clara e detalhes azuis no Palace; tijolo, concreto, metal e contêineres no Factory. Referências visuais: [Palace — publicação oficial](https://ps.wfclutch.com/en/news/111.html), [Factory 2.0 — publicação oficial no Steam](https://store.steampowered.com/news/posts/?appids=291480&enddate=1532340210). Os materiais de depuração azul, verde e vermelho dos GLBs não são usados como paleta final.
 
-Os relatórios `palace-source.json` e `factory-source.json` registram os hashes dos GLBs, dimensões originais, pontos de nascimento, bombsites, contagens e navegação. `warface-catalog.js` contém apenas os metadados do menu. Cada lado recebe cinco spawns sem sobreposição; as direções iniciais favorecem passagens abertas. Os sites e todos os spawns pertencem à mesma região navegável. O código de partida reutiliza a lógica de bomba existente com cinco jogadores por time, mantendo a IA disponível para evolução separada.
+Os relatórios `palace-source.json` e `factory-source.json` registram os hashes dos GLBs, a escala usada, dimensões originais, pontos de nascimento, bombsites, contagens e navegação. `warface-catalog.js` contém apenas os metadados do menu. Cada lado recebe cinco spawns sem sobreposição; as direções iniciais favorecem passagens abertas. Os sites e todos os spawns pertencem à mesma região navegável. O código de partida reutiliza a lógica de bomba existente com cinco jogadores por time, mantendo a IA disponível para evolução separada.
 
 Os SVGs `palace-minimap.svg` e `factory-minimap.svg` são gerados da navegação, com spawns e sites. O HUD sobrepõe apenas jogador e aliados, atualizando no máximo a cada 80 ms. As cores dos spawns identificam o lado: azul é defesa e vermelho é ataque. As prévias WebP do menu são renderizadas da geometria final, em vez de usar imagens promocionais externas.
 
 ```powershell
-node tools/import-warface-maps.mjs "caminho/DVORETS.glb" "caminho/warface map.glb"
+node tools/import-warface-maps.mjs palace="caminho/DVORETS.glb" factory="caminho/Factory_5v5_guilhxrme_Joao.glb"
 node --test tests/game.test.cjs
 ```
 

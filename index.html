@@ -1261,6 +1261,8 @@ MAPS.aimbotz = {
 };
 for(const [id,data]of Object.entries(WARFACE_MAP_CATALOG))MAPS[id]={name:data.name,theme:id==='palace'?'elysion':'praga',source:id,bomb:true,warface:true,ax:data.ax,az:data.az,
   spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
+// Factory 5v5: mapa próprio de guilhxrme e João (autoria declarada nos metadados do GLB enviado).
+if(MAPS.factory)MAPS.factory.credit='Factory 5v5 · guilhxrme e João';
 MAPS.infernoprefire={name:'Inferno · Prefire',theme:'terracota',source:'inferno',practice:true,
   ax:INFERNO_PREFIRE.ax,az:INFERNO_PREFIRE.az,
   plant:{t:[INFERNO_PREFIRE.spawn],ct:INFERNO_PREFIRE.spots.map(p=>[p.x,p.z,p.yaw,p.y])}};

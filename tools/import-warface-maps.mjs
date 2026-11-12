@@ -8,10 +8,13 @@ import '../assets/maps/runtime.js';
 
 const sub=(a,b)=>a.map((v,i)=>v-b[i]),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],unit=v=>v.map(x=>x/(Math.hypot(...v)||1));
 const encode=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength).toString('base64');
+// Escala [horizontal, vertical] aplicada depois das transformações do GLB. Palace mantém 1,25 em tudo. O Factory 5v5
+// (guilhxrme e João) usa 1,5 na horizontal e a altura original do modelo: corredores com folga para 5v5 e paredes,
+// caixas e contêineres na proporção do jogador (paredes ~4,5 m, caixas 2 m), sem o efeito de "cânion" do 1,25 uniforme.
 const MODEL_SCALE=1.25;
 const CONFIG={
-  palace:{name:'Palace',floor:-2.63194,t:[-8,12],ct:[1,-22],sites:[[-23,-12],[6,-3]],palette:[0xc9c9bb,0xa9a698,0x657348,0x477a9c,0x70a4b3,0x80684e]},
-  factory:{name:'Factory',floor:-.184,t:[0,16],ct:[-3,-8],sites:[[-7,-12],[7,-12]],palette:[0x9a6650,0xc4c3b5,0xc5a053,0x825749,0x51778b]},
+  palace:{name:'Palace',scale:[MODEL_SCALE,MODEL_SCALE],floor:-2.63194,t:[-8,12],ct:[1,-22],sites:[[-23,-12],[6,-3]],palette:[0xc9c9bb,0xa9a698,0x657348,0x477a9c,0x70a4b3,0x80684e]},
+  factory:{name:'Factory',scale:[1.5,1],floor:-.184,t:[0,16],ct:[-3,-8],sites:[[-7,-12],[7,-12]],palette:[0x9a6650,0xc4c3b5,0xc5a053,0x825749,0x51778b]},
 };
 function hull(face){
   const {p,n}=face,walk=n[1]>.69,low=Math.min(...p.map(p=>p[1]))-.25,back=p.map(p=>p.map((v,i)=>v-n[i]*.035)),planes=[[...n,dot(n,p[0])],walk?[0,-1,0,-low]:[...n.map(v=>-v),-dot(n,p[0])+.035]];
@@ -21,7 +24,7 @@ function hull(face){
 }
 function compile(id,file){
   const cfg=CONFIG[id],input=new Gltf(file),raw=[...input.triangles()],rawBounds=[0,1,2].map(i=>Math.min(...raw.flatMap(f=>f.p.map(p=>p[i])))).concat([0,1,2].map(i=>Math.max(...raw.flatMap(f=>f.p.map(p=>p[i])))));
-  const center=[(rawBounds[0]+rawBounds[3])/2,(rawBounds[2]+rawBounds[5])/2],convert=([x,y,z])=>(id==='factory'?[z-center[1],y-cfg.floor,-x+center[0]]:[x-center[0],y-cfg.floor,z-center[1]]).map(v=>v*MODEL_SCALE);
+  const center=[(rawBounds[0]+rawBounds[3])/2,(rawBounds[2]+rawBounds[5])/2],[hs,vs]=cfg.scale,convert=([x,y,z])=>(id==='factory'?[z-center[1],y-cfg.floor,-x+center[0]]:[x-center[0],y-cfg.floor,z-center[1]]).map((v,i)=>v*(i===1?vs:hs));
   const polygons=[];
   for(const t of raw){const p=t.p.map(convert),n=unit(cross(sub(p[1],p[0]),sub(p[2],p[0])));if(Math.hypot(...n)<.9)continue;
     let c=cfg.palette[t.material];const height=p.reduce((s,p)=>s+p[1],0)/3;
@@ -32,7 +35,7 @@ function compile(id,file){
   }
   const all=polygons.flatMap(f=>f.p),bounds=[0,1,2].map(i=>Math.min(...all.map(p=>p[i]))).concat([0,1,2].map(i=>Math.max(...all.map(p=>p[i]))));
   const spawn=(p,yaw)=>{const q=convert([p[0],cfg.floor,p[1]]);return [q[0],q[2],yaw,0];};
-  const map={key:id,name:cfg.name,scale:MODEL_SCALE,center,surfaceCollision:true,bounds,ax:Math.ceil(Math.max(Math.abs(bounds[0]),Math.abs(bounds[3]))+1),az:Math.ceil(Math.max(Math.abs(bounds[2]),Math.abs(bounds[5]))+1),playBounds:[bounds[0],bounds[2],bounds[3],bounds[5]],t:[spawn(cfg.t,0)],ct:[spawn(cfg.ct,Math.PI)],sites:[],ladders:[],polygons,hulls:polygons.map(hull),report:{sourceSha256:createHash('sha256').update(readFileSync(file)).digest('hex'),inputTriangles:raw.length,originalBounds:rawBounds,reference:id==='palace'?'https://ps.wfclutch.com/en/news/111.html':'https://store.steampowered.com/news/posts/?appids=291480&enddate=1532340210'}};
+  const map={key:id,name:cfg.name,scale:cfg.scale,center,surfaceCollision:true,bounds,ax:Math.ceil(Math.max(Math.abs(bounds[0]),Math.abs(bounds[3]))+1),az:Math.ceil(Math.max(Math.abs(bounds[2]),Math.abs(bounds[5]))+1),playBounds:[bounds[0],bounds[2],bounds[3],bounds[5]],t:[spawn(cfg.t,0)],ct:[spawn(cfg.ct,Math.PI)],sites:[],ladders:[],polygons,hulls:polygons.map(hull),report:{sourceSha256:createHash('sha256').update(readFileSync(file)).digest('hex'),inputTriangles:raw.length,originalBounds:rawBounds,reference:id==='palace'?'https://ps.wfclutch.com/en/news/111.html':'https://store.steampowered.com/news/posts/?appids=291480&enddate=1532340210'}};
   // Repeated risers identify stairs. Add movement-only walk slopes above the visible
   // steps; keep the authored mesh and bullet collision unchanged.
   const risers=[],known=new Set();
@@ -69,6 +72,11 @@ function compile(id,file){
   writeFileSync(resolve(out,id+'-source.json'),JSON.stringify({...map.report,triangles:polygons.length,hulls:map.hulls.length,assetBytes:data.length,t:map.t,ct:map.ct,sites:map.sites},null,2)+'\n');
   return {map,metadata:{name:cfg.name,ax:map.ax,az:map.az,t:map.t,ct:map.ct,sites:map.sites},packed};
 }
-const [palace,factory]=process.argv.slice(2);if(!palace||!factory)throw Error('Usage: node tools/import-warface-maps.mjs palace.glb factory.glb');
-const catalog={};for(const [id,file]of [['palace',palace],['factory',factory]]){const {map,metadata,packed}=compile(id,resolve(file));catalog[id]=metadata;console.log(id,JSON.stringify({triangles:map.polygons.length,navigation:map.report.navigation,t:map.t,ct:map.ct,sites:map.sites}));}
-writeFileSync(resolve(import.meta.dirname,'../assets/maps/warface-catalog.js'),'// Metadata only; geometry is lazy loaded.\nglobalThis.WARFACE_MAP_CATALOG='+JSON.stringify(catalog)+';\n');
+// Uso: node tools/import-warface-maps.mjs palace=caminho/DVORETS.glb factory=caminho/Factory_5v5_guilhxrme_Joao.glb
+// (um ou os dois). O catálogo mantém os mapas que não foram reimportados.
+const jobs=process.argv.slice(2).map(a=>a.split(/=(.*)/s)).filter(([id,file])=>CONFIG[id]&&file);
+if(!jobs.length)throw Error('Usage: node tools/import-warface-maps.mjs palace=palace.glb factory=factory.glb');
+const catalogFile=resolve(import.meta.dirname,'../assets/maps/warface-catalog.js'),catalog={};
+try{const text=readFileSync(catalogFile,'utf8');Object.assign(catalog,JSON.parse(text.slice(text.indexOf('=')+1,text.lastIndexOf(';'))));}catch{}
+for(const [id,file]of jobs){const {map,metadata}=compile(id,resolve(file));catalog[id]=metadata;console.log(id,JSON.stringify({triangles:map.polygons.length,navigation:map.report.navigation,t:map.t,ct:map.ct,sites:map.sites}));}
+writeFileSync(catalogFile,'// Metadata only; geometry is lazy loaded.\nglobalThis.WARFACE_MAP_CATALOG='+JSON.stringify(catalog)+';\n');

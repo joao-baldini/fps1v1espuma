@@ -2195,6 +2195,11 @@ test('Prefire: the first approach opens one holding angle instead of several sim
 });
 
 
+test('Factory 5v5 credits guilhxrme e João and keeps the registered source of their GLB', () => {
+  const g = game(); assert.equal(g.MAPS.factory.credit, 'Factory 5v5 · guilhxrme e João');
+  const report = JSON.parse(readFileSync(resolve(__dirname, '..', 'assets/maps/factory-source.json'), 'utf8'));
+  assert.equal(report.sourceSha256, '31da400e3b909d5a18af65f60f888a91c1777f7100748cffde53483213d3930b'); assert.equal(report.triangles, 2556);
+});
 test('Warface 5v5: two maps, separate Wingman choices, ten distinct safe spawns and connected bombsites',()=>{
   for(const key of ['palace','factory']){
     const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();
