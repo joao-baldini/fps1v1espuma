@@ -365,11 +365,14 @@ function offsetViewmodel(position) {
   position.x+=S.viewmodel.x*.025;position.y+=S.viewmodel.z*.02;position.z-=S.viewmodel.y*.025;
 }
 // Tamanho da arma na tela: cresce em torno da mão do gatilho (o braço continua saindo pelo canto, e mais cano fica à vista).
+// Padrão: +45% (opção C). VM_FIT acerta as armas que destoariam da AK nesse tamanho: a Deagle (vista de trás, subiria
+// até o meio da tela) fica menor e mais baixa; nas facas a mão esquerda viraria um bloco enorme; granadas e C4 sobem um pouco.
 const VM_ANCHOR = [.16, -.2, -.38];
-let VM_SIZE = 1;
-function applyVmSize(hands, side = 1) {
-  const k = VM_SIZE; hands.scale.set(side * k, k, k);
-  hands.position.set(side * (1 - k) * VM_ANCHOR[0], (1 - k) * VM_ANCHOR[1], (1 - k) * VM_ANCHOR[2]);
+let VM_SIZE = 1.45;
+const VM_FIT = { pistol: { s: .82, y: -.02 }, knife: { s: .8 }, butterfly: { s: .85 }, he: { y: .03 }, flash: { y: .03 }, smoke: { y: .03 }, c4: { y: .02 } };
+function applyVmSize(hands, side = 1, w = P.weapon) {
+  const fit = VM_FIT[w] || {}, k = VM_SIZE * (fit.s || 1); hands.scale.set(side * k, k, k);
+  hands.position.set(side * ((1 - k) * VM_ANCHOR[0] + (fit.x || 0)), (1 - k) * VM_ANCHOR[1] + (fit.y || 0), (1 - k) * VM_ANCHOR[2]);
 }
 function viewRecoilScale() { return S.smoothRecoil ? VIEW_RECOIL : .7; }
 const xrayEnabled = () => S.name === 'forsaken';
@@ -5793,7 +5796,7 @@ function specCamera(dt, t) {
 // Arma do companheiro assistido no lugar da sua: só a pose de repouso, com o coice e o clarão dos tiros dele.
 function specViewmodel(s, t) {
   const held = botHeldWeapon(s.e), gun = vmGuns[held] ? held : 'knife', b = VM_BASE[gun] || VM_BASE.rifle, kick = clamp(1 - (t - (s.e.lastShot || 0)) / 110, 0, 1);
-  applyVmSize(vmHands, S.weaponHand === 'left' ? -1 : 1); vmInjectArm.visible = false;
+  applyVmSize(vmHands, S.weaponHand === 'left' ? -1 : 1, gun); vmInjectArm.visible = false;
   for (const k of ALL_WEAPONS) vmGuns[k].visible = k === gun;
   vmRoot.position.set(b[0], b[1], b[2] + kick * .03); vmRoot.rotation.set(kick * .05, VM_YAW[gun] || 0, 0);
   if (gun === 'pistol') applyDeaglePose(deagleRig, deaglePose.fill(0));

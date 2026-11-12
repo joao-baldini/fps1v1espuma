@@ -528,6 +528,22 @@ test('Aimbotz infinite magazines cancel a reload, keep every gun full, and stay 
   assert.equal(game({aimbotzInfiniteAmmo:'yes'}).S.aimbotzInfiniteAmmo,false);
 });
 
+test('weapon size on screen: +45% around the trigger hand, with per-weapon fits that keep every gun in the AK standard', () => {
+  const g = game(), cx = g.context, ev = s => vm.runInContext(s, cx);
+  assert.equal(ev('VM_SIZE'), 1.45);
+  const fake = () => { const v = () => ({ x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }); return { scale: v(), position: v() }; };
+  const A = ev('VM_ANCHOR');
+  for (const [w, side] of [['rifle', 1], ['sniper', 1], ['rifle', -1], ['knife', 1], ['pistol', 1]]) {
+    const h = fake(); cx.applyVmSize(h, side, w); const fit = ev(`VM_FIT['${w}']||{}`), k = 1.45 * (fit.s || 1);
+    assert.ok(Math.abs(h.scale.y - k) < 1e-12 && Math.abs(h.scale.x - side * k) < 1e-12, w);
+    // A mão do gatilho (âncora) fica parada na tela: só a arma cresce em volta dela.
+    const ax = side * A[0], fixed = [h.position.x + h.scale.x * A[0], h.position.y + k * A[1], h.position.z + k * A[2]];
+    assert.ok(Math.abs(fixed[0] - ax) < 1e-12 && Math.abs(fixed[1] - A[1] - (fit.y || 0)) < 1e-12 && Math.abs(fixed[2] - A[2]) < 1e-12, w);
+  }
+  // Os fuzis seguem o padrão puro; a Deagle (vista de trás) fica menor e mais baixa para não subir até o meio da tela.
+  for (const w of ['rifle', 'm4a4', 'm4a1s', 'galil', 'famas', 'ump', 'bucky', 'ssg', 'sniper', 'usps', 'glock']) assert.equal(ev(`VM_FIT['${w}']`), undefined, w);
+  assert.ok(ev("VM_FIT.pistol.s") < 1 && ev("VM_FIT.pistol.y") < 0);
+});
 test('viewmodel settings migrate, clamp each axis, reset, and change only the held model', () => {
   const g=game(),cx=g.context;
   assert.deepEqual(JSON.parse(JSON.stringify(g.S.viewmodel)),{x:0,y:0,z:0});

@@ -227,6 +227,12 @@ Abra **Arsenal** no topo ou clique em **Editar equipamento**. Escolha uma combin
 | 2 | Pistola | Desert Eagle, USP-S com silenciador, Glock-18 |
 | 3 | Faca | Karambit, Butterfly |
 
+A arma e o braço aparecem 45% maiores que antes. Eles crescem em torno da mão do gatilho: o braço continua saindo pelo canto da tela e mais cano fica à vista. Todas as armas seguem o padrão da AK. Fuzis, SMG, escopeta, AWP, Scout, USP-S e Glock usam o tamanho puro. Algumas têm um ajuste fino para não destoar:
+
+- **Desert Eagle:** vista de trás, ela subiria até o meio da tela, então fica 18% menor e um pouco mais baixa, no porte das outras pistolas.
+- **Facas:** ficam um pouco menores, para a mão esquerda não virar um bloco enorme.
+- **Granadas e C4:** sobem um pouco.
+
 As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão em bloco de pele, sem luva, e manga em bloco na cor do boneco (nos times, na cor do time). Com faca, como no CS, aparece só a mão direita.
 
 O bot pode usar qualquer uma das armas de fogo, com sua própria cadência, carregador e recarga. O capacete aparece no personagem; com a opção de colete e capacete ligada, todos nascem protegidos. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância.
