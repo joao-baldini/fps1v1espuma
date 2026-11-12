@@ -296,6 +296,31 @@ No Elimination online vale o mapa escolhido por quem criou a sala.
 
 Valores de perto. M4A4 e M4A1-S matam com um headshot até 35 metros, inclusive com capacete. Acima dessa distância, o dano na cabeça com capacete é 92.
 
+## Tiro igual ao CS2
+
+O tiro usa os números reais das armas do CS2, tirados do `weapons.vdata` publicado no espelho público dos arquivos do jogo ([SteamTracking/GameTracking-CS2](https://github.com/SteamTracking/GameTracking-CS2)). As regras de uso desses números seguem o estudo público do [cs2spraylab](https://github.com/HamzahAlrawi/cs2spraylab), que é GPL-3. Dele usamos só as descrições; o código daqui foi escrito do zero. Seguem também o código do Source publicado pela Valve.
+
+- **Spray de verdade:** cada arma tem uma semente de recuo. O gerador aleatório do Source (Park-Miller com embaralhamento) monta a tabela de 64 tiros da arma.
+  - **Tabela:** ângulo e magnitude são sorteados. No automático, cada tiro guarda 45% do anterior, e os quatro primeiros são atenuados.
+  - **Formato:** sai o padrão conhecido de cada arma. A AK sobe reta uns 10° nas primeiras balas, vai para a esquerda e volta para a direita.
+- **Aim punch:** cada tiro dá um impulso no "punch" da mira, que decai sozinho em passos de 1/128 s, com os valores do CS (exponencial 8, linear 18°/s, velocidade 4,5).
+  - **Bala e mira:** a bala sai com 2× o punch, e a câmera mostra 45% disso (a mira fica abaixo de onde as balas vão, como no CS).
+  - **Índice do recuo:** só começa a voltar depois do intervalo do tiro + 1/64 s. Pausar um pouco no meio do spray não reinicia o padrão.
+- **Precisão:**
+  - **Base:** parado, agachado ou no ar (em pé + pulo, e mais ainda logo na decolagem).
+  - **Penalidade por tiro:** cada tiro soma a sua e ela volta à base em `10^(-dt/tempo)`. O tempo de recuperação passa do inicial ao final conforme o spray avança, e agachado tem tempos próprios.
+  - **Correndo:** acima de 34% da velocidade da arma, a imprecisão sobe com raiz quarta (logo acima do limite já erra bastante) até o máximo em 95%. Andando com Shift, ela sobe em linha reta.
+- **Spread:** como no CS, o desvio soma um sorteio de raio (de 0 a 1, sem raiz, o que concentra os tiros no centro) e ângulo para a imprecisão, mais outro para o spread fixo da arma.
+- **Modos:** luneta (AWP e Scout), rajada (Glock e FAMAS) e silenciador (M4A1-S e USP-S) usam os valores alternativos da arma.
+- **Dano e corpo:** dano, multiplicador de cabeça, perda por distância e blindagem são os do CS2. O tronco tem peito/braços (×1) e estômago (×1,25); pernas ×0,75.
+  - **O que mudou em relação a antes:** a AK tira 36 no peito, a Deagle 53 e a M4A1-S tem cabeça ×3,475. As M4 não matam mais com um tiro na cabeça através do capacete (92 de dano), como no CS2. A AWP tem pente de 5.
+- **Aterrissagem do CS2:** o CS2 não tem mais a estamina antiga. Ao cair com velocidade vertical `v`, o jogo calcula `b = clamp(1 + v·0,0005; 0,2; 1)`.
+  - **No chão:** a velocidade máxima fica em `b²` e volta em ~0,25 s.
+  - **Pulo seguinte:** sai com força `b`.
+  - Isso tira velocidade de quem emenda pulos.
+- **Rajadas:** Glock a cada 0,05 s (próxima rajada em 0,5 s); FAMAS a cada 0,075 s (próxima em 0,55 s).
+- **Diferença deliberada:** agachado, o impulso do recuo continua 15% menor, porque foi pedido antes. No CS isso não existe: lá, agachar só melhora a precisão.
+
 ## Movimento e precisão
 
 Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocidade da arma. Andando de scope (100 u/s na AWP) o tiro sai torto; parado, com contra-strafe ou andando devagar com Shift ele volta a ser preciso, e agachado ajuda. Logo depois de abrir o scope, o tiro ainda carrega parte da imprecisão sem scope por cerca de 0,22 s.

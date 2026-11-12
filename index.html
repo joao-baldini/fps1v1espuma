@@ -1484,7 +1484,9 @@ function hitboxesAt(x, y, z, crouch) {
   const h = crouch ? H_CROUCH : H_STAND, top = y + h, r = 0.22;
   return [
     { part: 'head', min: [x - .15, top - .3, z - .15], max: [x + .15, top + .02, z + .15] },
-    { part: 'body', min: [x - r, y + h * .45, z - r], max: [x + r, top - .3, z + r] },
+    // Tronco como no CS: peito e braços (×1) em cima e estômago (×1,25) na parte de baixo.
+    { part: 'body', min: [x - r, y + h * .45 + (h * .55 - .3) * .38, z - r], max: [x + r, top - .3, z + r] },
+    { part: 'stomach', min: [x - r, y + h * .45, z - r], max: [x + r, y + h * .45 + (h * .55 - .3) * .38, z + r] },
     { part: 'leg', min: [x - .2, y, z - .2], max: [x + .2, y + h * .45, z + .2] },
   ];
 }
@@ -1546,19 +1548,144 @@ function physics(e, wx, wz, maxS, jump, dt, accelGoal = maxS) {
   if (!wasG && e.onGround) e.landSpread = Math.min(.025, Math.abs(vy0) * .0014);
   if (!wasG && e.onGround && vy0 < -5.5 && e.onLand) e.onLand(vy0);
 }
+/* ================= Tiro como no CS2 ================= */
+// Números das armas tirados do weapons.vdata do CS2 (espelho público SteamTracking/GameTracking-CS2): dano, cadência,
+// velocidade, spread e imprecisão (em radianos), tempos de recuperação, semente/ângulo/magnitude do recuo, blindagem,
+// multiplicador de cabeça, alcance, penetração e frequência do rastro. Para cada arma há dois modos: [normal, alternativo]
+// (luneta na AWP/Scout, rajada na Glock/FAMAS, silenciador na M4A1-S/USP-S). As regras de uso desses números seguem o
+// estudo público do cs2spraylab (descrições, sem código copiado) e o código do Source publicado pela Valve.
+const CS_W = {
+  rifle: {"src":"ak47","dmg":36.0,"mag":30,"cycle":[0.1,0.1],"auto":true,"speed":[215.0,215.0],"spread":[0.0006,0.0006],"stand":[0.00641,0.00641],"crouch":[0.00481,0.00481],"move":[0.17506,0.17506],"fire":[0.0078,0.0078],"jump":[0.14076,0.14076],"jumpInitial":0.10094,"jumpApex":0.0,"land":[0.000242,0.000242],"rec":[0.368,0.506,0.305257,0.419728],"recBullets":[2,5],"seed":223,"angle":[0.0,0.0],"angleVar":[70.0,70.0],"kick":[30.0,30.0],"kickVar":[0.0,0.0],"armorRatio":1.55,"hs":4.0,"rangeMod":0.98,"pen":2.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.4,0.55]},
+  m4a4: {"src":"m4a1","dmg":33.0,"mag":30,"cycle":[0.09,0.09],"auto":true,"speed":[225.0,225.0],"spread":[0.0006,0.00045],"stand":[0.0049,0.0049],"crouch":[0.0041,0.00368],"move":[0.13788,0.122],"fire":[0.007,0.00634],"jump":[0.09727,0.09727],"jumpInitial":0.09441,"jumpApex":0.0,"land":[0.000192,0.000197],"rec":[0.338941,0.466044,0.2421,0.332888],"recBullets":[2,5],"seed":38965,"angle":[0.0,0.0],"angleVar":[70.0,70.0],"kick":[23.0,23.0],"kickVar":[0.0,0.0],"armorRatio":1.4,"hs":4.0,"rangeMod":0.97,"pen":2.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.4,0.55]},
+  m4a1s: {"src":"m4a1_silencer","dmg":38.0,"mag":20,"cycle":[0.1,0.1],"auto":true,"speed":[225.0,225.0],"spread":[0.0006,0.0005],"stand":[0.0049,0.0049],"crouch":[0.0041,0.0041],"move":[0.09288,0.122],"fire":[0.012,0.007],"jump":[0.0997,0.0997],"jumpInitial":0.09677,"jumpApex":0.0,"land":[0.000197,0.000197],"rec":[0.338941,0.466044,0.2421,0.332888],"recBullets":[2,5],"seed":38965,"angle":[0.0,0.0],"angleVar":[65.0,65.0],"kick":[25.0,21.0],"kickVar":[3.0,0.0],"armorRatio":1.4,"hs":3.475,"rangeMod":0.94,"pen":2.0,"tracer":[3.0,0.0],"pellets":1,"flinch":[0.4,0.4]},
+  galil: {"src":"galilar","dmg":30.0,"mag":35,"cycle":[0.09,0.09],"auto":true,"speed":[215.0,215.0],"spread":[0.0006,0.0006],"stand":[0.00877,0.00778],"crouch":[0.00658,0.00484],"move":[0.12356,0.10652],"fire":[0.007,0.00585],"jump":[0.14978,0.14978],"jumpInitial":0.10539,"jumpApex":0.0,"land":[0.000256,0.000256],"rec":[0.3,0.5,0.15,0.47],"recBullets":[2,5],"seed":51191,"angle":[0.0,0.0],"angleVar":[70.0,70.0],"kick":[21.0,21.0],"kickVar":[1.0,1.0],"armorRatio":1.55,"hs":4.0,"rangeMod":0.98,"pen":2.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.4,0.55]},
+  famas: {"src":"famas","dmg":30.0,"mag":25,"cycle":[0.09,0.09],"auto":true,"speed":[220.0,220.0],"spread":[0.0006,0.0006],"stand":[0.00759,0.00369],"crouch":[0.0055,0.00325],"move":[0.09934,0.09934],"fire":[0.00605,0.00335],"jump":[0.11039,0.11039],"jumpInitial":0.09477,"jumpApex":0.0,"land":[0.000205,0.000205],"rec":[0.25,0.5,0.12,0.48],"recBullets":[2,5],"seed":39623,"angle":[0.0,0.0],"angleVar":[60.0,50.0],"kick":[20.0,20.0],"kickVar":[1.0,1.0],"armorRatio":1.4,"hs":4.0,"rangeMod":0.96,"pen":2.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.4,0.55]},
+  ump: {"src":"ump45","dmg":35.0,"mag":25,"cycle":[0.09,0.09],"auto":true,"speed":[230.0,230.0],"spread":[0.001,0.001],"stand":[0.01343,0.01343],"crouch":[0.01007,0.01007],"move":[0.02876,0.02876],"fire":[0.00342,0.00342],"jump":[0.03725,0.03725],"jumpInitial":0.04721,"jumpApex":0.0,"land":[8.5e-05,8.5e-05],"rec":[0.349993,0.349993,0.249995,0.249995],"recBullets":[2,5],"seed":59299,"angle":[0.0,0.0],"angleVar":[40.0,40.0],"kick":[23.0,23.0],"kickVar":[1.0,1.0],"armorRatio":1.3,"hs":4.0,"rangeMod":0.75,"pen":1.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.0,0.0]},
+  bucky: {"src":"nova","dmg":26.0,"mag":8,"cycle":[0.88,0.88],"auto":false,"speed":[220.0,220.0],"spread":[0.04,0.04],"stand":[0.007,0.007],"crouch":[0.00525,0.00525],"move":[0.03675,0.03675],"fire":[0.00972,0.00972],"jump":[0.12631,0.12631],"jumpInitial":0.1097,"jumpApex":0.0,"land":[0.000236,0.000236],"rec":[0.460517,0.460517,0.328941,0.328941],"recBullets":[2,5],"seed":7763,"angle":[0.0,0.0],"angleVar":[20.0,20.0],"kick":[143.0,143.0],"kickVar":[22.0,22.0],"armorRatio":1.0,"hs":4.0,"rangeMod":0.7,"pen":1.0,"tracer":[1.0,1.0],"pellets":9,"flinch":[0.4,0.45]},
+  ssg: {"src":"ssg08","dmg":88.0,"mag":10,"cycle":[1.25,1.25],"auto":false,"speed":[230.0,230.0],"spread":[0.00028,0.00023],"stand":[0.0317,0.003],"crouch":[0.02378,0.0028],"move":[0.12345,0.12345],"fire":[0.02292,0.02292],"jump":[0.00572,0.00572],"jumpInitial":0.20872,"jumpApex":0.0,"land":[0.000215,0.000215],"rec":[0.142096,0.142096,0.055783,0.055783],"recBullets":[2,5],"seed":1278,"angle":[0.0,0.0],"angleVar":[20.0,20.0],"kick":[33.0,25.0],"kickVar":[15.0,2.0],"armorRatio":1.7,"hs":4.0,"rangeMod":0.98,"pen":2.5,"tracer":[1.0,1.0],"pellets":1,"flinch":[0.35,0.4]},
+  sniper: {"src":"awp","dmg":115.0,"mag":5,"cycle":[1.455,1.455],"auto":false,"speed":[200.0,100.0],"spread":[0.0002,0.0002],"stand":[0.0808,0.002],"crouch":[0.0606,0.0015],"move":[0.17648,0.17648],"fire":[0.05385,0.05385],"jump":[0.13383,0.13383],"jumpInitial":0.17286,"jumpApex":0.0,"land":[0.000307,0.0001],"rec":[0.34539,0.34539,0.24671,0.24671],"recBullets":[2,5],"seed":4100,"angle":[0.0,0.0],"angleVar":[20.0,20.0],"kick":[78.0,25.0],"kickVar":[15.0,2.0],"armorRatio":1.95,"hs":4.0,"rangeMod":0.99,"pen":2.5,"tracer":[1.0,1.0],"pellets":1,"flinch":[0.35,0.4]},
+  pistol: {"src":"deagle","dmg":53.0,"mag":7,"cycle":[0.225,0.225],"auto":false,"speed":[230.0,230.0],"spread":[0.002,0.002],"stand":[0.0042,0.0042],"crouch":[0.00218,0.00218],"move":[0.0481,0.0481],"fire":[0.07223,0.07223],"jump":[0.04055,0.37155],"jumpInitial":0.54882,"jumpApex":0.33155,"land":[4.3e-05,0.00073],"rec":[0.8112,0.8112,0.449927,0.449927],"recBullets":[3,10],"seed":1454,"angle":[0.0,0.0],"angleVar":[60.0,60.0],"kick":[48.200001,48.200001],"kickVar":[18.0,18.0],"armorRatio":1.864,"hs":3.9,"rangeMod":0.85,"pen":2.0,"tracer":[1.0,1.0],"pellets":1,"flinch":[0.4,0.55]},
+  usps: {"src":"usp_silencer","dmg":35.0,"mag":12,"cycle":[0.17,0.17],"auto":false,"speed":[240.0,240.0],"spread":[0.0025,0.0015],"stand":[0.0049,0.0049],"crouch":[0.00368,0.00368],"move":[0.01387,0.01387],"fire":[0.071,0.052],"jump":[0.09448,0.09448],"jumpInitial":0.0966,"jumpApex":0.0,"land":[0.000191,0.000198],"rec":[0.349532,0.349532,0.291277,0.291277],"recBullets":[3,10],"seed":5426,"angle":[0.0,0.0],"angleVar":[0.0,0.0],"kick":[29.0,23.0],"kickVar":[0.0,0.0],"armorRatio":1.01,"hs":4.0,"rangeMod":0.91,"pen":1.0,"tracer":[1.0,0.0],"pellets":1,"flinch":[0.5,0.65]},
+  glock: {"src":"glock","dmg":30.0,"mag":20,"cycle":[0.15,0.3],"auto":false,"speed":[240.0,240.0],"spread":[0.002,0.015],"stand":[0.0056,0.0056],"crouch":[0.0042,0.003],"move":[0.01,0.01295],"fire":[0.056,0.045],"jump":[0.08787,0.08787],"jumpInitial":0.09662,"jumpApex":0.0,"land":[0.000185,0.000185],"rec":[0.2,0.33,0.2,0.33],"recBullets":[0,5],"seed":4484,"angle":[0.0,0.0],"angleVar":[20.0,20.0],"kick":[18.0,30.0],"kickVar":[0.0,5.0],"armorRatio":0.94,"hs":4.0,"rangeMod":0.85,"pen":1.0,"tracer":[1.0,1.0],"pellets":1,"flinch":[0.5,0.65]},
+};
+for (const k in CS_W) {
+  const w = W[k], c = CS_W[k]; if (!w) continue;
+  w.cs = c; w.key = k; w.helmetPen = Math.min(1, c.armorRatio * .5); w.speed = c.speed[0] * .0254; if (w.scope) w.scopedSpeed = c.speed[1] * .0254;
+  if (k === 'bucky') { w.mult = { ...w.mult, stomach: 1.25 }; continue; } // a Bucky não é arma do CS: mantém dano e chumbos, só usa o modelo de precisão da Nova
+  w.dmg = c.dmg; w.mult = { head: c.hs, body: 1, stomach: 1.25, leg: .75 }; w.rof = Math.round(c.cycle[0] * 1000); w.mag = c.mag; w.auto = c.auto; w.rangeModifier = c.rangeMod;
+  delete w.headshotKillRange;
+}
+W.glock.burst = { ...W.glock.burst, gap: 50, after: 500, spread: 0 }; W.famas.burst = { ...W.famas.burst, gap: 75, after: 550, spread: 0 };
+for (const k in W) if (W[k].mult && W[k].mult.stomach == null) W[k].mult.stomach = W[k].mult.body;
+
+// Gerador aleatório do Source (CUniformRandomStream: Park-Miller 16807 com embaralhamento de 32 e 40 iterações de aquecimento),
+// com a conversão para float32 do jogo. É ele que transforma a semente de cada arma no padrão de spray.
+function csRandomStream(seed) {
+  const IA = 16807, IM = 2147483647, IQ = 127773, IR = 2836, NTAB = 32, NDIV = 1 + Math.floor((IM - 1) / NTAB), AM = Math.fround(1 / IM), RNMX = Math.fround(1 - 1.2e-7);
+  let idum = seed < 0 ? seed : -seed, iy = 0; const iv = new Array(NTAB).fill(0);
+  const next = () => {
+    let k;
+    if (idum <= 0 || !iy) {
+      idum = -idum < 1 ? 1 : -idum;
+      for (let j = NTAB + 7; j >= 0; j--) { k = Math.trunc(idum / IQ); idum = IA * (idum - k * IQ) - IR * k; if (idum < 0) idum += IM; if (j < NTAB) iv[j] = idum; }
+      iy = iv[0];
+    }
+    k = Math.trunc(idum / IQ); idum = IA * (idum - k * IQ) - IR * k; if (idum < 0) idum += IM;
+    const j = Math.floor(iy / NDIV); iy = iv[j]; iv[j] = idum; return iy;
+  };
+  return { float(lo, hi) { let f = Math.fround(AM * next()); if (f > RNMX) f = RNMX; return Math.fround(f * (hi - lo) + lo); } };
+}
+// Tabela de recuo (64 tiros): ângulo e magnitude sorteados pela semente; no automático cada tiro guarda 45% do anterior e
+// os quatro primeiros têm a magnitude reduzida (0,75 / 0,8125 / 0,875 / 0,9375).
+const CS_RECOIL = {}, CS_SUPPRESS = [.75, .8125, .875, .9375];
+function csRecoilTable(k, mode = 0) {
+  const id = k + ':' + mode; if (CS_RECOIL[id]) return CS_RECOIL[id];
+  const c = W[k].cs, r = csRandomStream(c.seed), out = []; let pa = 0, pm = 0;
+  for (let j = 0; j < 64; j++) {
+    let a = c.angle[mode] + r.float(-c.angleVar[mode], c.angleVar[mode]), m = c.kick[mode] + r.float(-c.kickVar[mode], c.kickVar[mode]);
+    if (c.auto && j > 0) { a = pa * .45 + a * .55; m = pm * .45 + m * .55; }
+    if (c.auto && j < 4) m *= CS_SUPPRESS[j];
+    out.push([a, m]); pa = a; pm = m;
+  }
+  return (CS_RECOIL[id] = out);
+}
+// Aim punch (graus): o tiro dá um impulso de velocidade; o ângulo decai (exponencial 8 + linear 18°/s) e a velocidade
+// (exponencial 4,5), em passos de 1/128 s. A bala sai com 2× o punch; a câmera mostra 45% disso (view_recoil_tracking).
+const CS_PUNCH = { exp: 8, lin: 18, vel: 4.5, scale: 2, step: 1 / 128 };
+// Estado de tiro de quem atira (jogador ou bot): penalidade de precisão, índice do recuo e punch.
+function csAim(e, k) {
+  let s = e.aim;
+  if (!s) s = e.aim = { k, pen: null, idx: 0, last: -1e9, up: 0, right: 0, vu: 0, vr: 0, acc: 0, ground: true, shots: 0 };
+  if (s.k !== k) { s.k = k; s.pen = null; s.idx = 0; s.shots = 0; }
+  return s;
+}
+function csReset(e) { e.aim = null; }
+// Modo da arma: alternativo com luneta (AWP/Scout), em rajada (Glock/FAMAS) e sempre na M4A1-S/USP-S (silenciador).
+function csMode(e, k, zoomed) {
+  const w = W[k]; if (!w || !w.cs) return 0;
+  if (k === 'm4a1s' || k === 'usps') return 1;
+  if (w.scope) return (zoomed ?? e.zoom > 0) ? 1 : 0;
+  if (w.burst) return e.inBurst ? 1 : 0;
+  return 0;
+}
+// Base da precisão: em pé ou agachado; no ar, em pé + pulo.
+function csBaseline(e, c, mode) { return !e.onGround ? c.stand[mode] + c.jump[mode] : e.crouch ? c.crouch[mode] : c.stand[mode]; }
+// Andando: de 34% a 95% da velocidade da arma (sem luneta), correndo sobe com raiz quarta (logo acima de 34% já erra
+// bastante); andando com Shift sobe em linha reta.
+function csMoveTerm(e, c, mode) {
+  const s = Math.hypot(e.vel.x, e.vel.z) / .0254, cap = c.speed[0], lo = cap * .34, hi = cap * .95;
+  if (!(s > lo + 1e-3)) return 0;
+  const f = clamp((s - lo) / (hi - lo), 0, 1);
+  return c.move[mode] * (e.walking ? f : Math.pow(f, .25));
+}
+// No ar: termo pela velocidade vertical, maior na decolagem e zero no ápice.
+function csAirTerm(e, c) {
+  if (e.onGround) return 0;
+  const t = (Math.sqrt(Math.abs(e.vel.y) / .0254) / Math.sqrt(301.993) - .25) / .75;
+  return clamp(c.jumpApex + (c.jumpInitial - c.jumpApex) * t, 0, 2 * c.jumpInitial);
+}
 function inaccuracy(e, w, zoomed, extra) {
   if (w.melee) return 0;
-  let a = (w.scope && !zoomed) ? w.noscope : w.base;
-  if (e.crouch && e.onGround) a *= 0.75;
-  const sp = Math.hypot(e.vel.x, e.vel.z);
-  if (w.scope) {
-    // Como no CS: acima de 34% da velocidade da arma o tiro abre rápido; com scope a velocidade cai pela metade,
-    // mas mesmo andando de scope (100 u/s na AWP) o tiro sai torto. Parado (ou contra-strafe) volta a ser preciso.
-    const top = zoomed ? Math.max(w.scopedSpeed, w.speed * .5) : w.speed;
-    a += w.move * clamp((sp - w.speed * .34) / Math.max(.01, top - w.speed * .34), 0, 1);
-  } else a += w.move * Math.pow(clamp((sp - w.speed * .34) / (w.speed * .66), 0, 1), 1.5);
-  if (!e.onGround) a += w.air * (w === W.ssg ? clamp(Math.abs(e.vel.y) / 3, .12, 1) : 1);
-  return a + extra + (e.landSpread || 0);
+  if (!w.cs) return (extra || 0);
+  const c = w.cs, mode = csMode(e, w.key, zoomed), base = csBaseline(e, c, mode), s = e.aim && e.aim.k === w.key ? e.aim : null;
+  const pen = s && s.pen != null ? Math.max(s.pen, base) : base;
+  return pen + csMoveTerm(e, c, mode) + csAirTerm(e, c) + (extra || 0);
+}
+// Spread do CS: raio (sorteado de 0 a 1, sem raiz, o que concentra no centro) e ângulo para a imprecisão, e outro par
+// para o spread da arma; as projeções se somam. Devolve o desvio em radianos (horizontal, vertical).
+function csSpreadOffset(inacc, spread, rnd = Math.random) {
+  const r0 = rnd(), a0 = rnd() * TAU, r1 = rnd(), a1 = rnd() * TAU;
+  return [Math.cos(a0) * r0 * inacc + Math.cos(a1) * r1 * spread, Math.sin(a0) * r0 * inacc + Math.sin(a1) * r1 * spread];
+}
+// Tiro disparado: impulso do recuo pela tabela, penalidade de precisão do tiro e avanço do índice do recuo.
+function csFired(e, k, t, mode, scale = 1) {
+  const c = W[k].cs, s = csAim(e, k), [a, m] = csRecoilTable(k, mode)[Math.floor(s.idx) & 63], r = a * Math.PI / 180;
+  s.vu += Math.cos(r) * m * scale; s.vr += -Math.sin(r) * m * scale;
+  s.pen = Math.max(s.pen ?? 0, csBaseline(e, c, mode)) + c.fire[mode];
+  s.idx += 1; s.last = t; s.shots++;
+}
+function csPunchStep(s, h) {
+  const P_ = CS_PUNCH, d = Math.exp(-P_.exp * h); let u = s.up * d, r = s.right * d;
+  const L = Math.hypot(u, r); if (L > 0) { const m = Math.max(0, L - P_.lin * h) / L; u *= m; r *= m; }
+  u += s.vu * h * .5; r += s.vr * h * .5; const dv = Math.exp(-P_.vel * h); s.vu *= dv; s.vr *= dv; u += s.vu * h * .5; r += s.vr * h * .5;
+  if (Math.hypot(s.vu, s.vr) < 1 / 32) s.vu = s.vr = 0;
+  s.up = u; s.right = r;
+}
+// Atualiza o estado a cada quadro: punch em passos de 1/128 s, índice do recuo (volta só depois do intervalo do tiro
+// + 1/64 s, caindo 10^(-2·dt) até zerar em 0,1) e a penalidade de precisão (volta à base em 10^(-dt/tempo), com o tempo
+// passando do inicial ao final conforme o spray avança; agachado tem tempos próprios e no ar é 4× o agachado inicial).
+function csTick(e, k, dt, t) {
+  const w = W[k]; if (!w || !w.cs) return null;
+  const c = w.cs, s = csAim(e, k), mode = csMode(e, k);
+  if (t > s.last + c.cycle[mode] * 1000 + 1000 / 64) { s.idx *= Math.pow(10, -2 * dt); if (s.idx <= .1) s.idx = 0; }
+  const base = csBaseline(e, c, mode), fi = Math.floor(s.idx), [rs, re] = c.recBullets, f = re > rs ? clamp((fi - rs) / (re - rs), 0, 1) : 1;
+  const rt = !e.onGround ? 4 * c.rec[2] : e.crouch ? c.rec[2] + (c.rec[3] - c.rec[2]) * f : c.rec[0] + (c.rec[1] - c.rec[0]) * f;
+  if (s.pen == null || s.pen < base) s.pen = base; else s.pen = base + (s.pen - base) * Math.pow(10, -dt / Math.max(rt, 1e-4));
+  if (e.onGround && !s.ground) s.pen += c.land[mode];
+  s.ground = !!e.onGround;
+  s.acc = Math.min(s.acc + dt, .25);
+  while (s.acc >= CS_PUNCH.step) { s.acc -= CS_PUNCH.step; csPunchStep(s, CS_PUNCH.step); }
+  return s;
 }
 
 /* ================= Áudio sintetizado ================= */
@@ -2938,7 +3065,7 @@ function spawnSelf(side, spec) {
   // Fora do Plant the Bomb (que tem economia), todos nascem com colete e capacete se a opção estiver ligada.
   if (!bombOn()) { P.helmet = !!S.armor; P.armor = S.armor ? 100 : 0; }
   P.hp = 100; P.alive = true; P.crouch = false; P.duck = 0; P.duckSpeed = DUCK.ideal; P.wantDuck = false; P.h = H_STAND; P.eyeOff = EYE_STAND; P.onGround = true;
-  P.recoilP = P.recoilY = P.shots = P.spread = 0; P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null; P.nadePrep = P.nadePending = null; P.throwT = 0;
+  P.recoilP = P.recoilY = P.shots = P.spread = 0; csReset(P); P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null; P.nadePrep = P.nadePending = null; P.throwT = 0;
   refillAmmo(P);
   P.weapon = S.loadout[CATEGORIES[S.startSlot] ? S.startSlot : 'rifle']; P.lastW = S.loadout.pistol;
   if(G.mode==='dm'){
@@ -3002,6 +3129,7 @@ function playerInput(dt, t) {
   let maxS = w.speed;
   if (P.zoom) maxS = w.scopedSpeed || maxS;
   const walk = K('ShiftLeft') || K('ShiftRight') ? WALK_MUL : 1, duckMul = 1 + (CROUCH_MUL - 1) * P.duck;
+  P.walking = walk < 1;
   maxS *= Math.min(walk, duckMul);
   // Agachado com luneta, a luneta não corta mais a velocidade: a AWP anda como agachada sem luneta (68 u/s, o dobro de
   // antes), que é o limite em que ela continua precisa (34% de 200 u/s). Em pé com luneta segue nos 100 u/s.
@@ -3016,7 +3144,14 @@ function playerInput(dt, t) {
     let sx = 0, sz = 0;
     if (canMove) { if (keyHeldAt('KeyW', ts)) sz += 1; if (keyHeldAt('KeyS', ts)) sz -= 1; if (keyHeldAt('KeyD', ts)) sx += 1; if (keyHeldAt('KeyA', ts)) sx -= 1; }
     P.prevPos.copy(P.pos);
-    physics(P, -sy * sz + cy * sx, -cy * sz - sy * sx, maxS, jump, PHYS_STEP, ACCEL_BASE);
+    // Aterrissagem do CS2: cair com velocidade v (u/s) dá b = clamp(1 + v·0,0005; 0,2; 1). No chão, a velocidade máxima
+    // fica em b² e volta em ~1,1/s; o pulo seguinte sai com força b, que volta 0,6/s. Sem a estamina antiga.
+    const wasGround = P.onGround, vy0 = P.vel.y, lb = P.landB ?? 1, lt = P.landT ?? 1;
+    const groundK = Math.min(1, lb * lb + lt * 1.111189365386963), jumpK = Math.min(1, lb + clamp(lt, 0, 1) * .6000000238418579);
+    physics(P, -sy * sz + cy * sx, -cy * sz - sy * sx, maxS * groundK, jump, PHYS_STEP, ACCEL_BASE);
+    if (jump && jumpK < 1) P.vel.y -= JUMP_V * (1 - jumpK);
+    if (!wasGround && P.onGround) { P.landB = clamp(1 + (vy0 / .0254) * .0005000000237487257, .2, 1); P.landT = 0; }
+    else if (P.onGround) P.landT = lt + PHYS_STEP;
     if (jump) P.jumpUntil = 0;
     P.landSpread *= Math.exp(-PHYS_STEP * 16);
     P.physTime -= PHYS_STEP;
@@ -3027,7 +3162,7 @@ function playerInput(dt, t) {
 function selectWeapon(k) {
   if (!ORDER.includes(k) || k === P.weapon || !P.alive) return;
   P.lastW = P.weapon; P.weapon = k; P.drawEnd = now() + W[k].draw; P.reloadEnd = 0; P.zoom = 0; P.shots = 0; applyFov();
-  P.recoilP = P.recoilY = P.spread = P.kick = P.swing = 0;
+  P.recoilP = P.recoilY = P.spread = P.kick = P.swing = 0; csReset(P);
   P.inspT = 0; P.kAnim = null; P.knifeSide = 0; P.nadePrep = null; if (W[k].melee) beginKnifeAnimation('draw',now());
   P.deagleShot=null;P.deagleDrawKey=0;P.deagleDrawStage=0;
 }
@@ -3058,12 +3193,15 @@ function vmKickStep(dt) {
   if (Math.abs(a.z) < 1e-5 && Math.abs(a.v) < 1e-4) a.z = a.v = 0;
   return a.z;
 }
-function applyRecoil(w) {
-  const ck = P.crouch && P.onGround ? CROUCH_RECOIL : 1;
-  if (w.pattern) { const i = Math.min(Math.floor(P.shots), PAT.length - 1), scale = (w.recoilScale || .85) * ck; P.recoilP += PAT[i][0] * scale; P.recoilY += (PAT[i][1] * scale + (Math.random() - 0.5) * (w.recoilJitter ?? .002)) * (ck < 1 ? ck : 1); P.shots++; }
-  else { P.recoilP += (w.kickP || 0) * ck; P.recoilY += (Math.random() - 0.5) * (w.kickY || 0) * ck; }
-  P.spread += w.shotSpread || 0; P.kick = 1; vmKickImpulse(P.weapon);
+// Recuo do tiro: impulso do aim punch pela tabela da arma (como no CS). Agachado no chão, o impulso é 15% menor
+// (pedido do jogo, não é regra do CS). O coice visual da arma na mão acompanha.
+function applyRecoil(w, t = now()) {
+  const k = w.key || P.weapon, ck = P.crouch && P.onGround ? CROUCH_RECOIL : 1;
+  if (w.cs) csFired(P, k, t, csMode(P, k), ck);
+  P.kick = 1; vmKickImpulse(P.weapon);
 }
+// Aplica o punch acumulado ao tiro (2×) e à câmera (a câmera usa a fração de viewRecoilScale).
+function syncPunch() { const s = P.aim; if (!s) { P.recoilP = P.recoilY = 0; return; } P.recoilP = CS_PUNCH.scale * s.up * DEG; P.recoilY = -CS_PUNCH.scale * s.right * DEG; P.shots = s.idx; }
 // Solavanco de câmera ao tomar tiro: menor e com teto, para tiros seguidos não sacudirem a tela.
 function hurtPunch() { P.punch = Math.min(P.punch + .009, .022); }
 function eyePos() { return [P.pos.x, P.pos.y + P.eyeOff, P.pos.z]; }
@@ -3117,7 +3255,7 @@ function inspect() {
   else P.inspT = t;
 }
 // Rajada de chumbos: devolve, por vítima, o dano somado e o melhor ponto atingido (cabeça > corpo > perna).
-const PART_RANK = { leg: 0, body: 1, head: 2 };
+const PART_RANK = { leg: 0, body: 1, stomach: 2, head: 3 };
 function pelletVolley(eye, yaw, pitch, w, targets, ignore, each, helmetOf) {
   const hits = new Map();
   for (let i = 0; i < w.pellets; i++) {
@@ -3152,28 +3290,31 @@ function shoot(t, heavy) {
   if (aim) {
     const d=aim.direction;
     P.yaw=Math.atan2(-d[0],-d[2]); P.pitch=Math.asin(clamp(d[1],-1,1));
-    P.recoilP=P.recoilY=P.punch=0;
+    P.recoilP=P.recoilY=P.punch=0; if (P.aim) { P.aim.up = P.aim.right = P.aim.vu = P.aim.vr = 0; }
   }
-  const settle = w.scope && P.zoom && w.zoomMs ? clamp(1 - (t - (P.zoomAt || 0)) / w.zoomMs, 0, 1) : 0;
-  const inac = inaccuracy(P, w, P.zoom > 0, P.spread) + (settle ? settle * (w.noscope - w.base) : 0) + (P.inBurst && w.burst ? w.burst.spread : 0);
-  const rr = inac * Math.sqrt(Math.random()), th = Math.random() * TAU;
-  const dir = aim ? aim.direction : dirFrom(P.yaw + P.recoilY + Math.cos(th) * rr, P.pitch + P.recoilP + Math.sin(th) * rr);
+  // Precisão do CS: base + penalidade acumulada + movimento + ar; logo depois de abrir a luneta, ainda carrega parte da
+  // imprecisão sem luneta. O desvio é o spread do CS (raio uniforme, concentrado no centro) somado ao recuo (2× o punch).
+  syncPunch();
+  const mode = csMode(P, P.weapon), settle = w.scope && P.zoom && w.zoomMs ? clamp(1 - (t - (P.zoomAt || 0)) / w.zoomMs, 0, 1) : 0;
+  const inac = inaccuracy(P, w, P.zoom > 0, 0) + (settle && w.cs ? settle * (w.cs.stand[0] - w.cs.stand[1]) : 0);
+  const [ox, oy] = w.cs ? csSpreadOffset(inac, w.cs.spread[mode]) : [0, 0];
+  const dir = aim ? aim.direction : dirFrom(P.yaw + P.recoilY + ox, P.pitch + P.recoilP + oy);
   const mz = muzzleWorld();
   let end;
   if (w.pellets && !aim) {
     // Escopeta: cada chumbo é um raio; o dano soma por vítima e conta o melhor ponto atingido.
-    const yaw = P.yaw + P.recoilY + Math.cos(th) * rr, pitch = P.pitch + P.recoilP + Math.sin(th) * rr;
+    const yaw = P.yaw + P.recoilY + ox, pitch = P.pitch + P.recoilP + oy;
     let smoked = false;
     const hits = pelletVolley(e, yaw, pitch, w, targets, null, (r, d, i) => { if (r && r.part && smokeBlocks(e, r.point)) smoked = true; if (i < 4) tracer(mz, r ? r.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60], 45); if (r && !r.part && i < 5) addDecal(r.point, r.normal); },
       r => { const victim = r.actor ? DM.byId.get(r.actor) : G.mode === 'bot' ? BOT : OPP.cur; return victim && victim.helmet; });
     end = mz; HIT.smoke = smoked;
     for (const h of hits.values()) dealDamage(h.dmg, h.part, P.weapon, h.actor);
     HIT.smoke = false;
-    applyRecoil(w);
+    applyRecoil(w, t);
   } else {
     const res = aim || trace(e, dir, 300, targets);
-    applyRecoil(w);
-    if (aim) P.recoilP=P.recoilY=0;
+    applyRecoil(w, t);
+    if (aim) { P.recoilP=P.recoilY=0; if (P.aim) P.aim.up = P.aim.right = P.aim.vu = P.aim.vr = 0; }
     end = res ? res.point : [e[0] + dir[0] * 300, e[1] + dir[1] * 300, e[2] + dir[2] * 300];
     tracer(mz, end, 45, skinTracer(skinOf(P.weapon)));
     if (res) { if (res.part) {const victim=res.actor ? DM.byId.get(res.actor) : G.mode==='bot' ? BOT : OPP.cur;HIT.smoke=smokeBlocks(e,res.point);dealDamage(damageFor(w,res.part,victim&&victim.helmet,res.t),res.part,P.weapon,res.actor);HIT.smoke=false;} else addDecal(res.point, res.normal); }
@@ -3200,8 +3341,8 @@ function dealDamage(dmg, part, wkey, actorId) {
 // Colete: no corpo, o dano cai conforme a penetração da arma; com capacete, protege a cabeça (o corte da cabeça já vem
 // de damageFor). Cada acerto gasta metade do dano em colete. Pernas e quedas passam direto.
 function armorCut(e, amount, part, weapon) {
-  if (!(e && e.armor > 0) || weapon === 'c4' || weapon === 'fall' || !(part === 'body' || (part === 'head' && e.helmet))) return amount;
-  if (part === 'body') amount *= W[weapon]?.grenade ? .5 : (W[weapon]?.helmetPen ?? .6);
+  if (!(e && e.armor > 0) || weapon === 'c4' || weapon === 'fall' || !(part === 'body' || part === 'stomach' || (part === 'head' && e.helmet))) return amount;
+  if (part === 'body' || part === 'stomach') amount *= W[weapon]?.grenade ? .5 : (W[weapon]?.helmetPen ?? .6);
   e.armor = Math.max(0, e.armor - Math.round(amount * .5)); if (e.inv) e.inv.armor = e.armor;
   return amount;
 }
@@ -3257,8 +3398,9 @@ function updateWeapon(dt, t) {
     P.burstAt = t + w.burst.gap; P.nextFire = P.burstLeft ? P.burstAt : t + w.burst.after;
   }
   P.m1Press = false; P.m2Press = false;
-  if (t - P.lastShot > (w.rof || 100) + 60) { const k = Math.exp(-dt * 8); P.recoilP *= k; P.recoilY *= k; P.shots = Math.max(0, P.shots - dt * 14); }
-  P.spread *= Math.exp(-dt * (w.recover || 6));
+  // Aim punch, índice do recuo e precisão do CS evoluem a cada quadro (punch em passos de 1/128 s).
+  if (w.cs) csTick(P, P.weapon, dt, t); else if (P.aim) { P.aim.acc = Math.min(P.aim.acc + dt, .25); while (P.aim.acc >= CS_PUNCH.step) { P.aim.acc -= CS_PUNCH.step; csPunchStep(P.aim, CS_PUNCH.step); } }
+  syncPunch();
   P.kick *= Math.exp(-dt * (P.weapon === 'pistol' ? 10 : 14)); P.swing *= Math.exp(-dt * 9); P.punch *= Math.exp(-dt * 10);
 }
 
@@ -3513,7 +3655,7 @@ function botUpdate(dt, t) {
 }
 function botFire(L) {
   const B = BOT, w = W[B.w], eye = [B.pos.x, botEyeY(B), B.pos.z];
-  const inac = inaccuracy(B, w, !!w.scope, B.shots * w.shotSpread) * L.spread;
+  const inac = inaccuracy(B, w, !!w.scope, (B.shots || 0) * (w.cs ? w.cs.fire[0] : 0)) * L.spread;
   const rr = inac * Math.random(), th = Math.random() * TAU;
   const dir = dirFrom(B.yaw + Math.cos(th) * rr, B.pitch + Math.sin(th) * rr + (w.auto ? Math.min(B.shots, 8) * .003 : 0));
   const targets = P.alive ? hitboxesAt(P.pos.x, P.pos.y, P.pos.z, P.crouch) : null;
@@ -3946,7 +4088,7 @@ function dmBotFire(b,t,L){
   if(b.burst<=0){if(t<b.pauseUntil)return;const e=DM.byId.get(b.target);b.burst=botBurstSize(b,L,e?Math.hypot(e.pos.x-b.pos.x,e.pos.z-b.pos.z):Infinity);}
   b.safeUntil=0;b.mag--;b.nextFire=t+w.rof;b.burst--;b.flashUntil=t+45;b.lastShot=t;
   if(!b.burst)b.pauseUntil=t+(w.scope?w.rof:w.auto?240:300)+Math.random()*180;
-  const eye=[b.pos.x,botEyeY(b),b.pos.z],spread=inaccuracy(b,w,!!w.scope,b.shots*w.shotSpread)*L.spread;
+  const eye=[b.pos.x,botEyeY(b),b.pos.z],spread=inaccuracy(b,w,!!w.scope,(b.shots||0)*(w.cs?w.cs.fire[0]:0))*L.spread;
   const r=spread*Math.sqrt(Math.random()),a=Math.random()*TAU,dir=dirFrom(b.yaw+Math.cos(a)*r,b.pitch+Math.sin(a)*r+(w.auto?Math.min(b.shots,8)*.002:0));b.shots++;
   let end;
   if(w.pellets){
@@ -6246,7 +6388,7 @@ function updateHUD(dt, t) {
   setH(el.xh, !showXH); setH(el.scope, !(P.zoom && P.alive));
   if (showXH) {
     let extra = 0;
-    if (S.ch.style === 'dynamic' && !w.melee) { const a = inaccuracy(P, w, false, P.spread); extra = Math.min(60, Math.tan(a) / Math.tan(camera.fov * DEG / 2) * innerHeight / 2); }
+    if (S.ch.style === 'dynamic' && !w.melee) { const a = inaccuracy(P, w, P.zoom > 0, 0); extra = Math.min(60, Math.tan(a) / Math.tan(camera.fov * DEG / 2) * innerHeight / 2); }
     renderXH(el.xh, S.ch, extra);
   }
   fpsN++; if (t - fpsT >= 500) { fpsV = Math.round(fpsN * 1000 / (t - fpsT)); fpsN = 0; fpsT = t; }

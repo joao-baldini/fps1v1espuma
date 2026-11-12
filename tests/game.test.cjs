@@ -206,9 +206,9 @@ test('scope input keeps its timing gates and passes weapon, skin and zoom level 
   g.P.reloadEnd=14000;assert.equal(cx.toggleScope(13500),false);
 });
 
-test('AWP has ten rounds and scope stays closed until reload finishes, including the empty-magazine frame', () => {
+test('AWP has five rounds like CS2 and scope stays closed until reload finishes, including the empty-magazine frame', () => {
   const g=game(),cx=g.context;
-  assert.equal(g.W.sniper.mag,10);
+  assert.equal(g.W.sniper.mag,5);
   for(const weapon of ['sniper','ssg']){
     g.P.weapon=weapon;g.P.drawEnd=0;g.P.alive=true;g.P.reloadEnd=0;g.P.zoom=2;
     g.P.ammo[weapon]={mag:0,res:30};g.startReload(20000);
@@ -217,8 +217,8 @@ test('AWP has ten rounds and scope stays closed until reload finishes, including
     for(const t of [20000,end-100,end-1]){assert.equal(cx.toggleScope(t),false);assert.equal(g.P.zoom,0);}
     g.P.zoom=1;g.updateWeapon(0,end-1);assert.equal(g.P.zoom,0);
     assert.equal(cx.toggleScope(end),true);assert.equal(g.P.zoom,1);
-    assert.equal(g.P.ammo[weapon].mag,10);assert.equal(g.P.ammo[weapon].res,20);assert.equal(g.P.reloadEnd,0);
-    g.updateWeapon(0,end);assert.equal(g.P.ammo[weapon].res,20);
+    const full=g.W[weapon].mag;assert.equal(g.P.ammo[weapon].mag,full);assert.equal(g.P.ammo[weapon].res,30-full);assert.equal(g.P.reloadEnd,0);
+    g.updateWeapon(0,end);assert.equal(g.P.ammo[weapon].res,30-full);
     g.P.zoom=0;g.P.ammo[weapon].mag=0;
     assert.equal(cx.toggleScope(end+1000),false);
     assert.equal(g.P.zoom,0);assert.ok(g.P.reloadEnd>end+1000);
@@ -394,13 +394,13 @@ test('Aimbotz kills the old bot and immediately spawns a damageable replacement 
   g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
   const bot = g.DM.actors[1], original = [...Object.values(bot.pos)];
   assert.equal(g.DM.actors.length, 9);
-  assert.equal(g.DM.playerTargets.length, 24);
+  assert.equal(g.DM.playerTargets.length, 32);
   cx.aimbotzSetBots(40);
-  assert.equal(g.DM.playerTargets.length, 36);
+  assert.equal(g.DM.playerTargets.length, 48);
   cx.aimbotzSetBots(0);
   assert.equal(g.DM.actors.length, 2);
   assert.equal(g.DM.byId.size, 2);
-  assert.equal(g.DM.playerTargets.length, 3);
+  assert.equal(g.DM.playerTargets.length, 4);
   assert.equal(g.DM.actors[1], bot);
   cx.aimbotzHit(27, 'body', 'rifle', bot.id);
   assert.equal(bot.hp, 73);
@@ -424,7 +424,7 @@ test('Aimbotz kills the old bot and immediately spawns a damageable replacement 
   assert.equal(replacement.alive, false);
   assert.equal(g.stat(cx.G.me).k, 2);
   assert.equal(g.DM.byId.get(bot.id).hp, 100);
-  assert.equal(g.DM.playerTargets.length, 3);
+  assert.equal(g.DM.playerTargets.length, 4);
 
   // Repeated kills keep the live target count constant.
   for (let i = 0; i < 30; i++) cx.aimbotzHit(100, 'body', 'rifle', bot.id);
@@ -438,7 +438,7 @@ test('Aimbotz always changes spots without overlaps at every bot count and when 
     cx.buildMap('aimbotz');cx.G.mode='aimbotz';g.spawnSelf(0,[0,-4,0]);cx.aimbotzSetup();cx.aimbotzSetBots(count);
     const check=()=>{
       assert.equal(g.DM.actors.length,count+1);
-      assert.equal(g.DM.playerTargets.length,count*3);
+      assert.equal(g.DM.playerTargets.length,count*4);
       for(const bot of g.DM.actors.slice(1)){
         assert.equal(bot.alive,true);assert.equal(bot.hp,100);
         assert.equal(bot.pos.y,cx.groundAt(bot.pos.x,bot.pos.z));
@@ -841,30 +841,20 @@ test('outside Plant the Bomb: free shop with every gun (no grenades or gear); ke
   assert.equal(vm.runInContext("freeShopBlock('rifle')", dm.context), 'Fora da categoria'); assert.equal(vm.runInContext("freeShopBlock('usps')", dm.context), '');
   assert.equal(dm.P.armor, 100);
 });
-test('USP-S HS kills an unhelmeted target at close range and survives with a helmet', () => {
+test('damage follows CS2: USP-S HS kills unhelmeted up close and not through a helmet; M4s do not one-tap helmets; AK, Deagle and Scout do', () => {
   const g = game();
   assert.equal(g.damageFor(g.W.usps, 'head', false), 140);
   for (const distance of [0, 10, 20, 30]) {
     assert.ok(g.damageFor(g.W.usps, 'head', false, distance) >= 100);
     assert.ok(g.damageFor(g.W.usps, 'head', true, distance) < 100);
   }
-  assert.equal(g.damageFor(g.W.pistol, 'body', false), 40);
-  assert.equal(g.damageFor(g.W.rifle, 'body', false), 27);
+  // Corpo: peito ×1, estômago ×1,25, pernas ×0,75 (sem colete).
+  assert.equal(g.damageFor(g.W.pistol, 'body', false), 53); assert.equal(g.damageFor(g.W.rifle, 'body', false), 36);
+  assert.equal(g.damageFor(g.W.rifle, 'stomach', false), 45); assert.equal(g.damageFor(g.W.rifle, 'leg', false), 27);
   assert.equal(g.damageFor(g.W.sniper, 'body', false), 115);
-});
-
-test('M4s kill with one headshot through helmets up to 35 meters', () => {
-  const g = game();
-  for (const key of ['m4a4', 'm4a1s']) {
-    const w = g.W[key];
-    for (const distance of [0, 10, 34.99, 35]) {
-      for (const helmet of [false, true]) assert.ok(g.damageFor(w, 'head', helmet, distance) >= 100);
-      assert.equal(g.damageFor(w, 'body', true, distance), w.dmg);
-      assert.equal(g.damageFor(w, 'leg', true, distance), Math.round(w.dmg * .75));
-    }
-    for (const distance of [35.01, 50, 100]) assert.ok(g.damageFor(w, 'head', true, distance) < 100);
-  }
-  for (const key of ['rifle', 'pistol', 'ssg']) assert.ok(g.damageFor(g.W[key], 'head', true) >= 100);
+  for (const key of ['m4a4', 'm4a1s']) { assert.ok(g.damageFor(g.W[key], 'head', false) >= 100); assert.ok(g.damageFor(g.W[key], 'head', true) < 100); }
+  for (const key of ['rifle', 'pistol', 'ssg', 'sniper']) assert.ok(g.damageFor(g.W[key], 'head', true) >= 100, key);
+  assert.equal(g.W.m4a1s.mult.head, 3.475); assert.equal(g.W.pistol.mult.head, 3.9);
 });
 
 test('moving and jumping reduce precision; counter-strafing restores it sooner than coasting', () => {
@@ -878,8 +868,10 @@ test('moving and jumping reduce precision; counter-strafing restores it sooner t
   }
   assert.ok(Math.abs(counter.vel.x) < Math.abs(coast.vel.x));
   assert.ok(g.inaccuracy(counter, g.W.rifle, false, 0) < g.inaccuracy(coast, g.W.rifle, false, 0));
-  counter.onGround = false;
-  assert.ok(g.inaccuracy(counter, g.W.rifle, false, 0) > idle * 50);
+  // No ar (CS2): base em pé + pulo (~23× parado) e ainda mais logo na decolagem, pela velocidade vertical.
+  counter.onGround = false; counter.vel.set(0, 0, 0);
+  assert.ok(Math.abs(g.inaccuracy(counter, g.W.rifle, false, 0) - (.00641 + .14076)) < 1e-9);
+  counter.vel.y = 301.993 * .0254; assert.ok(g.inaccuracy(counter, g.W.rifle, false, 0) > idle * 35);
 });
 
 test('diagonal input does not gain or lose ground speed', () => {
@@ -1586,13 +1578,66 @@ test('a short bot match plays rounds with plants or eliminations, swaps sides at
   assert.notEqual(sides[0], sides[2], 'não trocou de lado');
   assert.ok(reasons.size >= 1); assert.ok([...reasons].every(r => ['kill', 'time', 'bomb', 'defuse'].includes(r)), [...reasons].join());
 });
+test('CS2 recoil: the seed builds the real spray shapes (AK climbs ~10°, swings left then right), punch decays, and the recoil index waits for the cycle', () => {
+  const g = game(), cx = g.context, ev = s => vm.runInContext(s, cx);
+  // Gerador do Source: mesma semente, mesma sequência; float em [lo, hi).
+  const r1 = ev('csRandomStream(223)'), r2 = ev('csRandomStream(223)'), a = [], b = [];
+  for (let i = 0; i < 50; i++) { a.push(r1.float(-70, 70)); b.push(r2.float(-70, 70)); }
+  assert.deepEqual(a, b); assert.ok(a.every(x => x >= -70 && x < 70)); assert.ok(new Set(a).size > 45);
+  const spray = (k, n) => { cx.csReset(g.P); g.P.weapon = k; g.P.crouch = false; g.P.onGround = true; g.P.vel.set(0, 0, 0);
+    const w = g.W[k], out = []; let t = 0, next = 0;
+    for (let i = 0; i < n; t += 1000 / 128) {
+      if (t >= next) { const s = cx.csAim(g.P, k); out.push([2 * s.right, 2 * s.up]); cx.csFired(g.P, k, t, 0); i++; next += w.cs.cycle[0] * 1000; }
+      cx.csTick(g.P, k, 1 / 128, t);
+    }
+    return out; };
+  const ak = spray('rifle', 30);
+  assert.deepEqual(ak[0], [0, 0], 'o primeiro tiro sai no centro');
+  for (let i = 1; i < 9; i++) { assert.ok(ak[i][1] > ak[i - 1][1], 'sobe nas primeiras balas'); assert.ok(Math.abs(ak[i][0]) < 2, 'quase reto'); }
+  assert.ok(ak[8][1] > 9 && ak[8][1] < 11.5, 'sobe ~10°: ' + ak[8][1]);
+  assert.ok(Math.min(...ak.slice(10, 16).map(p => p[0])) < -3, 'depois vai para a esquerda');
+  assert.ok(Math.max(...ak.slice(17, 27).map(p => p[0])) > 2, 'e volta para a direita');
+  // M4A4 sobe menos que a AK (magnitude 23 contra 30).
+  const m4 = spray('m4a4', 30); assert.ok(m4[8][1] < ak[8][1]);
+  // O punch volta a zero sozinho e o índice só começa a cair depois do intervalo do tiro + 1/64 s.
+  cx.csReset(g.P); g.P.weapon = 'rifle'; cx.csFired(g.P, 'rifle', 1000, 0); cx.csFired(g.P, 'rifle', 1100, 0);
+  const s = cx.csAim(g.P, 'rifle'); cx.csTick(g.P, 'rifle', 1 / 128, 1150); assert.equal(s.idx, 2, 'ainda no intervalo');
+  for (let t = 1210; t < 3500; t += 1000 / 128) cx.csTick(g.P, 'rifle', 1 / 128, t);
+  assert.equal(s.idx, 0); assert.ok(Math.hypot(s.up, s.right) < 1e-6 && s.vu === 0 && s.vr === 0, 'punch zerado');
+});
+test('CS2 accuracy: each shot adds its firing penalty, which recovers 10× per recovery time; spread is concentrated at the center', () => {
+  const g = game(), cx = g.context, c = g.W.rifle.cs;
+  cx.csReset(g.P); g.P.weapon = 'rifle'; g.P.crouch = false; g.P.onGround = true; g.P.vel.set(0, 0, 0);
+  const base = g.inaccuracy(g.P, g.W.rifle, false, 0); assert.ok(Math.abs(base - c.stand[0]) < 1e-12);
+  cx.csFired(g.P, 'rifle', 1000, 0); assert.ok(Math.abs(g.inaccuracy(g.P, g.W.rifle, false, 0) - (c.stand[0] + c.fire[0])) < 1e-12);
+  let t = 1000; const steps = Math.round(c.rec[0] * 1000);
+  for (let i = 0; i < steps; i++) { t += 1; cx.csTick(g.P, 'rifle', .001, t); }
+  const left = g.inaccuracy(g.P, g.W.rifle, false, 0) - c.stand[0]; assert.ok(Math.abs(left - c.fire[0] / 10) < c.fire[0] * .02, 'cai 10× no tempo de recuperação: ' + left);
+  g.P.crouch = true; assert.ok(g.inaccuracy(g.P, g.W.rifle, false, 0) >= c.crouch[0]);
+  // Raio sorteado de 0 a 1 sem raiz: a média do desvio fica em ~metade do cone (com raiz seria 2/3).
+  let sum = 0, seed = 1; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  for (let i = 0; i < 20000; i++) { const [x, y] = cx.csSpreadOffset(1, 0, rnd); sum += Math.hypot(x, y); }
+  assert.ok(Math.abs(sum / 20000 - .5) < .01, String(sum / 20000));
+});
+test('CS2 landing: after a jump the ground speed cap drops to b² and recovers in ~0.25 s; the next jump is weaker right after landing', () => {
+  const g = game(); g.spawnSelf(0); g.keys.add('KeyD');
+  for (let i = 0; i < 128; i++) g.playerInput(1 / 128, 10000 + i * 1000 / 128);
+  const full = Math.hypot(g.P.vel.x, g.P.vel.z); let t = 11000; g.P.jumpUntil = t + 20;
+  let landed = false, minSpeed = Infinity, i = 0;
+  for (; i < 400 && !landed; i++) { t += 1000 / 128; const was = g.P.onGround; g.playerInput(1 / 128, t); if (!was && g.P.onGround && i > 2) landed = true; }
+  assert.ok(landed); const b = g.P.landB; assert.ok(b > .8 && b < .9, 'b ' + b);
+  for (let k = 0; k < 16; k++) { t += 1000 / 128; g.playerInput(1 / 128, t); minSpeed = Math.min(minSpeed, Math.hypot(g.P.vel.x, g.P.vel.z)); }
+  assert.ok(minSpeed < full * .9, 'perde velocidade ao aterrissar: ' + minSpeed + ' / ' + full);
+  for (let k = 0; k < 128; k++) { t += 1000 / 128; g.playerInput(1 / 128, t); }
+  assert.ok(Math.abs(Math.hypot(g.P.vel.x, g.P.vel.z) - full) < 1e-3, 'volta à velocidade cheia');
+});
 test('crouching cuts recoil by 15%, and each shot kicks the gun back on a smooth spring like CS:GO', () => {
   const g = game(), cx = g.context; g.spawnSelf(0); g.selectWeapon('rifle');
-  const kick = crouch => { g.P.recoilP = g.P.recoilY = 0; g.P.shots = 4; g.P.crouch = crouch; g.P.onGround = true; cx.applyRecoil(g.W.rifle); return g.P.recoilP; };
-  const stand = kick(false), duck = kick(true); assert.ok(stand > 0); assert.ok(Math.abs(duck - stand * .85) < 1e-12, duck + ' vs ' + stand);
-  const awp = c => { g.P.recoilP = 0; g.P.crouch = c; cx.applyRecoil(g.W.sniper); return g.P.recoilP; };
-  assert.ok(Math.abs(awp(true) - awp(false) * .85) < 1e-12);
-  g.P.recoilP = 0; g.P.shots = 4; g.P.crouch = true; g.P.onGround = false; cx.applyRecoil(g.W.rifle); assert.ok(Math.abs(g.P.recoilP - stand) < 1e-12, 'no ar não conta como agachado');
+  // O impulso do aim punch (velocidade para cima) é 15% menor agachado no chão.
+  const kick = (crouch, ground = true, w = g.W.rifle) => { cx.csReset(g.P); g.P.weapon = w.key; g.P.crouch = crouch; g.P.onGround = ground; cx.applyRecoil(w, 20000); return Math.hypot(g.P.aim.vu, g.P.aim.vr); };
+  const stand = kick(false), duck = kick(true); assert.ok(stand > 0); assert.ok(Math.abs(duck - stand * .85) < 1e-9, duck + ' vs ' + stand);
+  assert.ok(Math.abs(kick(true, true, g.W.sniper) - kick(false, true, g.W.sniper) * .85) < 1e-9);
+  assert.ok(Math.abs(kick(true, false) - stand) < 1e-9, 'no ar não conta como agachado'); g.P.weapon = 'rifle';
   // Coice: sobe rápido, passa por um pico pequeno e volta sozinho, sem tremer, a qualquer FPS.
   for (const fps of [30, 60, 144]) {
     g.P.vmKick = { z: 0, v: 0 }; cx.vmKickImpulse('rifle'); let peak = 0, low = 0, t = 0, z = 0;
@@ -1612,18 +1657,18 @@ test('AWP scoped and crouched really walks (68 u/s, like crouching unscoped; it 
   assert.ok(Math.abs(u(awp.v) - 68) < 1, 'AWP mirando agachada: ' + u(awp.v));
   assert.ok(Math.abs(u(speedWith('sniper', 0, true).v) - 68) < 1, 'agachada sem luneta continua 68 u/s');
   assert.ok(Math.abs(u(speedWith('sniper', 1, false).v) - 100) < 1, 'em pé com luneta continua 100 u/s');
-  assert.ok(awp.g.inaccuracy(awp.g.P, awp.g.W.sniper, true, 0) < .001, 'continua precisa');
+  assert.ok(awp.g.inaccuracy(awp.g.P, awp.g.W.sniper, true, 0) <= .0015 + 1e-9, 'continua precisa (base agachada com luneta do CS2)');
   assert.ok(Math.abs(u(speedWith('ssg', 1, true).v) - u(speedWith('ssg', 0, true).v)) < 1, 'Scout: a luneta não muda a velocidade');
 });
-test('AWP accuracy follows CS: precise only when (almost) still, wild while moving scoped, quickscope needs a moment', () => {
-  const g = game(), w = g.W.sniper, e = { vel: { x: 0, z: 0 }, onGround: true, crouch: false, landSpread: 0 };
-  const at = (speed, zoomed, crouch = false) => { e.vel.x = speed; e.crouch = crouch; return g.inaccuracy(e, w, zoomed, 0); };
-  assert.ok(at(0, true) < .001);
-  assert.ok(at(w.scopedSpeed, true) > .15, 'andando de scope deveria errar');
-  assert.ok(at(w.speed * .52 * .5, true) < .001, 'andando devagar (shift) de scope continua preciso');
-  assert.ok(at(0, true, true) < at(0, true));
-  assert.ok(at(0, false) >= w.noscope);
-  // tiro logo depois de abrir o scope: ainda carrega parte da imprecisão sem scope
+test('AWP accuracy follows CS2: scoped cone .002 (.0015 crouched), no-scope .0808, wild above 34% of 200 u/s, walking with Shift stays precise', () => {
+  const g = game(), w = g.W.sniper, e = { vel: { x: 0, y: 0, z: 0 }, onGround: true, crouch: false, landSpread: 0 };
+  const at = (speed, zoomed, crouch = false, walking = false) => { e.vel.x = speed; e.crouch = crouch; e.walking = walking; return g.inaccuracy(e, w, zoomed, 0); };
+  assert.ok(Math.abs(at(0, true) - .002) < 1e-9); assert.ok(Math.abs(at(0, true, true) - .0015) < 1e-9);
+  assert.ok(Math.abs(at(0, false) - .0808) < 1e-9);
+  assert.ok(at(w.scopedSpeed, true) > .1, 'andando de scope (100 u/s) erra');
+  assert.ok(at(52 * .0254, true, false, true) < .0021, 'andando com Shift de scope (52 u/s) continua preciso');
+  // Correndo, logo acima de 34% a imprecisão sobe rápido (raiz quarta); andando com Shift sobe em linha reta.
+  const just = 200 * .4 * .0254; assert.ok(at(just, false, false, false) - .0808 > (at(just, false, false, true) - .0808) * 2);
   g.S.loadout.rifle = 'sniper'; g.spawnSelf(0, [0, 0, 0]); g.selectWeapon('sniper'); g.P.drawEnd = 0; g.P.nextFire = 0;
   g.context.toggleScope(20000); assert.equal(g.P.zoomAt, 20000);
 });
@@ -1917,7 +1962,7 @@ test('the C4 beep comes from the bomb: silent far away, louder as you get closer
 test('Glock and FAMAS: right click fires a 3-round burst, then waits; left click is a normal single shot', () => {
   const g = game(), cx = g.context;
   cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
-  for (const [weapon, gap] of [['glock', 55], ['famas', 75]]) {
+  for (const [weapon, gap] of [['glock', 50], ['famas', 75]]) {  // intervalos da rajada no CS2: Glock 0,05 s, FAMAS 0,075 s
     cx.aimbotzEquip(weapon); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.reloadEnd = 0;
     const am = g.P.ammo[weapon], start = am.mag; let t = 50000;
     g.P.m2Press = true; g.updateWeapon(0, t); assert.equal(start - am.mag, 1, weapon + ': primeiro tiro na hora');
