@@ -209,9 +209,15 @@ Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de
 |---|---|---|---|
 | Padrão | todas | original | originais |
 | Sublime | só AK-47 | o modelo da AK em marfim e ouro, com ranhuras e filetes de energia ciano, inspirado na linha Prime (Sublime em português) do Valorant | tiro elétrico; sinos ao abater |
+| Vanguarda | só AWP | branca com painéis laranja e pretos, luneta branca e faixa laranja no cano, inspirada na Asiimov do CS; rastro laranja | estrondo grave com eco metálico; acorde de sintetizador |
+| Alien | só AK-47 | verde-limão com tampa, carregador e cabo pretos, guarda-mão de cima branco e o rosto de um alien na coronha; rastro verde | zumbido de disco voador; teremim |
+| Blaster | só M4A1-S | branca espacial com guarda-mão e faixas azul-celeste, trilhos e detalhes pretos; rastro vermelho | laser; acorde de nave |
+| Buzzer | só M4A4 | amarela e preta, listrada como abelha (guarda-mão, coronha e carregador), com asas na coronha; rastro amarelo | zumbido; enxame |
 | Pulso Neon | armas de fogo | azul-marinho com filetes ciano e magenta | laser sintetizado; bipes de fliperama |
 | Brasa | armas de fogo | carvão com filetes laranja e dourado | estampido grave com estalos; gongo |
 | Glacial | armas de fogo | branco gelo e azul | disparo cristalino; sinos de gelo |
+
+As skins exclusivas (Sublime, Vanguarda, Alien, Blaster e Buzzer) usam o modelo da própria arma recolorido, com detalhes extras por cima. Cada uma tem a própria cor de **rastro** do tiro, que os outros jogadores também veem; as demais skins usam o rastro amarelo padrão. Vanguarda, Alien, Blaster e Buzzer já vêm liberadas.
 
 A **AK-47 Sublime** vem bloqueada. Digite o código de desbloqueio em **Armas → Código de skin**; ela fica liberada naquele navegador. O jogo guarda só o hash SHA-256 do código, nunca o código em si. Como tudo roda no navegador, isso evita o acesso casual, mas não impede quem edita o jogo ou os dados salvos.
 

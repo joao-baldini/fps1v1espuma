@@ -467,6 +467,10 @@ const SKINS = {
   sublime: { name: 'Sublime', for: ['rifle'], lock: 'a0ae4456e6fd4a5c7974355a34cfe9aa5ddd469272b195abe9b99259aa1fadd9', css: ['#f2eadb','#d9a93a','#5ff6ff'], desc: 'Marfim, ouro e energia ciano. Tiro elétrico e sinos ao abater.' },
   neon:    { name: 'Pulso Neon', for: FIREARMS, body: 0x1e2350, metal: 0x2c3166, glow: [0x3ff4ff, 0xff4cf0], css: ['#1e2350','#3ff4ff','#ff4cf0'], desc: 'Tiro de laser sintetizado e bipes de fliperama.' },
   brasa:   { name: 'Brasa', for: FIREARMS, body: 0x2e1a13, metal: 0x3f2c25, glow: [0xff7a1a, 0xffc23a], css: ['#2e1a13','#ff7a1a','#ffc23a'], desc: 'Estampido grave com estalos de fogo e gongo ao abater.' },
+  vanguarda: { name: 'Vanguarda', for: ['sniper'], css: ['#f4f4f2','#ff6a13','#1c1c1e'], tracer: 0xff7a2a, desc: 'Branca com painéis laranja e pretos, inspirada na Asiimov do CS. Estrondo grave com eco metálico; acorde de sintetizador ao abater.' },
+  alien:   { name: 'Alien', for: ['rifle'], css: ['#9cff2e','#121314','#f2f2f2'], tracer: 0x7dff3a, desc: 'Verde-limão com detalhes em preto e branco e o rosto de um alien na coronha. Rastro verde, tiro com zumbido de disco voador e teremim ao abater.' },
+  blaster: { name: 'Blaster', for: ['m4a1s'], css: ['#f4f6f8','#5ec8ff','#121416'], tracer: 0xff3030, desc: 'Branca espacial com azul-celeste e detalhes pretos. Rastro vermelho, tiro de laser e acorde de nave ao abater.' },
+  buzzer:  { name: 'Buzzer', for: ['m4a4'], css: ['#ffc81a','#121212','#fff1b0'], tracer: 0xffc81a, desc: 'Amarela e preta, listrada como abelha, com asas na coronha. Rastro amarelo, tiro com zumbido e enxame ao abater.' },
   glacial: { name: 'Glacial', for: FIREARMS, body: 0xe2f1fa, metal: 0x86afcc, glow: [0x6fe0ff, 0xffffff], css: ['#e2f1fa','#86afcc','#6fe0ff'], desc: 'Disparo cristalino e sinos de gelo.' },
 };
 const SKIN_IDS = Object.keys(SKINS);
@@ -503,19 +507,62 @@ function unlockSkinCode(code) {
   if (opened.length) { S.unlocks = Array.from(new Set([...(Array.isArray(S.unlocks) ? S.unlocks : []), ...opened])); saveS(); }
   return opened;
 }
-// AK Sublime: o mesmo modelo da AK em marfim e ouro, com as ranhuras e a janela de ejeção em energia ciano.
-const SUBLIME_MAP = { 0x2d2f32: 0xefe7d6, 0x35383b: 0xf4eee1, 0x1c1e20: 0xd9a93a, 0x8b5a2b: 0xf4eee1, 0x7a4c24: 0xd9a93a, 0x5e3a1c: 0x2b2f36, 0x2a2b2d: 0xefe7d6,
-  0x5c3a1a: 0x5ff6ff, 0x1e2022: 0xd9a93a, 0x121314: 0x5ff6ff, 0x353638: 0xd9a93a, 0x202224: 0x2b2f36 };
-let SUBLIME_AK = null;
-function sublimeAK(parts) {
-  if (SUBLIME_AK) return SUBLIME_AK;
-  SUBLIME_AK = parts.map(([a, b, hex, mesh]) => [a, b, SUBLIME_MAP[hex] ?? hex, mesh]).concat([
-    [[.025, .004, -.27], [.0275, .012, -.01], 0x5ff6ff], [[-.0275, .004, -.27], [-.025, .012, -.01], 0x5ff6ff],
-    [[.022, -.03, .08], [.0245, -.022, .24], 0x5ff6ff], [[-.0245, -.03, .08], [-.022, -.022, .24], 0x5ff6ff]]);
-  return SUBLIME_AK;
+// Skins exclusivas: o modelo da própria arma recolorido (cor original → cor da skin) e com detalhes extras por cima.
+// Os mapas e os extras são funções para só lerem as cores dos modelos (definidas mais abaixo) na primeira vez que forem usadas.
+const skinSide = (outline, x, hex, w = .0012) => [weaponShape(outline, w, hex, x), weaponShape(outline, w, hex, -x)];
+const SKIN_MODELS = {
+  // AK Sublime: marfim e ouro, com as ranhuras e a janela de ejeção em energia ciano.
+  sublime: { gun: 'rifle', map: () => ({ [AK_STEEL]: 0xefe7d6, [AK_COVER]: 0xf4eee1, [AK_DARK]: 0xd9a93a, [AK_WOOD]: 0xf4eee1, [AK_WOOD2]: 0xd9a93a, [AK_GRIP]: 0x2b2f36, [AK_MAG]: 0xefe7d6,
+      [AK_GROOVE]: 0x5ff6ff, 0x1e2022: 0xd9a93a, 0x121314: 0x5ff6ff, 0x353638: 0xd9a93a, 0x202224: 0x2b2f36 }),
+    extra: () => [[[.025, .004, -.27], [.0275, .012, -.01], 0x5ff6ff], [[-.0275, .004, -.27], [-.025, .012, -.01], 0x5ff6ff],
+      [[.022, -.03, .08], [.0245, -.022, .24], 0x5ff6ff], [[-.0245, -.03, .08], [-.022, -.022, .24], 0x5ff6ff]] },
+  // AK Alien: verde-limão, tampa, carregador e cabo pretos, guarda-mão de cima branco e o rosto do alien na coronha.
+  alien: { gun: 'rifle', map: () => ({ [AK_STEEL]: 0x9cff2e, [AK_COVER]: 0x121314, [AK_DARK]: 0x121314, [AK_WOOD]: 0xa6ff3c, [AK_WOOD2]: 0xf2f2f2, [AK_GRIP]: 0x121314, [AK_MAG]: 0x141516,
+      [AK_GROOVE]: 0x121314, 0x1e2022: 0x121314, 0x121314: 0x7dff3a, 0x353638: 0x9cff2e, 0x202224: 0x121314 }),
+    extra: () => [
+      ...skinSide([[.145, -.006], [.155, .008], [.17, .013], [.185, .008], [.195, -.006], [.19, -.03], [.176, -.056], [.164, -.056], [.15, -.03]], .0222, 0xf2f2f2),
+      ...skinSide([[.151, -.013], [.159, -.006], [.168, -.015], [.161, -.024]], .0236, 0x121314), ...skinSide([[.189, -.013], [.181, -.006], [.172, -.015], [.179, -.024]], .0236, 0x121314),
+      [[.0252, .006, -.29], [.0262, .01, .05], 0xf2f2f2], [[-.0262, .006, -.29], [-.0252, .01, .05], 0xf2f2f2],
+      [[.0252, -.022, -.29], [.0262, -.018, -.16], 0xf2f2f2], [[-.0262, -.022, -.29], [-.0252, -.018, -.16], 0xf2f2f2],
+      ...skinSide([[-.258, -.06], [-.17, -.06], [-.18, -.12], [-.268, -.11]], .0172, 0x9cff2e, .0006)] },
+  // M4A1-S Blaster: branca espacial, guarda-mão e faixas azul-celeste, trilhos e detalhes pretos.
+  blaster: { gun: 'm4a1s', map: () => ({ [M4_UP]: 0xf4f6f8, [M4_LOW]: 0x5ec8ff, [M4_DARK]: 0x121416, [M4_RAIL]: 0x121416, [M4_POLY]: 0xeef1f4, 0x15191b: 0x121416, 0x14181a: 0x121416,
+      0x2c3134: 0x121416, 0x1b2022: 0x121416, 0x23292c: 0xf4f6f8, 0x30373a: 0x5ec8ff, 0x171c1e: 0x121416 }),
+    extra: () => [
+      [[.0312, .018, -.29], [.0322, .024, .06], 0x5ec8ff], [[-.0322, .018, -.29], [-.0312, .024, .06], 0x5ec8ff],
+      ...skinSide([[.19, .02], [.29, .025], [.3, -.02], [.24, -.045], [.2, -.01]], .0284, 0x121416),
+      ...skinSide([[-.24, -.09], [-.18, -.09], [-.185, -.13], [-.245, -.128]], .0274, 0x5ec8ff, .0006),
+      GTB([0, .006, -.88], [0, .006, -.872], .0228, .0228, 0x5ec8ff, 16), GTB([0, .006, -.76], [0, .006, -.752], .0228, .0228, 0x5ec8ff, 16),
+      [[-.002, .028, -.93], [.002, .0285, -.74], 0x121416]] },
+  // M4A4 Buzzer: amarela e preta como abelha, com faixas pretas no guarda-mão, na coronha e no carregador, e asas na coronha.
+  buzzer: { gun: 'm4a4', map: () => ({ [M4_UP]: 0xffc81a, [M4_LOW]: 0x141414, [M4_DARK]: 0x141414, [M4_RAIL]: 0x141414, [M4_POLY]: 0xffc81a, 0x15191b: 0x141414, 0x14181a: 0x141414,
+      0x2a3033: 0xffc81a, 0x2c3134: 0x141414, 0x1b1f21: 0x141414 }),
+    extra: () => [
+      ...[-.335, -.39, -.445, -.5].map(z => GTB([0, .0, z], [0, .0, z - .022], .0366, .0366, 0x141414, 8, Math.PI / 8)),
+      ...[.2, .245, .29].flatMap(z => [[[.0284, -.06, z], [.0294, .034, z + .018], 0x141414], [[-.0294, -.06, z], [-.0284, .034, z + .018], 0x141414]]),
+      ...[-.105, -.15].flatMap(y => [[[.0274, y, -.27], [.0284, y + .02, -.17], 0x141414], [[-.0284, y, -.27], [-.0274, y + .02, -.17], 0x141414]]),
+      ...skinSide([[.21, .03], [.25, .05], [.29, .045], [.27, .028]], .0285, 0xfff1b0), ...skinSide([[.215, .022], [.26, .012], [.28, .018], [.25, .028]], .0285, 0xfff1b0),
+      [[.0312, .004, -.28], [.0322, .012, .05], 0x141414], [[-.0322, .004, -.28], [-.0312, .012, .05], 0x141414]] },
+  // AWP Vanguarda: chassi branco com painéis laranja e pretos, luneta branca e preta, faixa laranja no cano.
+  vanguarda: { gun: 'sniper', map: () => ({ [AWP_G]: 0xf4f4f2, [AWP_G2]: 0xff6a13, [AWP_D]: 0x1c1c1e, [AWP_S]: 0xf0f0ee, 0x1b2023: 0x1c1c1e, 0x2c3134: 0x2a2a2c,
+      0x2a3033: 0xe8e8e6, 0x1d2326: 0x1c1c1e, 0x262b2d: 0xff6a13, 0x23282a: 0x1c1c1e, 0x2a3134: 0x1c1c1e, 0x3a4245: 0xff6a13 }),
+    extra: () => [
+      ...skinSide([[-.47, .016], [-.33, .016], [-.38, -.03], [-.47, -.03]], .0302, 0x1c1c1e), ...skinSide([[-.33, .016], [-.2, .016], [-.2, -.045], [-.26, -.045]], .0302, 0xff6a13),
+      ...skinSide([[-.15, .016], [.05, .016], [.06, -.01], [-.08, -.05], [-.15, -.05]], .0322, 0x1c1c1e), ...skinSide([[-.05, .0], [.04, .0], [.045, -.012], [-.02, -.035]], .0324, 0xff6a13),
+      ...skinSide([[.1, .012], [.22, .004], [.22, -.03], [.1, -.026]], .0282, 0xff6a13), ...skinSide([[.12, -.17], [.30, -.138], [.30, -.155], [.12, -.19]], .0262, 0x1c1c1e),
+      GTB([0, .025, -.86], [0, .025, -.83], .0118, .0118, 0xff6a13, 10), GTB([0, .128, -.215], [0, .128, -.195], .0196, .0196, 0xff6a13, 12)] },
+};
+const skinModelCache = {};
+function skinModel(id, parts) {
+  if (skinModelCache[id]) return skinModelCache[id];
+  const m = SKIN_MODELS[id], map = m.map();
+  return (skinModelCache[id] = parts.map(([a, b, hex, mesh]) => [a, b, map[hex] ?? hex, mesh]).concat(m.extra()));
 }
+// Cor do rastro do tiro: a da skin (quando ela tem uma) ou o amarelo padrão.
+const TRACER_HEX = 0xffe6a0;
+const skinTracer = id => (SKINS[id] && SKINS[id].tracer) || TRACER_HEX;
 function skinPartsFor(k, id, parts, accents = true) {
-  if (id === 'sublime' && k === 'rifle' && parts === GUNS.rifle) return sublimeAK(parts);
+  const model = SKIN_MODELS[id]; if (model && k === model.gun && parts === GUNS[k]) return skinModel(id, parts);
   const sk = SKINS[id]; if (!sk || !sk.body || !skinFits(k, id)) return parts;
   const c = new THREE.Color(), hsl = {};
   const out = parts.map(([a, b, hex, mesh]) => { c.setHex(hex).getHSL(hsl); return [a, b, hsl.l < .28 ? sk.metal : sk.body, mesh]; });
@@ -1636,6 +1683,22 @@ const AU = {
       this.noise(.22 * body, 1100 * f, .6, .6 * v, pan);
       this.tone(58, .26 * body, .5 * v, 'sine', pan, -24);
       for (const d of [.03, .062, .1]) this.noise(.025, 4200, 1.5, .14 * v * f, pan, 'highpass', d);
+    } else if (id === 'alien') {
+      // Disco voador: dois tons quase iguais descendo (batimento) sobre o estalo.
+      this.tone(900 * f, .13 * body, .14 * v, 'sine', pan, -640 * f); this.tone(935 * f, .13 * body, .1 * v, 'triangle', pan, -650 * f);
+      this.noise(.09 * body, 1900 * f, .9, .34 * v, pan, 'bandpass'); this.tone(118, .1 * body, .3 * v, 'sine', pan, -60);
+    } else if (id === 'blaster') {
+      // Laser: "piu" agudo descendo rápido, com um segundo raio e um corpo grave curto.
+      this.tone(2600 * f, .11, .15 * v, 'square', pan, -2250 * f); this.tone(1700 * f, .1, .1 * v, 'sawtooth', pan, -1450 * f, .012);
+      this.noise(.04, 5200, .8, .1 * v * f, pan, 'highpass'); this.tone(165, .08, .22 * v, 'sine', pan, -90);
+    } else if (id === 'buzzer') {
+      // Zumbido: serra grave e quadrada levemente desafinadas, com o estampido por cima.
+      this.noise(.11 * body, 2300 * f, .7, .38 * v, pan); this.tone(196, .12 * body, .16 * v, 'sawtooth', pan, -30); this.tone(207, .12 * body, .1 * v, 'square', pan, -32);
+      this.tone(128, .08, .26 * v, 'triangle', pan, -60);
+    } else if (id === 'vanguarda') {
+      // Estrondo grave da AWP com um eco metálico curto.
+      this.noise(.42 * body, 1050, .6, .62 * v, pan); this.tone(56, .4 * body, .55 * v, 'sine', pan, -20);
+      this.tone(1320 * f, .22, .05 * v, 'triangle', pan, -200, .07); this.tone(990 * f, .26, .04 * v, 'triangle', pan, -150, .12);
     } else if (id === 'glacial') {
       this.noise(.1 * body, 3500 * f, .7, .36 * v, pan, 'highpass');
       this.tone(260, .08 * body, .3 * v, 'triangle', pan, -140);
@@ -1658,6 +1721,22 @@ const AU = {
       const f = 110 * (1 + (k - 1) * .12);
       this.tone(f, .9, .22, 'sine', 0, -8); this.tone(f * 2.76, .5, .06, 'sine'); this.noise(.35, 700, .6, .12, 0);
       if (k === 5) { this.tone(f / 2, 1.2, .25, 'sine', 0, -6, .1); this.noise(.5, 2600, .5, .1, 0, 'bandpass', .12); }
+    } else if (id === 'alien') {
+      const f = 440 * up;
+      this.tone(f, .5, .12, 'sine', 0, f * .6); this.tone(f * 1.012, .5, .06, 'sine', 0, f * .6, .025);
+      if (k === 5) [1.5, 2, 3].forEach((m, i) => this.tone(f * m, .45, .06, 'sine', 0, f * m * .4, .2 + i * .09));
+    } else if (id === 'blaster') {
+      const f = 660 * up;
+      this.tone(f, .12, .09, 'square', 0, 1200); this.tone(f * 1.5, .3, .08, 'sine', 0, 0, .09); this.tone(f * 2, .25, .05, 'sine', 0, 0, .15);
+      if (k === 5) [2.5, 3, 4].forEach((m, i) => this.tone(f * m, .3, .05, 'square', 0, -f, .25 + i * .07));
+    } else if (id === 'buzzer') {
+      const f = 175 * (1 + (k - 1) * .1);
+      [0, 7, -6, 13].forEach((d, i) => this.tone(f + d, .45, .06, 'sawtooth', 0, i % 2 ? 12 : -12, i * .02));
+      if (k === 5) [0, 9, -8, 15, -14].forEach((d, i) => this.tone(f * 2 + d, .7, .05, 'sawtooth', 0, 20, .2 + i * .03));
+    } else if (id === 'vanguarda') {
+      const f = 392 * up;
+      [1, 1.26, 1.5].forEach((m, i) => this.tone(f * m, .55, .07, 'triangle', 0, 0, i * .04)); this.tone(f / 2, .6, .1, 'sine', 0, -20);
+      if (k === 5) [2, 2.52, 3].forEach((m, i) => this.tone(f * m, .8, .05, 'triangle', 0, 0, .25 + i * .07));
     } else if (id === 'glacial') {
       const f = 1046 * up;
       this.tone(f, .8, .1, 'sine'); this.tone(f * 2.4, .4, .04, 'sine'); this.tone(f * 1.5, .6, .05, 'sine', 0, 0, .06);
@@ -1838,7 +1917,7 @@ GUNS.m4a1s = M4_BODY.concat([
   GSH([[-.505, .036], [-.528, .036], [-.528, .044], [-.52, .066], [-.51, .066]], .009, M4_DARK),
   GTB([0, .006, -.722], [0, .006, -.53], .0085, .0085, 0x2c3134, 8, Math.PI / 8),
   GTB([0, .006, -.727], [0, .006, -.715], .015, .022, 0x1b2022, 16),
-  GTB([0, .006, -.935], [0, .006, -.727], .022, .022, 0x22282b, 16),
+  GTB([0, .006, -.935], [0, .006, -.727], .022, .022, 0x23292c, 16),
   GTB([0, .006, -.80], [0, .006, -.792], .0228, .0228, 0x30373a, 16),
   GTB([0, .006, -.945], [0, .006, -.935], .0235, .0205, 0x171c1e, 16),
   [[-.0045, .0015, -.9455], [.0045, .0105, -.945], 0x050606],
@@ -2581,8 +2660,9 @@ for (let i = 0; i < 10; i++) {
   l.visible = false; l.frustumCulled = false; scene.add(l); tracers.push({ l, until: 0 });
 }
 let tracerI = 0;
-function tracer(a, b, ms) {
+function tracer(a, b, ms, hex = TRACER_HEX) {
   const t = tracers[tracerI++ % tracers.length], arr = t.l.geometry.attributes.position.array;
+  t.l.material.color.setHex(hex); t.l.material.opacity = hex === TRACER_HEX ? .75 : .95;
   arr[0] = a[0]; arr[1] = a[1]; arr[2] = a[2]; arr[3] = b[0]; arr[4] = b[1]; arr[5] = b[2];
   t.l.geometry.attributes.position.needsUpdate = true; t.l.visible = true; t.until = now() + (ms || 60);
 }
@@ -3057,7 +3137,7 @@ function shoot(t, heavy) {
     applyRecoil(w);
     if (aim) P.recoilP=P.recoilY=0;
     end = res ? res.point : [e[0] + dir[0] * 300, e[1] + dir[1] * 300, e[2] + dir[2] * 300];
-    tracer(mz, end, 45);
+    tracer(mz, end, 45, skinTracer(skinOf(P.weapon)));
     if (res) { if (res.part) {const victim=res.actor ? DM.byId.get(res.actor) : G.mode==='bot' ? BOT : OPP.cur;HIT.smoke=smokeBlocks(e,res.point);dealDamage(damageFor(w,res.part,victim&&victim.helmet,res.t),res.part,P.weapon,res.actor);HIT.smoke=false;} else addDecal(res.point, res.normal); }
   }
   AU.shot(w.snd, 1, 0, skinOf(P.weapon)); P.flashT = t + 45;
@@ -5697,7 +5777,7 @@ function arenaOnData(from, m) {
       const id = ARENA.host ? from : d.id, e = DM.byId.get(id);
       if (!e || e === P || !Array.isArray(d.s) || d.s.length !== 6 || !d.s.every(fin)) return;
       const w = W[d.w] ? d.w : 'rifle'; e.flashUntil = t + 50; if (!W[w].melee) e.lastShot = t;
-      tracer([d.s[0], d.s[1], d.s[2]], [d.s[3], d.s[4], d.s[5]], 70);
+      tracer([d.s[0], d.s[1], d.s[2]], [d.s[3], d.s[4], d.s[5]], 70, skinTracer(skinFits(w, d.sk) ? d.sk : null));
       const a = spat(d.s[0], d.s[2]); AU.shot(W[w].snd, a.v, a.pan, skinFits(w, d.sk) ? d.sk : null);
       if (ARENA.host) arenaBroadcast({ t: 'e', k: 'shot', d: { id, w, sk: d.sk, s: d.s } }, from);
     }
@@ -5810,7 +5890,7 @@ function spat(x, z) {
   return { v: 1 / (1 + d * 0.06), pan: clamp((dx * Math.cos(P.yaw) - dz * Math.sin(P.yaw)) / d, -1, 1) * 0.85 };
 }
 function remoteShotFx(o, e, w, skin) {
-  tracer(o, e, 70); OPP.flashUntil = now() + 50;
+  tracer(o, e, 70, skinTracer(skin)); OPP.flashUntil = now() + 50;
   const s = spat(o[0], o[2]); AU.shot(W[w].snd, s.v, s.pan, skin);
 }
 function oppCurrent(t) {

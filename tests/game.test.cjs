@@ -321,6 +321,30 @@ test('Deagle sound has a low body, leading crack and delayed metal, and draw sou
   for(const t of [12000,12110,12110,12599,12600,12600,12799,12800])cx.deagleDrawTick(t);
   assert.deepEqual(cues,[0,1]);g.tick(13000);g.selectWeapon('rifle');g.selectWeapon('pistol');cx.deagleDrawTick(13750);assert.deepEqual(cues,[0,1]);
 });
+test('exclusive skins: Vanguarda (AWP), Alien (AK), Blaster (M4A1-S) and Buzzer (M4A4) recolor their own model, add details, own tracers and sounds', () => {
+  const g=game(),cx=g.context;
+  cx.THREE.Color=class{constructor(h){this.setHex(h||0);}setHex(h){this.r=(h>>16&255)/255;this.g=(h>>8&255)/255;this.b=(h&255)/255;return this;}getHSL(o){o.l=(Math.max(this.r,this.g,this.b)+Math.min(this.r,this.g,this.b))/2;return o;}};
+  cx.basicMat={};cx.geoFrom=out=>out;
+  vm.runInContext(section('const FACES =','function geoFrom'),cx);vm.runInContext(section('function weaponMesh(','/* ================= Mapas'),cx);vm.runInContext(section('// Modelos das armas:','// braços: mão'),cx);
+  const guns=vm.runInContext('GUNS',cx),fn=n=>vm.runInContext(n,cx);
+  const want={vanguarda:['sniper',[0xf4f4f2,0xff6a13,0x1c1c1e],0xff7a2a],alien:['rifle',[0x9cff2e,0x121314,0xf2f2f2],0x7dff3a],blaster:['m4a1s',[0xf4f6f8,0x5ec8ff,0x121416],0xff3030],buzzer:['m4a4',[0xffc81a,0x141414],0xffc81a]};
+  for(const [id,[gun,colors,tracer]] of Object.entries(want)){
+    assert.ok(fn('skinFits')(gun,id));for(const other of ['rifle','m4a4','m4a1s','sniper','pistol'].filter(k=>k!==gun))assert.equal(fn('skinFits')(other,id),false,id+' em '+other);
+    assert.equal(fn('skinUnlocked')(id),true,'liberada');
+    const parts=cx.skinPartsFor(gun,id,guns[gun]);assert.ok(parts.length>guns[gun].length,'tem detalhes extras');
+    for(let i=0;i<guns[gun].length;i++)assert.equal(parts[i][3],guns[gun][i][3],'mesma geometria');
+    for(const c of colors)assert.ok(parts.some(p=>p[2]===c),id+' usa '+c.toString(16));
+    const geo=cx.boxModel(parts).geometry;assert.ok(geo.p.every(Number.isFinite));assert.ok(geo.p.length/9<1800,id+' '+geo.p.length/9);
+    assert.equal(fn('skinTracer')(id),tracer);assert.equal(cx.skinPartsFor(gun,id,guns[gun]),parts,'modelo guardado');
+  }
+  assert.equal(fn('skinTracer')('padrao'),vm.runInContext('TRACER_HEX',cx));assert.equal(fn('skinTracer')('neon'),vm.runInContext('TRACER_HEX',cx));
+  // Sons próprios: cada skin tem tiro e abate diferentes entre si e do som padrão.
+  const audio=vm.createContext({S:{},SKINS:{vanguarda:{},alien:{},blaster:{},buzzer:{}},Math,clamp:(v,a,b)=>Math.min(b,Math.max(a,v))});vm.runInContext(section('const AU =','/* ================= Viewmodel'),audio);
+  const au=vm.runInContext('AU',audio),record=fn=>{const ev=[];au.tone=(...a)=>ev.push(['t',...a.slice(0,4)]);au.noise=(...a)=>ev.push(['n',...a.slice(0,3)]);au.kill=()=>ev.push(['k']);fn();return JSON.stringify(ev);};
+  const shots=new Set(),kills=new Set();
+  for(const [id,[gun]] of Object.entries(want)){shots.add(record(()=>au.skinShot(id,gun,1,0)));kills.add(record(()=>au.skinKill(id,1)));}
+  assert.equal(shots.size,4);assert.equal(kills.size,4);assert.ok(![...shots].includes('[]'));assert.ok(![...kills].some(k=>k==='[["k"]]'),'abate próprio, não o padrão');
+});
 test('scope cannot open during the firing interval and unlocks exactly when the next shot is ready', () => {
   for(const weapon of ['sniper','ssg']){
     const g=game(),cx=g.context;g.P.weapon=weapon;g.P.drawEnd=0;g.P.zoom=1;
