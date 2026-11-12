@@ -1,6 +1,6 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **Plant the Bomb**, **TDM**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM e dois mapas de bomba. O menu usa prévias dos mapas em WebP.
+FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **Plant the Bomb**, **5v5**, **TDM**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, dois mapas de Wingman e dois mapas de 5v5. O menu usa prévias dos mapas em WebP.
 
 ## Modos de jogo
 
@@ -12,9 +12,14 @@ Na tela **Jogar**, escolha o modo e selecione a arena na faixa de mapas. O mapa 
 | 2v2 | Você e um bot aliado contra dois bots | Sala para até 4 pessoas; bots completam as vagas |
 | XvX | Times de 1 a 8 de cada lado (1v5, 3v3, 8v8…), completados por bots | Sala para até 16 pessoas, no tamanho escolhido por quem cria |
 | Plant the Bomb | Você e um bot (Atacantes ou Defensores) contra dois bots, regras do Wingman | — |
+| 5v5 | Você + 4 aliados contra 5 bots, Palace ou Factory, dois bombsites | — |
 | TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
 | Aimbotz | Treino livre de mira com 1 a 12 bots | — |
+
+**5v5:** escolha o card do modo, depois **Palace** ou **Factory**. É uma base que reutiliza as regras de bomba e a IA já existentes; não há uma nova lógica tática específica para esses mapas. Há cinco pontos de nascimento separados por lado. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e aliados; inimigos não aparecem. Os spawns são **azul = defensor**, **vermelho = atacante**. No Palace, a defesa fica na parte superior e o ataque na inferior; no Factory, as bases seguem a orientação da referência original, defesa à esquerda e ataque à direita.
+
+Os dois modelos enviados foram convertidos offline, com cores chapadas inspiradas nas referências originais do Warface. As imagens de seleção vêm dos próprios mapas do jogo, em 2048 × 768, sem carregar cenas 3D no menu. Os GLBs originais e as ferramentas de revisão não são necessários para jogar.
 
 ## Como jogar com seu parceiro
 
@@ -66,6 +71,10 @@ Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu
 - **Granadas:** como no CS. Apertar o botão puxa o pino: o braço recua e fica armado enquanto o botão estiver apertado. Ao soltar, o braço arremessa e a granada só sai da mão no meio do movimento. Um clique rápido espera o pino sair. O esquerdo joga longe, o direito joga perto e os dois juntos jogam a meia distância.
 
 ### Operadores
+
+Antes do Plant the Bomb, a tela de agentes mostra os cinco retratos. Clique num retrato para ver o agente em pé com a AK-47 e ler a habilidade; **Selecionar** confirma e inicia a partida. **Voltar** ou **Esc** cancela a prévia sem mudar a escolha salva. As setas navegam entre retratos. O fundo acompanha o mapa escolhido; em rotação, usa Guard.
+
+Finder, Doctor, Ghost, Brutus e Detector têm modelos próprios de roupa, rosto e equipamento, usados também nos personagens da partida. Retratos e prévia são renderizados a partir desses mesmos modelos, sem imagens ou texturas de personagens externas. A prévia só é desenhada enquanto essa tela está aberta e respeita a preferência por movimento reduzido.
 
 A habilidade fica na tecla **X**. Depois de usada, ela recarrega em 45 s e volta pronta no começo de cada rodada. Os operadores de um mesmo time são sempre diferentes; os bots sorteiam entre os que sobram.
 
@@ -128,9 +137,13 @@ Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e
 
 Escolha **Aimbotz** no menu e clique em **Jogar Aimbotz**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos.
 
-Vire para os dois quadros atrás do ponto inicial e mire e clique nos controles. No quadro **Aimbotz**, **− / +** muda a quantidade de bots e os nomes escolhem uma das sete armas de fogo. Você sempre mantém a faca do seu equipamento, sem opção de faca no quadro: **1** puxa a arma escolhida, **3** puxa a faca e **Q** alterna entre elas. A rodinha também alterna, caso não esteja configurada para pular. **2 / 4** também voltam à arma de treino.
+Vire para os quadros atrás do ponto inicial e mire e clique nos controles. No quadro **Aimbotz**, **− / +** muda a quantidade de bots e os nomes escolhem uma das armas de fogo. Você sempre mantém a faca do seu equipamento, sem opção de faca no quadro: **1** puxa a arma escolhida, **3** puxa a faca e **Q** alterna entre elas. A rodinha também alterna, caso não esteja configurada para pular. **2 / 4** também voltam à arma de treino.
 
 A reserva é ilimitada. Por padrão, os carregadores e as recargas continuam normais. Ative **Munição sem recarga** no quadro para manter o carregador cheio: o HUD mostra **∞**, e uma recarga em andamento é encerrada. Isso preserva a cadência, o recuo e as regras de luneta e vale somente no Aimbotz.
+
+O quadro pequeno **Prefire** abre o percurso da **Inferno: Banana → B → CT → Truck**. O nascimento fica protegido atrás da curva, perto da T Ramp. Você pode preparar a arma sem receber tiros: sair da área inicial de 2,5 m, com a arma pronta, ou disparar inicia o treino e o cronômetro. São 15 defensores fixos, com 100 de vida, que reagem e atiram somente com visão do jogador. A primeira abertura expõe apenas o defensor dos Logs; os demais alvos da Banana ficam mais recuados. Cada alvo morto desaparece sem renascer durante o percurso. O placar mostra abatidos, restantes e o tempo decorrido, sem limite. Esc pausa o treino; morrer reinicia todos os alvos e zera o tempo, retornando à preparação segura. Ao eliminar os 15, um aviso sonoro confirma a conclusão e o jogo retorna automaticamente ao Aimbotz normal. A arma, a faca, a opção de munição e o viewmodel escolhidos são mantidos.
+
+Esse trecho usa a geometria física do VPK fornecido, convertida offline e recortada, com cores chapadas e o shader de grade do jogo. O restante da Inferno, materiais e texturas do CS2 não são carregados. Detalhes da conversão em [assets/maps/README.md](assets/maps/README.md).
 
 O quadro separado **Viewmodel** muda a posição da arma em tempo real. **X** move para esquerda/direita (−2 a 2,5), **Y** para trás/frente (−2 a 2) e **Z** para baixo/cima (−2 a 2). Os botões usam passos de 0,5; **Preferências → Posição da arma** permite digitar valores de 0,1 em 0,1. As duas telas compartilham a mesma preferência, salva no navegador e aplicada em todos os modos. **Restaurar padrão** zera os três valores e recupera a posição anterior do jogo. É uma transformação do modelo em primeira pessoa, sem mudar a câmera, a mira, os tiros ou o modelo dos adversários.
 
@@ -178,6 +191,10 @@ As facas têm animações distintas de puxada, inspeção, corte e estocada. As 
 A Karambit segue o contorno da karambit do CS, traçado de uma foto: anel no pomo, cabo com três sulcos para os dedos e guarda, jimping no dorso e garra em curva contínua com chanfro claro no fio côncavo. Pegada, puxada e inspeção foram medidas quadro a quadro num vídeo de referência do CS2. Em repouso aparecem as duas mãos, com o punho direito na horizontal, mais à direita e embaixo, o anel à esquerda e a garra à direita, com a concavidade virada para a frente e vista na diagonal de cima. A puxada dura 0,8 s (24 quadros a 30 fps): a mão sobe pela direita, a faca dá uma volta completa no indicador e desce ao repouso enquanto a esquerda entra. A inspeção dura 3,0 s: levanta o punho e vira a faca no indicador. Na exibição, que dura cerca de 1,2 s, a faca vira no eixo do cabo e fica por cima da mão: o anel em cima, o cabo atravessando o punho e a garra saindo por baixo, curvada para a esquerda. Depois volta girando ao repouso. Cortes e golpe forte cruzam a tela.
 
 As duas facas usam interpolação cúbica monotônica: a velocidade passa contínua pelas poses-chave, sem o "para e anda" de antes, e nunca ultrapassa os valores capturados. As duas têm respiração leve em repouso, e toda animação termina entrando nesse movimento.
+
+A **Desert Eagle** usa a puxada de 0,8 s inspirada no vídeo enviado: sobe pela direita, gira em torno do dedo e encaixa a mão de apoio antes de liberar o disparo. O tiro levanta o punho rapidamente e retorna em cerca de 0,4 s; cliques rápidos continuam da pose atual. O cano é fixo, o ferrolho se move e fica aberto ao esvaziar o carregador. O modelo tem 356 triângulos, com empunhadura inclinada, guarda-mato aberto, miras e faces chanfradas, mantendo cores chapadas e as skins. O enquadramento da Deagle fica um pouco mais alto; USP-S e Estimulante mantêm a posição anterior.
+
+O som da Deagle continua sintetizado: ataque seco, corpo grave e fechamento metálico curto, além dos pequenos sons sincronizados da puxada. O vídeo serve de referência, sem carregar sua faixa de áudio no jogo. O dano, a precisão, as 7 balas, a cadência e a recarga foram mantidos; a duração da puxada passa a acompanhar a nova animação.
 
 ## Mapas
 

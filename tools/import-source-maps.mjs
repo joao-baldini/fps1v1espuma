@@ -18,7 +18,7 @@ export function packMap(map) {
   const planes=[],offsets=[0],b=[],masks=[];
   for(const h of map.hulls){if(h.planes.length<4)continue;for(const plane of h.planes)planes.push(...plane);offsets.push(planes.length/4);b.push(...h.min,...h.max);masks.push(h.mask);}
   const opaque=indices.length;for(const i of transparent)indices.push(i);
-  const meta={key:map.key,name:map.key==='guard'?'Guard':'Elysion',scale:map.scale,center:map.center,bounds:map.bounds,ax:map.ax,az:map.az,playBounds:map.playBounds,t:map.t,ct:map.ct,sites:map.sites,ladders:map.ladders,sourceSha256:map.report.sourceSha256};
+  const meta={key:map.key,name:map.name||(map.key==='guard'?'Guard':'Elysion'),scale:map.scale,center:map.center,bounds:map.bounds,ax:map.ax,az:map.az,playBounds:map.playBounds,t:map.t,ct:map.ct,sites:map.sites,ladders:map.ladders,sourceSha256:map.report.sourceSha256,...(map.prefire?{prefire:map.prefire}:{}),...(map.surfaceCollision?{surfaceCollision:true}:{})};
   return {version:1,meta,mesh:{position:encode(new Float32Array(p)),normal:encode(new Float32Array(n)),color:encode(new Uint8Array(c)),index:encode(new Uint32Array(indices)),opaque},collision:{planes:encode(new Float32Array(planes)),offsets:encode(new Uint32Array(offsets)),bounds:encode(new Float32Array(b)),masks:encode(new Uint8Array(masks))},...(map.navigation?{navigation:map.navigation}:{})};
 }
 

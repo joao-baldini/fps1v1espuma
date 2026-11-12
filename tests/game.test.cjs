@@ -5,10 +5,13 @@ const { resolve } = require('node:path');
 const vm = require('node:vm');
 const { gunzipSync } = require('node:zlib');
 require('../assets/maps/runtime.js');
+require('../assets/agents/models.js');
 const sourceCatalog={};vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/catalog.js'),'utf8'),sourceCatalog);
+vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/prefire-catalog.js'),'utf8'),sourceCatalog);
+vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/warface-catalog.js'),'utf8'),sourceCatalog);
 const sourcePacked={};
-for(const id of ['guard','elysion']){
-  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:guard|elysion)=("[A-Za-z0-9+/=]+");/);
+for(const id of ['guard','elysion','inferno','palace','factory']){
+  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:guard|elysion|inferno|palace|factory)=("[A-Za-z0-9+/=]+");/);
   assert.ok(encoded,'Missing generated BSP payload: '+id);sourcePacked[id]=JSON.parse(gunzipSync(Buffer.from(JSON.parse(encoded[1]),'base64')));
 }
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8');
@@ -34,7 +37,7 @@ function game(saved) {
   const floor = { min: [-1000, -1, -1000], max: [1000, 0, 1000] };
   const sourceInstances=new Map(),SourceMaps={get:id=>{if(!sourceInstances.has(id)){const map=new globalThis.SourceMaps.NativeMap(sourcePacked[id]);map.geometry=()=>({dispose(){}});sourceInstances.set(id,map);}return sourceInstances.get(id);}};
   const context = vm.createContext({
-    SOURCE_MAP_CATALOG:sourceCatalog.SOURCE_MAP_CATALOG,SourceMaps,sourceWorld:null,sourceGlassMat:null,
+    SOURCE_MAP_CATALOG:sourceCatalog.SOURCE_MAP_CATALOG,INFERNO_PREFIRE:sourceCatalog.INFERNO_PREFIRE,WARFACE_MAP_CATALOG:sourceCatalog.WARFACE_MAP_CATALOG,SourceMaps,sourceWorld:null,sourceGlassMat:null,
     performance: { now: () => clock }, localStorage: { getItem: () => saved ? JSON.stringify(saved) : null }, V3: Vec,
     boxes: [floor], ramps: [], STEP_UP: .5, AX: 30, AZ: 30, C: 1.2, WALL_H: 7,
     THREE: { Color: class {}, Mesh: class { constructor(geometry) { this.geometry = geometry; } } },
@@ -82,6 +85,39 @@ function entity(x = 0, z = 0) {
 }
 
 test('the complete game script parses', () => new vm.Script(script));
+
+test('all five agents have distinct, bounded, outward-facing low-poly models without texture assets',()=>{
+  const ids=vm.runInContext('Object.keys(OPS)',game().context),models=globalThis.AgentModels;
+  assert.deepEqual(Array.from(ids),Object.keys(models.styles));
+  const signatures=new Set();
+  for(const id of ids){
+    const parts=models.parts(id);assert.equal(models.parts(id),parts);signatures.add(JSON.stringify(parts));
+    let triangles=0;
+    for(const list of Object.values(parts))for(const [lo,hi,color,mesh]of list){
+      assert.ok(Number.isInteger(color)&&color>=0&&color<=0xffffff);triangles+=mesh?mesh.indices.length/3:12;
+      const points=mesh?Array.from({length:mesh.vertices.length/3},(_,i)=>mesh.vertices.slice(i*3,i*3+3)):[lo,hi];
+      for(const p of points){assert.ok(p.every(Number.isFinite));assert.ok(Math.abs(p[0])<.42&&p[1]>=0&&p[1]<1.9&&Math.abs(p[2])<.6,id+' model exceeds actor silhouette');}
+      if(mesh){
+        const center=[0,1,2].map(axis=>points.reduce((sum,p)=>sum+p[axis],0)/points.length);
+        for(let i=0;i<mesh.indices.length;i+=3){const [a,b,c]=mesh.indices.slice(i,i+3).map(id=>points[id]),u=b.map((v,j)=>v-a[j]),v=c.map((n,j)=>n-a[j]),n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];assert.ok(n.reduce((sum,n,j)=>sum+n*(a[j]-center[j]),0)>1e-10,id+' inward-facing triangle');}
+      }
+    }
+    assert.ok(triangles<1200,id+' exceeds character triangle budget');
+  }
+  assert.equal(signatures.size,5);
+});
+
+test('agent instances replace the default body only in bomb mode and follow the shared crouch pose',()=>{
+  const g=game(),cx=g.context,ids=Object.keys(globalThis.AgentModels.styles),instance=()=>({count:0,instanceMatrix:{},placed:[],setMatrixAt(i,p){this.placed[i]=p;},setColorAt(){}});
+  const base={legs:instance(),body:instance(),head:instance()},agents=Object.fromEntries(ids.map(id=>[id,{legs:instance(),body:instance(),head:instance()}])),bands=instance();
+  const dummy={position:new Vec(),scale:new Vec(),rotation:new Vec(),updateMatrix(){this.matrix={y:this.position.y,sy:this.scale.y};}};
+  g.DM.mode='team';g.P.team=0;vm.runInContext('ARENA.bomb=true',cx);
+  const actors=ids.map((op,index)=>({id:'agent'+index,op,team:1,alive:true,pos:new Vec(index,0,0),vel:new Vec(),yaw:0,crouch:index%2===0,w:'rifle',color:0x3e6fb0}));
+  g.DM.actors=[g.P,...actors];g.DM.render={...base,agents,agentBands:bands,guns:{},dummy,color:{set(){}},meshes:[...Object.values(base),bands,...Object.values(agents).flatMap(Object.values)]};
+  cx.dmRender(10000);assert.equal(base.body.count,0);assert.equal(bands.count,5);
+  for(const actor of actors){const r=agents[actor.op];assert.equal(r.body.count,1);assert.ok(Math.abs(r.head.placed[0].y-(actor.crouch?-.65:0))<1e-8);assert.ok(Math.abs(r.legs.placed[0].sy-(actor.crouch?1-.65/.81:1))<1e-8);}
+  vm.runInContext('ARENA.bomb=false',cx);cx.dmRender(10000);assert.equal(base.body.count,5);assert.ok(Object.values(agents).every(r=>r.body.count===0));
+});
 
 test('only exact KQLY snaps a real shot to a head through walls, consuming normal ammo', () => {
   for(const name of ['KQLY','kqly','Kqly',' KQLY','KQLY ','forsaken','Jogador']){
@@ -235,6 +271,36 @@ test('AWP and the simple shared M4 bodies stay within a small triangle budget an
   }
 });
 
+test('Deagle draw follows the reference turn and joins the support hand before the firing gate opens',()=>{
+  const g=game(),cx=g.context;g.spawnSelf(0);g.tick(12000);g.selectWeapon('pistol');
+  assert.equal(g.W.pistol.draw,800);assert.equal(g.P.drawEnd,12800);
+  const pose=t=>Array.from(cx.sampleDeaglePose(t)),start=pose(12000),turn=pose(12400),settled=pose(12800);
+  assert.ok(start[1]<-.2&&start[10]<-.2);assert.ok(turn[3]>.9&&turn[7]>Math.PI);assert.ok(turn[10]<-.15);
+  assert.ok(settled.every(v=>Math.abs(v)<1e-6));assert.ok(Math.abs(pose(12799)[7]-Math.PI*2)<1e-5);
+  let previous=pose(12000);for(let t=12002;t<12800;t+=2){const next=pose(t);assert.ok(next.every(Number.isFinite));for(let i=0;i<14;i++)assert.ok(Math.abs(next[i]-previous[i])<.17,'draw jumps between frames');previous=next;}
+  g.P.m1Press=true;g.updateWeapon(0,12799);assert.equal(g.P.ammo.pistol.mag,7);
+  g.P.m1Press=true;g.updateWeapon(0,12800);assert.equal(g.P.ammo.pistol.mag,6);
+});
+test('Deagle shot is time-based, blends fast follow-up shots and locks the slide only for an empty magazine',()=>{
+  const g=game(),cx=g.context;g.spawnSelf(0);g.selectWeapon('pistol');g.P.drawEnd=0;
+  const pose=t=>Array.from(cx.sampleDeaglePose(t));g.shoot(20000,false);
+  assert.equal(g.P.ammo.pistol.mag,6);assert.equal(g.P.nextFire,20225);
+  assert.ok(pose(20020)[13]>.04);assert.ok(pose(20065)[3]>.5);assert.ok(pose(20100)[13]<.001);assert.ok(pose(20410).every(v=>Math.abs(v)<1e-6));
+  const before=pose(20225);g.shoot(20225,false);const after=pose(20225);for(let i=0;i<14;i++)assert.ok(Math.abs(before[i]-after[i])<1e-6,'second shot snaps at channel '+i);
+  g.P.ammo.pistol.mag=1;g.shoot(21000,false);assert.ok(pose(21450)[13]>.05);assert.equal(g.P.ammo.pistol.mag,0);
+  const last=g.P.deagleShot;g.shoot(21450,false);assert.equal(g.P.deagleShot,last,'dry fire must not start recoil');
+  cx.completeReload(g.P.reloadEnd);assert.equal(g.P.ammo.pistol.mag,7);assert.equal(pose(25000)[13],0);
+  g.selectWeapon('rifle');assert.equal(g.P.deagleShot,null);
+});
+test('Deagle sound has a low body, leading crack and delayed metal, and draw sounds cannot repeat or arrive late',()=>{
+  const audio=vm.createContext({S:{},SKINS:{neon:{}},Math});vm.runInContext(section('const AU =','/* ================= Viewmodel'),audio);
+  const au=vm.runInContext('AU',audio),events=[];for(const kind of ['tone','noise','skinShot'])au[kind]=(...args)=>events.push({kind,args});
+  au.shot('pistol',1,.2,'padrao');assert.ok(events.some(e=>e.kind==='tone'&&e.args[0]<90));assert.ok(events.some(e=>e.kind==='noise'&&e.args[1]===430));assert.ok(events.some(e=>e.kind==='noise'&&e.args[5]==='highpass'));assert.ok(events.some(e=>e.kind==='noise'&&e.args[6]>.05));
+  events.length=0;au.shot('pistol',.5,-.3,'neon');assert.ok(events.some(e=>e.kind==='skinShot'));assert.ok(events.filter(e=>e.kind==='noise').every(e=>e.args[4]===-.3));
+  const g=game(),cx=g.context,cues=[];cx.AU={deagleDraw:stage=>cues.push(stage)};g.spawnSelf(0);g.tick(12000);g.selectWeapon('pistol');
+  for(const t of [12000,12110,12110,12599,12600,12600,12799,12800])cx.deagleDrawTick(t);
+  assert.deepEqual(cues,[0,1]);g.tick(13000);g.selectWeapon('rifle');g.selectWeapon('pistol');cx.deagleDrawTick(13750);assert.deepEqual(cues,[0,1]);
+});
 test('scope cannot open during the firing interval and unlocks exactly when the next shot is ready', () => {
   for(const weapon of ['sniper','ssg']){
     const g=game(),cx=g.context;g.P.weapon=weapon;g.P.drawEnd=0;g.P.zoom=1;
@@ -1688,4 +1754,209 @@ test('stairs: the player runs up a covered Guard staircase at full speed instead
   for (let i = 0; i < 330; i++) { t += 1000 / 128; g.playerInput(1 / 128, t); }
   g.keys.clear();
   assert.ok(g.P.pos.y > 2.6, 'subiu a escada: y ' + g.P.pos.y.toFixed(2)); assert.ok(g.P.pos.z > -23, 'sem perder velocidade: z ' + g.P.pos.z.toFixed(2));
+});
+
+
+function prefireFixture(begin=true){
+  const g=game(),cx=g.context;
+  cx.buildMap('infernoprefire');cx.G.mode='aimbotz';g.P.id=cx.G.me;
+  cx.resetSession=spawn=>{cx.G.stats={};cx.G.names={};cx.G.view={ph:'practice',sc:{}};g.spawnSelf(0,spawn);};
+  cx.dmEnsureRender=()=>{};cx.dmRender=()=>{};cx.toast=()=>{};
+  vm.runInContext('PREFIRE.active=true;prefireSetup(10000)',cx);
+  if(begin)cx.prefireBegin(10000);
+  g.prefire=vm.runInContext('PREFIRE',cx);return g;
+}
+
+test('Prefire: the cropped Inferno connects the Banana start to all fifteen fixed, unobstructed spots with real player physics',()=>{
+  const g=prefireFixture(),cx=g.context,map=cx.sourceWorld,meta=cx.INFERNO_PREFIRE;
+  g.dmBuildNav();const nav=g.DM.nav;
+  assert.equal(meta.spots.length,15);assert.equal(g.DM.actors.length,16);
+  assert.ok(map.mesh.opaque/3<50000);assert.ok(map.count<30000);
+  for(let i=0;i<map.planes.length;i+=4){assert.ok(Number.isFinite(map.planes[i+3]));assert.ok(Math.abs(Math.hypot(...map.planes.slice(i,i+3))-1)<1e-5);}
+  assert.equal(new Set(meta.spots.map(p=>p.x+','+p.y+','+p.z)).size,15);
+  const actor={pos:new Vec(meta.spawn[0],cx.groundAt(meta.spawn[0],meta.spawn[1],meta.spawn[3]),meta.spawn[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
+  for(const spot of meta.spots){
+    assert.equal(map.overlap(spot.x,spot.y+.005,spot.z,1.8,.3),false,spot.name);
+    const start=g.dmCell(actor.pos.x,actor.pos.z,actor.pos.y),goal=g.dmCell(spot.x,spot.z,spot.y),queue=[start],parent=new Map([[start,-1]]);
+    for(let head=0;head<queue.length&&!parent.has(goal);head++)for(let d=0;d<4;d++){const next=nav.links[queue[head]*4+d];if(next>=0&&!parent.has(next)){parent.set(next,queue[head]);queue.push(next);}}
+    assert.ok(parent.has(goal),spot.name);actor.path=[];for(let id=goal;id!==start;id=parent.get(id))actor.path.unshift(id);
+    for(const id of actor.path){let frames=0;const tx=nav.x[id],tz=nav.z[id];
+      while(Math.hypot(tx-actor.pos.x,tz-actor.pos.z)>.12&&frames++<400){const dx=tx-actor.pos.x,dz=tz-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,Math.min(4.5,d*10),false,1/128);}
+      assert.ok(frames<400,spot.name+' blocked at '+id+' position '+JSON.stringify(actor.pos));
+      assert.ok(actor.pos.y>-5&&Number.isFinite(actor.pos.y));
+    }
+    assert.ok(Math.hypot(actor.pos.x-spot.x,actor.pos.z-spot.z)<1,spot.name);
+  }
+  assert.ok(actor.pos.x>25,'the course reaches the truck, beyond CT');
+});
+
+test('Prefire: bots have 100 HP, take real weapon damage, disappear once, and never respawn in the course',()=>{
+  const g=prefireFixture(),cx=g.context,bot=g.DM.bots[0];
+  assert.ok(g.DM.bots.every(b=>b.hp===100&&b.alive&&!b.helmet));
+  assert.equal(g.ORDER.length,2);assert.ok(g.W[g.ORDER[1]].melee);
+  cx.aimbotzHit(27,'body','rifle',bot.id);assert.equal(bot.hp,73);
+  cx.aimbotzHit(100,'head','rifle',bot.id);cx.aimbotzHit(100,'head','rifle',bot.id);
+  assert.equal(bot.alive,false);assert.equal(bot.respawnAt,Infinity);
+  assert.equal(g.prefire.killed,1);assert.equal(g.stat(g.P.id).k,1);
+  assert.ok(!g.DM.playerTargets.some(h=>h.actor===bot.id));
+  cx.locked=false;cx.prefireTick(1,1000000);assert.equal(bot.alive,false);assert.equal(g.prefire.killed,1);
+  assert.equal(g.dmDamage(g.DM.bots[1],100,'body','m4a4',g.DM.bots[2],10001),0);
+});
+
+test('Prefire: defenders react, shoot and reload without moving, and walls block their vision and bullets',()=>{
+  const g=prefireFixture(),cx=g.context,positions=g.DM.bots.map(b=>JSON.stringify(b.pos));g.P.hp=10000;
+  g.P.pos.set((120-1300)*.0254,cx.groundAt((120-1300)*.0254,-(1050-2200)*.0254,1),-(1050-2200)*.0254);
+  for(let t=10000;t<24000;t+=1000/60){g.tick(t);cx.prefireTick(1/60,t);}
+  assert.ok(g.DM.bots.some(b=>b.lastShot>0));assert.ok(g.P.hp<10000,'defenders must deal damage');
+  assert.deepEqual(g.DM.bots.map(b=>JSON.stringify(b.pos)),positions);
+  assert.ok(g.DM.bots.slice(6).every(b=>!b.lastShot),'site defenders cannot shoot through Banana walls');
+  assert.ok(g.DM.bots.some(b=>b.reloadEnd||b.mag>0));
+  const hp=g.P.hp;cx.locked=false;cx.prefireTick(1,40000);assert.equal(g.P.hp,hp);
+});
+
+test('Prefire: death resets all targets and time, elapsed time has no limit, and pausing stops it',()=>{
+  const g=prefireFixture(),cx=g.context;
+  cx.aimbotzHit(100,'head','rifle',g.DM.bots[0].id);cx.prefireTick(.1,10100);
+  assert.equal(g.prefire.elapsed,100);
+  g.dmDamage(g.P,100,'body','m4a4',g.DM.bots[1],10200);assert.equal(g.P.alive,false);
+  g.tick(11600);cx.prefireTick(.1,11600);
+  assert.equal(g.P.hp,100);assert.equal(g.P.alive,true);assert.equal(g.prefire.killed,0);assert.equal(g.prefire.elapsed,0);
+  assert.ok(g.DM.bots.every(b=>b.hp===100&&b.alive));
+  assert.equal(g.prefire.phase,'ready');cx.prefireBegin(11600);
+  g.DM.bots.forEach(b=>b.alive=false);cx.prefireTick(1,11600+7200000);
+  assert.equal(g.prefire.phase,'live');assert.equal(g.prefire.elapsed,7200000);assert.equal(cx.prefireTime(g.prefire.elapsed),'120:00.00');
+  cx.locked=false;cx.prefireTick(1,11600+7300000);assert.equal(g.prefire.elapsed,7200000);
+  cx.locked=true;cx.prefireTick(.1,11600+7300100);assert.equal(g.prefire.elapsed,7200100);
+});
+
+test('Prefire: the fifteenth kill ends once, plays the cue, and returns automatically to normal Aimbotz',()=>{
+  const g=prefireFixture(),cx=g.context,events=[];
+  cx.AU=new Proxy({}, {get:(_,key)=>()=>{if(key==='roundEnd')events.push('sound');}});
+  cx.startSession=mode=>{events.push(mode);cx.prefireStop();cx.buildMap('aimbotz');cx.aimbotzSetup();};
+  g.prefire.elapsed=45678;
+  for(const bot of g.DM.bots.slice())cx.aimbotzHit(100,'head','rifle',bot.id);
+  assert.equal(g.prefire.killed,15);assert.equal(g.prefire.phase,'complete');assert.deepEqual(events,['sound']);
+  cx.aimbotzHit(100,'head','rifle',g.DM.bots[0].id);assert.deepEqual(events,['sound']);
+  assert.equal(g.DM.playerTargets.length,0);cx.prefireTick(.1,11799);assert.equal(g.prefire.active,true);
+  cx.prefireTick(.1,11800);assert.deepEqual(events,['sound','aimbotz']);
+  assert.equal(g.prefire.active,false);assert.equal(g.DM.actors.length,g.S.aimbotzBots+1);assert.equal(g.DM.bots.length,0);
+});
+
+test('Prefire: the small board starts the lazy-loaded course and leaving while loading cancels entry',async()=>{
+  const g=game(),cx=g.context;cx.buildMap('aimbotz');cx.G.mode='aimbotz';g.spawnSelf(0,[0,9,0]);cx.aimbotzSetup();
+  const b=vm.runInContext('AIMBOTZ_PREFIRE_BOARD',cx),origin=[0,1.8,9],target=[b.x,b.y,b.z],d=target.map((v,i)=>v-origin[i]),len=Math.hypot(...d);
+  assert.equal(cx.aimbotzPrefireButtonAt(origin,d.map(v=>v/len)).prefire,true);
+  let ready;cx.SourceMaps.load=()=>new Promise(resolve=>ready=resolve);cx.toast=()=>{};vm.runInContext('let sessionLoadId=1;',cx);
+  const pending=cx.startPrefire();assert.equal(vm.runInContext('PREFIRE.loading',cx),true);
+  vm.runInContext('sessionLoadId++;prefireStop();',cx);cx.G.mode=null;ready();await pending;
+  assert.equal(vm.runInContext('PREFIRE.active',cx),false);assert.equal(cx.MAP.id,'aimbotz');
+});
+
+
+test('Prefire: spawn stays behind cover and waiting never starts the timer or causes a spawn death, including retries',()=>{
+  const g=prefireFixture(false),cx=g.context;
+  for(let run=0;run<2;run++){
+    assert.equal(g.prefire.phase,'ready');
+    const p=g.P.pos;
+    assert.equal(cx.sourceWorld.overlap(p.x,p.y+.005,p.z,1.8,.3),false);
+    for(const bot of g.DM.bots)for(const h of [.7,1.2,1.65])for(const dx of [-.25,0,.25]){
+      assert.equal(g.clearLine([bot.pos.x,bot.pos.y+1.62,bot.pos.z],[p.x+dx,p.y+h,p.z]),false,bot.name+' can see spawn');
+    }
+    for(let t=10000;t<=70000;t+=100){g.tick(t);cx.prefireTick(.1,t);}
+    assert.equal(g.P.hp,100);assert.equal(g.P.alive,true);assert.equal(g.prefire.elapsed,0);
+    assert.ok(g.DM.bots.every(b=>!b.lastShot));
+    cx.prefireSetup(10000);
+  }
+});
+
+test('Prefire: moving out begins only after drawing the weapon; a real shot starts immediately',()=>{
+  const g=prefireFixture(false),cx=g.context;
+  g.P.pos.x+=1;cx.prefireTick(.1,10100);assert.equal(g.prefire.phase,'ready');
+  g.P.pos.x+=2;g.P.drawEnd=11000;cx.prefireTick(.1,10500);assert.equal(g.prefire.phase,'ready');
+  g.tick(11000);cx.prefireTick(.1,11000);assert.equal(g.prefire.phase,'live');assert.equal(g.prefire.elapsed,0);
+  cx.prefireTick(.1,11100);assert.equal(g.prefire.elapsed,100);
+  cx.prefireSetup(12000);g.tick(13000);g.P.drawEnd=0;g.shoot(13000,false);
+  assert.equal(g.prefire.phase,'live');assert.equal(g.prefire.elapsed,0);
+  assert.ok(g.DM.bots.every(b=>b.readyAt>=13650&&!b.fireReady));
+});
+
+test('Prefire: the first approach opens one holding angle instead of several simultaneous defenders',()=>{
+  const g=prefireFixture(),cx=g.context,x=(120-1300)*.0254,z=-(1050-2200)*.0254,y=cx.groundAt(x,z,1);
+  const visible=g.DM.bots.filter(b=>g.clearLine([b.pos.x,b.pos.y+1.62,b.pos.z],[x,y+1.2,z]));
+  assert.equal(visible.length,1);assert.equal(visible[0].name,'Logs');
+  for(let i=0;i<g.DM.bots.length;i++)for(let j=0;j<i;j++)assert.ok(Math.hypot(g.DM.bots[i].pos.x-g.DM.bots[j].pos.x,g.DM.bots[i].pos.z-g.DM.bots[j].pos.z)>1.4);
+});
+
+
+test('Warface 5v5: two maps, separate Wingman choices, ten distinct safe spawns and connected bombsites',()=>{
+  for(const key of ['palace','factory']){
+    const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();
+    assert.equal(g.S.mode,'5v5');assert.equal(g.S.warfaceMap,key);assert.equal(g.MAPS[key].warface,true);
+    assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',cx)),['guard','elysion']);
+    assert.equal(cx.MAP.plant.t.length,5);assert.equal(cx.MAP.plant.ct.length,5);
+    for(const side of ['t','ct'])for(let i=0;i<5;i++){const p=cx.MAP.plant[side][i];assert.equal(cx.sourceWorld.overlap(p[0],p[3]+.005,p[1],1.8,.3),false);for(let j=0;j<i;j++){const q=cx.MAP.plant[side][j];assert.ok(Math.hypot(p[0]-q[0],p[1]-q[1])>=1.35);}}
+    if(key==='palace')assert.ok(cx.MAP.plant.ct.every(p=>p[1]<0)&&cx.MAP.plant.t.every(p=>p[1]>0),'Palace defenders at top, attackers at bottom');
+    else assert.ok(cx.MAP.plant.ct.every(p=>p[0]<0)&&cx.MAP.plant.t.every(p=>p[0]>0),'Factory follows the original blue-left/red-right bases');
+    assert.equal(cx.MAP.plant.sites.length,2);assert.ok(cx.sourceWorld.mesh.opaque/3<3000);
+    const report=JSON.parse(readFileSync(resolve(__dirname,'../assets/maps/'+key+'-source.json'),'utf8'));assert.ok(report.sourceSha256.length===64);
+  }
+});
+
+test('Warface: actual walking reaches both bombsites and the opposite base from both teams without jumping',()=>{
+  for(const key of ['palace','factory']){
+    const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();const nav=g.DM.nav,map=cx.MAP;
+    for(const side of ['t','ct'])for(const goal of [...map.plant.sites.map(s=>[s.lx,s.lz,0,s.y0+.1]),map.plant[side==='t'?'ct':'t'][0]]){
+      const start=map.plant[side][0],actor={pos:new Vec(start[0],start[3]+.002,start[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
+      assert.equal(g.dmFindPath(actor,goal[0],goal[1],goal[3]),true);
+      for(const id of actor.path){const x=nav.x[id],z=nav.z[id];let frames=0;
+        while(Math.hypot(x-actor.pos.x,z-actor.pos.z)>.16&&frames++<400){const dx=x-actor.pos.x,dz=z-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,Math.min(4.5,d*10),false,1/128);}
+        assert.ok(frames<400,key+' '+side+' blocked at '+id+' '+JSON.stringify(actor.pos));assert.ok(Number.isFinite(actor.pos.y)&&actor.pos.y>-5);
+      }
+      assert.ok(Math.hypot(actor.pos.x-goal[0],actor.pos.z-goal[1])<1,key+' missed destination');
+    }
+  }
+});
+
+
+test('5v5 starts ten actors on the authored attacking and defending bases using the existing bomb rules',()=>{
+  for(const key of ['palace','factory']){const {g,cx,A,BM,step}=bombWorld(key,"S.mode='5v5'");step(10000,1100);
+    assert.deepEqual(Array.from(A.sizes),[5,5]);assert.equal(A.bomb,true);assert.equal(g.DM.bots.length,9);assert.equal(g.DM.actors.length,10);
+    assert.equal(g.DM.phase,'freeze');assert.ok(g.DM.actors.every(e=>e.alive&&e.hp===100));
+    for(const e of g.DM.actors){const side=e.team===BM.tTeam?'t':'ct';assert.ok(cx.MAP.plant[side].some(p=>Math.hypot(e.pos.x-p[0],e.pos.z-p[1])<.1));}
+    assert.equal(g.DM.byId.get(BM.carrier).team,BM.tTeam);
+  }
+});
+
+test('native stairs and slopes stay walkable with varied approach offsets in Guard, Elysion, Prefire and Palace',()=>{
+  for(const key of ['guard','elysion','infernoprefire','palace']){
+    const g=game(),cx=g.context;cx.buildMap(key);g.dmBuildNav();const n=g.DM.nav,map=cx.sourceWorld,edges=[];
+    for(const a of n.walk)for(let d=0;d<4;d++){const b=n.links[a*4+d];if(b<0)continue;const rise=n.height[b]-n.height[a];if(rise<.08||rise>.505)continue;if(map.overlap(n.x[a],n.height[a]+.005,n.z[a],1.8,.3)||map.overlap(n.x[b],n.height[b]+.005,n.z[b],1.8,.3))continue;edges.push([a,b]);}
+    assert.ok(edges.length>20,key);let attempts=0;
+    for(let k=0;k<Math.min(edges.length,45);k++){const [a,b]=edges[Math.floor(k*edges.length/Math.min(edges.length,45))];for(const offset of [-.06,0,.06]){
+      const dx=n.x[b]-n.x[a],dz=n.z[b]-n.z[a],len=Math.hypot(dx,dz),x=n.x[a]-dz/len*offset,z=n.z[a]+dx/len*offset,y=map.ground(x,z,n.height[a]);if(map.overlap(x,y+.005,z,1.8,.3))continue;
+      const actor={pos:new Vec(x,y+.002,z),vel:new Vec(),h:1.8,onGround:true,crouch:false,landSpread:0};let frames=0;
+      while(Math.hypot(n.x[b]-actor.pos.x,n.z[b]-actor.pos.z)>.17&&frames++<250){const dx=n.x[b]-actor.pos.x,dz=n.z[b]-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,Math.min(4.5,d*10),false,1/128);}
+      assert.ok(frames<250,key+' stuck at stair '+a+'/'+b+' offset '+offset);attempts++;
+    }}assert.ok(attempts>100,key+' needs varied approaches');
+  }
+});
+
+test('native movement climbs a full staircase at 30/60/144 FPS and still blocks a wall taller than a step',async()=>{
+  const {packMap}=await import('../tools/import-source-maps.mjs'),hulls=[];
+  const box=(min,max)=>hulls.push({min,max,mask:3,planes:[[1,0,0,max[0]],[-1,0,0,-min[0]],[0,1,0,max[1]],[0,-1,0,-min[1]],[0,0,1,max[2]],[0,0,-1,-min[2]]]});
+  box([-3,-1,-2],[10,0,2]);for(let i=0;i<8;i++)box([i*.65,0,-1.4],[(i+1)*.65,(i+1)*.25,1.4]);box([5.2,0,-1.4],[9,2,1.4]);box([7,2,-1.4],[7.3,4.5,1.4]);
+  const packed=packMap({key:'stairs',name:'Stairs',scale:1,center:[0,0,0],bounds:[-3,-1,-2,10,4.5,2],ax:11,az:3,playBounds:[-3,-2,10,2],t:[[-1,0,0,0]],ct:[[6,0,0,2]],sites:[],ladders:[],polygons:[],hulls,report:{sourceSha256:'test'}});
+  for(const hz of [30,60,144]){const g=game();g.context.sourceWorld=new SourceMaps.NativeMap(packed);const e=entity(-1,0);e.pos.y=.002;
+    for(let i=0;i<hz*3;i++)g.physics(e,1,0,4.5,false,1/hz);
+    assert.ok(e.pos.x>6.4&&e.pos.x<6.701,'stairs/wall at '+hz+' FPS '+JSON.stringify(e.pos));assert.ok(Math.abs(e.pos.y-2)<.03);assert.equal(e.onGround,true);
+  }
+});
+
+
+test('Guard ladder lets the player climb from the bottom onto the upper landing without bouncing at the lip',()=>{
+  const g=game(),cx=g.context;cx.buildMap('guard');const ladder=cx.sourceWorld.meta.ladders[0],x=(ladder[0]+ladder[3])/2,z=ladder[2]-.31;
+  g.spawnSelf(0,[x,z,0,ladder[1]+.02]);g.P.pos.set(x,ladder[1]+.02,z);g.P.h=1.8;
+  let frames=0;while(!(g.P.onGround&&g.P.pos.y>=ladder[4]-1.85)&&frames++<360)g.physics(g.P,0,1,4.5,false,1/60);
+  assert.ok(frames<360,JSON.stringify(g.P.pos));assert.equal(g.P.climbing,false);assert.ok(Math.hypot(g.P.pos.x-x,g.P.pos.z-z)>.5);
+  assert.equal(cx.sourceWorld.overlap(g.P.pos.x,g.P.pos.y,g.P.pos.z,g.P.h,.3),false);
 });

@@ -38,11 +38,14 @@
       const b=this.bounds,ps=this.planes,off=this.offsets;
       return !!this.each(x-radius,z-radius,x+radius,z+radius,mask,id=>{
         const q=id*6;if(y>=b[q+4]-EPS||y+height<=b[q+1]+EPS)return false;
-        for(let k=off[id]*4;k<off[id+1]*4;k+=4){const nx=ps[k],ny=ps[k+1],nz=ps[k+2];if(nx*x+ny*(ny<0?y+height:y)+nz*z-radius*(Math.abs(nx)+Math.abs(nz))>=ps[k+3]-EPS)return false;}
+        for(let k=off[id]*4;k<off[id+1]*4;k+=4){const nx=ps[k],ny=ps[k+1],nz=ps[k+2],r=(this.masks[id]&4)||ny>.69?0:radius;if(nx*x+ny*(ny<0?y+height:y)+nz*z-r*(Math.abs(nx)+Math.abs(nz))>=ps[k+3]-EPS)return false;}
         return true;
       });
     }
     hullRay(id,o,d,limit,radius=0,height=0){
+      // Terrain uses a centre-foot contact, like the procedural ramps. Expanding
+      // individual floor triangles sideways creates false ridges at shared edges.
+      if(height&&(this.masks[id]&4))radius=0;
       const ps=this.planes;let enter=-Infinity,leave=limit,normal=null,inside=true;
       // Physics files can contain open, zero-thickness decorative hulls. Their authored AABB
       // remains part of the hull; a plane intersection must never escape those bounds.
@@ -118,7 +121,33 @@
       }return {p,v,ground,wall};
     }
     move(e,dt,radius=.32,step=.5){
-      const p=[e.pos.x,e.pos.y,e.pos.z],v=[e.vel.x,e.vel.y,e.vel.z],wasGround=e.onGround;let result=this.slide(p,v,e.h,dt,radius);
+      const p=[e.pos.x,e.pos.y,e.pos.z],v=[e.vel.x,e.vel.y,e.vel.z],wasGround=e.onGround;
+      if(wasGround&&v[1]<=.5&&!e.climbing){
+        // Sweep the body above the step window, then place the feet on the actual
+        // supporting surfaces. Triangle seams and stair risers are not side walls.
+        const lift=step+.008,horizontal=this.slide([p[0],p[1]+lift,p[2]],[v[0],0,v[2]],e.h-lift,dt,radius);
+        let floor=-Infinity;
+        const foot=radius+.003;
+        for(const [dx,dz]of [[0,0],[-foot,-foot],[-foot,foot],[foot,-foot],[foot,foot]]){
+          for(const y of this.floors(horizontal.p[0]+dx,horizontal.p[2]+dz,p[1]-.34,p[1]+step+.002))floor=Math.max(floor,y);
+        }
+        if(Number.isFinite(floor)&&!this.overlap(horizontal.p[0],floor+.002,horizontal.p[2],e.h,radius)){
+          e.pos.set(horizontal.p[0],floor+.002,horizontal.p[2]);e.vel.set(horizontal.v[0],0,horizontal.v[2]);e.onGround=true;return;
+        }
+        if(!Number.isFinite(floor)){
+          const fall=this.slide([horizontal.p[0],p[1],horizontal.p[2]],[0,v[1],0],e.h,dt,radius);
+          e.pos.set(...fall.p);e.vel.set(horizontal.v[0],fall.v[1],horizontal.v[2]);e.onGround=fall.ground;return;
+        }
+      }
+      // A surface-mesh floor can slope underneath the player's footprint. Place grounded
+      // feet on the swept footprint, rather than inside a thin prism at its centre height.
+      if(this.meta.surfaceCollision&&wasGround&&v[1]<=.5){
+        const support=this.sweep([p[0],p[1]+step+.01,p[2]],[0,-step-.03,0],1,radius,e.h,1);
+        if(support&&support.n[1]>.69){const y=p[1]+step+.01-(step+.03)*support.t;
+          if(y>p[1]&&y-p[1]<=step&&!this.overlap(p[0],y+.001,p[2],e.h,radius))p[1]=y+.0001;
+        }
+      }
+      let result=this.slide(p,v,e.h,dt,radius);
       // Degrau: tenta subir só o necessário (6 cm, 12 cm ... até o limite). Levantar sempre o máximo fazia a cabeça
       // bater no teto de escadas cobertas e arcos, e o degrau baixo era recusado.
       // Também quando a quina do degrau devolve uma "rampa" (normal inclinada conta como chão e não como parede):
@@ -140,6 +169,23 @@
       const p=e.pos,ladder=!jump&&(this.meta.ladders||[]).find(b=>p.y+e.h>b[1]&&p.y<b[4]+.1&&p.x>b[0]-radius-.08&&p.x<b[3]+radius+.08&&p.z>b[2]-radius-.08&&p.z<b[5]+radius+.08);
       if(!ladder){e.climbing=false;return;}
       const axis=ladder[3]-ladder[0]<ladder[5]-ladder[2]?'x':'z',center=axis==='x'?(ladder[0]+ladder[3])/2:(ladder[2]+ladder[5])/2,direction=Math.sign(center-p[axis])||1,toward=(axis==='x'?wx:wz)*direction;
+      // Source ladder triggers extend to head height. The usable landing may be
+      // below the trigger's top and beside the shaft, rather than behind it.
+      if(toward>.1&&p.y+e.h>=ladder[4]-.5){
+        const a=axis==='x'?0:2,side=2-a,base=[p.x,p.y,p.z],targets=[];
+        for(const reach of [.16,.35,radius+.38]){const at=base.slice();at[a]=center+direction*reach;targets.push(at);}
+        {const at=base.slice();at[a]-=direction*.8;targets.push(at);}
+        for(const sign of [-1,1]){const at=base.slice();at[side]+=sign*(radius+.75);targets.push(at);}
+        for(const at of targets){
+          const y=this.ground(at[0],at[2],p.y),rise=y+.002-p.y;
+          if(rise>=-.15&&rise<=.502&&!this.overlap(at[0],y+.002,at[2],e.h,radius)){
+            const lifted=[p.x,y+.002,p.z],delta=[at[0]-p.x,0,at[2]-p.z];
+            if((rise<=0||!this.sweep([p.x,p.y,p.z],[0,rise,0],1,radius,e.h,1))&&!this.sweep(lifted,delta,1,radius,e.h,1)){
+              p.set(at[0],y+.002,at[2]);e.vel.y=0;e.vel[axis]=0;e.climbing=false;e.onGround=true;return;
+            }
+          }
+        }
+      }
       e.climbing=true;e.onGround=false;e.vel.y=Math.abs(toward)>.1?Math.sign(toward)*3:0;e.vel[axis]=0;
     }
     navClear(x,y,z){return !this.overlap(x,y+.46,z,1.8-.46);}
@@ -196,7 +242,7 @@
   }
   async function load(id){
     if(cache.has(id))return cache.get(id);if(pending.has(id))return pending.get(id);
-    if(!['guard','elysion'].includes(id))throw Error('Unknown Source map');
+    if(!['guard','elysion','inferno','palace','factory'].includes(id))throw Error('Unknown Source map');
     const job=(async()=>{
       if(!globalThis.SOURCE_MAP_PAYLOADS?.[id])await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='assets/maps/'+id+'.js';script.onload=resolve;script.onerror=()=>reject(Error('Não foi possível carregar '+id));document.head.append(script);});
       const packed=array(Uint8Array,globalThis.SOURCE_MAP_PAYLOADS[id]),stream=new Blob([packed]).stream().pipeThrough(new DecompressionStream('gzip')),data=JSON.parse(await new Response(stream).text());
