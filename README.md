@@ -302,6 +302,20 @@ Nos rifles de precisão, como no CS, o tiro abre rápido acima de 34% da velocid
 
 A luneta fica bloqueada durante a recarga e com o carregador vazio. No instante em que a recarga termina, a munição é atualizada antes de liberar a luneta, sem precisar esperar outro quadro.
 
+**Movimento igual ao do CS2**, com os mesmos valores do jogo (atrito 5,2, aceleração 5,5, velocidade de parada de 80 u/s; AK a 215 u/s), conferidos por teste:
+
+| Situação | Tempo |
+|---|---|
+| Soltar a tecla até a mira ficar precisa (abaixo de 34% da velocidade) | cerca de 0,2 s |
+| Soltar a tecla até parar de vez | cerca de 0,38 s, como os ~25 ticks medidos no CS2 |
+| Counter-strafe (apertar a tecla oposta) até a mira ficar precisa | 0,04–0,09 s |
+
+Segurando a tecla oposta por mais tempo, o boneco começa a andar para o outro lado, como no CS.
+
+A sensação de "deslizar" vinha da tela, e não da física. A física roda em passos fixos de 1/128 s, e a câmera mostrava a posição do último passo. Com isso, a 60 FPS alguns quadros andavam o dobro de outros e, a 144 FPS, alguns quadros não andavam nada. Agora a câmera interpola entre os dois últimos passos, como o CS faz, e o deslocamento por quadro fica regular em qualquer FPS.
+
+As teclas também passaram a contar do instante exato em que são apertadas ou soltas, como o subtick do CS2, e não do começo do quadro. O counter-strafe e a parada começam na hora certa, e o resultado é o mesmo a 30 ou a 144 FPS.
+
 Aceleração, atrito e controle aéreo seguem uma aproximação do movimento Source, com simulação em passos fixos de 1/128 s. Soltar as teclas desacelera; contra-strafe freia mais rápido e recupera a precisão. A diagonal não ganha velocidade. Shift anda a 52% da velocidade e agachado a 34%.
 
 Os bonecos têm passada nas oito direções, no estilo do Valorant: as pernas giram no quadril, alternadas, na direção em que o boneco anda (de lado a passada é menor). Correndo, os passos são largos (cerca de 1 m) e, andando com Shift, curtos (cerca de 0,5 m). O comprimento do passo segue a abertura das pernas, então o pé não escorrega nem treme. A direção e a velocidade usadas na animação são suavizadas e vêm da velocidade real do boneco, não da diferença de posição a cada quadro. O tronco só inclina de leve para onde anda, sem girar. A cabeça fica sempre na mesma altura, e a arma acompanha o tronco. Vale para bots, pessoas online e o oponente do 1v1.

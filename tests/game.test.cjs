@@ -900,6 +900,36 @@ test('the same input at 30, 60 and 144 FPS yields the same simulation result', (
   assert.ok(Math.max(...results) - Math.min(...results) < .05, results.join(', '));
 });
 
+test('stopping matches CS2 numbers: 215 u/s top speed with the AK, ~0.2 s to be accurate after release, under 0.09 s with a counter-strafe', () => {
+  const g = game(); g.spawnSelf(0); const cx = g.context, W = g.W.rifle;
+  assert.ok(Math.abs(W.speed / .0254 - 215) < .1, 'AK a 215 u/s');
+  const run = () => { g.P.vel.set(0, 0, 0); g.P.onGround = true; for (let i = 0; i < 128; i++) cx.physics(g.P, 1, 0, W.speed, false, g.PHYS_STEP); };
+  const until = (wx, cond) => { let n = 0; while (!cond() && n < 400) { cx.physics(g.P, wx, 0, W.speed, false, g.PHYS_STEP); n++; } return n * 1000 / 128; };
+  run(); assert.ok(Math.abs(Math.hypot(g.P.vel.x, g.P.vel.z) - W.speed) < 1e-6, 'chega à velocidade máxima');
+  const release = until(0, () => Math.hypot(g.P.vel.x, g.P.vel.z) < W.speed * .34);
+  run(); const counter = until(-1, () => g.P.vel.x < W.speed * .34);
+  run(); const full = until(0, () => Math.hypot(g.P.vel.x, g.P.vel.z) < .01);
+  assert.ok(release > 180 && release < 230, 'soltar: ' + release); assert.ok(counter > 40 && counter < 90, 'counter-strafe: ' + counter);
+  assert.ok(full > 340 && full < 420, 'parada total: ' + full);
+});
+test('movement on screen is smooth like CS: the camera interpolates between 128 Hz physics steps, and key presses count from their exact time', () => {
+  const cx = g => g.context, ev = (g, s) => vm.runInContext(s, cx(g));
+  // A 144 FPS a física dá 0 ou 1 passo por quadro: a posição crua "engasga"; a interpolada anda o mesmo a cada quadro.
+  const g = game(); g.spawnSelf(0); g.keys.add('KeyD');
+  for (let i = 0; i < 144; i++) g.playerInput(1 / 144, 10000 + i * 1000 / 144);
+  const raw = [], smooth = []; let pr = g.P.pos.x, ps = ev(g, 'renderPos().x');
+  for (let i = 144; i < 288; i++) { g.playerInput(1 / 144, 10000 + i * 1000 / 144); const r = g.P.pos.x, s = ev(g, 'renderPos().x'); raw.push(r - pr); smooth.push(s - ps); pr = r; ps = s; }
+  assert.ok(Math.min(...raw) < 1e-9, 'sem interpolação há quadros parados');
+  assert.ok(Math.min(...smooth) > .8 * Math.max(...smooth), 'interpolado: ' + Math.min(...smooth) + ' / ' + Math.max(...smooth));
+  // Subtick: soltar a tecla no meio de um quadro longo para no mesmo lugar que a 144 FPS.
+  const stopAt = fps => { const h = game(); h.spawnSelf(0); vm.runInContext("keyEvent('KeyD',true,10000)", h.context); h.keys.add('KeyD');
+    const release = 10503; let released = false;
+    for (let i = 1; i <= fps * 2; i++) { const t = 10000 + i * 1000 / fps; if (!released && t >= release) { vm.runInContext(`keyEvent('KeyD',false,${release})`, h.context); h.keys.delete('KeyD'); released = true; } h.playerInput(1 / fps, t); }
+    return h.P.pos.x; };
+  const at30 = stopAt(30), at144 = stopAt(144); assert.ok(Math.abs(at30 - at144) < .03, at30 + ' vs ' + at144);
+  // Teleporte (spawn) não interpola.
+  g.P.pos.set(50, 0, 50); assert.equal(ev(g, 'renderPos()'), g.P.pos);
+});
 test('assisted bunnyhop repeats jumps and preserves forward speed on landing', () => {
   const g = game(); g.spawnSelf(0); g.keys.add('Space');
   g.P.vel.x = 6.35; let jumps = 0, previousV = 0;

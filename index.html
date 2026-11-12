@@ -2947,13 +2947,33 @@ function spawnSelf(side, spec) {
   P.kAnim = null; if (W[P.weapon].melee) beginKnifeAnimation('draw',now()); P.inspT = 0;
   P.drawEnd = now() + W[P.weapon].draw; applyFov();
 }
+// Horário de cada aperto e soltura (como o subtick do CS2): a física aplica a tecla a partir do instante exato do evento,
+// e não do quadro inteiro. Assim o counter-strafe e a parada começam na hora certa, a qualquer FPS.
+const RENDER_POS = new V3();
+function renderPos() {
+  const a = clamp((P.physTime || 0) / PHYS_STEP, 0, 1), pp = P.prevPos;
+  if (!pp || !P.alive) return P.pos;
+  const dx = P.pos.x - pp.x, dy = P.pos.y - pp.y, dz = P.pos.z - pp.z;
+  if (dx * dx + dy * dy + dz * dz > .25) return P.pos;
+  return RENDER_POS.set(pp.x + dx * a, pp.y + dy * a, pp.z + dz * a);
+}
+const keyAt = {};
+function keyHeldAt(c, ts) {
+  const k = keyAt[c];
+  if (keys.has(c)) return !k || k.down <= ts;
+  return !!k && k.up !== Infinity && k.down <= ts && k.up > ts;
+}
+function keyEvent(c, down, t) {
+  const k = keyAt[c];
+  if (down) { if (!keys.has(c)) keyAt[c] = { down: t, up: Infinity }; }
+  else if (k) k.up = t;
+}
 function playerInput(dt, t) {
   const v = G.view, canMove = P.alive && v.ph !== 'freeze' && locked && !playerBusy() && (G.mode==='dm'?DM.phase==='live':G.mode==='team'?DM.phase==='live'||DM.phase==='end':true);
   let fx = 0, fz = 0;
   if (canMove) { if (K('KeyW')) fz += 1; if (K('KeyS')) fz -= 1; if (K('KeyD')) fx += 1; if (K('KeyA')) fx -= 1; }
   if(G.mode==='dm'&&canMove&&(fx||fz||K('Space')))P.safeUntil=0;
   const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
-  const wx = -sy * fz + cy * fx, wz = -cy * fz - sy * fx;
   const wantC = P.alive && locked && (K('KeyC') || (S.crouchCtrl && (K('ControlLeft') || K('ControlRight'))));
   P.duckSpeed = Math.min(DUCK.ideal, (P.duckSpeed ?? DUCK.ideal) + DUCK.recover * dt);
   if (wantC && !P.wantDuck) P.duckSpeed = Math.max(DUCK.min, P.duckSpeed - DUCK.penalty);
@@ -2981,9 +3001,15 @@ function playerInput(dt, t) {
   maxS *= Math.min(walk, duckMul);
   if (t < P.tagUntil) maxS *= 0.45;
   P.physTime = Math.min((P.physTime || 0) + dt, .0625);
+  if (!P.prevPos) P.prevPos = new V3().copy(P.pos);
   while (P.physTime >= PHYS_STEP) {
     const jump = canMove && P.onGround && ((S.autoBhop && K('Space')) || t <= P.jumpUntil);
-    physics(P, wx, wz, maxS, jump, PHYS_STEP);
+    // Direção deste passo pelas teclas no instante dele (fim do passo), não no início do quadro.
+    const ts = t - (P.physTime - PHYS_STEP) * 1000;
+    let sx = 0, sz = 0;
+    if (canMove) { if (keyHeldAt('KeyW', ts)) sz += 1; if (keyHeldAt('KeyS', ts)) sz -= 1; if (keyHeldAt('KeyD', ts)) sx += 1; if (keyHeldAt('KeyA', ts)) sx -= 1; }
+    P.prevPos.copy(P.pos);
+    physics(P, -sy * sz + cy * sx, -cy * sz - sy * sx, maxS, jump, PHYS_STEP);
     if (jump) P.jumpUntil = 0;
     P.landSpread *= Math.exp(-PHYS_STEP * 16);
     P.physTime -= PHYS_STEP;
@@ -5936,7 +5962,10 @@ function applyFov() { camera.fov = vfovFromH(zoomH()); camera.updateProjectionMa
 function updateCamera(dt, t) {
   if (specCamera(dt, t)) return;
   const dk = P.alive ? 0 : clamp((t - P.deathT) / 500, 0, 1);
-  camera.position.set(P.pos.x, P.pos.y + P.eyeOff * (1 - 0.75 * dk), P.pos.z);
+  // A física anda em passos de 1/128 s; a câmera mostra a posição interpolada entre os dois últimos passos (como no CS),
+  // para o deslocamento por quadro ficar regular em qualquer FPS. Teleportes (spawn, morte) não interpolam.
+  const rp = renderPos();
+  camera.position.set(rp.x, rp.y + P.eyeOff * (1 - 0.75 * dk), rp.z);
   // A preferência muda só o recuo visível; as balas seguem o recuo inteiro nas duas opções.
   const recoil=viewRecoilScale();
   camera.rotation.set(P.pitch+P.recoilP*recoil+P.punch,P.yaw+P.recoilY*recoil,dk*.5);
@@ -6634,7 +6663,7 @@ document.addEventListener('keydown', e => {
   if (BUY.open) { if (SLOT[e.code]) selectBuySlot(SLOT[e.code]); else if (e.code==='KeyB') closeBuy(); return; }
   if (SHOP.open) { if (e.code === 'KeyB' || e.code === 'Escape') closeShop(); return; }
   if (MINI.open) { if (e.code === 'KeyX' || e.code === 'Escape') closeMinimap(); return; }
-  keys.add(e.code);
+  keyEvent(e.code, true, now()); keys.add(e.code);
   if (bombOn() && /^Digit[1-5]$/.test(e.code)) bombSlotKey(e.code);
   else if (bombOn() && e.code === 'KeyB') openShop();
   else if (bombOn() && e.code === 'KeyX') useAbility(now());
@@ -6648,7 +6677,7 @@ document.addEventListener('keydown', e => {
   else if (e.code === 'KeyB' && freeShopOn()) openShop();
   else if (e.code === 'KeyB' && G.mode !== 'aimbotz') { if (BUY.open) closeBuy(); else openBuy(true); }
 });
-document.addEventListener('keyup', e => { keys.delete(e.code); });
+document.addEventListener('keyup', e => { keyEvent(e.code, false, now()); keys.delete(e.code); });
 window.addEventListener('blur', () => { keys.clear(); P.m1 = P.m2 = P.m1Press = P.m2Press = false; P.jumpUntil = 0; });
 
 function lock() {
