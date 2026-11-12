@@ -10,6 +10,13 @@ As colisões vêm dos brushes convexos e dos arquivos PHY embutidos dos objetos 
 
 As cores chapadas vêm das médias RGB dos materiais do BSP e dos materiais embutidos dos modelos. Preto e branco recebem limites leves para manter legibilidade. Não são exportadas imagens, VMTs, VTFs, iluminação ou áudio; o shader de grade é o mesmo do jogo.
 
+## Barreiras invisíveis corrigidas no Elysion
+
+Algumas colisões do port bloqueavam o movimento sem nada desenhado. `SOURCE_FIXES`, no `index.html`, encontra essas peças pela caixa de colisão (não pelo índice, que muda ao regenerar), desenha um visual e tira o bit de tiro delas:
+
+- **Vidro no andar de cima:** dois guarda-corpos entre os pilares da beira do salão (x 3,3–8,2 e 9,4–14,3; z −22,5; 1,09 m de altura). São transparentes, com um perfil no alto, e o tiro passa.
+- **Cortina preta na passagem para o terraço:** em x 18,75, fecha do chão ao teto entre z −22,2 e −20,5. Entre z −20,5 e −17,1 vira só a faixa de cima, sobre a passagem (3,25–5,28 m). É feita de faixas em zigue-zague, como pregas, e o tiro passa.
+
 ## Recorte Wingman do Elysion
 
 O port fornecido continha dois triggers de bomba. A versão do jogo mantém somente o **A**, conforme a imagem de referência do usuário. A sala inferior direita da imagem continua acessível como passagem, sem o plant B. As rotas internas permanecem nas posições nativas. A casca externa é cortada ao redor do trecho jogável, com margem de 1 m para preservar paredes de contorno, entre −2 e 12 m de altura. Isso reduz os cerca de 113 mil triângulos extraídos para cerca de 60 mil.

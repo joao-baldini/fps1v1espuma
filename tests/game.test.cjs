@@ -1973,3 +1973,14 @@ test('walking gait: legs alternate along the movement in all eight directions, a
     assert.ok(gait.amp < .02, 'parado: pernas voltam');
   }
 });
+test('Elysion: the upper-floor glass railings and the black terrace curtain block walking but let bullets through', () => {
+  const { g, cx } = bombWorld('elysion');
+  const W = cx.sourceWorld, shotHit = (o, d, len) => g.trace(o, d, len, []);
+  // vidro entre os pilares do andar de cima
+  assert.equal(shotHit([11.9, 3.8, -21.6], [0, 0, -1], 1.4), null, 'tiro atravessa o vidro');
+  assert.equal(W.overlap(11.9, 3.27, -22.47, 1.8, .3, 1), true, 'o vidro bloqueia o boneco');
+  // cortina preta na passagem do terraço
+  assert.equal(shotHit([18.1, 1.2, -21.3], [1, 0, 0], 1.2), null, 'tiro atravessa a cortina embaixo');
+  assert.equal(shotHit([18.1, 4.2, -18.8], [1, 0, 0], 1.2), null, 'tiro atravessa a faixa de cima');
+  assert.equal(W.overlap(18.75, .02, -21.3, 1.8, .3, 1), true, 'a cortina bloqueia o boneco');
+});

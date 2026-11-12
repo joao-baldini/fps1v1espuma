@@ -1190,6 +1190,41 @@ function groundAt(x, z, belowDeck = false) {
   return g;
 }
 function addTri(out, a, b, c, n, col) { for (const v of [a, b, c]) { out.p.push(v[0], v[1], v[2]); out.n.push(n[0], n[1], n[2]); out.c.push(col.r, col.g, col.b); } }
+// Correções dos mapas convertidos: barreiras que bloqueiam o movimento sem nada desenhado. Cada uma ganha um visual
+// (vidro ou cortina preta fina) e deixa os tiros passarem. As peças de colisão são achadas pela caixa, não pelo índice.
+const SOURCE_FIXES = {
+  elysion: [
+    // Guarda-corpos de vidro entre os pilares do andar de cima (beira sobre o salão).
+    { look: 'glass', box: [3.344, 3.251, -22.522, 8.221, 4.343, -22.42] },
+    { look: 'glass', box: [9.44, 3.251, -22.522, 14.317, 4.343, -22.42] },
+    // Cortina preta na passagem para o terraço: do chão ao teto onde fecha, e só a faixa de cima sobre a passagem.
+    { look: 'curtain', box: [18.686, -0.203, -22.217, 18.813, 5.283, -20.464], draw: [18.75, 0, -22.217, 18.75, 5.283, -20.464] },
+    { look: 'curtain', box: [18.711, 3.251, -20.464, 18.762, 5.283, -17.137], draw: [18.75, 3.251, -20.464, 18.75, 5.283, -17.137] },
+  ],
+};
+let FIX_MATS = null;
+function applySourceFixes(id, parent) {
+  const W = sourceWorld; if (!W || !SOURCE_FIXES[id]) return;
+  const visual = !!(THREE.BoxGeometry && THREE.MeshBasicMaterial && parent && parent.add);
+  if (visual && !FIX_MATS) FIX_MATS = { glass: new THREE.MeshBasicMaterial({ color: 0xbfe3ee, transparent: true, opacity: .26, depthWrite: false, side: THREE.DoubleSide }), edge: new THREE.MeshBasicMaterial({ color: 0x9fb7bf }),
+    curtain: [new THREE.MeshBasicMaterial({ color: 0x15171b }), new THREE.MeshBasicMaterial({ color: 0x23262c })] };
+  const FIX_GLASS = FIX_MATS && FIX_MATS.glass, FIX_GLASS_EDGE = FIX_MATS && FIX_MATS.edge, FIX_CURTAIN = FIX_MATS && FIX_MATS.curtain;
+  for (const fix of SOURCE_FIXES[id]) {
+    // Tiros passam: tira o bit de tiro das peças de colisão dentro da caixa.
+    for (let i = 0; i < W.count; i++) { const q = i * 6, b = W.bounds; if (b[q] >= fix.box[0] - .03 && b[q + 3] <= fix.box[3] + .03 && b[q + 1] >= fix.box[1] - .03 && b[q + 4] <= fix.box[4] + .03 && b[q + 2] >= fix.box[2] - .03 && b[q + 5] <= fix.box[5] + .03) W.masks[i] &= ~2; }
+    if (!visual) continue;
+    const [x0, y0, z0, x1, y1, z1] = fix.draw || fix.box, along = x1 - x0 > z1 - z0 ? 'x' : 'z', len = along === 'x' ? x1 - x0 : z1 - z0, h = y1 - y0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    if (fix.look === 'glass') {
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? len : .02, h, along === 'x' ? .02 : len), FIX_GLASS); pane.position.set(cx, y0 + h / 2, cz); pane.renderOrder = 2; parent.add(pane);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? len : .05, .04, along === 'x' ? .05 : len), FIX_GLASS_EDGE); rail.position.set(cx, y1 - .02, cz); parent.add(rail);
+    } else {
+      // Cortina: faixas verticais de 25 cm em zigue-zague, como pregas de tecido.
+      const n = Math.max(1, Math.round(len / .25)), w = len / n;
+      for (let k = 0; k < n; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? w : .03, h, along === 'x' ? .03 : w), FIX_CURTAIN[k % 2]), off = (k % 2 ? .025 : -.025), t = -len / 2 + w * (k + .5);
+        m.position.set(along === 'x' ? cx + t : cx + off, y0 + h / 2, along === 'x' ? cz + off : cz + t); parent.add(m); }
+    }
+  }
+}
 function buildMap(id) {
   const def = MAPS[id] || MAPS.caixas, K = THEMES[def.theme];
   MAP = Object.assign({ id: MAPS[id] ? id : 'caixas' }, def);
@@ -1198,7 +1233,7 @@ function buildMap(id) {
   if(def.source){
     if(!sourceWorld)throw new Error('Source map must be loaded before starting');
     if(worldMesh){scene.remove(worldMesh);worldMesh.geometry.dispose();}
-    worldMesh=new THREE.Mesh(sourceWorld.geometry(THREE),[worldMat,sourceGlassMat]);scene.add(worldMesh);
+    worldMesh=new THREE.Mesh(sourceWorld.geometry(THREE),[worldMat,sourceGlassMat]);scene.add(worldMesh);applySourceFixes(def.source,worldMesh);
     try{clearDecals();BOT.wp=null;BOT.knowsUntil=0;}catch(e){}
     return;
   }
