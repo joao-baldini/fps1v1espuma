@@ -2591,17 +2591,22 @@ oppGroup.add(oppLegs, oppUpper); oppGroup.visible = false; scene.add(oppGroup);
 // Contorno do inimigo (cor da preferência): cópia de cada peça um pouco maior, desenhada só pelo lado de dentro.
 const OUTLINE_COLORS = { vermelho: 0xff3b3b, amarelo: 0xf5e94a, roxo: 0xc04bff }, ALLY_XRAY = 0x3ff5e0;
 const outlineHex = () => OUTLINE_COLORS[S.enemyOutline] ?? OUTLINE_COLORS.vermelho;
-const oppHullMat = new THREE.MeshBasicMaterial({ color: OUTLINE_COLORS.vermelho, side: THREE.BackSide });
+// Só a borda de fora: as peças do boneco marcam 3 no stencil e o contorno só é desenhado onde não há boneco
+// (sem as linhas internas entre cabeça, tronco e pernas).
+const OUTLINE_STENCIL = { stencilWrite: true, stencilRef: 3, stencilFunc: THREE.NotEqualStencilFunc };
+const oppHullMat = new THREE.MeshBasicMaterial({ color: OUTLINE_COLORS.vermelho, side: THREE.BackSide, ...OUTLINE_STENCIL });
+function stencilMark(mat) { const m = mat.clone(); m.stencilWrite = true; m.stencilRef = 3; m.stencilFunc = THREE.AlwaysStencilFunc; m.stencilZPass = THREE.ReplaceStencilOp; return m; }
 function hullGeometry(geo) {
   geo.computeBoundingBox(); const c = new THREE.Vector3(), size = new THREE.Vector3(); geo.boundingBox.getCenter(c); geo.boundingBox.getSize(size);
   const g = geo.clone().translate(-c.x, -c.y, -c.z); g.userData.c = c; g.userData.s = size; return g;
 }
+{ const tint = stencilMark(oppTint); oppLegs.material = oppUpper.children[0].material = tint; oppUpper.children[1].material = stencilMark(basicMat); oppHelmet.material = stencilMark(basicMat); }
 for (const part of [oppLegs, oppUpper.children[0], oppUpper.children[1], oppHelmet]) {
-  const g = hullGeometry(part.geometry), m = new THREE.Mesh(g, oppHullMat), w = .022;
+  const g = hullGeometry(part.geometry), m = new THREE.Mesh(g, oppHullMat), w = .014; m.renderOrder = 5;
   m.position.copy(g.userData.c); m.scale.set(1 + 2 * w / g.userData.s.x, 1 + 2 * w / g.userData.s.y, 1 + 2 * w / g.userData.s.z); part.add(m);
 }
 oppGroup.traverse(object => object.layers.set(ACTOR_LAYER));
-function setOppColor(k) { oppTint.color.set(pcolHex(k)); }
+function setOppColor(k) { oppTint.color.set(pcolHex(k)); oppLegs.material.color.set(pcolHex(k)); }
 
 /* ================= Efeitos ================= */
 const decalGeo = new THREE.PlaneGeometry(.05, .05);
@@ -3880,7 +3885,7 @@ function ensureAgentPools(r){
     agent.enemyHull=hull.map(g=>r.pool(g,r.enemyHull[0].material));
     agent.allyFill=parts.map(mesh=>r.pool(mesh.geometry,r.allyFill[0].material));
     agent.allyEdge=hull.map(g=>r.pool(g,r.allyEdge[0].material));
-    for(const mesh of agent.allyFill)mesh.renderOrder=20;for(const mesh of agent.allyEdge)mesh.renderOrder=21;
+    for(const mesh of agent.enemyHull)mesh.renderOrder=5;for(const mesh of agent.allyFill)mesh.renderOrder=20;for(const mesh of agent.allyEdge)mesh.renderOrder=21;
     r.agentEnemyHulls.push(...agent.enemyHull);r.agents[id]=agent;
   }
   // Team markings leave each agent's outfit intact.
@@ -3919,7 +3924,7 @@ function dmEnsureRender(){
   const sol=[legs,body,head,helmet,...Object.values(guns)];
   for(const m of sol){const mt=m.material;mt.stencilWrite=true;mt.stencilRef=3;mt.stencilFunc=THREE.AlwaysStencilFunc;mt.stencilZPass=THREE.ReplaceStencilOp;}
   const parts=[legs,body,head,helmet],hull=parts.map(m=>hullGeometry(m.geometry));
-  const enemyHull=hull.map(g=>pool(g,new THREE.MeshBasicMaterial({color:outlineHex(),side:THREE.BackSide})));
+  const enemyHull=hull.map(g=>pool(g,new THREE.MeshBasicMaterial({color:outlineHex(),side:THREE.BackSide,...OUTLINE_STENCIL})));for(const m of enemyHull)m.renderOrder=5;
   const fillMat=new THREE.MeshBasicMaterial({color:ALLY_XRAY,transparent:true,opacity:.42,depthWrite:false,depthFunc:THREE.GreaterDepth,stencilWrite:true,stencilRef:2,stencilFunc:THREE.GreaterStencilFunc,stencilZPass:THREE.ReplaceStencilOp});
   const allyFill=parts.map(m=>pool(m.geometry,fillMat));
   const edgeMat=new THREE.MeshBasicMaterial({color:0x8ffff4,transparent:true,opacity:.95,side:THREE.BackSide,depthWrite:false,depthFunc:THREE.GreaterDepth,stencilWrite:true,stencilRef:1,stencilFunc:THREE.GreaterStencilFunc});
@@ -3944,7 +3949,7 @@ function dmRender(t, dt = 0){
   function putOutline(b,ally,bob,upper,sy,agent=null){
     const outline=agent||r;
     const dist=Math.hypot(b.pos.x-camera.position.x,b.pos.y+1-camera.position.y,b.pos.z-camera.position.z),edge=ally?outline.allyEdge:outline.enemyHull;
-    const w=ally?clamp(dist*.0065,.014,.3):clamp(dist*.0032,.007,.16),parts=b.helmet?4:3;
+    const w=ally?clamp(dist*.005,.011,.24):clamp(dist*.0021,.005,.11),parts=b.helmet?4:3;
     for(let i=0;i<parts;i++){const off=i?upper:bob,y=i?1:sy;if(ally)put(outline.allyFill[i],b,off,y);putHull(edge[i],b,off,y,w);}
   }
   function put(mesh,b,offset=0,scaleY=1,flash=false){const d=r.dummy;d.position.set(b.pos.x,b.pos.y+offset,b.pos.z);d.rotation.set(0,b.yaw,0,'YXZ');d.scale.set(1,scaleY,1);if(flash){d.position.x+=Math.cos(b.yaw)*.16-Math.sin(b.yaw)*.7;d.position.y+=1.26;d.position.z-=Math.sin(b.yaw)*.16+Math.cos(b.yaw)*.7;d.rotation.z=t*.1;}d.updateMatrix();mesh.setMatrixAt(mesh.count++,d.matrix);}
