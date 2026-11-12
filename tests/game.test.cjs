@@ -1480,25 +1480,31 @@ test('Wingman loss bonus: $2,000 +$300 per consecutive loss up to $2,900, +$600 
   assert.equal(g.DM.actors.find(e => e.team === ct).money, 3000);
   assert.equal(g.DM.actors.find(e => e.team === tTeam).money, 2000, 'bônus voltou ao início depois da vitória');
 });
-test('Doctor: left click heals the ally in the crosshair, right click heals yourself, +50 up to 100, a miss keeps the charge', () => {
+test('Doctor: the dart really flies (a miss spends the charge and sticks), heals +50 on arrival, and right click injects yourself mid-animation', () => {
   const { g, cx, step } = bombWorld();
   let t = step(10000, 11500);
   // This ability fixture needs a clear shooting lane, independent of the map's authored walls.
   cx.sourceWorld=null;cx.boxes.splice(0,cx.boxes.length,g.floor);cx.ramps.length=0;
-  const ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team);
+  const ally = g.DM.actors.find(e => e !== g.P && e.team === g.P.team), darts = () => vm.runInContext('DART.list', cx);
   g.P.op = 'doctor'; g.P.charges = 1; g.P.hp = 100;
   g.P.pos.set(0, 0, 10); g.P.yaw = 0; g.P.pitch = 0; ally.alive = true; ally.hp = 30; ally.pos.set(0, 0, 0);
   for (const e of g.DM.actors) if (e.team !== g.P.team) e.pos.set(30, 0, 30);
   cx.useAbility(t); assert.equal(g.P.weapon, 'medgun'); g.P.drawEnd = 0; g.P.nextFire = 0;
-  // erra (mira para cima): não gasta a carga
-  g.P.pitch = 1.2; g.P.m1Press = true; g.updateWeapon(0, t + 10); assert.equal(g.P.charges, 1); assert.equal(ally.hp, 30);
-  g.P.pitch = Math.atan2(1.2 - 1.64, 10); g.P.nextFire = 0; g.P.m1Press = true; g.updateWeapon(0, t + 20);
-  assert.equal(ally.hp, 80); assert.equal(g.P.charges, 0);
-  g.updateWeapon(0, t + 400); assert.notEqual(g.P.weapon, 'medgun'); assert.ok(!g.ORDER.includes('medgun'));
-  // em si mesmo (botão direito), até 100
-  g.P.charges = 1; g.P.hp = 70; cx.useAbility(t + 1000); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.m2Press = true; g.updateWeapon(0, t + 1010);
-  assert.equal(g.P.hp, 100); assert.equal(g.P.charges, 0);
-  // bot Doctor se cura com a vida baixa
+  // erra (mira para cima): o dardo sai, gasta a carga e fica cravado
+  g.P.pitch = 1.2; g.P.m1Press = true; g.updateWeapon(0, t + 10);
+  assert.equal(g.P.charges, 0); assert.equal(darts().length, 1); assert.equal(darts()[0].target, null);
+  vm.runInContext(`dartsTick(${t + 2000})`, cx); assert.equal(ally.hp, 30); assert.equal(darts().length, 1, 'cravado');
+  vm.runInContext(`dartsTick(${t + 10000})`, cx); assert.equal(darts().length, 0);
+  // acerta: cura quando o dardo chega
+  g.P.charges = 1; g.P.afterHeal = 0; g.P.drawEnd = 0; g.P.nextFire = 0; assert.equal(g.P.weapon, 'medgun');
+  g.P.pitch = Math.atan2(1.2 - 1.64, 10); g.P.m1Press = true; g.updateWeapon(0, t + 120);
+  const d = darts()[0]; assert.equal(d.target, ally); assert.equal(ally.hp, 30, 'ainda voando'); assert.equal(g.P.charges, 0);
+  vm.runInContext(`dartsTick(${t + 120 + d.dur + 1})`, cx); assert.equal(ally.hp, 80);
+  // em si mesmo (botão direito): crava no antebraço; a cura entra no meio da animação
+  g.P.afterHeal = 0; g.P.charges = 1; g.P.hp = 70; g.P.drawEnd = 0; g.P.nextFire = 0; g.P.m2Press = true; g.updateWeapon(0, t + 1010);
+  assert.ok(g.P.injectT > 0); assert.equal(g.P.hp, 70);
+  g.updateWeapon(0, t + 1010 + 720 * .5); assert.equal(g.P.hp, 100); assert.equal(g.P.charges, 0);
+  // bot Doctor: se cura na hora; num aliado, manda o dardo
   const doc = ally; doc.op = 'doctor'; doc.charges = 1; doc.hp = 20; doc.seen = false; doc.opAt = 1;
   vm.runInContext(`botsUseAbilities(${t + 2000})`, cx); assert.equal(doc.hp, 70); assert.equal(doc.charges, 0);
 });
@@ -1636,4 +1642,15 @@ test('falling into the Elysion abyss kills after the fall, counts as a death wit
   assert.ok(Math.hypot(d.x - ledge.x, d.z - ledge.z) < .5 && Math.abs(d.y - ledge.y) < 1, 'a bomba volta para o último chão firme');
   g.P.pos.y = floor - 30; vm.runInContext(`fallTick(${t})`, cx);
   assert.equal(g.P.alive, false); assert.equal(g.P.killedBy.w, 'fall');
+});
+test('the C4 beep comes from the bomb: silent far away, louder as you get closer', () => {
+  const { g, cx, step } = bombWorld();
+  const ev = s => vm.runInContext(s, cx);
+  let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500);
+  const beeps = []; cx.AU = new Proxy({}, { get: (_, k) => k === 'beep' ? v => beeps.push(v) : () => {} });
+  const s = ev('MAP.plant.site'), p = { x: (s.x0 + s.x1) / 2, y: s.y0, z: (s.z0 + s.z1) / 2 };
+  ev(`BOMB.planted={x:${p.x},y:${p.y},z:${p.z},t:${t},site:'A'};BOMB.beepAt=0;ARENA.roundEnd=${t}+BOMB.bombMs;`);
+  const hear = (d) => { beeps.length = 0; g.P.pos.set(p.x + d, p.y, p.z); ev('BOMB.beepAt=0'); vm.runInContext(`bombTick(1/30,${t += 30})`, cx); return beeps[0] || 0; };
+  assert.equal(hear(60), 0, 'longe: não ouve');
+  const mid = hear(18), near = hear(2); assert.ok(mid > 0 && near > mid, `perto ${near} > meio ${mid}`);
 });

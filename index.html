@@ -1807,7 +1807,8 @@ const AU = {
   pop(v, pan) { this.noise(.14, 3400, .8, .7 * v, pan, 'bandpass'); this.tone(2600, .5, .07 * v, 'sine', pan, -300); },
   hiss(v, pan) { this.noise(1.8, 5200, .4, .26 * v, pan, 'highpass'); this.noise(.5, 900, .6, .2 * v, pan); },
   ring(v) { this.tone(3500, 2.4, .05 * v, 'sine', 0, -150); },
-  beep(v, pan, fast) { this.tone(fast ? 2300 : 1900, .07, .16 * Math.max(.35, v), 'square', pan, 0); },
+  // Bipe da C4 (e do alarme): vem do objeto; o volume já chega calculado pela distância.
+  beep(v, pan, fast) { this.tone(fast ? 2300 : 1900, .07, .2 * v, 'square', pan, 0); },
   arm() { this.tone(880, .06, .08, 'square', 0, 0); this.tone(1320, .06, .07, 'square', 0, 0, .08); },
   planted() { for (let i = 0; i < 3; i++) this.tone(1500, .08, .1, 'square', 0, 0, i * .12); },
   buy() { this.tone(1046, .05, .07, 'triangle', 0, 0); this.tone(1568, .07, .06, 'triangle', 0, 0, .05); },
@@ -2070,9 +2071,8 @@ const vmRoot = new THREE.Group(); vmRoot.scale.setScalar(0.5); vmScene.add(vmRoo
 const vmGuns = {}, vmFlash = {}, vmKnives = {};
 // Karambit: peças contínuas, curvas Bézier e eixo no centro do anel do indicador.
 // Pegada da karambit como no CS: indicador no anel, cabo atravessando o punho e garra saindo para o centro da tela, curvada para cima.
-// Pegada invertida: anel no indicador em cima do punho, cabo atravessando a mão e garra saindo por baixo, curvada para o centro da tela.
-const KH_ROT = [3.14,0,2.25], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.18;
-const KARAMBIT_VIEW = { scale: 1.4, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [.025,.05,-.02], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
+const KH_ROT = [-1.2,-.25,-.1], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.18;
+const KARAMBIT_VIEW = { scale: 1.4, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.01,-.025], elbows: [[.50,-.28,.12],[-.42,-.24,.12]], showShift: [.06,.04,.02] };
 let karambitGeo = null;
 // Karambit no mesmo estilo das armas: cor chapada com sombreamento fixo por face (tons das caixas).
 const KNIFE_FACE_SHADE = [.80,.80,.80,.80,.80,.80,.70,.70,.70,.70,.70,.70,1,1,1,1,1,1,.50,.50,.50,.50,.50,.50,.90,.90,.90,.90,.90,.90,.62,.62,.62,.62,.62,.62];
@@ -2242,18 +2242,18 @@ const KARAMBIT_DRAW = [
 // Inspeção medida no vídeo do CS2 (3,0 s): levanta o punho (0–0,25 s), a faca vira no indicador com a lâmina
 // passando por cima (0,25–0,7 s), exibição com o punho em pé e a garra pendurada curvando para a esquerda
 // (0,85–2,1 s) e volta girando ao repouso.
-// Inspeção da pegada invertida: a mão sobe e gira um pouco para trás, mostrando a lateral da garra enquanto ela gira no anel.
+// O último valor de cada quadro é a exibição: a faca vira no eixo do cabo e fica por cima da mão, com a garra saindo por baixo.
 const KARAMBIT_INSPECT = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [.033,0,.03,0,-.075,0,.10,0,0,0,0,0,0,0,0],
-  [.083,-.02,.12,-.02,-.25,-.2,.20,.8,0,0,0,0,0,0,0],
-  [.13,-.03,.16,-.02,-.275,-.2,.15,Math.PI/2,0,0,0,0,0,0,0],
-  [.18,-.035,.17,0,-.3125,-.35,.08,2.4,0,0,0,0,0,0,0],
-  [.23,-.035,.18,.02,-.3625,-.5,.03,3.6,0,0,0,0,0,0,0],
-  [.28,-.035,.19,.04,-.4,-.6,0,TAU-1.271,0,0,0,0,0,0,0],
-  [.70,-.035,.19,.04,-.4,-.6,0,TAU-1.271,0,0,0,0,0,0,0],
-  [.78,-.02,.10,.02,-.25,-.3,.10,5.9,0,0,0,0,0,0,0],
-  [.90,0,.02,0,-.0625,0,0,TAU-.05,0,0,0,0,0,0,0],
+  [.033,0,.03,0,.30,0,.10,0,0,0,0,0,0,0,0],
+  [.083,-.02,.12,-.02,1.0,-.2,.20,.8,0,0,0,0,0,0,0],
+  [.13,-.03,.16,-.02,1.1,-.2,.15,Math.PI/2,0,0,0,0,0,0,0],
+  [.18,-.035,.17,0,1.25,-.35,.08,2.4,0,0,0,0,0,0,.6],
+  [.23,-.035,.18,.02,1.45,-.5,.03,3.6,0,0,0,0,0,0,1],
+  [.28,-.035,.19,.04,1.6,-.6,0,TAU-1.271,0,0,0,0,0,0,1],
+  [.70,-.035,.19,.04,1.6,-.6,0,TAU-1.271,0,0,0,0,0,0,1],
+  [.78,-.02,.10,.02,1.0,-.3,.10,5.9,0,0,0,0,0,0,.5],
+  [.90,0,.02,0,.25,0,0,TAU-.05,0,0,0,0,0,0,0],
   [1,0,0,0,0,0,0,TAU,0,0,0,0,0,0,0]
 ];
 const KARAMBIT_SLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.16,.02,.02,.02,.05,-.15,-.20,0,0,0,0,0,0,0,0],[.36,-.24,.04,-.14,-.25,.45,.70,0,0,0,0,0,0,0,0],[.62,-.14,0,-.07,-.13,.22,.36,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
@@ -2325,10 +2325,13 @@ function applyKnifePose(rig, pose) {
     rig.holder.position.set(V.holder[0]-opening*.03,V.holder[1]+opening*.012,V.holder[2]);
     rig.holder.rotation.set(V.holderRot[0]+presentation*1.2,V.holderRot[1],V.holderRot[2]+(pose[14] || 0));
   } else {
-    rig.holder.position.set(...KARAMBIT_VIEW.holder);
-    rig.holder.rotation.set(KH_ROT[0],KH_ROT[1]+presentation*.70,KH_ROT[2]+presentation*.10);
+    // Inspeção: a faca vira no eixo do cabo (garra para o outro lado) e desliza para cima da mão.
+    const V2 = KARAMBIT_VIEW, sh = V2.showShift;
+    rig.holder.position.set(V2.holder[0]+presentation*sh[0],V2.holder[1]+presentation*sh[1],V2.holder[2]+presentation*sh[2]);
+    rig.holder.rotation.set(KH_ROT[0],KH_ROT[1],KH_ROT[2]);
   }
-  rig.pivot.rotation.set(0,0,butterfly ? 0 : pose[6]);
+  if (!butterfly) rig.pivot.rotation.order = 'ZYX';
+  rig.pivot.rotation.set(butterfly ? 0 : presentation*Math.PI,0,butterfly ? 0 : pose[6]);
   if (butterfly) { rig.blade.rotation.z = pose[6]; rig.free.rotation.z = pose[7]; }
   for (let i=0;i<2;i++) {
     const hand = i ? rig.left : rig.right, arm = rig.arms[i]; hand.updateMatrix();
@@ -2354,6 +2357,10 @@ function buildKnifeHands(g, butterfly = false) {
   const result = { holder, pivot, right, left: lh, arms, ...rig }; applyKnifePose(result,KNIFE_REST); return result;
 }
 let deagleSlide = null;
+// Autoaplicação do Doctor: antebraço esquerdo que entra na tela (no lugar da mão esquerda da pistola) para receber o dardo.
+const vmMedLeft = [], vmInjectArm = new THREE.Group();
+{ const wrist = [.1, .02, -.33], h = new THREE.Mesh(gloveGeo, skinMat); h.position.set(...wrist); vmInjectArm.add(h); limb(vmInjectArm, [-.7, -.3, .05], [.065, .006, -.31], .072, sleeveMat); }
+vmInjectArm.scale.setScalar(.5); vmInjectArm.visible = false; vmScene.add(vmInjectArm);
 const vmBody = {}, vmSkin = {};
 for (const k of ALL_WEAPONS) {
   const g = new THREE.Group(); if (GUNS[k].length) { vmBody[k] = boxModel(GUNS[k]); vmSkin[k] = 'padrao'; g.add(vmBody[k]); }
@@ -2362,7 +2369,8 @@ for (const k of ALL_WEAPONS) {
     deagleSlide = boxModel(DEAGLE_SLIDE);
     g.add(deagleSlide);
   }
-  for (const a of ARMS[k]) { if (a.hand) { const h = new THREE.Mesh(gloveGeo, skinMat); h.position.set(...a.hand); g.add(h); } limb(g, a.from, a.to, .072, sleeveMat); }
+  ARMS[k].forEach((a, i) => { const before = g.children.length; if (a.hand) { const h = new THREE.Mesh(gloveGeo, skinMat); h.position.set(...a.hand); g.add(h); } limb(g, a.from, a.to, .072, sleeveMat);
+    if (k === 'medgun' && i === 0) vmMedLeft.push(...g.children.slice(before)); });
   if (MUZZLE[k]) { const f = new THREE.Mesh(flashGeo, flashMat); f.position.set(...MUZZLE[k]); f.visible = false; g.add(f); vmFlash[k] = f; }
   g.visible = false; vmRoot.add(g); vmGuns[k] = g;
 }
@@ -2935,7 +2943,8 @@ function updateWeapon(dt, t) {
   const canAct = P.alive && G.view.ph !== 'freeze' && locked && t >= P.drawEnd && !P.reloadEnd && (G.mode==='dm'?DM.phase==='live'&&t<DM.endsAt:G.mode==='team'?DM.phase==='live'||DM.phase==='end':true);
   if (w.bomb) { P.m1Press = P.m2Press = false; return; }
   if (w.medgun) {
-    if (canAct && t >= P.nextFire && (P.m1Press || P.m2Press)) { P.nextFire = t + w.rof; P.kick = 1; if (doctorShoot(t, !P.m1Press)) P.afterHeal = t + 350; }
+    if (canAct && t >= P.nextFire && !P.injectT && (P.m1Press || P.m2Press)) { const self = !P.m1Press; P.nextFire = t + w.rof; if (!self) P.kick = 1; if (doctorShoot(t, self)) P.afterHeal = t + (self ? INJECT.ms + 60 : 350); }
+    if (P.injectHealAt && t >= P.injectHealAt) { P.injectHealAt = 0; if (P.alive && P.charges > 0) doctorHeal(P, P, t); }
     if (P.afterHeal && t >= P.afterHeal) { P.afterHeal = 0; doctorPutAway(); }
     P.m1Press = P.m2Press = false; P.kick *= Math.exp(-dt * 10); return;
   }
@@ -4307,7 +4316,7 @@ function teamTick(dt, t) {
 // 1:30 de rodada, bomba de 40 s, plantar em 3,2 s, desarmar em 10 s (5 s com kit), $800 iniciais e teto de $8.000.
 // Vitória: $2.750 (eliminação ou tempo) ou $3.000 (desarme ou detonação). Derrota: $2.000 +$300 por derrota seguida
 // (máximo $2.900); TR que plantou e perdeu ganha +$600.
-const BOMB = { half: 8, target: 9, maxRounds: 16, freezeMs: 10000, buyMs: 20000, roundMs: 90000, bombMs: 40000, plantMs: 3200, defuseMs: 10000, kitMs: 5000, endMs: 5000,
+const BOMB = { beepRange: 38, half: 8, target: 9, maxRounds: 16, freezeMs: 10000, buyMs: 20000, roundMs: 90000, bombMs: 40000, plantMs: 3200, defuseMs: 10000, kitMs: 5000, endMs: 5000,
   start: 800, max: 8000, win: { kill: 2750, bomb: 3000, defuse: 3000, time: 2750 }, lossBase: 2000, lossStep: 300, lossMax: 2900, plantTeam: 600, plantMe: 300, defuseMe: 300,
   tTeam: 0, streak: [0, 0], planted: null, dropped: null, carrier: null, roundStart: 0, plantedBy: null, beepAt: 0, gfx: null, lastWhy: '' };
 const PRICES = { usps: 200, pistol: 700, ump: 1200, bucky: 1050, rifle: 2700, m4a4: 3100, m4a1s: 2900, ssg: 1700, sniper: 4750, he: 300, flash: 200, smoke: 300, kevlar: 650, helmet: 1000, kit: 400 };
@@ -4789,7 +4798,7 @@ function bombTick(dt, t) {
     const p = BOMB.planted;
     if (p && !p.defused && t >= p.t + BOMB.bombMs) bombExplode(t);
     else if (!p && t >= ARENA.roundEnd) bombEndRound(t, 1 - BOMB.tTeam, 'time');
-    if (p && !p.defused && !p.blown && t >= BOMB.beepAt) { const left = (p.t + BOMB.bombMs - t) / BOMB.bombMs, s = spat(p.x, p.z); AU.beep && AU.beep(s.v, s.pan, left < .2); BOMB.lastBeep = t; BOMB.beepAt = t + 140 + 860 * left; }
+    if (p && !p.defused && !p.blown && t >= BOMB.beepAt) { const left = (p.t + BOMB.bombMs - t) / BOMB.bombMs, s = spat(p.x, p.z), near = Math.max(0, 1 - Math.hypot(p.x - P.pos.x, p.y - P.pos.y, p.z - P.pos.z) / BOMB.beepRange); if (near > 0) AU.beep && AU.beep(near ** 1.6, s.pan, left < .2); BOMB.lastBeep = t; BOMB.beepAt = t + 140 + 860 * left; }
   } else if (DM.phase === 'end' && t >= ARENA.roundEnd) {
     const [a, b] = ARENA.sc;
     if (a >= BOMB.target || b >= BOMB.target || ARENA.r >= BOMB.maxRounds) { DM.phase = 'over'; ARENA.roundEnd = t + 10000; ARENA.win = a > b ? 0 : b > a ? 1 : null; teamPublish(t); }
@@ -4797,7 +4806,7 @@ function bombTick(dt, t) {
   } else if (DM.phase === 'over' && t >= ARENA.roundEnd) bombNewMatch(t);
   const L = LEVELS[DM.level] || LEVELS.medio;
   if (DM.phase === 'live') { bombBrainTick(t); for (const b of DM.bots) dmBotMove(b, dt, t, L); }
-  bombPickup(t); bombPlayerAction(dt, t); bombBotsAct(dt, t); opsCooldownTick(t); botsUseAbilities(t); scanTick(t); alarmsTick(t);
+  bombPickup(t); bombPlayerAction(dt, t); bombBotsAct(dt, t); opsCooldownTick(t); dartsTick(t); botsUseAbilities(t); scanTick(t); alarmsTick(t);
   dmRefreshTargets();
   if (DM.phase === 'live') { for (const b of DM.bots) if (!b.plantUntil && !b.defuseUntil) dmBotFire(b, t, L); bombCheck(t); }
   bombRenderObj(t);
@@ -4871,25 +4880,60 @@ function abilityState(t) {
   return { state: 'cd', s: Math.max(1, Math.ceil(((P.cdUntil || t) - t) / 1000)) };
 }
 function ghostSilence(e, t) { if (e.op !== 'ghost' || !(e.charges > 0) || !e.alive) return false; opSpend(e, t); e.silentUntil = t + GHOST.ms; opVoice(e, 'shh'); if (e === P) opNotice('Passos mudos por 5 s'); return true; }
-function doctorHeal(by, target, t) {
-  if (!by || !target || !target.alive || by.op !== 'doctor' || !(by.charges > 0) || target.team !== by.team || target.hp >= 100) return false;
-  const before = target.hp; target.hp = Math.min(100, target.hp + DOCTOR.heal); opSpend(by, t);
+function doctorHeal(by, target, t, paid = false) {
+  if (!by || !target || !target.alive || (!paid && (by.op !== 'doctor' || !(by.charges > 0))) || target.team !== by.team || target.hp >= 100) return false;
+  const before = target.hp; target.hp = Math.min(100, target.hp + DOCTOR.heal); if (!paid) opSpend(by, t);
   if (target === P) { P.healFxAt = t; if (typeof pulseFx === 'function') pulseFx('61,255,122', 1300); }
   if (by === P && target !== P) opNotice('Estimulante em ' + target.name + ': +' + (target.hp - before) + ' de vida');
   else if (target === P && by !== P) opNotice(by.name + ' curou você: +' + (target.hp - before));
   AU.buy && AU.buy();
   return true;
 }
-// Dardo do jogador: o primeiro aliado na linha de tiro (sem atravessar parede).
+// Dardo estimulante: sai de verdade (gasta a carga mesmo errando), voa até o alvo e cura quando chega.
+// Errou: fica cravado na parede por alguns segundos. Branco, ponta azul e agulha na frente.
+const DART = { speed: 42, stuck: 4000, list: [], geo: null };
+const INJECT = { ms: 720, heal: .48, yaw: .9, pitch: -.5, move: [0, 0, 0], push: [-.004, -.016, .004] };
+function dartMesh() {
+  if (!DART.geo) {
+    const parts = [[.006,.006,.05,0,0,.085,0xc8d0d4],[.026,.026,.032,0,0,.044,0x2f8cff],[.03,.03,.075,0,0,-.01,0xf4f6f8],[.052,.005,.03,0,0,-.055,0x2f8cff],[.005,.052,.03,0,0,-.055,0x2f8cff]];
+    DART.geo = parts.map(([w,h,d,x,y,z,c]) => [new THREE.BoxGeometry(w,h,d).translate(x,y,z), new THREE.MeshBasicMaterial({ color: c })]);
+  }
+  const g = new THREE.Group(); for (const [geo, mat] of DART.geo) g.add(new THREE.Mesh(geo, mat)); g.scale.setScalar(1.5); return g;
+}
+function dartFire(by, from, to, target, t) {
+  opSpend(by, t);
+  const d = { by, target, from, to, t0: t, dur: Math.max(60, Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]) / DART.speed * 1000), mesh: null };
+  if (THREE.BoxGeometry && typeof scene !== 'undefined') { d.mesh = dartMesh(); d.mesh.position.set(...from); d.mesh.lookAt(to[0], to[1], to[2]); scene.add(d.mesh); }
+  DART.list.push(d); const s = spat(from[0], from[2]); AU.noise && AU.noise(.06, 2600, 1.4, .14 * s.v, s.pan, 'bandpass');
+  return d;
+}
+function dartsTick(t) {
+  for (const d of DART.list.slice()) {
+    const k = Math.min(1, (t - d.t0) / d.dur);
+    if (d.mesh) d.mesh.position.set(d.from[0] + (d.to[0] - d.from[0]) * k, d.from[1] + (d.to[1] - d.from[1]) * k, d.from[2] + (d.to[2] - d.from[2]) * k);
+    if (k >= 1 && !d.done) {
+      d.done = true;
+      if (d.target && doctorHeal(d.by, d.target, t, true)) { d.gone = t; if (d.by === P) hitmark(''); }
+      else if (d.by === P) opNotice(d.target && d.target.alive && d.target.hp >= 100 ? d.target.name + ' já estava com a vida cheia' : 'O dardo errou');
+    }
+    if (d.done && t >= (d.gone ?? d.t0 + d.dur + DART.stuck)) { if (d.mesh) scene.remove(d.mesh); DART.list.splice(DART.list.indexOf(d), 1); }
+  }
+}
+function dartsClear() { for (const d of DART.list) if (d.mesh) scene.remove(d.mesh); DART.list.length = 0; }
+// Dardo do jogador: o primeiro aliado na linha de tiro (sem atravessar parede); botão direito aplica em você.
 function doctorShoot(t, self) {
-  if (self) return doctorHeal(P, P, t) || (opNotice(P.hp >= 100 ? 'Sua vida já está cheia' : 'Sem carga'), false);
+  if (!(P.charges > 0)) { opNotice('Sem carga'); return false; }
+  if (self) {
+    if (P.hp >= 100) { opNotice('Sua vida já está cheia'); return false; }
+    // Autoaplicação: o braço esquerdo entra na tela e ele crava o dardo no antebraço; a cura entra no meio do movimento.
+    P.injectT = t; P.injectHealAt = t + INJECT.ms * INJECT.heal; return true;
+  }
   const boxes2 = []; for (const e of DM.actors) if (e !== P && e.alive && e.team === P.team) { dmUpdateHitboxes(e); boxes2.push(...e.dmBoxes); }
   const e = eyePos(), d = dirFrom(P.yaw, P.pitch), hit = trace(e, d, DOCTOR.range, boxes2);
-  tracer(muzzleWorld(), hit ? hit.point : [e[0] + d[0] * DOCTOR.range, e[1] + d[1] * DOCTOR.range, e[2] + d[2] * DOCTOR.range], 80);
   const ally = hit && hit.part ? DM.byId.get(hit.actor) : null;
-  if (!ally) { opNotice('O dardo errou · a carga continua'); return false; }
-  if (ally.hp >= 100) { opNotice(ally.name + ' já está com a vida cheia'); return false; }
-  return doctorHeal(P, ally, t);
+  if (ally && ally.hp >= 100) { opNotice(ally.name + ' já está com a vida cheia'); return false; }
+  dartFire(P, muzzleWorld(), hit ? hit.point : [e[0] + d[0] * DOCTOR.range, e[1] + d[1] * DOCTOR.range, e[2] + d[2] * DOCTOR.range], ally, t);
+  return true;
 }
 // Tecla X do Doctor: saca ou guarda a pistola de cura.
 function doctorToggle(t) {
@@ -4903,7 +4947,7 @@ function doctorPutAway() {
   if (P.weapon === 'medgun') selectWeapon(back);
   ORDER.splice(ORDER.indexOf('medgun'), 1);
 }
-function opsResetRound() { for (const e of DM.actors) { e.charges = 1; e.cdUntil = 0; e.toughUntil = 0; e.silentUntil = 0; e.revealUntil = 0; e.revealTeam = -1; e.opAt = 0; } alarmsClear(); SCAN.pending = SCAN.retagAt = null; GHOSTS.length = 0; }
+function opsResetRound() { for (const e of DM.actors) { e.charges = 1; e.cdUntil = 0; e.toughUntil = 0; e.silentUntil = 0; e.revealUntil = 0; e.revealTeam = -1; e.opAt = 0; } alarmsClear(); dartsClear(); SCAN.pending = SCAN.retagAt = null; GHOSTS.length = 0; P.injectT = P.injectHealAt = 0; }
 function revealActor(e, team, t, ms) {
   // A marcação não segue a pessoa: guarda onde ela estava (posição, direção e agachamento) e mostra uma silhueta ali.
   GHOSTS.push({ x: e.pos.x, y: e.pos.y, z: e.pos.z, yaw: e.yaw, crouch: !!e.crouch, team, t0: t, until: t + ms, id: e.id });
@@ -5007,7 +5051,8 @@ function botsUseAbilities(t) {
       // Cura a si mesmo ou um aliado perto (até 15 m, à vista) abaixo de 60 de vida, fora da troca de tiros.
       if (b.seen) continue;
       const mate = DM.actors.filter(e => e.alive && e.team === b.team && e.hp < 60 && Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) < 15 && (e === b || clearLine([b.pos.x, botEyeY(b), b.pos.z], [e.pos.x, e.pos.y + 1.2, e.pos.z]))).sort((a, c) => a.hp - c.hp)[0];
-      if (mate) { doctorHeal(b, mate, t); if (mate !== b) tracer([b.pos.x, botEyeY(b) - .1, b.pos.z], [mate.pos.x, mate.pos.y + 1.2, mate.pos.z], 80); }
+      if (mate === b) doctorHeal(b, b, t);
+      else if (mate) dartFire(b, [b.pos.x, botEyeY(b) - .1, b.pos.z], [mate.pos.x, mate.pos.y + 1.2, mate.pos.z], mate, t);
       continue;
     }
     if (b.seen || !plan || !ai || !S) continue;
@@ -5316,6 +5361,17 @@ function updateVM(dt, t) {
   const sw = Math.exp(-dt * 9); P.swayX *= sw; P.swayY *= sw;
   vmRoot.position.x -= P.swayX * .00005; vmRoot.position.y += P.swayY * .00005;
   vmRoot.rotation.set(P.kick * .04 + relK * .5 - drawK * .6 - P.swayY * .00012, VM_YAW[P.weapon] - P.swayX * .00012, 0);
+  vmInjectArm.visible = false; for (const m of vmMedLeft) m.visible = true;
+  if (P.weapon === 'medgun' && P.injectT) {
+    // Autoaplicação: o antebraço esquerdo sobe na frente, a pistola vira para ele, crava o dardo e volta.
+    const k = clamp((t - P.injectT) / INJECT.ms, 0, 1), sm = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+    const up = k < .3 ? sm(k / .3) : k > .78 ? 1 - sm((k - .78) / .22) : 1, stab = k < .34 ? 0 : k < .46 ? sm((k - .34) / .12) : k < .62 ? 1 : 1 - sm((k - .62) / .14);
+    vmRoot.rotation.y += up * INJECT.yaw; vmRoot.rotation.x += up * INJECT.pitch;
+    for (let i = 0; i < 3; i++) vmRoot.position.setComponent(i, vmRoot.position.getComponent(i) + up * INJECT.move[i] + stab * INJECT.push[i]);
+    const base = VM_BASE.medgun; vmInjectArm.visible = up > .01; vmInjectArm.position.set(base[0], base[1] - (1 - up) * .22, base[2]); vmInjectArm.rotation.set(0, 0, (1 - up) * -.35);
+    for (const m of vmMedLeft) m.visible = up < .05;
+    if (k >= 1) P.injectT = 0;
+  }
   if (w.grenade && P.nadePrep) {
     // Pino puxado: o braço recua, sobe e fica armado atrás do ombro enquanto o botão estiver apertado.
     const k = clamp((t - P.nadePrep.at) / NADE_THROW.pin, 0, 1), e = k * k * (3 - 2 * k), far = P.nadePrep.m1 && !P.nadePrep.m2;
