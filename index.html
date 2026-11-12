@@ -86,11 +86,9 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
     <div class="lobby-layout">
       <aside class="mode-navigation"><h1 id="lobbyTitle">Jogar</h1>
     <div class="modes" id="modeSel" role="radiogroup" aria-label="Modo de jogo">
-      <button class="mode-card" type="button" role="radio" data-mode="1v1"><span class="mode-copy"><b>1v1</b><small>Duelo de precisão</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="2v2"><span class="mode-copy"><b>2v2</b><small>Jogo em dupla</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="xvx"><span class="mode-copy"><b>XvX</b><small>Monte seu confronto</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 2v2</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="5v5"><span class="mode-copy"><b>5v5</b><small>Palace e Factory · Ataque x defesa</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="elim"><span class="mode-copy"><b>Elimination</b><small>Monte o confronto · 1 a 8 por time</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Palace e Factory</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Guard e Elysion</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><span class="mode-copy"><b>Aimbotz</b><small>Encontre sua mira</small></span></button>
@@ -210,7 +208,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
       <label class="fld"><span>Arma ao nascer</span><select data-k="startSlot" aria-label="Arma ao nascer"><option value="rifle">Primária · 1</option><option value="pistol">Pistola · 2</option><option value="knife">Faca · 3</option></select></label>
       <label class="fld"><span>Arma do bot</span><select data-k="botWeapon" aria-label="Arma do bot"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S</option><option value="ump">UMP-45</option><option value="bucky">Bucky</option><option value="pistol">Desert Eagle</option><option value="usps">USP-S</option><option value="glock">Glock-18</option><option value="galil">Galil AR</option><option value="famas">FAMAS</option><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
     </div>
-    <label class="chk"><input type="checkbox" data-k="armor">Colete e capacete para todos (fora do Plant the Bomb)</label>
+    <label class="chk"><input type="checkbox" data-k="armor">Colete e capacete para todos (fora do Plant the Bomb e do Wingman)</label>
     <div class="fld" id="colorField"><span>Cor do seu boneco no 1v1</span><div class="sw" id="pcolors"></div></div>
     <p class="note">USP-S: um HS de perto mata sem capacete; com capacete, é preciso mais de um. Colete e capacete valem para todos (você e os bots) no 1v1, 2v2, XvX, DM e TDM; no Plant the Bomb eles são comprados. No DM, as armas dos bots são sorteadas na categoria da partida. A escolha individual de arma do bot vale no treino 1v1.</p>
     <label class="chk"><input type="checkbox" data-k="autoBhop">Bunnyhop assistido · segure Espaço</label>
@@ -328,7 +326,7 @@ function normalizeViewmodel(value) {
   return Object.fromEntries(Object.entries(VIEWMODEL_LIMITS).map(([axis,[min,max]])=>[axis,Math.round(clamp(fin(value?.[axis])?value[axis]:0,min,max)*10)/10]));
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: '1v1', teamSetup: 'versus', xvx: { mine: 1, foes: 5 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'guard', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'guard', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right', viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -337,7 +335,14 @@ function loadS() {
   const s = JSON.parse(JSON.stringify(DEFAULTS));
   try { const j = JSON.parse(localStorage.getItem('aimduelo.v1') || 'null'); if (j && typeof j === 'object') { Object.assign(s, j); s.ch = Object.assign({}, DEFAULTS.ch, j.ch || {}); s.loadout = Object.assign({}, DEFAULTS.loadout, j.loadout || {}); s.skins = Object.assign({}, j.skins && typeof j.skins === 'object' ? j.skins : {}); s.unlocks = Array.isArray(j.unlocks) ? j.unlocks.filter(x => typeof x === 'string') : []; } } catch (e) {}
   if (s.map === 'deathmatch') { s.mode = 'dm'; s.map = 'caixas'; } // versões antigas escolhiam o DM pelo mapa
-  if (!['1v1', '2v2', 'xvx', 'dm', 'tdm', 'aimbotz', 'bomb', '5v5'].includes(s.mode)) s.mode = '1v1';
+  // Modos novos (v2): 1v1, 2v2 e XvX viraram Elimination (XvX com os tamanhos escolhidos); o Plant the Bomb 2v2 virou
+  // Wingman e o 5v5 virou o Plant the Bomb.
+  if (s.modeV !== 2) {
+    if (s.mode === '1v1') s.xvx = { mine: 1, foes: 1 }; else if (s.mode === '2v2') s.xvx = { mine: 2, foes: 2 };
+    s.mode = { '1v1': 'elim', '2v2': 'elim', xvx: 'elim', bomb: 'wingman', '5v5': 'bomb' }[s.mode] || s.mode; s.modeV = 2;
+  }
+  if (!['elim', 'dm', 'tdm', 'aimbotz', 'bomb', 'wingman'].includes(s.mode)) s.mode = 'elim';
+  s.xvx = { mine: clamp(+s.xvx?.mine || 1, 1, 8), foes: clamp(+s.xvx?.foes || 1, 1, 8) };
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
   if (!['guard', 'elysion', 'rotacao'].includes(s.bombMap)) s.bombMap = 'guard';
   if(!['palace','factory'].includes(s.warfaceMap))s.warfaceMap='palace';
@@ -1262,7 +1267,7 @@ MAPS.infernoprefire={name:'Inferno · Prefire',theme:'terracota',source:'inferno
 const MAP_IDS = Object.keys(MAPS).filter(id => !MAPS[id].dm && !MAPS[id].practice && !MAPS[id].bomb);
 const BOMB_MAPS = Object.keys(MAPS).filter(id => MAPS[id].bomb&&!MAPS[id].warface);
 const WARFACE_MAPS=Object.keys(MAPS).filter(id=>MAPS[id].warface);
-const isBombMode=()=>S.mode==='bomb'||S.mode==='5v5';
+const isBombMode=()=>S.mode==='bomb'||S.mode==='wingman';
 const RAMP_FLIP = { '+z': '-z', '-z': '+z', '+x': '-x', '-x': '+x' };
 function rampHeightAt(r, x, z) {
   if (x < r.x0 || x > r.x1 || z < r.z0 || z > r.z1) return null;
@@ -1418,7 +1423,7 @@ float d=length(vW-cameraPosition);col=mix(col,uFog,clamp((d-40.0)/80.0,0.0,0.3))
 gl_FragColor=vec4(col,uAlpha);}`,
 });
 const sourceGlassMat=worldMat.clone();sourceGlassMat.uniforms.uAlpha.value=.28;sourceGlassMat.transparent=true;sourceGlassMat.depthWrite=false;
-buildMap(S.mode === 'aimbotz' ? 'aimbotz' : S.mode === 'dm' ? S.dmMap : S.mode === 'bomb' ? 'caixas' : S.map === 'rotacao' ? 'caixas' : S.map);
+buildMap(S.mode === 'aimbotz' ? 'aimbotz' : S.mode === 'dm' ? S.dmMap : isBombMode() ? 'caixas' : S.map === 'rotacao' ? 'caixas' : S.map);
 // céu em degradê, sempre centrado na câmera
 const skyGeo = new THREE.SphereGeometry(200, 24, 12);
 { const pos = skyGeo.attributes.position, cols = [], top = new THREE.Color(0x4fa3f2), hor = new THREE.Color(0xdcefff), c = new THREE.Color();
@@ -4615,7 +4620,7 @@ function teamSetup(t, online) {
   ARENA.kind = 'team'; ARENA.net = online; ARENA.m = ''; ARENA.r = 0; ARENA.sc = [0, 0]; ARENA.spawnKey = ''; ARENA.shownPhase = ''; ARENA.killSeen.clear(); ARENA.mp = MAP.id; ARENA.win = null;
   ARENA.setup = S.teamSetup === 'coop' ? 'coop' : 'versus'; ARENA.startAt = online ? Infinity : t + 800; ARENA.rosterKey = '';
   ARENA.bomb = isBombMode() && !online; if (ARENA.bomb) ARENA.setup = 'coop';
-  ARENA.sizes = S.mode==='5v5'?[5,5]:S.mode === 'xvx' ? [clamp(S.xvx.mine | 0, 1, TEAM_MAX), clamp(S.xvx.foes | 0, 1, TEAM_MAX)] : [2, 2];
+  ARENA.sizes = S.mode==='bomb'?[5,5]:S.mode === 'elim' ? [clamp(S.xvx.mine | 0, 1, TEAM_MAX), clamp(S.xvx.foes | 0, 1, TEAM_MAX)] : [2, 2];
   G.stats = {}; G.view = { m: '', r: 0, ph: 'wait', endsAt: 0, sc: {}, tg: S.target, rt: S.roundTime, win: null, why: '', mp: MAP.id };
   if (ARENA.host) arenaBuildActors(teamRoster());
   dmBuildNav([]); dmRefreshTargets();
@@ -6470,7 +6475,7 @@ function closeOpPick(){
 }
 function openOpPick(){
   OP_PICK.returnFocus=document.activeElement;$('menu').inert=true;$('opPick').hidden=false;
-  const five=S.mode==='5v5',map=five?S.warfaceMap:BOMB_MAPS.includes(S.bombMap)?S.bombMap:'guard';
+  const five=S.mode==='bomb',map=five?S.warfaceMap:BOMB_MAPS.includes(S.bombMap)?S.bombMap:'guard';
   $('opGameMode').textContent=five?'Plant the Bomb · 5v5':'Plant the Bomb · 2v2';
   $('opPick').style.setProperty('--op-map-image','url('+JSON.stringify(new URL('assets/menu/play/'+map+'.webp',document.baseURI).href)+')');
   $('opMapImage').src='assets/menu/play/thumb/'+map+'.webp';$('opMapName').textContent=!five&&S.bombMap==='rotacao'?'Rotação · Guard / Elysion':MAPS[map].name;
@@ -6687,9 +6692,9 @@ async function startSession(mode, opts = {}) {
   const loadId=++sessionLoadId;
   $('tacticalRadar').hidden=true;
   prefireStop();
-  const map = mode === 'aimbotz' ? 'aimbotz' : mode==='team'&&S.mode==='5v5'?S.warfaceMap:mode === 'team' && S.mode === 'bomb' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
+  const map = mode === 'aimbotz' ? 'aimbotz' : mode==='team'&&S.mode==='bomb'?S.warfaceMap:mode === 'team' && S.mode === 'wingman' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
   if(MAPS[map].source){
-    const required=S.mode==='5v5'?[map]:opts.online||S.bombMap==='rotacao'?BOMB_MAPS:[map];
+    const required=S.mode==='bomb'?[map]:opts.online||S.bombMap==='rotacao'?BOMB_MAPS:[map];
     if(required.some(id=>!SourceMaps.get(id)))toast('Preparando '+MAPS[map].name+'…');
     try{await Promise.all(required.map(id=>SourceMaps.load(id)));}catch(error){toast('Não foi possível abrir o mapa. Recarregue e tente novamente.');return;}
     if(loadId!==sessionLoadId)return;
@@ -6752,12 +6757,10 @@ function leaveSession() {
 /* ================= Menu e configurações ================= */
 let lobbyRoute = 'bots';
 const MODE_MENU = {
-  '1v1': ['1v1', 'Enfrente um amigo ou treine contra um bot.'],
-  '2v2': ['2v2', 'Rodadas em dupla. Os bots completam as vagas.'],
-  xvx: ['XvX', 'Escolha de 1 a 8 jogadores para cada time.'],
+  elim: ['Elimination', 'Escolha de 1 a 8 jogadores em cada time. Uma vida por rodada; bots completam as vagas.'],
   tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
-  '5v5':['5v5','Palace e Factory · ataque e defesa em dois bombsites.'],
-  bomb: ['Plant the Bomb', 'Atacantes plantam, Defensores defendem. Regras do Wingman.'],
+  bomb: ['Plant the Bomb', '5 contra 5 em Palace e Factory. Atacantes plantam, Defensores defendem.'],
+  wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Guard e Elysion, com as regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
   aimbotz: ['Aimbotz', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
 };
@@ -6842,12 +6845,12 @@ function getK(k) { return k.split('.').reduce((o, p) => o[p], S); }
 function setK(k, v) { const ps = k.split('.'); let o = S; for (let i = 0; i < ps.length - 1; i++) o = o[ps[i]]; o[ps[ps.length - 1]] = v; }
 const OUTFMT = { 'ch.alpha': v => Math.round(v * 100) + '%', scale: v => Math.round(v * 100) + '%', volume: v => Math.round(v * 100) + '%', fov: v => v + '°', zoomRatio: v => (+v).toFixed(2) };
 function syncLobbyPreview() {
-  const mode=S.mode,practice=mode==='aimbotz',tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='5v5',bomb=isBombMode(),duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?'aimbotz':dm?S.dmMap:five?S.warfaceMap:bomb?bombMap:duelMap;
+  const mode=S.mode,practice=mode==='aimbotz',tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='bomb',bomb=isBombMode(),duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?'aimbotz':dm?S.dmMap:five?S.warfaceMap:bomb?bombMap:duelMap;
   const title=bomb&&!five&&S.bombMap==='rotacao'?'Rotação':MAPS[id]?.name||'Rotação',image=$('stageImage'),source='assets/menu/play/'+id+'.webp';
   if(image.getAttribute('src')!==source){image.srcset='assets/menu/play/thumb/'+id+'.webp 320w, '+source+' 1280w';image.src=source;}
   $('stageTitle').textContent=title;
   $('stageDetail').textContent=bomb&&!five&&S.bombMap==='rotacao'?'Guard e Elysion, alternados a cada rodada.':MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
-  $('lobbyFormat').textContent=practice?S.aimbotzBots+' alvos':tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':five?'5 contra 5':bomb?'2 contra 2 · Wingman':mode==='xvx'?S.xvx.mine+' contra '+S.xvx.foes:mode==='2v2'?'2 contra 2':'1 contra 1';
+  $('lobbyFormat').textContent=practice?S.aimbotzBots+' alvos':tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':five?'5 contra 5':bomb?'2 contra 2 · Wingman':S.xvx.mine+' contra '+S.xvx.foes;
   $('lobbyGoalLabel').textContent=practice?'Treino':dm?'Duração':'Vitória';
   $('lobbyGoal').textContent=practice?'Sem limite':tdm?S.tdmSize*10+' abates · 10 min':dm?'5 minutos':bomb?'9 rodadas · melhor de 16':S.target+' rodadas';
   const mini=$('loadoutMini'),weapons=Object.values(S.loadout),key=weapons.map(k=>k+':'+skinOf(k)).join('|');
@@ -6864,7 +6867,7 @@ function syncInputs(except) {
   $('sensInfo').textContent = 'No Valorant isso equivale a ' + (S.sens / 3.181818).toFixed(3) + '. eDPI ' + Math.round(S.sens * S.dpi) + '.';
   $('cm360').textContent = S.dpi > 0 && S.sens > 0 ? (360 / (S.sens * 0.022 * S.dpi) * 2.54).toFixed(1) + ' cm' : '–';
   $('loadoutSummary').textContent = Object.values(S.loadout).map(k => W[k] ? W[k].name : '').join(' · ');
-  const mode=S.mode,tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='5v5',bomb=isBombMode(),duo=mode==='2v2'||mode==='xvx',xvx=mode==='xvx',practice=mode==='aimbotz',online=lobbyRoute==='online'&&!bomb&&!tdm;
+  const mode=S.mode,tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='bomb',bomb=isBombMode(),duo=mode==='elim',xvx=mode==='elim',practice=mode==='aimbotz',online=lobbyRoute==='online'&&!bomb&&!tdm;
   selectRadio($('modeSel'), 'mode', mode);
   selectRadio($('duelMaps'), 'map', S.map === 'rotacao' || MAP_IDS.includes(S.map) ? S.map : 'caixas');
   selectRadio($('dmMaps'), 'map', S.dmMap);
@@ -6888,11 +6891,11 @@ function syncInputs(except) {
   $('sessionRoute').hidden = practice || bomb || tdm; $('tdmSizeField').hidden = !tdm;
   $('btnDm').hidden = !dm || online;
   $('btnAimbotz').hidden=!practice;
-  $('teamField').hidden=!duo||!online;$('xvxField').hidden=!xvx;$('colorField').hidden=mode!=='1v1';
+  $('teamField').hidden=!duo||!online;$('xvxField').hidden=!xvx;$('colorField').hidden=true;
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
   const [title] = MODE_MENU[mode];
-  $('lobbyMode').textContent = xvx ? 'Times ' + label : title;
-  $('modeInfo').textContent=practice?'Treine contra alvos parados e ajuste a arena nos quadros.':online?(mode==='1v1'?'Use o mesmo código para encontrar seu adversário.':'Bots completam as vagas enquanto seus amigos entram.'):tdm?'Renascimento contínuo e pontuação por equipe.':dm?'Todos contra todos, com renascimento contínuo.':bomb?'Plante ou desarme a bomba. Uma vida por rodada.':duo?'Uma vida por rodada, sem fogo amigo.':'A primeira eliminação decide a rodada.';
+  $('lobbyMode').textContent = xvx ? 'Elimination ' + label : title;
+  $('modeInfo').textContent=practice?'Treine contra alvos parados e ajuste a arena nos quadros.':online?'Bots completam as vagas enquanto seus amigos entram.':tdm?'Renascimento contínuo e pontuação por equipe.':dm?'Todos contra todos, com renascimento contínuo.':bomb?'Plante ou desarme a bomba. Uma vida por rodada.':duo?'Uma vida por rodada, sem fogo amigo.':'A primeira eliminação decide a rodada.';
   $('btnJoin').textContent='Entrar na sala';$('btnJoin').setAttribute('aria-label','Entrar na sala de '+title);
   for(const id of ['btnBot','btnDm','btnAimbotz']){$(id).textContent='Jogar';$(id).setAttribute('aria-label','Jogar '+(xvx?label:title));}
 
@@ -6990,9 +6993,10 @@ $('btnJoin').addEventListener('click', () => {
   const code = cleanCode(S.room);
   if (!code) { toast('Digite um código de sala com letras ou números.'); return; }
   S.room = code; syncInputs($('inName'));
-  if (S.mode === 'dm') startSession('dm', { online: true }); else if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: true }); else startSession('online');
+  if (S.mode === 'dm') startSession('dm', { online: true }); else startSession('team', { online: true });
 });
-$('btnBot').addEventListener('click', () => { if(S.mode==='5v5')startSession('team',{online:false});else if (S.mode === 'bomb') startBomb(); else if (S.mode === '2v2' || S.mode === 'xvx') startSession('team', { online: false }); else startSession('bot'); });
+// Plant the Bomb (5v5) e Wingman (2v2) passam pela escolha de operador; Elimination começa direto.
+$('btnBot').addEventListener('click', () => { if (isBombMode()) startBomb(); else startSession('team', { online: false }); });
 function startBomb() { openOpPick(); }
 function selectLobbyOption(key, value) {
   if (S[key] === value) return;

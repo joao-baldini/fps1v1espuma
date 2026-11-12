@@ -1,6 +1,6 @@
 # aim_duelo
 
-FPS inspirado no CS2 que roda no navegador, com **1v1**, **2v2**, **XvX**, **Plant the Bomb**, **5v5**, **TDM**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, dois mapas de Wingman e dois mapas de 5v5. O menu usa prévias dos mapas em WebP.
+FPS inspirado no CS2 que roda no navegador, com **Elimination** (1 a 8 por time), **Plant the Bomb** (5v5), **Wingman** (2v2), **TDM**, **DM** e treino de mira no **Aimbotz**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, dois mapas de Wingman e dois mapas de Plant the Bomb. O menu usa prévias dos mapas em WebP.
 
 ## Modos de jogo
 
@@ -8,39 +8,39 @@ Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de min
 
 | Modo | Sozinho | Online |
 |---|---|---|
-| 1v1 | Treinar contra bot (fácil, médio ou difícil) | Sala com o mesmo código para duas pessoas |
-| 2v2 | Você e um bot aliado contra dois bots | Sala para até 4 pessoas; bots completam as vagas |
-| XvX | Times de 1 a 8 de cada lado (1v5, 3v3, 8v8…), completados por bots | Sala para até 16 pessoas, no tamanho escolhido por quem cria |
-| Plant the Bomb | Você e um bot (Atacantes ou Defensores) contra dois bots, regras do Wingman | — |
-| 5v5 | Você + 4 aliados contra 5 bots, Palace ou Factory, dois bombsites | — |
+| Elimination | Times de 1 a 8 de cada lado (1v1, 2v2, 1v5, 5v5, 8v8…), completados por bots | Sala para até 16 pessoas, no tamanho escolhido por quem cria |
+| Plant the Bomb | 5 contra 5 em Palace ou Factory, dois bombsites; você + 4 aliados contra 5 bots | — |
+| Wingman | Plant the Bomb 2 contra 2 em Guard ou Elysion, regras do Wingman; você e um bot contra dois bots | — |
 | TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
 | Aimbotz | Treino livre de mira com 1 a 12 bots | — |
 
-**5v5:** escolha o modo na lista, depois **Palace** ou **Factory**. É uma base que reutiliza as regras de bomba e a IA já existentes; não há uma nova lógica tática específica para esses mapas. Há cinco pontos de nascimento separados por lado. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e aliados; inimigos não aparecem. Os spawns são **azul = defensor**, **vermelho = atacante**. No Palace, a defesa fica na parte superior e o ataque na inferior; no Factory, as bases seguem a orientação da referência original, defesa à esquerda e ataque à direita.
+**Modos antigos:** 1v1, 2v2 e XvX viraram um modo só, o **Elimination**: ao clicar nele você já escolhe quantos jogadores tem em cada time, e um duelo é só o 1 contra 1. O antigo Plant the Bomb 2v2 virou o **Wingman**, e o antigo 5v5 virou o **Plant the Bomb**. Configurações salvas migram sozinhas (quem estava no 1v1 cai no Elimination 1v1, no 2v2 cai no 2v2).
+
+**Plant the Bomb (5v5):** escolha o modo na lista, depois **Palace** ou **Factory**. É uma base que reutiliza as regras de bomba e a IA já existentes; não há uma nova lógica tática específica para esses mapas. Há cinco pontos de nascimento separados por lado. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e aliados; inimigos não aparecem. Os spawns são **azul = defensor**, **vermelho = atacante**. No Palace, a defesa fica na parte superior e o ataque na inferior; no Factory, as bases seguem a orientação da referência original, defesa à esquerda e ataque à direita.
 
 Os dois modelos enviados foram convertidos offline, com cores chapadas inspiradas nas referências originais do Warface. As imagens de seleção vêm dos próprios mapas do jogo, em 1280 × 720, sem carregar cenas 3D no menu. Os GLBs originais e as ferramentas de revisão não são necessários para jogar.
 
 ## Como jogar com seu parceiro
 
 1. Abra o jogo pelo GitHub Pages (ou abra o `index.html` direto no Chrome).
-2. Escolha **1v1** ou **2v2** e **Com amigos**. Todos digitam o **mesmo código de sala** e clicam em **Entrar na sala**.
+2. Escolha **Elimination** com o tamanho dos times e **Com amigos**. Todos digitam o **mesmo código de sala** e clicam em **Entrar na sala**.
 3. Quem entrar primeiro cria a sala e vira o juiz das rodadas. Quando o segundo conecta, a partida começa sozinha.
 
 A conexão é direta entre os dois navegadores (WebRTC via PeerJS). O servidor público do PeerJS só faz o pareamento; o jogo em si não passa por servidor. Algumas redes corporativas bloqueiam conexão direta. Se não conectar em 15 segundos, testem fora da VPN ou em outra rede.
 
-Sem parceiro? Use **Treinar contra bot** no 1v1 ou **Jogar 2v2 com bots**.
+Sem parceiro? Escolha **Contra bots**: os bots completam as vagas.
 
-## 2v2 e XvX
+## Elimination
 
-No **XvX**, escolha o tamanho de **Seu time** e do **Time inimigo** (1 a 8 cada); o resto funciona como no 2v2. Rodadas de dois contra dois nos mapas de duelo, com as mesmas regras do 1v1: 3 s de freeze, primeiro a N rodadas, sem respawn dentro da rodada. A rodada acaba quando um time inteiro morre; se o tempo acabar, vence o time com mais vida somada. Não há fogo amigo: tiros param no aliado sem causar dano. Aliados aparecem em azul, com um marcador sobre a cabeça; inimigos em vermelho. O placar no topo mostra quantos de cada time estão vivos.
+No **Elimination**, escolha o tamanho de **Seu time** e do **Time inimigo** (1 a 8 cada). Rodadas nos mapas de duelo: 3 s de freeze, primeiro a N rodadas, sem respawn dentro da rodada. A rodada acaba quando um time inteiro morre; se o tempo acabar, vence o time com mais vida somada. Não há fogo amigo: tiros param no aliado sem causar dano. Aliados aparecem em azul, com um marcador sobre a cabeça; inimigos em vermelho. O placar no topo mostra quantos de cada time estão vivos.
 
-- **Com bots:** você e um bot aliado contra dois bots, na dificuldade escolhida. Os bots sorteiam uma arma a cada rodada, passam a posição de inimigos vistos para o aliado e saem para caçar depois de alguns segundos.
-- **Online:** quem cria a sala vira o juiz: roda os bots, a rodada e o placar e retransmite tudo para as outras pessoas (até 4 por sala no 2v2; no XvX, até o total das duas equipes). Em **Times na sala 2v2**, escolha *pessoas em lados opostos* (cada uma com um bot aliado) ou *pessoas no mesmo time contra bots*. Quando alguém entra ou sai, começa uma partida nova e um bot assume a vaga livre. Cada pessoa controla o próprio movimento e a própria vida, como no 1v1.
+- **Com bots:** as vagas que sobram nos dois times são de bots, na dificuldade escolhida (no 1 contra 1 é você contra um bot). Os bots sorteiam uma arma a cada rodada, passam a posição de inimigos vistos para o aliado e saem para caçar depois de alguns segundos.
+- **Online:** quem cria a sala vira o juiz: roda os bots, a rodada e o placar e retransmite tudo para as outras pessoas (até o total das duas equipes). Em **Times na sala**, escolha *pessoas em lados opostos* (cada uma com um bot aliado) ou *pessoas no mesmo time contra bots*. Quando alguém entra ou sai, começa uma partida nova e um bot assume a vaga livre. Cada pessoa controla o próprio movimento e a própria vida.
 
-## Plant the Bomb (Wingman)
+## Wingman e Plant the Bomb
 
-Atacantes contra Defensores, com as regras do modo Wingman do CS. Antes da partida você escolhe um **operador**.
+Atacantes contra Defensores. O **Wingman** é o Plant the Bomb 2 contra 2 em Guard e Elysion, com as regras do modo Wingman do CS; o **Plant the Bomb** é o 5 contra 5 em Palace e Factory, com as mesmas regras de bomba, economia e operadores. Antes da partida você escolhe um **operador**.
 
 Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu, igual nos dois times. Quem é quem fica pelos contornos, como no Valorant. Os aliados aparecem através das paredes com o corpo inteiro preenchido em azul-água e uma borda mais forte. Os inimigos têm um contorno fino só na borda de fora da silhueta (sem linhas entre cabeça, tronco e pernas), que não atravessa paredes. Por padrão ele é vermelho, e em **Configurações → Vídeo → Contorno dos inimigos** dá para trocar para amarelo ou roxo. A mesma cor vale para as silhuetas e os pontos no minimapa do Finder e do Detector. Os contornos também valem no 1v1, 2v2, XvX, TDM e DM: o aliado azul-água só existe onde há time.
 
@@ -67,7 +67,7 @@ Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu
     - **Doctor:** cura quem estiver abaixo de 60 de vida fora da troca de tiros.
   - **Destravar:** um bot que empaca numa fresta da colisão (comum nos mapas convertidos) dá um passo para o lado, corta aquela ligação da navegação e recalcula a rota sem isolar o destino.
 - **Armas no chão:** **G** larga a arma que está na mão (ou a C4). Quem morre deixa cair a melhor arma que tinha: a primária ou, sem ela, a pistola. Passar por cima pega a arma se o espaço dela estiver vazio; com o espaço ocupado, **E** troca pela sua, que fica no chão. Quem largou a arma só consegue pegar de volta depois de 1,5 s. Os bots sem primária vão buscar uma arma caída a até 14 m, exceto quem está com a bomba ou desarmando. As armas somem na troca de rodada.
-- **Assistir:** quem morre passa a ver, em primeira pessoa, o que um companheiro ainda vivo vê: a mira dele e a arma dele na mão, com o coice e o clarão dos tiros. **Mouse 1** passa para o próximo companheiro e **Mouse 2** volta. Não dá para assistir o time inimigo; sem companheiro vivo (ou no 1v1), a câmera fica parada onde você morreu. Vale no 2v2, no XvX e no Plant the Bomb.
+- **Assistir:** quem morre passa a ver, em primeira pessoa, o que um companheiro ainda vivo vê: a mira dele e a arma dele na mão, com o coice e o clarão dos tiros. **Mouse 1** passa para o próximo companheiro e **Mouse 2** volta. Não dá para assistir o time inimigo; sem companheiro vivo (ou no 1 contra 1), a câmera fica parada onde você morreu. Vale no Elimination, no Plant the Bomb e no Wingman.
 - **HUD:** dinheiro, colete, C4, barra de plantar/desarmar e o nome da área onde você está. Com a bomba plantada não há contagem: no lugar do relógio aparece o ícone da C4, que pisca junto com o bipe, cada vez mais rápido, como no CS e no Valorant. O bipe sai da bomba: de longe (mais de 38 m) não se ouve, e o volume aumenta conforme você se aproxima, vindo do lado em que ela está.
 - **Abismo:** quem cai do prédio (o 39º andar do Elysion) morre depois de cerca de 2 s de queda. A morte entra no placar sem dar abate a ninguém e aparece como QUEDA no feed. Se a pessoa estava com a bomba, ela fica no último chão firme onde pisou.
 - **Granadas:** como no CS. Apertar o botão puxa o pino: o braço recua e fica armado enquanto o botão estiver apertado. Ao soltar, o braço arremessa e a granada só sai da mão no meio do movimento. Um clique rápido espera o pino sair. O esquerdo joga longe, o direito joga perto e os dois juntos jogam a meia distância.
@@ -194,14 +194,14 @@ O **Arsenal** é uma tela própria, acessível pelo topo do menu ou por **Seu eq
 
 Durante a partida, **B** abre a **loja**:
 
-- **No Plant the Bomb:** a loja tem economia, como sempre.
-- **No 1v1, 2v2, XvX, DM e TDM:** a loja é grátis e tem todas as armas, dos dois lados. Não tem granadas nem equipamento, porque colete e capacete já vêm por padrão.
+- **No Plant the Bomb e no Wingman:** a loja tem economia, como sempre.
+- **No Elimination, DM e TDM:** a loja é grátis e tem todas as armas, dos dois lados. Não tem granadas nem equipamento, porque colete e capacete já vêm por padrão.
 - **Como escolher:** clicar numa arma equipa no slot dela e já põe na mão. A escolha fica salva no seu equipamento, e a arma equipada aparece marcada.
 - **No DM:** o que está fora da categoria da partida fica desativado.
 
 O cursor é próprio da loja e os comandos de movimento e tiro ficam suspensos enquanto ela está aberta. **B** volta ao jogo e **Esc** libera o mouse e abre a pausa. O relógio da partida continua. As skins continuam sendo escolhidas no Arsenal, pelo menu.
 
-**Colete e capacete** são padrão para todos (você e os bots) fora do Plant the Bomb. O colete reduz o dano no corpo conforme a penetração da arma e se desgasta a cada acerto; o capacete protege a cabeça; as pernas passam direto. Para jogar sem eles, desligue **Configurações → Armas → Colete e capacete para todos** antes da partida.
+**Colete e capacete** são padrão para todos (você e os bots) fora do Plant the Bomb e do Wingman. O colete reduz o dano no corpo conforme a penetração da arma e se desgasta a cada acerto; o capacete protege a cabeça; as pernas passam direto. Para jogar sem eles, desligue **Configurações → Armas → Colete e capacete para todos** antes da partida.
 
 Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de tom a cada abate seguido, como no Valorant, e o quinto vira finalização; uma confirmação discreta com a contagem aparece no HUD. A sequência zera quando você morre ou renasce. Equipar no inventário toca apenas uma confirmação discreta.
 
@@ -221,7 +221,7 @@ As skins exclusivas (Sublime, Vanguarda, Alien, Blaster e Buzzer) usam o modelo 
 
 A **AK-47 Sublime** vem bloqueada. Digite o código de desbloqueio em **Armas → Código de skin**; ela fica liberada naquele navegador. O jogo guarda só o hash SHA-256 do código, nunca o código em si. Como tudo roda no navegador, isso evita o acesso casual, mas não impede quem edita o jogo ou os dados salvos.
 
-No 1v1 online, o oponente vê sua skin na arma em terceira pessoa e ouve o tiro dela; no 2v2 online, os outros ouvem o tiro da sua skin.
+No Elimination online, os outros jogadores ouvem o tiro da sua skin e veem a cor do rastro dela.
 
 ## Equipamento
 
@@ -270,7 +270,7 @@ Os cinco mapas de duelo são simétricos (girados 180°), com chão branco e uma
 | Depósito | concreto | DM próprio no clima industrial do Cache: galpões, contêineres de 2,6 m, passarela a 1,2 m no oeste, mirante a 2,4 m no nordeste, passarela elevada no meio com duas escadas e um caminhão em que dá para subir. Chaminé listrada ao fundo, portas de enrolar verdes, contêineres coloridos com nervuras, cabine do caminhão, empilhadeira e faixas de alerta amarelo e preto |
 | Borgo | terracota | DM próprio no clima de vila italiana do Inferno: ruelas e arcos, igreja, corredor estreito a oeste, sacadas de apartamento a 2,4 m no leste com escadas nas duas pontas, terraço baixo e fonte na praça. Igreja com torre do sino e rosácea, galpão de feno de madeira com fardos, telhados de telha, varais nas ruelas, venezianas verdes e vasos de barro |
 
-No 1v1 e no 2v2 vale o mapa escolhido por quem criou a sala.
+No Elimination online vale o mapa escolhido por quem criou a sala.
 
 ## Regras
 
@@ -336,7 +336,7 @@ A tela mostra só 45% do recuo, como o view punch do CS: treme bem menos ao atir
 | E | Pegar/trocar a arma do chão; plantar e desarmar a bomba |
 | R | Recarregar |
 | F | Inspecionar (giros da Karambit e Butterfly) |
-| B | Loja (grátis fora do Plant the Bomb) |
+| B | Loja (grátis fora do Plant the Bomb e do Wingman) |
 | Tab | Placar |
 | Esc | Menu de pausa |
 

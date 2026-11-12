@@ -762,6 +762,18 @@ test('old settings migrate and invalid equipment falls back to usable slots', ()
   assert.equal(kept.S.loadout.rifle, 'm4a4'); assert.equal(kept.S.loadout.sniper, undefined);
 });
 
+test('modes: 1v1, 2v2 and XvX become Elimination; the 2v2 Plant the Bomb becomes Wingman and 5v5 becomes Plant the Bomb', () => {
+  const mig = o => { const g = game(o); return [g.S.mode, g.S.xvx.mine, g.S.xvx.foes, vm.runInContext('isBombMode()', g.context)]; };
+  assert.deepEqual(mig({ mode: '1v1', xvx: { mine: 3, foes: 4 } }), ['elim', 1, 1, false]);
+  assert.deepEqual(mig({ mode: '2v2' }), ['elim', 2, 2, false]);
+  assert.deepEqual(mig({ mode: 'xvx', xvx: { mine: 2, foes: 6 } }), ['elim', 2, 6, false]);
+  assert.deepEqual(mig({ mode: 'bomb' }), ['wingman', 1, 1, true]);
+  assert.deepEqual(mig({ mode: '5v5' }).slice(0, 1).concat(mig({ mode: '5v5' })[3]), ['bomb', true]);
+  // Já no formato novo, nada muda (o Plant the Bomb salvo continua 5v5).
+  assert.deepEqual(mig({ mode: 'bomb', modeV: 2 })[0], 'bomb'); assert.deepEqual(mig({ mode: 'wingman', modeV: 2 })[0], 'wingman');
+  assert.deepEqual(mig({})[0], 'elim'); assert.deepEqual(mig({ mode: 'xvx', modeV: 2 })[0], 'elim');
+  assert.deepEqual(mig({ mode: 'elim', modeV: 2, xvx: { mine: 99, foes: 0 } }).slice(1, 3), [8, 1]);
+});
 test('every equipment combination equips, switches, shoots and reloads each selected gun', () => {
   const g = game(); let combinations = 0;
   for (const rifle of g.CATEGORIES.rifle) for (const pistol of g.CATEGORIES.pistol)
@@ -1173,7 +1185,7 @@ test('Medina, Depósito and Borgo start with no two participants in sight of eac
 });
 
 test('2v2 with bots plays full rounds: teams of two, no friendly fire and consistent scoring', () => {
-  const g = game(), cx = g.context, map = g.MAPS.caixas;
+  const g = game({ mode: 'elim', xvx: { mine: 2, foes: 2 } }), cx = g.context, map = g.MAPS.caixas;
   vm.runInContext(section('let mapQueue', 'const SUN ='), cx);
   cx.MAP = Object.assign({ id: 'caixas' }, map); cx.AX = map.ax; cx.AZ = map.az; cx.boxes = [g.floor]; cx.ramps = [];
   const X = map.ax, Z = map.az;
@@ -1284,7 +1296,7 @@ test('XvX: 1v5 against bots respects team sizes and plays rounds with only cross
     shield(zc, hw) { cx.MAP.exit = { zc, hw }; B.box(0, zc, hw * 2, .8, 3.2); B.box(0, -zc, hw * 2, .8, 3.2); } };
   map.build(B, {});
   Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } }, MAP_IDS: ['caixas'] });
-  cx.G.mode = 'team'; g.S.map = 'caixas'; g.S.mode = 'xvx'; g.S.xvx = { mine: 1, foes: 5 }; g.S.target = 2; g.S.roundTime = 40;
+  cx.G.mode = 'team'; g.S.map = 'caixas'; g.S.mode = 'elim'; g.S.xvx = { mine: 1, foes: 5 }; g.S.target = 2; g.S.roundTime = 40;
   let t = 10000; g.tick(t); vm.runInContext('teamSetup(10000,false)', cx);
   assert.deepEqual(Array.from(g.DM.actors, e => e.team).sort(), [0, 1, 1, 1, 1, 1]);
   const T = vm.runInContext('ARENA', cx);
@@ -1298,7 +1310,7 @@ test('Team room: people on opposite sides, bots fill the rest, and a networked k
   const setup = g => {
     const cx = g.context, map = g.MAPS.caixas; vm.runInContext(section('let mapQueue', 'const SUN ='), cx);
     cx.MAP = Object.assign({ id: 'caixas' }, map); cx.AX = map.ax; cx.AZ = map.az; cx.boxes = [g.floor]; cx.ramps = []; cx.MAP_IDS = ['caixas'];
-    cx.G.mode = 'team'; g.S.map = 'caixas'; g.S.mode = '2v2'; g.S.teamSetup = 'versus';
+    cx.G.mode = 'team'; g.S.map = 'caixas'; g.S.mode = 'elim'; g.S.xvx = { mine: 2, foes: 2 }; g.S.teamSetup = 'versus';
     vm.runInContext("ARENA.kind='team';ARENA.host=true", cx); vm.runInContext('teamSetup(now(),true)', cx); return g;
   };
   const host = setup(fakeNet(game())), guest = setup(fakeNet(game()));
@@ -1418,7 +1430,7 @@ function bombWorld(map = 'guard', setup) {
   const g = game({ mode: 'bomb' }), cx = g.context;
   cx.G.mode = 'team'; cx.buildMap(map); vm.runInContext('dmBuildNav([])', cx);
   Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } } });
-  cx.G.mode = 'team'; cx.G.opp = null; g.S.mode = 'bomb'; g.S.botLevel = 'dificil';
+  cx.G.mode = 'team'; cx.G.opp = null; g.S.mode = 'wingman'; g.S.botLevel = 'dificil';
   if (setup) vm.runInContext(setup, cx);
   g.tick(10000); vm.runInContext('teamSetup(10000,false)', cx);
   const A = vm.runInContext('ARENA', cx), BM = vm.runInContext('BOMB', cx);
@@ -1649,7 +1661,7 @@ test('operators exist only in Plant the Bomb: after a bomb match, 2v2 has no abi
   const { g, cx, step } = bombWorld();
   let t = step(10000, 11500);
   assert.ok(g.DM.actors.every(e => e.op));
-  g.S.mode = '2v2'; cx.MAP_IDS = ['caixas']; cx.buildMap('caixas'); vm.runInContext('dmBuildNav([])', cx);
+  g.S.mode = 'elim'; g.S.xvx = { mine: 2, foes: 2 }; cx.MAP_IDS = ['caixas']; cx.buildMap('caixas'); vm.runInContext('dmBuildNav([])', cx);
   Object.assign(cx, { pickMap: () => 'caixas', randSpawn: side => side ? [0, -20, 0] : [0, 20, Math.PI] });
   vm.runInContext(`teamSetup(${t},false)`, cx); t = step(t, 2000);
   assert.equal(vm.runInContext('ARENA.bomb', cx), false);
@@ -2024,7 +2036,7 @@ test('Prefire: the first approach opens one holding angle instead of several sim
 test('Warface 5v5: two maps, separate Wingman choices, ten distinct safe spawns and connected bombsites',()=>{
   for(const key of ['palace','factory']){
     const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();
-    assert.equal(g.S.mode,'5v5');assert.equal(g.S.warfaceMap,key);assert.equal(g.MAPS[key].warface,true);
+    assert.equal(g.S.mode,'bomb');assert.equal(g.S.warfaceMap,key);assert.equal(g.MAPS[key].warface,true);
     assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',cx)),['guard','elysion']);
     assert.equal(cx.MAP.plant.t.length,5);assert.equal(cx.MAP.plant.ct.length,5);
     for(const side of ['t','ct'])for(let i=0;i<5;i++){const p=cx.MAP.plant[side][i];assert.equal(cx.sourceWorld.overlap(p[0],p[3]+.005,p[1],1.8,.3),false);for(let j=0;j<i;j++){const q=cx.MAP.plant[side][j];assert.ok(Math.hypot(p[0]-q[0],p[1]-q[1])>=1.35);}}
@@ -2052,7 +2064,7 @@ test('Warface: actual walking reaches both bombsites and the opposite base from 
 
 
 test('5v5 starts ten actors on the authored attacking and defending bases using the existing bomb rules',()=>{
-  for(const key of ['palace','factory']){const {g,cx,A,BM,step}=bombWorld(key,"S.mode='5v5'");step(10000,1100);
+  for(const key of ['palace','factory']){const {g,cx,A,BM,step}=bombWorld(key,"S.mode='bomb'");step(10000,1100);
     assert.deepEqual(Array.from(A.sizes),[5,5]);assert.equal(A.bomb,true);assert.equal(g.DM.bots.length,9);assert.equal(g.DM.actors.length,10);
     assert.equal(g.DM.phase,'freeze');assert.ok(g.DM.actors.every(e=>e.alive&&e.hp===100));
     for(const e of g.DM.actors){const side=e.team===BM.tTeam?'t':'ct';assert.ok(cx.MAP.plant[side].some(p=>Math.hypot(e.pos.x-p[0],e.pos.z-p[1])<.1));}
