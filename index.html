@@ -88,7 +88,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
     <div class="modes" id="modeSel" role="radiogroup" aria-label="Modo de jogo">
       <button class="mode-card" type="button" role="radio" data-mode="elim"><span class="mode-copy"><b>Elimination</b><small>Monte o confronto · 1 a 8 por time</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Palace e Factory</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Guard e Elysion</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Sanctum, Neon, Forge e Overgrowth</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><span class="mode-copy"><b>Practice</b><small>Encontre sua mira</small></span></button>
@@ -326,7 +326,7 @@ function normalizeViewmodel(value) {
   return Object.fromEntries(Object.entries(VIEWMODEL_LIMITS).map(([axis,[min,max]])=>[axis,Math.round(clamp(fin(value?.[axis])?value[axis]:0,min,max)*10)/10]));
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'guard', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right', viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -344,7 +344,7 @@ function loadS() {
   if (!['elim', 'dm', 'tdm', 'aimbotz', 'bomb', 'wingman'].includes(s.mode)) s.mode = 'elim';
   s.xvx = { mine: clamp(+s.xvx?.mine || 1, 1, 8), foes: clamp(+s.xvx?.foes || 1, 1, 8) };
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
-  if (!['guard', 'elysion', 'rotacao'].includes(s.bombMap)) s.bombMap = 'guard';
+  if (!['sanctum', 'neon', 'forge', 'overgrowth', 'rotacao'].includes(s.bombMap)) s.bombMap = 'sanctum';
   if(!['palace','factory'].includes(s.warfaceMap))s.warfaceMap='palace';
   if (!['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(s.operator)) s.operator = 'finder';
   if (!['vermelho', 'amarelo', 'roxo'].includes(s.enemyOutline)) s.enemyOutline = 'vermelho';
@@ -1253,11 +1253,13 @@ function statue(B, x, z, y = 0, size = 1) {
   dR(B, x - .02 * s, y + 1.98 * s, z - .25 * s, x + .02 * s, y + 2.2 * s, z + .25 * s, 0xd9a93a);
 }
 
-// Geometry, routes, heights and spawn positions come from the supplied Source BSP files.
-for (const id of ['guard','elysion']) {
+// Mapas do Wingman: geometria, rotas, alturas, spawns e bombsites vêm dos BSPs enviados (uso autorizado pelos autores);
+// o crédito de cada autor aparece no menu e na miniatura.
+const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', overgrowth: 'praga' };
+for (const id of Object.keys(SOURCE_MAP_CATALOG)) {
   const data=SOURCE_MAP_CATALOG[id];
-  MAPS[id]={name:data.name,theme:id==='guard'?'praga':'elysion',bomb:true,source:id,ax:data.ax,az:data.az,
-    credit:id==='guard'?'Guard · poLemin · port de Alex Road':'Elysion · Wingman A · Big_SG21 · port de Alex Road',
+  MAPS[id]={name:data.name,theme:WINGMAN_THEMES[id]||'praga',bomb:true,source:id,ax:data.ax,az:data.az,author:data.credit,
+    credit:data.name+' · mapa de '+data.credit,
     spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
 }
 
@@ -1298,18 +1300,7 @@ function groundAt(x, z, belowDeck = false) {
 function addTri(out, a, b, c, n, col) { for (const v of [a, b, c]) { out.p.push(v[0], v[1], v[2]); out.n.push(n[0], n[1], n[2]); out.c.push(col.r, col.g, col.b); } }
 // Correções dos mapas convertidos: barreiras que bloqueiam o movimento sem nada desenhado. Cada uma ganha um visual
 // (vidro ou cortina preta fina) e deixa os tiros passarem. As peças de colisão são achadas pela caixa, não pelo índice.
-const SOURCE_FIXES = {
-  elysion: [
-    // Guarda-corpos de vidro entre os pilares do andar de cima (beira sobre o salão).
-    { look: 'glass', box: [3.344, 3.251, -22.522, 8.221, 4.343, -22.42] },
-    { look: 'glass', box: [9.44, 3.251, -22.522, 14.317, 4.343, -22.42] },
-    // Cortina preta na passagem para o terraço: do chão ao teto onde fecha, e só a faixa de cima sobre a passagem.
-    { look: 'curtain', box: [18.686, -0.203, -22.217, 18.813, 5.283, -20.464], draw: [18.75, 0, -22.217, 18.75, 5.283, -20.464] },
-    { look: 'curtain', box: [18.711, 3.251, -20.464, 18.762, 5.283, -17.137], draw: [18.75, 3.251, -20.464, 18.75, 5.283, -17.137] },
-    // Resto da parede até o pilar do prédio da direita: outra placa invisível do chão ao teto.
-    { look: 'curtain', box: [18.711, 0, -17.137, 18.736, 5.283, -6.57], draw: [18.75, 0, -17.137, 18.75, 5.283, -6.57] },
-  ],
-};
+const SOURCE_FIXES = {};
 let FIX_MATS = null;
 function applySourceFixes(id, parent) {
   const W = sourceWorld; if (!W || !SOURCE_FIXES[id]) return;
@@ -1343,7 +1334,8 @@ function buildMap(id) {
   if(def.source){
     if(!sourceWorld)throw new Error('Source map must be loaded before starting');
     if(worldMesh){scene.remove(worldMesh);worldMesh.geometry.dispose();}
-    worldMesh=new THREE.Mesh(sourceWorld.geometry(THREE),[worldMat,sourceGlassMat]);scene.add(worldMesh);applySourceFixes(def.source,worldMesh);
+    const geo=sourceWorld.geometry(THREE),textured=!!(geo.attributes&&geo.attributes.pattern);
+    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);scene.add(worldMesh);applySourceFixes(def.source,worldMesh);
     try{clearDecals();BOT.wp=null;BOT.knowsUntil=0;}catch(e){}
     return;
   }
@@ -1434,6 +1426,41 @@ float d=length(vW-cameraPosition);col=mix(col,uFog,clamp((d-40.0)/80.0,0.0,0.3))
 gl_FragColor=vec4(col,uAlpha);}`,
 });
 const sourceGlassMat=worldMat.clone();sourceGlassMat.uniforms.uAlpha.value=.28;sourceGlassMat.transparent=true;sourceGlassMat.depthWrite=false;
+// Textura leve dos mapas do Wingman: padrões procedurais (tijolo, piso, madeira, concreto, metal, terra, pedra, asfalto,
+// telhado, folhagem) na escala real das texturas do mapa, tingidos pela cor média do material. Nenhuma imagem é baixada;
+// de longe o padrão some aos poucos (como um mipmap) para não cintilar.
+const texWorldMat = new THREE.ShaderMaterial({
+  vertexColors: true, side: THREE.DoubleSide, extensions: { derivatives: true },
+  uniforms: { uFog: { value: new THREE.Color(SKY) }, uAlpha: { value: 1 } },
+  vertexShader: 'attribute float pattern;varying vec3 vC;varying vec3 vN;varying vec3 vW;varying vec2 vUv;varying float vP;void main(){vC=color;vN=normal;vUv=uv;vP=pattern;vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+  fragmentShader: `uniform vec3 uFog;uniform float uAlpha;varying vec3 vC;varying vec3 vN;varying vec3 vW;varying vec2 vUv;varying float vP;
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float vnoise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);return mix(mix(h21(i),h21(i+vec2(1.0,0.0)),u.x),mix(h21(i+vec2(0.0,1.0)),h21(i+vec2(1.0,1.0)),u.x),u.y);}
+float fbm(vec2 p){return 0.5*vnoise(p)+0.3*vnoise(p*2.03)+0.2*vnoise(p*4.11);}
+float seam(vec2 f,vec2 w){vec2 d=min(f,1.0-f);vec2 aa=fwidth(f)*1.2+w;vec2 s=smoothstep(w,aa,d);return min(s.x,s.y);}
+float pattern(int id,vec2 uv,vec3 w){
+  if(id==1){vec2 b=uv*vec2(4.0,8.0);b.x+=mod(floor(b.y),2.0)*0.5;return mix(0.66,0.94+0.12*h21(floor(b)),seam(fract(b),vec2(0.035,0.07)))*(0.95+0.1*vnoise(uv*40.0));}
+  if(id==2){vec2 b=uv*4.0;return mix(0.72,0.96+0.07*h21(floor(b)),seam(fract(b),vec2(0.03)));}
+  if(id==3){vec2 b=uv*vec2(1.0,5.0);b.x+=h21(vec2(floor(b.y),3.0));float grain=vnoise(vec2(b.x*3.0,b.y*60.0));return mix(0.7,0.9+0.12*h21(floor(b))+0.1*grain,seam(fract(b),vec2(0.004,0.04)));}
+  if(id==4){return 0.9+0.12*fbm(uv*6.0)+0.05*vnoise(uv*80.0)-0.08*(1.0-seam(fract(uv),vec2(0.006)));}
+  if(id==5){float rib=0.5+0.5*sin(uv.x*6.2832*8.0);return 0.86+0.1*rib+0.06*vnoise(vec2(uv.x*4.0,uv.y*60.0))-0.1*(1.0-seam(fract(uv),vec2(0.008)));}
+  if(id==6){return 0.8+0.3*fbm(w.xz*0.6)+0.08*vnoise(w.xz*7.0);}
+  if(id==7){vec2 b=uv*vec2(3.0,3.0);b.x+=mod(floor(b.y),2.0)*0.5;return mix(0.66,0.88+0.16*h21(floor(b))+0.06*vnoise(uv*30.0),seam(fract(b),vec2(0.05)));}
+  if(id==8){return 0.88+0.1*vnoise(w.xz*25.0)+0.06*fbm(w.xz*0.3);}
+  if(id==9){vec2 b=uv*vec2(6.0,8.0);b.x+=mod(floor(b.y),2.0)*0.5;vec2 f=fract(b);float scallop=smoothstep(0.0,0.25,f.y-0.18*abs(sin(f.x*3.1416)));return mix(0.7,0.92+0.1*h21(floor(b)),scallop*seam(f,vec2(0.02,0.0)));}
+  if(id==10){return 0.7+0.45*fbm(w.xz*1.7+w.y*0.9);}
+  return 1.0;}
+void main(){vec3 n=normalize(vN);int id=int(vP+0.5);
+float sun=max(dot(n,${SUN}),0.0);float l=0.72+0.34*sun;
+if(abs(n.y)<0.5) l*=0.8+0.2*smoothstep(0.0,0.9,vW.y);
+float fade=clamp(1.0-max(length(fwidth(vUv))*9.0,0.0),0.0,1.0);
+float t=mix(1.0,pattern(id,vUv,vW),fade);
+if(id==0){vec2 g=abs(n.y)>0.5?vW.xz:(abs(n.x)>0.5?vW.zy:vW.xy);vec2 f=abs(fract(g*0.5-0.5)-0.5)/max(fwidth(g*0.5),vec2(1e-4));t*=1.0-0.12*(1.0-min(min(f.x,f.y),1.0));}
+vec3 col=min(vC*l*t,vec3(1.0));
+float d=length(vW-cameraPosition);col=mix(col,uFog,clamp((d-40.0)/80.0,0.0,0.3));
+gl_FragColor=vec4(col,uAlpha);}`,
+});
+const texGlassMat=texWorldMat.clone();texGlassMat.uniforms.uAlpha.value=.32;texGlassMat.transparent=true;texGlassMat.depthWrite=false;
 buildMap(S.mode === 'aimbotz' ? 'aimbotz' : S.mode === 'dm' ? S.dmMap : isBombMode() ? 'caixas' : S.map === 'rotacao' ? 'caixas' : S.map);
 // céu em degradê, sempre centrado na câmera
 const skyGeo = new THREE.SphereGeometry(200, 24, 12);
@@ -5947,7 +5974,7 @@ function bombBotsAct(dt, t) {
     if (b.defuseUntil) { b.pos.x = b.holdAt.x; b.pos.z = b.holdAt.z; b.vel.set(0, b.vel.y, 0); if (t >= b.defuseUntil) { b.defuseUntil = 0; bombDefused(b, t); } }
   }
 }
-// Abismo (mapas convertidos, como o 39º andar do Elysion): quem cai do prédio morre depois de cerca de 2 s de queda.
+// Abismo (mapas convertidos com andares altos): quem cai do prédio morre depois de cerca de 2 s de queda.
 function worldKill(e, t, why = 'fall') {
   if (!e || !e.alive) return;
   e.hp = 0; e.alive = false; e.deathT = t; e.respawnAt = DM.mode === 'team' ? Infinity : t + DM_RESPAWN_MS; e.safeUntil = 0; e.vel.set(0, 0, 0); e.reloadEnd = 0; e.target = null;
@@ -7126,10 +7153,10 @@ function closeOpPick(){
 }
 function openOpPick(){
   OP_PICK.returnFocus=document.activeElement;$('menu').inert=true;$('opPick').hidden=false;
-  const five=S.mode==='bomb',map=five?S.warfaceMap:BOMB_MAPS.includes(S.bombMap)?S.bombMap:'guard';
+  const five=S.mode==='bomb',map=five?S.warfaceMap:BOMB_MAPS.includes(S.bombMap)?S.bombMap:BOMB_MAPS[0];
   $('opGameMode').textContent=five?'Plant the Bomb · 5v5':'Plant the Bomb · 2v2';
   $('opPick').style.setProperty('--op-map-image','url('+JSON.stringify(new URL('assets/menu/play/'+map+'.webp',document.baseURI).href)+')');
-  $('opMapImage').src='assets/menu/play/thumb/'+map+'.webp';$('opMapName').textContent=!five&&S.bombMap==='rotacao'?'Rotação · Guard / Elysion':MAPS[map].name;
+  $('opMapImage').src='assets/menu/play/thumb/'+map+'.webp';$('opMapName').textContent=!five&&S.bombMap==='rotacao'?'Rotação · '+BOMB_MAPS.map(id=>MAPS[id].name).join(' / '):MAPS[map].name;
   initOperatorPreview();
   const box=$('opCards');
   if(!box.children.length)for(const [id,op]of Object.entries(OPS)){
@@ -7415,7 +7442,7 @@ const MODE_MENU = {
   elim: ['Elimination', 'Escolha de 1 a 8 jogadores em cada time. Uma vida por rodada; bots completam as vagas.'],
   tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
   bomb: ['Plant the Bomb', '5 contra 5 em Palace e Factory. Atacantes plantam, Defensores defendem.'],
-  wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Guard e Elysion, com as regras do Wingman.'],
+  wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge e Overgrowth, com as regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
   aimbotz: ['Practice', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
 };
@@ -7432,8 +7459,10 @@ const MAP_CARD_DETAILS = {
   dmborgo: 'Ruelas, igreja e sacadas',
   palace:'Pedra clara, pátios e passagens do palácio',
   factory:'Galpões, contêineres e rotas industriais',
-  guard: 'Traçado original de Guard · poLemin',
-  elysion: 'Wingman · bombsite A · Big_SG21',
+  sanctum: 'Mapa de alicate madeira 4',
+  neon: 'Mapa de zelzstorm',
+  forge: 'Mapa de Blind',
+  overgrowth: 'Mapa de jd40',
 };
 function mountMapCards(group, ids) {
   for (const id of ids) {
@@ -7504,7 +7533,7 @@ function syncLobbyPreview() {
   const title=bomb&&!five&&S.bombMap==='rotacao'?'Rotação':MAPS[id]?.name||'Rotação',image=$('stageImage'),source='assets/menu/play/'+id+'.webp';
   if(image.getAttribute('src')!==source){image.srcset='assets/menu/play/thumb/'+id+'.webp 320w, '+source+' 1280w';image.src=source;}
   $('stageTitle').textContent=title;
-  $('stageDetail').textContent=bomb&&!five&&S.bombMap==='rotacao'?'Guard e Elysion, alternados a cada rodada.':MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
+  $('stageDetail').textContent=bomb&&!five&&S.bombMap==='rotacao'?BOMB_MAPS.map(id=>MAPS[id].name).join(', ')+', alternados a cada rodada.':MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
   $('lobbyFormat').textContent=practice?S.aimbotzBots+' alvos':tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':five?'5 contra 5':bomb?'2 contra 2 · Wingman':S.xvx.mine+' contra '+S.xvx.foes;
   $('lobbyGoalLabel').textContent=practice?'Treino':dm?'Duração':'Vitória';
   $('lobbyGoal').textContent=practice?'Sem limite':tdm?S.tdmSize*10+' abates · 10 min':dm?'5 minutos':bomb?'9 rodadas · melhor de 16':S.target+' rodadas';

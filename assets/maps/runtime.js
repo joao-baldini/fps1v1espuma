@@ -237,12 +237,14 @@
     geometry(THREE){
       const g=new THREE.BufferGeometry(),m=this.mesh,colors=array(Uint8Array,m.color),c=new Float32Array(colors.length);for(let i=0;i<c.length;i++)c[i]=colors[i]/255;
       g.setAttribute('position',new THREE.BufferAttribute(array(Float32Array,m.position),3));g.setAttribute('normal',new THREE.BufferAttribute(array(Float32Array,m.normal),3));g.setAttribute('color',new THREE.BufferAttribute(c,3));g.setIndex(new THREE.BufferAttribute(array(Uint32Array,m.index),1));
+      // Textura leve (mapas do Wingman): coordenadas de textura e o padrão procedural de cada vértice.
+      if(m.uv){g.setAttribute('uv',new THREE.BufferAttribute(array(Float32Array,m.uv),2));const pat=array(Uint8Array,m.pattern),f=new Float32Array(pat.length);for(let i=0;i<f.length;i++)f[i]=pat[i];g.setAttribute('pattern',new THREE.BufferAttribute(f,1));}
       g.addGroup(0,m.opaque,0);const total=g.index.count;if(total>m.opaque)g.addGroup(m.opaque,total-m.opaque,1);g.computeBoundingSphere();return g;
     }
   }
   async function load(id){
     if(cache.has(id))return cache.get(id);if(pending.has(id))return pending.get(id);
-    if(!['guard','elysion','inferno','palace','factory'].includes(id))throw Error('Unknown Source map');
+    if(!['sanctum','neon','forge','overgrowth','inferno','palace','factory'].includes(id))throw Error('Unknown Source map');
     const job=(async()=>{
       if(!globalThis.SOURCE_MAP_PAYLOADS?.[id])await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='assets/maps/'+id+'.js';script.onload=resolve;script.onerror=()=>reject(Error('Não foi possível carregar '+id));document.head.append(script);});
       const packed=array(Uint8Array,globalThis.SOURCE_MAP_PAYLOADS[id]),stream=new Blob([packed]).stream().pipeThrough(new DecompressionStream('gzip')),data=JSON.parse(await new Response(stream).text());

@@ -1,4 +1,4 @@
-// Offline reader for the Source 20 files supplied by the map author/user.
+// Offline reader for the Source 20/21 (CS:GO) BSP files supplied by the user.
 // Format references: Valve's public bspfile.h/gamebspfile.h and SourceIO's PHY reader.
 import { readFileSync } from 'node:fs';
 import { inflateRawSync } from 'node:zlib';
@@ -18,7 +18,7 @@ const text = (b,p,n) => b.toString('utf8',p,p+n).split('\0')[0];
 export class SourceBsp {
   constructor(file) {
     this.bytes=readFileSync(file);const b=this.bytes;
-    if(b.toString('ascii',0,4)!=='VBSP'||b.readInt32LE(4)!==20)throw new Error('Expected a Source 20 BSP: '+file);
+    this.version=b.readInt32LE(4);if(b.toString('ascii',0,4)!=='VBSP'||(this.version!==20&&this.version!==21))throw new Error('Expected a Source 20/21 BSP: '+file);
     this.sha256=createHash('sha256').update(b).digest('hex');
     this.lumps=Array.from({length:64},(_,i)=>{const p=8+i*16,offset=b.readInt32LE(p),length=b.readInt32LE(p+4);if(offset<0||length<0||offset+length>b.length)throw Error('Invalid BSP lump');const data=b.subarray(offset,offset+length);if(data.toString('ascii',0,4)==='LZMA')throw Error('Compressed BSP lump requires offline decompression');return {offset,length,version:b.readInt32LE(p+8),data};});
     this.entities=[...this.lump(0).toString('utf8').matchAll(/\{([^}]+)\}/g)].map(m=>Object.fromEntries([...m[1].matchAll(/"([^"\n]+)"\s*"([^"\n]*)"/g)].map(k=>[k[1],k[2]])));
@@ -27,7 +27,9 @@ export class SourceBsp {
     this.vertices=read(3,12,vec);
     this.edges=read(12,4,(b,p)=>[b.readUInt16LE(p),b.readUInt16LE(p+2)]);
     this.surfEdges=read(13,4,(b,p)=>b.readInt32LE(p));
-    this.texInfo=read(6,72,(b,p)=>({flags:b.readInt32LE(p+64),data:b.readInt32LE(p+68)}));
+    // texture vectors (s,t) map world units to texels; texdata keeps the texture size, used for the light textures.
+    this.texInfo=read(6,72,(b,p)=>({s:[b.readFloatLE(p),b.readFloatLE(p+4),b.readFloatLE(p+8),b.readFloatLE(p+12)],t:[b.readFloatLE(p+16),b.readFloatLE(p+20),b.readFloatLE(p+24),b.readFloatLE(p+28)],flags:b.readInt32LE(p+64),data:b.readInt32LE(p+68)}));
+    this.texSize=read(2,32,(b,p)=>[b.readInt32LE(p+16)||256,b.readInt32LE(p+20)||256]);
     const names=this.lump(43),strings=read(44,4,(b,p)=>text(names,b.readInt32LE(p),names.length-b.readInt32LE(p)));
     this.materials=read(2,32,(b,p)=>strings[b.readInt32LE(p+12)]?.toLowerCase()||'');
     // BSP texdata retains the material's average RGB: bake one flat colour, never a texture.
@@ -67,16 +69,17 @@ export class SourceBsp {
     for(let i=0;i<g.readInt32LE(0);i++){
       const p=4+i*16;if(g.toString('ascii',p,p+4)!=='prps')continue;
       const version=g.readUInt16LE(p+6),start=g.readInt32LE(p+8),length=g.readInt32LE(p+12),b=this.bytes;
-      if(version!==10)throw Error('Unsupported static prop version '+version);
+      if(version!==10&&version!==11)throw Error('Unsupported static prop version '+version);
       const n=b.readInt32LE(start),names=Array.from({length:n},(_,i)=>text(b,start+4+i*128,128).toLowerCase());
       let q=start+4+n*128;q+=4+b.readInt32LE(q)*2;const count=b.readInt32LE(q);q+=4;const stride=(start+length-q)/count;
-      if(stride!==72)throw Error('Unsupported static prop layout '+stride);
-      for(let j=0;j<count;j++){const k=q+j*stride;out.push({model:names[b.readUInt16LE(k+24)],origin:vec(b,k),angles:vec(b,k+12),solid:b[k+30],scale:1});}
+      if(![72,76,80].includes(stride))throw Error('Unsupported static prop layout '+stride);
+      // v11 (CS:GO) appends a uniform scale at byte 76.
+      for(let j=0;j<count;j++){const k=q+j*stride,scale=stride===80?b.readFloatLE(k+76):1;out.push({model:names[b.readUInt16LE(k+24)],origin:vec(b,k),angles:vec(b,k+12),solid:b[k+30],scale:scale>0&&scale<20?scale:1});}
     }return out;
   }
 }
 
-function rotation(angles){
+export function rotation(angles){
   const [p,y,r]=angles.map(v=>v*Math.PI/180),cp=Math.cos(p),sp=Math.sin(p),cy=Math.cos(y),sy=Math.sin(y),cr=Math.cos(r),sr=Math.sin(r);
   return v=>[cp*cy*v[0]+(sr*sp*cy-cr*sy)*v[1]+(cr*sp*cy+sr*sy)*v[2],cp*sy*v[0]+(sr*sp*sy+cr*cy)*v[1]+(cr*sp*sy-sr*cy)*v[2],-sp*v[0]+sr*cp*v[1]+cr*cp*v[2]];
 }
@@ -119,10 +122,26 @@ const colorFor = (name,n,key) => {
   if(/metal|pipe|railing|rail_|vent|steel|ladder/.test(name))return 0x647681;
   if(/water/.test(name))return 0x457d96;
   if(/grass|dirt|ground|nature/.test(name))return 0x9ca395;
-  if(n[2]>.7)return key==='guard'?0xd8d3c5:0xe0e5e8;
-  return key==='guard'?0xa99d89:0x90a8b9;
+  if(n[2]>.7)return 0xd8d3c5;
+  return 0xa99d89;
 };
 
+// Textura leve: em vez de imagens, um padrão procedural escolhido pelo nome do material (0 = grade lisa de sempre).
+export const PATTERNS={plain:0,brick:1,tile:2,wood:3,concrete:4,metal:5,ground:6,stone:7,asphalt:8,roof:9,foliage:10};
+export function patternFor(name){
+  if(/glass|window/.test(name))return 0;
+  if(/brick/.test(name))return 1;
+  if(/roof|shingle|terracotta_tile|rooftile/.test(name))return 9;
+  if(/tile|ceramic|mosaic/.test(name))return 2;
+  if(/wood|plank|crate|board|plywood|pallet|timber|beam/.test(name))return 3;
+  if(/asphalt|road|street|tarmac/.test(name))return 8;
+  if(/leaf|leaves|hedge|ivy|foliage|bush|tree|vine|plant/.test(name))return 10;
+  if(/grass|dirt|ground|sand|gravel|mud|soil|blend|nature|terrain|moss/.test(name))return 6;
+  if(/stone|cobble|rock|marble|paving|pavement|granite|flagstone|slate/.test(name))return 7;
+  if(/metal|steel|iron|corrugat|rust|sheet|tin|alum|pipe|vent|grate|grating/.test(name))return 5;
+  if(/concrete|cement|plaster|stucco|wall|cinder|render|adobe|block/.test(name))return 4;
+  return 0;
+}
 const flatColor=rgb=>rgb.reduce((c,v)=>(c<<8)|Math.round(Math.max(.055,Math.min(.96,v))*255),0);
 function propColor(bsp,name){
   const mdl=bsp.asset(name);if(!mdl||mdl.length<220||mdl.toString('ascii',0,4)!=='IDST')return null;
@@ -144,7 +163,7 @@ function propColor(bsp,name){
   return colors.length?flatColor(colors.reduce((sum,rgb)=>add(sum,rgb),[0,0,0]).map(v=>v/colors.length)):null;
 }
 
-export function compileSourceMap(file,key){
+export function compileSourceMap(file,key,options={}){
   const bsp=new SourceBsp(file),spawns=bsp.entities.filter(e=>/info_player_(terrorist|counterterrorist)$/.test(e.classname));
   if(!spawns.length)throw Error('Map has no player spawns');
   const sourceSpawns=spawns.map(e=>numbers(e.origin)),base=Math.min(...sourceSpawns.map(p=>p[2]))-16;
@@ -156,7 +175,11 @@ export function compileSourceMap(file,key){
   const polygons=[],hulls=[],report={sourceSha256:bsp.sha256,worldFaces:0,displacementTriangles:0,brushes:0,propHulls:0,propModels:0,missingModels:[],unsupportedProps:[]};
   const keep=points=>points.some(p=>p[2]>=base-512)&&points.every(p=>p.every(Number.isFinite));
   const propColors=new Map();
-  const emit=(points,n,material,tag='world')=>{if(points.length<3||!keep(points))return;const rgb=bsp.materialColors.get(material),c=rgb?flatColor(rgb):propColors.get(material)??colorFor(material,n,key);polygons.push({p:points.map(convert),n:normal(n),c,glass:/glass|window/.test(material),tag});};
+  // options.textures: guarda coordenadas de textura (texinfo do BSP, na escala real da textura) e o padrão do material.
+  const planarUv=(points,n)=>{const a=Math.abs(n[0])>Math.abs(n[1])&&Math.abs(n[0])>Math.abs(n[2])?[1,2]:Math.abs(n[1])>Math.abs(n[2])?[0,2]:[0,1];return points.map(p=>[p[a[0]]/64,p[a[1]]/64]);};
+  const emit=(points,n,material,tag='world',tex=-1)=>{if(points.length<3||!keep(points))return;const rgb=bsp.materialColors.get(material),c=rgb?flatColor(rgb):propColors.get(material)??colorFor(material,n,key),face={p:points.map(convert),n:normal(n),c,glass:/glass|window/.test(material),tag};
+    if(options.textures){const ti=bsp.texInfo[tex],size=ti&&bsp.texSize[ti.data];face.uv=ti&&size?points.map(p=>[(ti.s[0]*p[0]+ti.s[1]*p[1]+ti.s[2]*p[2]+ti.s[3])/size[0],(ti.t[0]*p[0]+ti.t[1]*p[1]+ti.t[2]*p[2]+ti.t[3])/size[1]]):planarUv(points,n);face.pat=patternFor(material);}
+    polygons.push(face);};
   const collision=(ps,b,mask=3)=>{if(b[5]<base-512)return;const pts=corners(b).map(convert),bb=bounds(pts);hulls.push({planes:ps.map(plane),min:bb.slice(0,3),max:bb.slice(3),mask});};
   const surfaceCollider=(points,n)=>{
     const top=points.map(convert),wn=normal(n),bottom=top.map(p=>sub(p,mul(wn,.025))),vertices=top.concat(bottom),count=top.length,tris=[];
@@ -181,16 +204,16 @@ export function compileSourceMap(file,key){
         const quad=[grid[0],grid[(size-1)*size],grid[size*size-1],grid[size-1]],qn=unit(cross(sub(quad[1],quad[0]),sub(quad[2],quad[0])));
         if(grid.every(v=>Math.abs(dot(qn,sub(v,quad[0])))<.0001)){
           const normal=dot(qn,n)<0?mul(qn,-1):qn;if(dot(qn,n)<0)quad.reverse();
-          emit(quad,normal,material,'displacement');report.displacementTriangles+=2;if(solid)surfaceCollider(quad,normal);continue;
+          emit(quad,normal,material,'displacement',f.tex);report.displacementTriangles+=2;if(solid)surfaceCollider(quad,normal);continue;
         }
         for(let y=0;y<size-1;y++)for(let x=0;x<size-1;x++){
           const a=y*size+x,b=a+1,c=a+size+1,d=a+size,ts=(x+y)%2?[[a,b,d],[b,c,d]]:[[a,b,c],[a,c,d]];
           for(const ids of ts){let points=ids.map(i=>grid[i]),tn=unit(cross(sub(points[1],points[0]),sub(points[2],points[0])));if(dot(tn,n)<0){points.reverse();tn=mul(tn,-1);}if(!keep(points))continue;
-            emit(points,tn,material,'displacement');report.displacementTriangles++;
+            emit(points,tn,material,'displacement',f.tex);report.displacementTriangles++;
             if(solid)surfaceCollider(points,tn);
           }
         }
-      }else{emit(ps.map(transform),n,material);report.worldFaces++;}
+      }else{emit(ps.map(transform),n,material,'world',f.tex);report.worldFaces++;}
     }
     if(solid)for(const id of bsp.modelBrushes(model)){
       const b=bsp.brushes[id],sides=bsp.sides.slice(b.side,b.side+b.count),mask=(b.contents&0x10000)?1:(b.contents&(1|2|8|0x4000))?3:0;
@@ -221,5 +244,5 @@ export function compileSourceMap(file,key){
   const ladders=bsp.entities.filter(e=>e.classname==='info_ladder').map(e=>{const lo=['x','y','z'].map(k=>Number(e['mins.'+k])),hi=['x','y','z'].map(k=>Number(e['maxs.'+k]));return bounds(corners([...lo,...hi]).map(convert));});
   const allBounds=bounds(polygons.flatMap(p=>p.p));
   report.flatColors={method:'Original BSP material reflectivity and embedded model material averages; no runtime textures',materials:bsp.materialColors.size,models:[...propColors.values()].filter(c=>c!==null).length,samples:Object.fromEntries([...bsp.materialColors].filter(([name])=>/wall_concrete_02|housedeck01|floor_tile_white_01|plasterwall|plaster_wall/.test(name)).slice(0,12).map(([name,rgb])=>[name,flatColor(rgb).toString(16).padStart(6,'0')]))};
-  return {key,scale,center,bounds:allBounds,t:starts('terrorist'),ct:starts('counterterrorist'),sites,ladders,polygons,hulls,report};
+  return {key,scale,center,bounds:allBounds,t:starts('terrorist'),ct:starts('counterterrorist'),sites,ladders,polygons,hulls,report,bsp,convert,base};
 }
