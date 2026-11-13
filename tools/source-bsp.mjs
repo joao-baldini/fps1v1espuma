@@ -180,17 +180,18 @@ export function compileSourceMap(file,key,options={}){
   const emit=(points,n,material,tag='world',tex=-1)=>{if(points.length<3||!keep(points))return;const rgb=bsp.materialColors.get(material),c=rgb?flatColor(rgb):propColors.get(material)??colorFor(material,n,key),face={p:points.map(convert),n:normal(n),c,glass:/glass|window/.test(material),tag};
     if(options.textures){const ti=bsp.texInfo[tex],size=ti&&bsp.texSize[ti.data];face.uv=ti&&size?points.map(p=>[(ti.s[0]*p[0]+ti.s[1]*p[1]+ti.s[2]*p[2]+ti.s[3])/size[0],(ti.t[0]*p[0]+ti.t[1]*p[1]+ti.t[2]*p[2]+ti.t[3])/size[1]]):planarUv(points,n);face.pat=patternFor(material);}
     polygons.push(face);};
-  const collision=(ps,b,mask=3)=>{if(b[5]<base-512)return;const pts=corners(b).map(convert),bb=bounds(pts);hulls.push({planes:ps.map(plane),min:bb.slice(0,3),max:bb.slice(3),mask});};
+  // src: de onde veio a peça de colisão (classe da entidade ou modelo), para auditoria da conversão.
+  const collision=(ps,b,mask=3,src='worldspawn')=>{if(b[5]<base-512)return;const pts=corners(b).map(convert),bb=bounds(pts);hulls.push({planes:ps.map(plane),min:bb.slice(0,3),max:bb.slice(3),mask,src});};
   const surfaceCollider=(points,n)=>{
     const top=points.map(convert),wn=normal(n),bottom=top.map(p=>sub(p,mul(wn,.025))),vertices=top.concat(bottom),count=top.length,tris=[];
     for(let i=1;i<count-1;i++)tris.push([0,i,i+1],[count,count+i+1,count+i]);
     for(let i=0;i<count;i++){const j=(i+1)%count;tris.push([i,count+i,count+j],[i,count+j,j]);}
     const h=hullFromTriangles(vertices,tris),bb=bounds(vertices);hulls.push({planes:h.planes,min:bb.slice(0,3),max:bb.slice(3),mask:3});
   };
-  const drawModel=(index,origin=[0,0,0],angles=[0,0,0],solid=true)=>{
+  const drawModel=(index,origin=[0,0,0],angles=[0,0,0],solid=true,src='worldspawn',visible=true)=>{
     const model=bsp.models[index],rot=rotation(angles),transform=p=>add(rot(p),origin);
     for(let i=model.face;i<model.face+model.count;i++){
-      const f=bsp.faces[i],material=bsp.material(f);if(hiddenMaterial(material)||!f.count)continue;
+      const f=bsp.faces[i],material=bsp.material(f);if(!visible||hiddenMaterial(material)||!f.count)continue;
       const ps=bsp.faceVertices(f),pn=bsp.planes[f.plane],n=rot(mul(pn.slice(0,3),f.side?-1:1));
       if(f.disp>=0){
         const d=bsp.lump(26),v=bsp.lump(33),q=f.disp*176,power=d.readInt32LE(q+20),start=vec(d,q),first=d.readInt32LE(q+12),size=(1<<power)+1;
@@ -220,12 +221,13 @@ export function compileSourceMap(file,key,options={}){
       if(!mask)continue;
       const ps=sides.map(s=>bsp.planes[s.plane]),bb=brushBounds(ps);if(bb.some(v=>Math.abs(v)>=32768)||bb[5]<base-512)continue;
       const transformed=ps.map(p=>{const n=rot(p.slice(0,3));return [...n,p[3]+dot(n,origin)];});
-      const rb=bounds(corners(bb).map(transform));collision(transformed,rb,mask);report.brushes++;
+      const rb=bounds(corners(bb).map(transform));collision(transformed,rb,mask,src);report.brushes++;
     }
   };
   drawModel(0);
-  const brushEntities=bsp.entities.filter(e=>/^\*\d+$/.test(e.model||'')&&!/^(func_bomb_target|func_buyzone|func_areaportal|trigger_|func_dust)/.test(e.classname)&&e.StartDisabled!=='1');
-  for(const e of brushEntities)drawModel(Number(e.model.slice(1)),numbers(e.origin),numbers(e.angles),e.Solidity!=='1');
+  // func_illusionary nunca é sólido; func_clip_vphysics só segura objetos físicos (o jogador passa); rendermode 10 não é desenhado.
+  const brushEntities=bsp.entities.filter(e=>/^\*\d+$/.test(e.model||'')&&!/^(func_bomb_target|func_buyzone|func_areaportal|trigger_|func_dust|func_clip_vphysics)/.test(e.classname)&&e.StartDisabled!=='1');
+  for(const e of brushEntities)drawModel(Number(e.model.slice(1)),numbers(e.origin),numbers(e.angles),e.Solidity!=='1'&&e.classname!=='func_illusionary',e.classname,e.rendermode!=='10');
   const modelCache=new Map();
   const props=bsp.staticProps().concat(bsp.entities.filter(e=>/^(prop_dynamic|prop_physics)/.test(e.classname)).map(e=>({model:(e.model||'').toLowerCase(),origin:numbers(e.origin),angles:numbers(e.angles),solid:Number(e.solid??6),scale:Number(e.modelscale)||1})));
   for(const prop of props){
@@ -235,7 +237,7 @@ export function compileSourceMap(file,key,options={}){
     if(!model){if(!report.missingModels.includes(prop.model))report.missingModels.push(prop.model);continue;}
     const rot=rotation(prop.angles),transform=p=>add(rot(mul(p,prop.scale)),prop.origin);report.propModels++;
     for(const h of model){const vertices=h.vertices.map(transform),ps=h.planes.map(p=>{const n=rot(p.slice(0,3));return [...n,p[3]*prop.scale+dot(n,prop.origin)];}),bb=bounds(vertices);if(!keep(vertices))continue;
-      collision(ps,bb,3);report.propHulls++;
+      collision(ps,bb,3,'prop:'+prop.model);report.propHulls++;
       for(const ids of h.triangles){const p=ids.map(i=>vertices[i]);let n=unit(cross(sub(p[1],p[0]),sub(p[2],p[0])));const middle=mul(vertices.reduce((s,v)=>add(s,v),[0,0,0]),1/vertices.length);if(dot(n,sub(middle,p[0]))>0)n=mul(n,-1);emit(p,n,prop.model,'prop');}
     }
   }

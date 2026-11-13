@@ -8,7 +8,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { compileSourceMap, rotation, PATTERNS } from './source-bsp.mjs';
-import { readNav, navHeightsAt } from './source-nav.mjs';
+import { readNav } from './source-nav.mjs';
 import { packMap, bakeNavigation } from './import-source-maps.mjs';
 import '../assets/maps/runtime.js';
 
@@ -88,72 +88,222 @@ function shape(x0, x1, y0, y1, z0, z1, xf, rot, cyl = false) {
   return faces.map(f => ({ ...f, d: dot(f.n, f.p[0]) }));
 }
 
-function approximateProps(map, nav, report) {
+// Walkable points of the original CS navigation mesh (every 12 units), hashed in 64-unit cells.
+function walkSamples(nav) {
+  const cells = new Map(), key = (x, y) => Math.floor(x / 64) + ',' + Math.floor(y / 64);
+  for (const a of nav.areas) {
+    for (let x = a.x0 + 4; x <= a.x1 - 4 + 1e-6; x += 12) for (let y = a.y0 + 4; y <= a.y1 - 4 + 1e-6; y += 12) {
+      const u = (x - a.x0) / Math.max(1e-6, a.x1 - a.x0), v = (y - a.y0) / Math.max(1e-6, a.y1 - a.y0);
+      const north = a.z[0] + (a.z[1] - a.z[0]) * u, south = a.z[3] + (a.z[2] - a.z[3]) * u, z = north + (south - north) * v, k = key(x, y);
+      if (!cells.has(k)) cells.set(k, []); cells.get(k).push([x, y, z]);
+    }
+  }
+  return { near(x, y, r) { const out = []; for (let i = Math.floor((x - r) / 64); i <= Math.floor((x + r) / 64); i++) for (let j = Math.floor((y - r) / 64); j <= Math.floor((y + r) / 64); j++) for (const p of cells.get(i + ',' + j) || []) out.push(p); return out; } };
+}
+
+export function approximateProps(map, nav, report) {
   const { bsp, convert, center, scale, base } = map;
   const plane = (n, d) => [n[0], n[2], -n[1], (d - dot(n, center)) * scale];
   const props = bsp.staticProps().concat(bsp.entities.filter(e => /^(prop_dynamic|prop_physics)/.test(e.classname)).map(e => ({ model: (e.model || '').toLowerCase(), origin: (e.origin || '0 0 0').split(/\s+/).map(Number), angles: (e.angles || '0 0 0').split(/\s+/).map(Number), solid: Number(e.solid ?? 6), scale: Number(e.modelscale) || 1 })));
-  const stats = { approximated: 0, solid: 0, shrunk: 0, dropped: 0, unknown: new Map() };
-  const overlap = (xf, x0, x1, y0, y1, baseZ) => {
-    let hit = 0, total = 0;
-    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
-      const w = xf([x0 + (x1 - x0) * (i + .5) / 4, y0 + (y1 - y0) * (j + .5) / 4, 0]); total++;
-      if (navHeightsAt(nav, w[0], w[1]).some(h => Math.abs(h - baseZ) < 14)) hit++;
+  const stats = { approximated: 0, solid: 0, shrunk: 0, dropped: 0, buried: 0, unknown: new Map() };
+  const samples = walkSamples(nav), world = new globalThis.SourceMaps.NativeMap(packMap(map));
+  const spawns = map.t.concat(map.ct).map(p => [p[0] / scale + center[0], center[1] - p[1] / scale, p[3] / scale + center[2]]);
+  // A piece is wrong when a point where CS players walk lies inside it at body height (its top may be walkable), or
+  // when most of it is buried in the map's own solids: then it is shrunk, tried at another anchor, or left out.
+  const check = (xf, toLocal, s, b) => {
+    const [x0, x1, y0, y1, z0, z1] = b, c = xf([(x0 + x1) / 2, (y0 + y1) / 2, 0]), r = Math.hypot(x1 - x0, y1 - y0) * s / 2 + 8;
+    if (z1 - z0 > 18) for (const p of samples.near(c[0], c[1], r)) {
+      const q = toLocal(p);
+      if (q[0] > x0 + 4 && q[0] < x1 - 4 && q[1] > y0 + 4 && q[1] < y1 - 4 && q[2] > z0 - 64 && q[2] < z1 - 8) return false;
     }
-    return hit / total;
+    // Nothing solid where a player spawns (body radius 12 units plus a margin).
+    for (const p of spawns) { const q = toLocal(p); if (q[0] > x0 - 18 / s && q[0] < x1 + 18 / s && q[1] > y0 - 18 / s && q[1] < y1 + 18 / s && q[2] > z0 - 72 && q[2] < z1) return false; }
+    let inside = 0, total = 0;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) for (let k = 0; k < 3; k++) {
+      const g = convert(xf([x0 + (x1 - x0) * (.2 + .3 * i), y0 + (y1 - y0) * (.2 + .3 * j), z0 + (z1 - z0) * (.2 + .3 * k)])); total++;
+      if (world.overlap(g[0], g[1], g[2], .02, .02)) inside++;
+    }
+    return inside / total < .35 ? true : 'buried';
   };
   for (const prop of props) {
     if (!prop.model || bsp.pak.has(prop.model.replace(/\.mdl$/, '.phy')) || prop.origin[2] < base - 512) continue;
     const spec = propSpec(prop.model);
     if (!spec) { stats.unknown.set(prop.model, (stats.unknown.get(prop.model) || 0) + 1); continue; }
     const rot = rotation(prop.angles), s = prop.scale || 1, tilted = Math.abs(prop.angles[0]) > 25 || Math.abs(prop.angles[2]) > 25;
-    const xf = p => add(rot(mul(p, s)), prop.origin);
+    const xf = p => add(rot(mul(p, s)), prop.origin), ax = [rot([1, 0, 0]), rot([0, 1, 0]), rot([0, 0, 1])];
+    const toLocal = p => { const d = [p[0] - prop.origin[0], p[1] - prop.origin[1], p[2] - prop.origin[2]]; return ax.map(a => dot(d, a) / s); };
+    // A box standing in for a model only reads right upright: tipped-over or hanging props are left out.
+    if (tilted) { stats.tilted = (stats.tilted || 0) + 1; continue; }
+    const solid = !!prop.solid;
+    const pieces = spec.tree
+      ? [{ b: [-spec.tree.trunk / 2, spec.tree.trunk / 2, -spec.tree.trunk / 2, spec.tree.trunk / 2, 0, spec.tree.height], cyl: true, mask: solid ? 3 : 0, color: C.trunk, pat: P.wood },
+         { b: [-spec.tree.crown[0] / 2, spec.tree.crown[0] / 2, -spec.tree.crown[1] / 2, spec.tree.crown[1] / 2, spec.tree.crownAt, spec.tree.crownAt + spec.tree.crown[2]], cyl: true, mask: 0, color: C.foliage, pat: P.foliage }]
+      : [{ b: [-spec.size[0] / 2, spec.size[0] / 2, -spec.size[1] / 2, spec.size[1] / 2, 0, spec.size[2]], cyl: !!spec.cyl, mask: solid && spec.size[2] > 18 ? (spec.mask ?? 3) : 0, color: spec.color, pat: spec.pat, elongated: spec.elongated }];
     const out = [];
-    let mask = prop.solid && !tilted ? (spec.mask ?? 3) : 0;
-    if (spec.tree) {
-      const t = spec.tree, r = t.trunk / 2;
-      out.push({ faces: shape(-r, r, -r, r, 0, t.height, xf, rot, true), mask: prop.solid ? 3 : 0, color: C.trunk, pat: P.wood });
-      const [cx, cy, cz] = t.crown;
-      out.push({ faces: shape(-cx / 2, cx / 2, -cy / 2, cy / 2, t.crownAt, t.crownAt + cz, xf, rot, true), mask: 0, color: C.foliage, pat: P.foliage });
-    } else {
-      let [L, W, H] = spec.size, x0 = -L / 2, x1 = L / 2, y0 = -W / 2, y1 = W / 2;
-      const baseZ = prop.origin[2];
-      if (mask & 1) {
-        // The navigation mesh is ground truth for where players walk: pick the anchor that covers the least walkable
-        // floor, shrink once if needed, and leave the prop out when it still blocks a walkway.
-        const options = [[x0, x1]];
-        if (spec.elongated) options.push([0, L], [-L, 0]);
-        let best = null;
-        for (const [a, b] of options) { const o = overlap(xf, a, b, y0, y1, baseZ); if (!best || o < best.o) best = { a, b, o }; }
-        [x0, x1] = [best.a, best.b];
-        if (best.o > .3) {
-          const k = .6, cxm = (x0 + x1) / 2, half = (x1 - x0) * k / 2; x0 = cxm - half; x1 = cxm + half; y0 *= k; y1 *= k;
-          const o = overlap(xf, x0, x1, y0, y1, baseZ);
-          if (o > .3) { stats.dropped++; continue; }
-          stats.shrunk++;
-        }
-      }
-      out.push({ faces: shape(x0, x1, y0, y1, 0, H, xf, rot, !!spec.cyl), mask, color: spec.color, pat: spec.pat, glass: !!spec.glass });
+    let ok = true;
+    for (const piece of pieces) {
+      const [x0, x1, y0, y1, z0, z1] = piece.b, L = x1 - x0, options = [[x0, x1, y0, y1]];
+      if (piece.elongated) options.push([0, L, y0, y1], [-L, 0, y0, y1]);
+      for (const [a, b2, c, d] of options.slice()) { const k = .6, mx = (a + b2) / 2, my = (c + d) / 2; options.push([mx - (b2 - a) * k / 2, mx + (b2 - a) * k / 2, my - (d - c) * k / 2, my + (d - c) * k / 2]); }
+      let chosen = null, buried = false;
+      for (const [i, o] of options.entries()) { const r = check(xf, toLocal, s, [...o, z0, z1]); if (r === true) { chosen = o; if (i >= options.length / 2) stats.shrunk++; break; } if (r === 'buried') buried = true; }
+      if (!chosen) { ok = false; if (buried) stats.buried++; else stats.dropped++; break; }
+      out.push({ ...piece, faces: shape(chosen[0], chosen[1], chosen[2], chosen[3], z0, z1, xf, rot, piece.cyl) });
     }
+    if (!ok) continue;
     stats.approximated++;
     for (const piece of out) {
       for (const f of piece.faces) {
-        const pts = f.p, ax = Math.abs(f.n[0]) > Math.abs(f.n[1]) && Math.abs(f.n[0]) > Math.abs(f.n[2]) ? [1, 2] : Math.abs(f.n[1]) > Math.abs(f.n[2]) ? [0, 2] : [0, 1];
-        map.polygons.push({ p: pts.map(convert), n: [f.n[0], f.n[2], -f.n[1]], c: piece.color, glass: !!piece.glass, tag: 'prop', uv: pts.map(p => [p[ax[0]] / 64, p[ax[1]] / 64]), pat: piece.pat });
+        const pts = f.p, uvAxes = Math.abs(f.n[0]) > Math.abs(f.n[1]) && Math.abs(f.n[0]) > Math.abs(f.n[2]) ? [1, 2] : Math.abs(f.n[1]) > Math.abs(f.n[2]) ? [0, 2] : [0, 1];
+        map.polygons.push({ p: pts.map(convert), n: [f.n[0], f.n[2], -f.n[1]], c: piece.color, glass: false, tag: 'prop', uv: pts.map(p => [p[uvAxes[0]] / 64, p[uvAxes[1]] / 64]), pat: piece.pat });
       }
       if (piece.mask) {
         const pts = piece.faces.flatMap(f => f.p).map(convert), lo = [0, 1, 2].map(i => Math.min(...pts.map(p => p[i]))), hi = [0, 1, 2].map(i => Math.max(...pts.map(p => p[i])));
-        map.hulls.push({ planes: piece.faces.map(f => plane(f.n, f.d)), min: lo, max: hi, mask: piece.mask });
+        map.hulls.push({ planes: piece.faces.map(f => plane(f.n, f.d)), min: lo, max: hi, mask: piece.mask, src: 'approx:' + prop.model });
         stats.solid++;
       }
     }
   }
-  report.props = { approximated: stats.approximated, solidPieces: stats.solid, shrunk: stats.shrunk, droppedOnWalkways: stats.dropped, unknownModels: stats.unknown.size, unknownInstances: [...stats.unknown.values()].reduce((s, v) => s + v, 0) };
+  report.props = { approximated: stats.approximated, tilted: stats.tilted || 0, solidPieces: stats.solid, shrunk: stats.shrunk, droppedOnWalkways: stats.dropped, droppedBuried: stats.buried, unknownModels: stats.unknown.size, unknownInstances: [...stats.unknown.values()].reduce((s, v) => s + v, 0) };
 }
+
+// Floors that CS players stand on but that are missing here: the tops of stock props (stairs, crates, scaffold walkways)
+// that are not inside the file. Each CS navigation area with no floor under most of its points becomes a solid block
+// shaped by the area itself (sloped top for stairs and ramps), down to the floor below, or a slab when CS players also
+// walk underneath it. This restores the routes up to raised areas that the approximation alone could not.
+function restoreWalkSurfaces(map, nav) {
+  const { convert, scale } = map, world = new globalThis.SourceMaps.NativeMap(packMap(map)), samples = walkSamples(nav);
+  let blocks = 0, buried = 0, skipped = 0;
+  for (const a of nav.areas) {
+    const w = a.x1 - a.x0, d = a.y1 - a.y0; if (w < 6 || d < 6) continue;
+    const zAt = (x, y) => { const u = (x - a.x0) / w, v = (y - a.y0) / d, n = a.z[0] + (a.z[1] - a.z[0]) * u, s = a.z[3] + (a.z[2] - a.z[3]) * u; return n + (s - n) * v; };
+    let missing = 0, total = 0, below = -Infinity;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      const x = a.x0 + w * (.2 + .3 * i), y = a.y0 + d * (.2 + .3 * j), z = zAt(x, y), g = convert([x, y, z]); total++;
+      const fl = world.floors(g[0], g[2], g[1] - 30 * scale, g[1] + 10 * scale);
+      if (!fl.length) { missing++; const lower = world.floors(g[0], g[2], g[1] - 600 * scale, g[1] - 30 * scale); below = Math.max(below, lower.length ? lower.at(-1) / scale : -Infinity); }
+    }
+    if (missing / total < .6) continue;
+    const top = Math.min(...a.z), cx = (a.x0 + a.x1) / 2, cy = (a.y0 + a.y1) / 2;
+    let bottom = Number.isFinite(below) ? below + map.base : top - 600; // floor heights come back in game metres / scale
+    // CS players walking under this area keep their headroom: the block becomes a slab above them.
+    for (const p of samples.near(cx, cy, Math.hypot(w, d) / 2)) if (p[0] > a.x0 + 2 && p[0] < a.x1 - 2 && p[1] > a.y0 + 2 && p[1] < a.y1 - 2 && p[2] < top - 20) bottom = Math.max(bottom, p[2] + 74);
+    bottom = Math.min(bottom, top - 4);
+    // Least-squares plane through the four corners (game coordinates), so stairs become an even ramp.
+    const corners = [[a.x0, a.y0, a.z[0]], [a.x1, a.y0, a.z[1]], [a.x1, a.y1, a.z[2]], [a.x0, a.y1, a.z[3]]].map(convert);
+    const mx = corners.reduce((s, c) => s + c[0], 0) / 4, mz = corners.reduce((s, c) => s + c[2], 0) / 4, my = corners.reduce((s, c) => s + c[1], 0) / 4;
+    let sxx = 0, szz = 0, sxy = 0, szy = 0; for (const c of corners) { sxx += (c[0] - mx) ** 2; szz += (c[2] - mz) ** 2; sxy += (c[0] - mx) * (c[1] - my); szy += (c[2] - mz) * (c[1] - my); }
+    const ga = sxx ? sxy / sxx : 0, gb = szz ? szy / szz : 0, yTop = (x, z) => my + ga * (x - mx) + gb * (z - mz);
+    // Only even, walkable surfaces (CS walkable slopes stay under 45 degrees); twisted or steep areas are left out.
+    if (Math.hypot(ga, gb) > .9 || corners.some(c => Math.abs(yTop(c[0], c[2]) - c[1]) > 6 * scale)) { skipped++; continue; }
+    const lo = convert([a.x0, a.y1, bottom]), hi = convert([a.x1, a.y0, bottom]), x0 = lo[0], x1 = hi[0], z0 = lo[2], z1 = hi[2], yb = lo[1];
+    // Interior mostly inside the map's own solids: the floor exists in another form, leave it.
+    let inside = 0; for (const fx of [.25, .5, .75]) for (const fz of [.25, .5, .75]) { const x = x0 + (x1 - x0) * fx, z = z0 + (z1 - z0) * fz, y = (yb + yTop(x, z)) / 2; if (world.overlap(x, y, z, .02, .02)) inside++; }
+    if (inside > 3) { buried++; continue; }
+    const Y = (x, z) => yTop(x, z), thick = (my - yb) / scale, slope = Math.hypot(ga, gb);
+    const [col, pat] = thick < 26 ? [C.metal, P.metal] : slope > .12 ? [C.concrete, P.concrete ?? P.stone] : [C.crate, P.wood];
+    const T = [[x0, Y(x0, z0), z0], [x1, Y(x1, z0), z0], [x1, Y(x1, z1), z1], [x0, Y(x0, z1), z1]], Bt = T.map(p => [p[0], yb, p[2]]);
+    const quad = (pts, n) => { const ax = Math.abs(n[0]) > .5 ? [2, 1] : Math.abs(n[2]) > .5 ? [0, 1] : [0, 2]; map.polygons.push({ p: pts, n, c: col, glass: false, tag: 'prop', uv: pts.map(q => [q[ax[0]] / (64 * scale), q[ax[1]] / (64 * scale)]), pat }); };
+    const nl = Math.hypot(ga, 1, gb), up = [-ga / nl, 1 / nl, -gb / nl];
+    const boxFaces = (xa, xb, za, zb, ylo, yhi) => {
+      quad([[xa, yhi, zb], [xb, yhi, zb], [xb, yhi, za], [xa, yhi, za]], [0, 1, 0]);
+      quad([[xa, ylo, za], [xb, ylo, za], [xb, yhi, za], [xa, yhi, za]], [0, 0, -1]); quad([[xb, ylo, zb], [xa, ylo, zb], [xa, yhi, zb], [xb, yhi, zb]], [0, 0, 1]);
+      quad([[xa, ylo, zb], [xa, ylo, za], [xa, yhi, za], [xa, yhi, zb]], [-1, 0, 0]); quad([[xb, ylo, za], [xb, ylo, zb], [xb, yhi, zb], [xb, yhi, za]], [1, 0, 0]);
+    };
+    if (slope > .12) {
+      // Sloped areas were stairs: drawn as steps of about 20 cm (the collision stays the even ramp, as CS stair clips).
+      const alongX = Math.abs(ga) >= Math.abs(gb), len = alongX ? x1 - x0 : z1 - z0, n = Math.max(2, Math.round(Math.abs(alongX ? ga : gb) * len / .2));
+      for (let k = 0; k < n; k++) {
+        const a0 = k / n, a1 = (k + 1) / n, top = alongX ? Y(x0 + len * (a0 + a1) / 2, (z0 + z1) / 2) : Y((x0 + x1) / 2, z0 + len * (a0 + a1) / 2);
+        if (alongX) boxFaces(x0 + len * a0, x0 + len * a1, z0, z1, yb, top); else boxFaces(x0, x1, z0 + len * a0, z0 + len * a1, yb, top);
+      }
+    } else {
+      quad([T[3], T[2], T[1], T[0]], up);
+      quad([Bt[0], Bt[1], T[1], T[0]], [0, 0, -1]); quad([Bt[2], Bt[3], T[3], T[2]], [0, 0, 1]);
+      quad([Bt[3], Bt[0], T[0], T[3]], [-1, 0, 0]); quad([Bt[1], Bt[2], T[2], T[1]], [1, 0, 0]);
+    }
+    const ys = T.map(p => p[1]);
+    map.hulls.push({ planes: [[up[0], up[1], up[2], up[0] * mx + up[1] * my + up[2] * mz], [0, -1, 0, -yb], [1, 0, 0, x1], [-1, 0, 0, -x0], [0, 0, 1, z1], [0, 0, -1, -z0]], min: [x0, yb, z0], max: [x1, Math.max(...ys), z1], mask: 3, src: 'navfloor:' + a.id });
+    blocks++;
+  }
+  map.report.restored = { blocks, buried, skipped };
+}
+
+// Everywhere a player can get to in the conversion, flooded on a 25 cm grid from the spawns: walking (0.5 m steps),
+// dropping to the floor below and jumping up to 1.25 m where there is head room.
+export function playerReach(world, S = .25, JUMP = 1.25) {
+  const [bx0, by0, bz0, bx1, by1, bz1] = world.meta.bounds, nx = Math.ceil((bx1 - bx0) / S), nz = Math.ceil((bz1 - bz0) / S);
+  const X = i => bx0 + (i + .5) * S, Z = j => bz0 + (j + .5) * S, memo = new Map();
+  const floors = (i, j) => { const k = i * nz + j; let f = memo.get(k); if (!f) { f = world.floors(X(i), Z(j), by0 - 1, by1 + 1).map(y => ({ y, free: !world.overlap(X(i), y + .46, Z(j), 1.3, .28) })); memo.set(k, f); } return f; };
+  const seen = new Map(), queue = [], edges = [], id = (i, j, y) => i + ',' + j + ',' + Math.round(y * 20);
+  const push = (i, j, y) => { const k = id(i, j, y); if (seen.has(k)) return false; seen.set(k, [i, j, y]); queue.push([i, j, y]); return true; };
+  for (const s of world.meta.t.concat(world.meta.ct)) { const i = Math.floor((s[0] - bx0) / S), j = Math.floor((s[1] - bz0) / S), f = floors(i, j).filter(v => v.free && Math.abs(v.y - s[3]) < .6); if (f.length) push(i, j, f[0].y); }
+  while (queue.length) {
+    const [i, j, y] = queue.pop(), x = X(i), z = Z(j);
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+      const all = floors(a, b), land = all.filter(v => v.y <= y + .5), next = all.filter(v => v.y > y + .5 && v.y <= y + JUMP && v.free).map(v => v.y);
+      if (land.length && land.at(-1).free && land.at(-1).y > y - 6) next.push(land.at(-1).y);
+      for (const ny of next) {
+        if (ny > y + .5 && world.overlap(x, y + .46, z, ny - y + 1.3, .28)) continue;
+        if (world.overlap((x + X(a)) / 2, Math.max(y, ny) + .46, (z + Z(b)) / 2, 1.3, .28)) continue;
+        edges.push([i, j, y, a, b, ny]); push(a, b, ny);
+      }
+    }
+  }
+  return { S, bx0, bz0, X, Z, cells: [...seen.values()], edges };
+}
+
+// Where players can get to in the conversion but the original CS navigation has no walkable floor nearby (the fence,
+// wall or cover there was a stock prop missing from the file, or it is the way out of the map), a visible grate panel
+// closes the border: it blocks the body (also against jumps) and lets bullets through, like a fence.
+function fenceOffMap(map, nav) {
+  const samples = walkSamples(nav), toSource = (x, y, z) => [x / map.scale + map.center[0], map.center[1] - z / map.scale, y / map.scale + map.center[2]];
+  const offCache = new Map(), off = (x, y, z) => { const k = x.toFixed(3) + ',' + z.toFixed(3) + ',' + y.toFixed(2); let v = offCache.get(k); if (v === undefined) { const [sx, sy, sz] = toSource(x, y, z); v = !samples.near(sx, sy, 40).some(p => Math.abs(p[0] - sx) <= 40 && Math.abs(p[1] - sy) <= 40 && Math.abs(p[2] - sz) < 48); offCache.set(k, v); } return v; };
+  let panels = 0, offCells = 0;
+  for (let pass = 0; pass < 3; pass++) {
+    const reach = playerReach(new globalThis.SourceMaps.NativeMap(packMap(map))), { S, bx0, bz0, X, Z } = reach;
+    offCells = reach.cells.filter(([i, j, y]) => off(X(i), y, Z(j))).length;
+    // Border segments on the grid lines between a legit cell and an off-map cell, merged along each line.
+    const lines = new Map();
+    for (const [i, j, y, a, b, ny] of reach.edges) {
+      if (off(X(i), y, Z(j)) || !off(X(a), ny, Z(b))) continue;
+      const alongZ = a !== i, line = alongZ ? 'x' + Math.max(i, a) : 'z' + Math.max(j, b), at = alongZ ? j : i;
+      if (!lines.has(line)) lines.set(line, []); lines.get(line).push([at, Math.min(y, ny), Math.max(y, ny)]);
+    }
+    if (!lines.size) break;
+    for (const [line, segs] of lines) {
+      segs.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+      const runs = [];
+      for (const [at, y0, y1] of segs) { const r = runs.find(r => at <= r.end + 1 && Math.abs(r.y0 - y0) < 1.2); if (r) { r.end = Math.max(r.end, at); r.y0 = Math.min(r.y0, y0); r.y1 = Math.max(r.y1, y1); } else runs.push({ start: at, end: at, y0, y1 }); }
+      const v = +line.slice(1);
+      for (const r of runs) {
+        const y0 = r.y0 - .2, y1 = r.y1 + 3, w0 = (r.start) * S, w1 = (r.end + 1) * S;
+        if (line[0] === 'x') { const x = bx0 + v * S; box(map, [x - .03, y0, bz0 + w0], [x + .03, y1, bz0 + w1]); } else { const z = bz0 + v * S; box(map, [bx0 + w0, y0, z - .03], [bx0 + w1, y1, z + .03]); }
+        panels++;
+      }
+    }
+  }
+  map.report.grates = { offCells, panels };
+}
+
+function box(map, lo, hi) {
+  const B = map.bounds; lo = lo.map((v, i) => Math.max(v, B[i])); hi = hi.map((v, i) => Math.min(v, B[i + 3]));
+  if (lo.some((v, i) => v >= hi[i])) return;
+  const P = (x, y, z) => [x, y, z], [a, b, c] = lo, [d, e, f] = hi, col = 0x8b939a;
+  const quads = [[[P(d, b, c), P(d, e, c), P(d, e, f), P(d, b, f)], [1, 0, 0]], [[P(a, b, f), P(a, e, f), P(a, e, c), P(a, b, c)], [-1, 0, 0]], [[P(a, e, c), P(a, e, f), P(d, e, f), P(d, e, c)], [0, 1, 0]], [[P(a, b, c), P(d, b, c), P(d, b, f), P(a, b, f)], [0, -1, 0]], [[P(a, b, f), P(d, b, f), P(d, e, f), P(a, e, f)], [0, 0, 1]], [[P(a, b, c), P(a, e, c), P(d, e, c), P(d, b, c)], [0, 0, -1]]];
+  for (const [pts, nn] of quads) { const ax = Math.abs(nn[0]) ? [2, 1] : Math.abs(nn[1]) ? [0, 2] : [0, 1]; map.polygons.push({ p: pts, n: nn, c: col, glass: false, tag: 'grate', uv: pts.map(q => [q[ax[0]] * 1.6, q[ax[1]] * 1.6]), pat: P_METAL }); }
+  map.hulls.push({ planes: [[1, 0, 0, d], [-1, 0, 0, -a], [0, 1, 0, e], [0, -1, 0, -b], [0, 0, 1, f], [0, 0, -1, -c]], min: [a, b, c], max: [d, e, f], mask: 1, src: 'grate' });
+}
+const P_METAL = PATTERNS.metal;
 
 // Keep only the playable area (removes the 3D skybox and far scenery), with a margin for the boundary walls.
 function clipToPlay(map, margin = 3) {
   const [x0, z0, x1, z1] = map.playBounds;
-  const lo = [x0 - margin, -12, z0 - margin], hi = [x1 + margin, 40, z1 + margin];
+  clipBox(map, [x0 - margin, -12, z0 - margin], [x1 + margin, 40, z1 + margin]);
+}
+
+function clipBox(map, lo, hi) {
   const clip = (vertices, uv, axis, value, sign) => {
     const out = [], ouv = [];
     for (let i = 0; i < vertices.length; i++) {
@@ -168,7 +318,13 @@ function clipToPlay(map, margin = 3) {
     for (let axis = 0; axis < 3; axis++) { [p, uv] = clip(p, uv, axis, lo[axis], 1); if (p.length < 3) return []; [p, uv] = clip(p, uv, axis, hi[axis], -1); if (p.length < 3) return []; }
     return [{ ...face, p, ...(uv ? { uv } : {}) }];
   });
-  map.hulls = map.hulls.filter(h => h.min.every((v, i) => v <= hi[i]) && h.max.every((v, i) => v >= lo[i]));
+  // Hulls are cut at the same box, so nothing solid lies outside the map's bounds (and its spatial grid).
+  map.hulls = map.hulls.filter(h => h.min.every((v, i) => v <= hi[i]) && h.max.every((v, i) => v >= lo[i])).map(h => {
+    if (h.min.every((v, i) => v >= lo[i]) && h.max.every((v, i) => v <= hi[i])) return h;
+    const planes = h.planes.slice();
+    for (let i = 0; i < 3; i++) { const n = [0, 0, 0]; if (h.max[i] > hi[i]) { n[i] = 1; planes.push([...n, hi[i]]); } if (h.min[i] < lo[i]) { const m = [0, 0, 0]; m[i] = -1; planes.push([...m, -lo[i]]); } }
+    return { ...h, planes, min: h.min.map((v, i) => Math.max(v, lo[i])), max: h.max.map((v, i) => Math.min(v, hi[i])) };
+  });
   map.bounds = [...lo, ...hi];
 }
 
@@ -255,12 +411,16 @@ export function importWingmanMap(file, key) {
   if (!navFile) throw Error(key + ': no navigation mesh');
   const nav = readNav(map.bsp.asset(navFile));
   approximateProps(map, nav, map.report);
+  restoreWalkSurfaces(map, nav);
   bakeNavigation(map);
   clipToPlay(map);
   delete map.navigation; bakeNavigation(map);
   // Spawn points in some BSPs float up to ~1.6 m above the floor (in CS the player drops); put them on the ground.
   { const native = new globalThis.SourceMaps.NativeMap(packMap(map)); for (const p of map.t.concat(map.ct)) { const y = native.ground(p[0], p[1], p[3]); if (p[3] - y > .05 && p[3] - y < 3) p[3] = y; } }
+  fenceOffMap(map, nav);
+  delete map.navigation; bakeNavigation(map);
   pruneNavigation(map);
+  clipBox(map, map.bounds.slice(0, 3), map.bounds.slice(3));
   delete map.bsp; delete map.convert;
   return map;
 }
@@ -275,7 +435,7 @@ if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
     catalog[key] = { name: map.name, credit: map.credit, ax: map.ax, az: map.az, t: map.t, ct: map.ct, sites: map.sites };
     writeFileSync(resolve(out, key + '.js'), '// Generated from a user-supplied BSP (used with the author\'s permission). Light procedural textures, no images.\n(globalThis.SOURCE_MAP_PAYLOADS??={}).' + key + '=' + JSON.stringify(bytes.toString('base64')) + ';\n');
     const tris = Buffer.from(packed.mesh.index, 'base64').length / 12;
-    console.log(key, bytes.length + ' bytes gzipped', tris + ' triangles', map.hulls.length + ' hulls', 'nav links cut ' + map.report.navigationPruned, JSON.stringify(map.report.props), 'nav', JSON.stringify(map.report.navigation && { nodes: map.report.navigation.nodes, spawns: map.report.navigation.spawnsConnected + '/' + map.report.navigation.spawnsTotal }));
+    console.log(key, bytes.length + ' bytes gzipped', tris + ' triangles', map.hulls.length + ' hulls', 'nav links cut ' + map.report.navigationPruned, 'grates ' + JSON.stringify(map.report.grates), 'restored ' + JSON.stringify(map.report.restored), JSON.stringify(map.report.props), 'nav', JSON.stringify(map.report.navigation && { nodes: map.report.navigation.nodes, spawns: map.report.navigation.spawnsConnected + '/' + map.report.navigation.spawnsTotal }));
   }
   writeFileSync(resolve(out, 'catalog.js'), '// Metadata only: the geometry is loaded when a map is played.\nglobalThis.SOURCE_MAP_CATALOG=' + JSON.stringify(catalog) + ';\n');
 }

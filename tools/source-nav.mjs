@@ -15,7 +15,8 @@ export function readNav(buf) {
   for (let i = 0; i < count; i++) {
     const id = u32(), flags = version <= 8 ? u8() : version < 13 ? u16() : u32();
     const nw = [f32(), f32(), f32()], se = [f32(), f32(), f32()], neZ = f32(), swZ = f32();
-    for (let d = 0; d < 4; d++) { const n = u32(); p += n * 4; }
+    const links = [];
+    for (let d = 0; d < 4; d++) { const n = u32(); for (let k = 0; k < n; k++) links.push(u32()); }
     { const n = u8(); p += n * 17; }
     if (version < 15) { const n = u8(); p += n * 14; }
     const paths = u32();
@@ -26,7 +27,7 @@ export function readNav(buf) {
     if (version >= 11) p += 16;
     if (version >= 16) { { const n = u32(); p += n * 5; } u32(); }
     if (sub >= 1) { const n = u8(); p += n * 14; }
-    areas.push({ id, flags, x0: nw[0], y0: nw[1], x1: se[0], y1: se[1], z: [nw[2], neZ, se[2], swZ] });
+    areas.push({ id, flags, links, x0: nw[0], y0: nw[1], x1: se[0], y1: se[1], z: [nw[2], neZ, se[2], swZ] });
   }
   return { version, sub, areas };
 }
