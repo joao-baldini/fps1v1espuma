@@ -87,8 +87,8 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
       <aside class="mode-navigation"><h1 id="lobbyTitle">Jogar</h1>
     <div class="modes" id="modeSel" role="radiogroup" aria-label="Modo de jogo">
       <button class="mode-card" type="button" role="radio" data-mode="elim"><span class="mode-copy"><b>Elimination</b><small>Monte o confronto · 1 a 8 por time</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Palace e Factory</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Sanctum, Neon, Forge e Overgrowth</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Sandstone</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Sandstone</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><span class="mode-copy"><b>Practice</b><small>Encontre sua mira</small></span></button>
@@ -300,7 +300,6 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="assets/maps/catalog.js"></script>
 <script src="assets/maps/prefire-catalog.js"></script>
 <script src="assets/maps/warface-catalog.js"></script>
 <script src="assets/maps/runtime.js"></script>
@@ -326,7 +325,7 @@ function normalizeViewmodel(value) {
   return Object.fromEntries(Object.entries(VIEWMODEL_LIMITS).map(([axis,[min,max]])=>[axis,Math.round(clamp(fin(value?.[axis])?value[axis]:0,min,max)*10)/10]));
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sandstone', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right', viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -344,8 +343,8 @@ function loadS() {
   if (!['elim', 'dm', 'tdm', 'aimbotz', 'bomb', 'wingman'].includes(s.mode)) s.mode = 'elim';
   s.xvx = { mine: clamp(+s.xvx?.mine || 1, 1, 8), foes: clamp(+s.xvx?.foes || 1, 1, 8) };
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
-  if (!['ribeira', 'estacao', 'sanctum', 'neon', 'forge', 'overgrowth', 'rotacao'].includes(s.bombMap)) s.bombMap = 'ribeira';
-  if(!['palace','factory'].includes(s.warfaceMap))s.warfaceMap='palace';
+  if (s.bombMap !== 'sandstone') s.bombMap = 'sandstone';
+  if (s.warfaceMap !== 'sandstone') s.warfaceMap = 'sandstone';
   if (!['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(s.operator)) s.operator = 'finder';
   if (!['vermelho', 'amarelo', 'roxo'].includes(s.enemyOutline)) s.enemyOutline = 'vermelho';
   s.hitmarker = s.hitmarker !== false;
@@ -1253,16 +1252,6 @@ function statue(B, x, z, y = 0, size = 1) {
   dR(B, x - .02 * s, y + 1.98 * s, z - .25 * s, x + .02 * s, y + 2.2 * s, z + .25 * s, 0xd9a93a);
 }
 
-// Mapas do Wingman: Ribeira e Estação são originais (tools/build-ribeira.mjs, tools/build-estacao.mjs); nos outros, geometria, rotas, alturas, spawns e
-// bombsites vêm dos BSPs enviados (uso autorizado pelos autores) e o crédito de cada autor aparece no menu e na miniatura.
-const WINGMAN_THEMES = { ribeira: 'praga', estacao: 'praga', sanctum: 'praga', neon: 'elysion', forge: 'praga', overgrowth: 'praga' };
-for (const id of Object.keys(SOURCE_MAP_CATALOG)) {
-  const data=SOURCE_MAP_CATALOG[id];
-  MAPS[id]={name:data.name,theme:WINGMAN_THEMES[id]||'praga',bomb:true,source:id,ax:data.ax,az:data.az,author:data.credit,
-    credit:data.original?data.name+' · mapa original':data.name+' · mapa de '+data.credit,
-    spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
-}
-
 if (!MAPS[S.dmMap]?.dm) S.dmMap = 'deathmatch';
 MAPS.aimbotz = {
   name: 'Practice', theme: 'azul', ax: 18, az: 14, practice: true,
@@ -1270,15 +1259,16 @@ MAPS.aimbotz = {
     B.solid([-18, 0, 7], [18, .28, 14], K.plat);
   },
 };
-for(const [id,data]of Object.entries(WARFACE_MAP_CATALOG))MAPS[id]={name:data.name,theme:id==='palace'?'elysion':'praga',source:id,bomb:true,warface:true,ax:data.ax,az:data.az,
+// Plant the Bomb (5v5 e Wingman): Sandstone, convertido do GLB do autor (amogusstrikesback2, CC-BY 4.0) por
+// tools/import-sandstone.mjs; o nick dele aparece no menu e na miniatura. Barreiras do spawn: fase de compra (bombBarriers).
+for(const [id,data]of Object.entries(WARFACE_MAP_CATALOG))MAPS[id]={name:data.name,theme:'praga',source:id,bomb:true,warface:true,ax:data.ax,az:data.az,
+  author:data.credit,credit:data.name+' · mapa de '+data.credit,barriers:data.barriers||[],
   spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
-// Factory 5v5: mapa próprio de guilhxrme e João (autoria declarada nos metadados do GLB enviado).
-if(MAPS.factory)MAPS.factory.credit='Factory 5v5 · guilhxrme e João';
 MAPS.infernoprefire={name:'Inferno · Prefire',theme:'terracota',source:'inferno',practice:true,
   ax:INFERNO_PREFIRE.ax,az:INFERNO_PREFIRE.az,
   plant:{t:[INFERNO_PREFIRE.spawn],ct:INFERNO_PREFIRE.spots.map(p=>[p.x,p.z,p.yaw,p.y])}};
 const MAP_IDS = Object.keys(MAPS).filter(id => !MAPS[id].dm && !MAPS[id].practice && !MAPS[id].bomb);
-const BOMB_MAPS = Object.keys(MAPS).filter(id => MAPS[id].bomb&&!MAPS[id].warface);
+const BOMB_MAPS = Object.keys(MAPS).filter(id => MAPS[id].bomb);
 const WARFACE_MAPS=Object.keys(MAPS).filter(id=>MAPS[id].warface);
 const isBombMode=()=>S.mode==='bomb'||S.mode==='wingman';
 const RAMP_FLIP = { '+z': '-z', '-z': '+z', '+x': '-x', '-x': '+x' };
@@ -1326,6 +1316,54 @@ function applySourceFixes(id, parent) {
     }
   }
 }
+// Barreiras do spawn (linhas do autor do mapa, em metros): ativas na fase de compra do Plant the Bomb. Bloqueiam o
+// corpo de todos (o tiro não sai na compra); na vista, paredes translúcidas que somem quando a rodada começa.
+function barriersUp() { return bombOn() && DM.phase === 'freeze' && !!(MAP.barriers && MAP.barriers.length); }
+function barrierDist(px, pz, b) { const dx = b[2] - b[0], dz = b[3] - b[1], l = dx * dx + dz * dz || 1, k = clamp(((px - b[0]) * dx + (pz - b[1]) * dz) / l, 0, 1); return Math.hypot(px - b[0] - dx * k, pz - b[1] - dz * k); }
+function barrierCrosses(ax, az, bx, bz, b) {
+  const side = (x, z) => (b[2] - b[0]) * (z - b[1]) - (b[3] - b[1]) * (x - b[0]), move = (x, z) => (bx - ax) * (z - az) - (bz - az) * (x - ax);
+  return side(ax, az) * side(bx, bz) <= 0 && move(b[0], b[1]) * move(b[2], b[3]) <= 0 && (ax !== bx || az !== bz);
+}
+function barrierHit(ox, oz, nx, nz) {
+  for (const b of MAP.barriers) { const d = barrierDist(nx, nz, b); if (barrierCrosses(ox, oz, nx, nz, b) || (d < RADIUS + .02 && d < barrierDist(ox, oz, b) - 1e-6)) return true; }
+  return false;
+}
+function keepBehindBarriers(e, ox, oz) {
+  if (!barriersUp() || !barrierHit(ox, oz, e.pos.x, e.pos.z)) return;
+  if (!barrierHit(ox, oz, e.pos.x, oz)) { e.pos.z = oz; e.vel.z = 0; }
+  else if (!barrierHit(ox, oz, ox, e.pos.z)) { e.pos.x = ox; e.vel.x = 0; }
+  else { e.pos.x = ox; e.pos.z = oz; e.vel.x = e.vel.z = 0; }
+}
+let barrierGfx = null, siteGfx = null;
+function buildBarrierGfx(parent) {
+  barrierGfx = null; if (!MAP.barriers || !MAP.barriers.length || !THREE.MeshBasicMaterial || !THREE.Group || !THREE.BoxGeometry || !parent || !parent.add) return;
+  const group = new THREE.Group(), wall = new THREE.MeshBasicMaterial({ color: 0x48d6ff, transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide }),
+    edge = new THREE.MeshBasicMaterial({ color: 0x9cecff, transparent: true, opacity: .75, depthWrite: false });
+  for (const b of MAP.barriers) {
+    const len = Math.hypot(b[2] - b[0], b[3] - b[1]), cx = (b[0] + b[2]) / 2, cz = (b[1] + b[3]) / 2, y = Math.min(sourceWorld.ground(b[0], b[1], 3), sourceWorld.ground(cx, cz, 3), sourceWorld.ground(b[2], b[3], 3)), yaw = Math.atan2(b[3] - b[1], b[2] - b[0]);
+    const add = (h, y0, mat, th) => { const m = new THREE.Mesh(new THREE.BoxGeometry(len, h, th), mat); m.position.set(cx, y0 + h / 2, cz); m.rotation.y = -yaw; m.renderOrder = 3; group.add(m); };
+    add(4, y - .05, wall, .04); for (const yy of [y + .02, y + 1.3, y + 2.6, y + 3.9]) add(.05, yy, edge, .06);
+  }
+  parent.add(group); barrierGfx = group;
+}
+// Áreas de plantar destacadas no chão: tinta vermelha translúcida em células de 50 cm que seguem o chão, com borda.
+function buildSiteGfx(parent) {
+  siteGfx = null; const sites = MAP.plant && MAP.plant.sites; if (!sites || !MAP.warface || !THREE.MeshBasicMaterial || !THREE.Group || !THREE.BufferGeometry || !parent || !parent.add) return;
+  const fill = [], line = [], cell = .5, ground = (x, z, ref) => sourceWorld.ground(x, z, ref) + .03;
+  const quad = (out, a, b, c, d) => out.push(...a, ...b, ...c, ...a, ...c, ...d);
+  for (const s of sites) for (const p of (s.parts || [[s.x0, s.z0, s.x1, s.z1]])) {
+    const ref = s.y0 + 1.2, nx = Math.max(1, Math.round((p[2] - p[0]) / cell)), nz = Math.max(1, Math.round((p[3] - p[1]) / cell)), dx = (p[2] - p[0]) / nx, dz = (p[3] - p[1]) / nz;
+    const at = (i, k) => { const x = p[0] + i * dx, z = p[1] + k * dz; return [x, ground(x, z, ref), z]; };
+    for (let i = 0; i < nx; i++) for (let k = 0; k < nz; k++) quad(fill, at(i, k), at(i, k + 1), at(i + 1, k + 1), at(i + 1, k));
+    const w = .14;
+    for (let i = 0; i < nx; i++) for (const k of [0, nz]) { const a = at(i, k), b = at(i + 1, k), o = k ? -w : w; quad(line, a, [b[0], b[1], b[2]], [b[0], b[1], b[2] + o], [a[0], a[1], a[2] + o]); }
+    for (let k = 0; k < nz; k++) for (const i of [0, nx]) { const a = at(i, k), b = at(i, k + 1), o = i ? -w : w; quad(line, a, b, [b[0] + o, b[1], b[2]], [a[0] + o, a[1], a[2]]); }
+  }
+  const group = new THREE.Group(), mesh = (arr, color, opacity) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 })); m.renderOrder = 2; group.add(m); };
+  mesh(fill, 0xd23a2a, .3); mesh(line, 0xff4a35, .8);
+  parent.add(group); siteGfx = group;
+}
+function barriersTick() { if (barrierGfx) barrierGfx.visible = barriersUp(); }
 function buildMap(id) {
   const def = MAPS[id] || MAPS.caixas, K = THEMES[def.theme];
   MAP = Object.assign({ id: MAPS[id] ? id : 'caixas' }, def);
@@ -1335,7 +1373,7 @@ function buildMap(id) {
     if(!sourceWorld)throw new Error('Source map must be loaded before starting');
     if(worldMesh){scene.remove(worldMesh);worldMesh.geometry.dispose();}
     const geo=sourceWorld.geometry(THREE),textured=!!(geo.attributes&&geo.attributes.pattern);
-    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);scene.add(worldMesh);applySourceFixes(def.source,worldMesh);
+    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);scene.add(worldMesh);applySourceFixes(def.source,worldMesh);buildBarrierGfx(worldMesh);buildSiteGfx(worldMesh);
     try{clearDecals();BOT.wp=null;BOT.knowsUntil=0;}catch(e){}
     return;
   }
@@ -1574,7 +1612,7 @@ function physics(e, wx, wz, maxS, jump, dt, accelGoal = maxS) {
     if (hs > BHOP_CAP) { e.vel.x *= BHOP_CAP / hs; e.vel.z *= BHOP_CAP / hs; }
   }
   e.vel.y -= GRAV * dt;
-  if(sourceWorld){if(e===P)sourceWorld.climb(e,wx,wz,jump,RADIUS);sourceWorld.move(e,dt,RADIUS,STEP_UP);return;}
+  if(sourceWorld){const ox=e.pos.x,oz=e.pos.z;if(e===P)sourceWorld.climb(e,wx,wz,jump,RADIUS);sourceWorld.move(e,dt,RADIUS,STEP_UP);keepBehindBarriers(e,ox,oz);return;}
   const p = e.pos, h = e.h;
   // degrau: no chão, sobe sozinho em bordas baixas (fim de rampa, beirada de plataforma)
   const canStep = (x, z, b) => e.onGround && b.max[1] - p.y > 0 && b.max[1] - p.y <= STEP_UP && !overlapAny(x, b.max[1] + 1e-3, z, h);
@@ -3543,7 +3581,8 @@ function keyEvent(c, down, t) {
   else if (k) k.up = t;
 }
 function playerInput(dt, t) {
-  const v = G.view, canMove = P.alive && v.ph !== 'freeze' && locked && !playerBusy() && (G.mode==='dm'?DM.phase==='live':G.mode==='team'?DM.phase==='live'||DM.phase==='end':true);
+  // Fase de compra do Plant the Bomb (como no Valorant): dá para andar no spawn; as barreiras seguram as saídas.
+  const v = G.view, buyWalk = bombOn() && DM.phase === 'freeze', canMove = P.alive && (v.ph !== 'freeze' || buyWalk) && locked && !playerBusy() && (G.mode==='dm'?DM.phase==='live':G.mode==='team'?DM.phase==='live'||DM.phase==='end'||buyWalk:true);
   let fx = 0, fz = 0;
   if (canMove) { if (K('KeyW')) fz += 1; if (K('KeyS')) fz -= 1; if (K('KeyD')) fx += 1; if (K('KeyA')) fx -= 1; }
   if(G.mode==='dm'&&canMove&&(fx||fz||K('Space')))P.safeUntil=0;
@@ -5453,7 +5492,7 @@ const SIDE_NAMES = { t: 'Atacantes', ct: 'Defensores' };
 const bombOn = () => G.mode === 'team' && ARENA.bomb;
 const sideOf = e => e && e.team === BOMB.tTeam ? 't' : 'ct';
 const killReward = w => W[w]?.melee ? 1500 : w === 'he' ? 300 : w === 'sniper' ? 100 : w === 'ump' ? 600 : w === 'bucky' ? 900 : 300;
-function bombSiteAt(x,z,y) { return (MAP.plant?.sites||[MAP.plant?.site]).find(s=>s&&x>=s.x0&&x<=s.x1&&z>=s.z0&&z<=s.z1&&(!sourceWorld||!fin(y)||y+H_STAND>=s.y0&&y<=s.y1+.15)); }
+function bombSiteAt(x,z,y) { return (MAP.plant?.sites||[MAP.plant?.site]).find(s=>s&&x>=s.x0&&x<=s.x1&&z>=s.z0&&z<=s.z1&&(!s.parts||s.parts.some(p=>x>=p[0]&&x<=p[2]&&z>=p[1]&&z<=p[3]))&&(!sourceWorld||!fin(y)||y+H_STAND>=s.y0&&y<=s.y1+.15)); }
 function bombInSite(x,z,y) { return !!bombSiteAt(x,z,y); }
 // Pistola inicial como no CS: Glock para os Atacantes, USP-S para os Defensores.
 const bombPistol = e => sideOf(e) === 't' ? 'glock' : 'usps';
@@ -5485,6 +5524,8 @@ function refillOne(e, k) { if (!e.ammo) refillAmmo(e); e.ammo[k] = { mag: W[k].m
 // Pode comprar: rodada na preparação ou nos primeiros 20 s, vivo e perto do próprio spawn.
 function bombCanBuy(e, t) {
   if (!bombOn() || !e.alive || !(DM.phase === 'freeze' || (DM.phase === 'live' && t < BOMB.roundStart + BOMB.buyMs))) return false;
+  // Com barreiras, na fase de compra ninguém sai do spawn: compra em qualquer ponto dele.
+  if (DM.phase === 'freeze' && MAP.barriers && MAP.barriers.length) return true;
   const list = MAP.plant[sideOf(e)]; return list.some(([x, z]) => Math.hypot(e.pos.x - x, e.pos.z - z) < 10);
 }
 function bombPrice(e, item) {
@@ -5874,7 +5915,7 @@ function bombGoalCell(b, t) {
       if (mates.some(o => Math.hypot(o.pos.x - st.x, o.pos.z - st.z) - mine > 8)) return dmCell(b.pos.x, b.pos.z, b.pos.y);
       return dmCell(st.x + ai.spread[0], st.z + ai.spread[1], st.y);
     }
-    if (BOMB.carrier === b.id) { const s = S.site; if (!b.plantSpot) b.plantSpot = [s.x0 + 1 + Math.random() * Math.max(0, s.x1 - s.x0 - 2), s.z0 + 1 + Math.random() * Math.max(0, s.z1 - s.z0 - 2)]; return dmCell(b.plantSpot[0], b.plantSpot[1], fin(s.y0) ? s.y0 : undefined); }
+    if (BOMB.carrier === b.id) { const s = S.site, r = s.parts ? s.parts[Math.floor(Math.random() * s.parts.length)] : [s.x0, s.z0, s.x1, s.z1]; if (!b.plantSpot) b.plantSpot = [r[0] + 1 + Math.random() * Math.max(0, r[2] - r[0] - 2), r[1] + 1 + Math.random() * Math.max(0, r[3] - r[1] - 2)]; return dmCell(b.plantSpot[0], b.plantSpot[1], fin(s.y0) ? s.y0 : undefined); }
     // Entrada: primeiro passa pela entrada combinada, depois toma a posição no site.
     if (!ai.entered) { if (Math.hypot(b.pos.x - ai.entry.x, b.pos.z - ai.entry.z) < 2.5) ai.entered = true; else return cell(ai.entry); }
     return cell(ai.post);
@@ -7441,8 +7482,8 @@ let lobbyRoute = 'bots';
 const MODE_MENU = {
   elim: ['Elimination', 'Escolha de 1 a 8 jogadores em cada time. Uma vida por rodada; bots completam as vagas.'],
   tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
-  bomb: ['Plant the Bomb', '5 contra 5 em Palace e Factory. Atacantes plantam, Defensores defendem.'],
-  wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge e Overgrowth, com as regras do Wingman.'],
+  bomb: ['Plant the Bomb', '5 contra 5 no Sandstone. Atacantes plantam, Defensores defendem.'],
+  wingman: ['Wingman', 'Plant the Bomb 2 contra 2 no Sandstone, com as regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
   aimbotz: ['Practice', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
 };
@@ -7457,14 +7498,7 @@ const MAP_CARD_DETAILS = {
   dust2: 'Long, Meio e Túneis B',
   dmdeposito: 'Contêineres, passarelas e mirante',
   dmborgo: 'Ruelas, igreja e sacadas',
-  palace:'Pedra clara, pátios e passagens do palácio',
-  factory:'Galpões, contêineres e rotas industriais',
-  ribeira: 'Cais, Mercado, Praça e Varanda',
-  estacao: 'Trilhos, Passarela e Galpão',
-  sanctum: 'Mapa de alicate madeira 4',
-  neon: 'Mapa de zelzstorm',
-  forge: 'Mapa de Blind',
-  overgrowth: 'Mapa de jd40',
+  sandstone: 'Mapa de amogusstrikesback2',
 };
 function mountMapCards(group, ids) {
   for (const id of ids) {
@@ -7507,7 +7541,7 @@ function bindChoices(group, activate) {
 }
 mountMapCards($('duelMaps'), [...MAP_IDS, 'rotacao']);
 mountMapCards($('dmMaps'), Object.keys(MAPS).filter(id => MAPS[id].dm));
-mountMapCards($('bombMaps'), [...BOMB_MAPS, 'rotacao']);
+mountMapCards($('bombMaps'), BOMB_MAPS.length > 1 ? [...BOMB_MAPS, 'rotacao'] : BOMB_MAPS);
 mountMapCards($('warfaceMaps'),WARFACE_MAPS);
 function visibleMapRail(){return [...document.querySelectorAll('.map-grid')].find(group=>!group.hidden);}
 function updateMapNav(){
@@ -7563,7 +7597,7 @@ function syncInputs(except) {
   $('practiceMap').hidden = !practice;
   $('mapTitle').textContent = practice ? 'Treino livre' : 'Mapas';
   $('mapInfo').hidden = practice;
-  $('mapInfo').textContent=online?'Vale o mapa de quem criar a sala.':five?'2 mapas':dm?Object.values(MAPS).filter(m=>m.dm).length+' mapas':(bomb?BOMB_MAPS.length+1:MAP_IDS.length+1)+' opções';
+  $('mapInfo').textContent=online?'Vale o mapa de quem criar a sala.':five?WARFACE_MAPS.length+(WARFACE_MAPS.length>1?' mapas':' mapa'):dm?Object.values(MAPS).filter(m=>m.dm).length+' mapas':(bomb?BOMB_MAPS.length+(BOMB_MAPS.length>1?1:0):MAP_IDS.length+1)+(bomb&&BOMB_MAPS.length===1?' mapa':' opções');
   $('dmOptions').hidden=!dm;
   $('duelBotControls').hidden = dm || practice || online&&!duo;
   $('equipmentField').hidden=practice;
@@ -7752,6 +7786,7 @@ function frame() {
   if(!$('opPick').hidden){renderOperatorPreview(t);return;}
   if(!G.mode)return;
   playerInput(dt, t);
+  barriersTick();
   if (G.mode === 'dm') {
     if(ARENA.net&&!ARENA.host)dmGuestTick(dt,t);else{if(ARENA.net)arenaUpdateProxies(t);dmTick(dt,t);}
     if(ARENA.net)arenaNetTick(t);

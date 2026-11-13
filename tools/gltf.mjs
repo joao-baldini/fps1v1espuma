@@ -26,8 +26,9 @@ export class Gltf {
       const node=doc.nodes[id],m=multiply(parent,transform(node));
       if(node.mesh!==undefined)for(const primitive of doc.meshes[node.mesh].primitives){
         if(primitive.mode!==undefined&&primitive.mode!==4)throw Error('Expected triangle mesh');
-        const vertices=reader.accessor(primitive.attributes.POSITION),index=primitive.indices===undefined?null:reader.accessor(primitive.indices),count=index?index.count:vertices.count;
-        for(let i=0;i<count;i+=3){const p=[0,1,2].map(k=>{const q=index?index.get(i+k):i+k,x=vertices.get(q,0),y=vertices.get(q,1),z=vertices.get(q,2);return [m[0]*x+m[4]*y+m[8]*z+m[12],m[1]*x+m[5]*y+m[9]*z+m[13],m[2]*x+m[6]*y+m[10]*z+m[14]];});yield {p,material:primitive.material??0,node:node.name};}
+        const vertices=reader.accessor(primitive.attributes.POSITION),index=primitive.indices===undefined?null:reader.accessor(primitive.indices),count=index?index.count:vertices.count,tex=primitive.attributes.TEXCOORD_0===undefined?null:reader.accessor(primitive.attributes.TEXCOORD_0);
+        for(let i=0;i<count;i+=3){const ids=[0,1,2].map(k=>index?index.get(i+k):i+k),p=ids.map(q=>{const x=vertices.get(q,0),y=vertices.get(q,1),z=vertices.get(q,2);return [m[0]*x+m[4]*y+m[8]*z+m[12],m[1]*x+m[5]*y+m[9]*z+m[13],m[2]*x+m[6]*y+m[10]*z+m[14]];});
+          yield {p,material:primitive.material??0,node:node.name,...(tex?{uv:ids.map(q=>[tex.get(q,0),tex.get(q,1)])}:{})};;}
       }
       for(const child of node.children||[])yield*visit(reader,child,m);
     };

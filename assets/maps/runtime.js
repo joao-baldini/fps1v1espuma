@@ -244,7 +244,7 @@
   }
   async function load(id){
     if(cache.has(id))return cache.get(id);if(pending.has(id))return pending.get(id);
-    if(!['ribeira','estacao','sanctum','neon','forge','overgrowth','inferno','palace','factory'].includes(id))throw Error('Unknown Source map');
+    if(!['sandstone','inferno'].includes(id))throw Error('Unknown Source map');
     const job=(async()=>{
       if(!globalThis.SOURCE_MAP_PAYLOADS?.[id])await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='assets/maps/'+id+'.js';script.onload=resolve;script.onerror=()=>reject(Error('Não foi possível carregar '+id));document.head.append(script);});
       const packed=array(Uint8Array,globalThis.SOURCE_MAP_PAYLOADS[id]),stream=new Blob([packed]).stream().pipeThrough(new DecompressionStream('gzip')),data=JSON.parse(await new Response(stream).text());

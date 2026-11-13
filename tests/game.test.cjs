@@ -6,13 +6,13 @@ const vm = require('node:vm');
 const { gunzipSync } = require('node:zlib');
 require('../assets/maps/runtime.js');
 require('../assets/agents/models.js');
-const sourceCatalog={};vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/catalog.js'),'utf8'),sourceCatalog);
-vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/prefire-catalog.js'),'utf8'),sourceCatalog);
+const sourceCatalog={};vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/prefire-catalog.js'),'utf8'),sourceCatalog);
 vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/warface-catalog.js'),'utf8'),sourceCatalog);
 const sourcePacked={};
-const WINGMAN=['ribeira','estacao','sanctum','neon','forge','overgrowth'];
-for(const id of [...WINGMAN,'inferno','palace','factory']){
-  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:ribeira|estacao|sanctum|neon|forge|overgrowth|inferno|palace|factory)=("[A-Za-z0-9+/=]+");/);
+// Plant the Bomb (5v5 e Wingman) usa só o Sandstone.
+const WINGMAN=['sandstone'];
+for(const id of [...WINGMAN,'inferno']){
+  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:sandstone|inferno)=("[A-Za-z0-9+/=]+");/);
   assert.ok(encoded,'Missing generated BSP payload: '+id);sourcePacked[id]=JSON.parse(gunzipSync(Buffer.from(JSON.parse(encoded[1]),'base64')));
 }
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8');
@@ -38,7 +38,7 @@ function game(saved) {
   const floor = { min: [-1000, -1, -1000], max: [1000, 0, 1000] };
   const sourceInstances=new Map(),SourceMaps={get:id=>{if(!sourceInstances.has(id)){const map=new globalThis.SourceMaps.NativeMap(sourcePacked[id]);map.geometry=()=>({dispose(){}});sourceInstances.set(id,map);}return sourceInstances.get(id);}};
   const context = vm.createContext({
-    SOURCE_MAP_CATALOG:sourceCatalog.SOURCE_MAP_CATALOG,INFERNO_PREFIRE:sourceCatalog.INFERNO_PREFIRE,WARFACE_MAP_CATALOG:sourceCatalog.WARFACE_MAP_CATALOG,SourceMaps,sourceWorld:null,sourceGlassMat:null,
+    INFERNO_PREFIRE:sourceCatalog.INFERNO_PREFIRE,WARFACE_MAP_CATALOG:sourceCatalog.WARFACE_MAP_CATALOG,SourceMaps,sourceWorld:null,sourceGlassMat:null,
     performance: { now: () => clock }, localStorage: { getItem: () => saved ? JSON.stringify(saved) : null }, V3: Vec,
     boxes: [floor], ramps: [], STEP_UP: .5, AX: 30, AZ: 30, C: 1.2, WALL_H: 7,
     THREE: { Color: class {}, Mesh: class { constructor(geometry) { this.geometry = geometry; } } },
@@ -1478,7 +1478,7 @@ test('a quick click still waits for the pin, and both buttons throw at medium ra
   g.updateWeapon(0, 40500); assert.equal(vm.runInContext('NADE.list.length', cx), 1);
 });
 
-function bombWorld(map = 'sanctum', setup) {
+function bombWorld(map = 'sandstone', setup) {
   const g = game({ mode: 'bomb' }), cx = g.context;
   cx.G.mode = 'team'; cx.buildMap(map); vm.runInContext('dmBuildNav([])', cx);
   Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } } });
@@ -1489,26 +1489,25 @@ function bombWorld(map = 'sanctum', setup) {
   const step = (from, ms, each) => { let t = from; for (; t < from + ms; t += 1000 / 30) { g.tick(t); vm.runInContext(`teamTick(1/30,${t});nadesTick(1/30,${t})`, cx); if (each && each(t)) break; } return t; };
   return { g, cx, A, BM, step };
 }
-test('Wingman maps keep the BSP spawns, connected floors and bombsites, credit their authors and use light textures',()=>{
-  const expected={ribeira:{sites:1,author:undefined},estacao:{sites:1,author:undefined},sanctum:{sites:1,author:'alicate madeira 4'},neon:{sites:1,author:'zelzstorm'},forge:{sites:2,author:'Blind'},overgrowth:{sites:2,author:'jd40'}};
-  for(const [key,want]of Object.entries(expected)){
-    const g=game({mode:'bomb'}),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const source=cx.sourceWorld,meta=source.meta,map=g.MAPS[key];
-    assert.equal(g.DM.nav.audit.spawnsConnected,g.DM.nav.audit.spawnsTotal,key+': todos os spawns ligados');assert.ok(meta.t.length>=2&&meta.ct.length>=2);
-    assert.equal(meta.sites.length,want.sites,key);assert.equal(map.author,want.author);
-    if(want.author){assert.ok(map.credit.includes(want.author));assert.equal(meta.credit,want.author);}else assert.equal(map.credit,map.name+' · mapa original');
-    for(const p of meta.t.concat(meta.ct)){const y=source.ground(p[0],p[1],p[3]);assert.ok(Number.isFinite(y)&&Math.abs(y-p[3])<1,key);assert.equal(source.overlap(p[0],y+.03,p[1],1.8,.3),false,key+' spawn livre');}
-    for(const site of meta.sites){const x=(site.x0+site.x1)/2,z=(site.z0+site.z1)/2;assert.equal(cx.bombInSite(x,z,site.y0),true,key+' '+site.name);assert.equal(cx.bombInSite(x,z,site.y1+1.8),false,'cannot plant from a floor above the site');}
-    assert.ok(source.mesh.opaque>0);assert.ok(source.count<45000);assert.equal(meta.sourceSha256.length,64);
-    // Textura leve: cada vértice tem coordenadas de textura e um dos 11 padrões procedurais; nada de imagens.
-    const packed=sourcePacked[key],uv=Buffer.from(packed.mesh.uv,'base64'),pat=Buffer.from(packed.mesh.pattern,'base64'),pos=Buffer.from(packed.mesh.position,'base64');
-    assert.equal(uv.length/8,pos.length/12);assert.equal(pat.length,pos.length/12);assert.ok([...pat].every(v=>v<=10));
-    const used=new Set(pat);assert.ok(used.size>=5,key+' usa vários padrões: '+[...used]);
-    for(let p=0;p<pos.length;p+=12)for(let axis=0;axis<3;axis++){const v=pos.readFloatLE(p+axis*4);assert.ok(v>=meta.bounds[axis]-.001&&v<=meta.bounds[axis+3]+.001,key+' recortado na área jogável');}
-    // Miniatura do menu com o nick do autor (gerada a partir do mapa).
-    for(const dir of ['','thumb/'])assert.ok(readFileSync(resolve(__dirname,'../assets/menu/play/'+dir+key+'.webp')).length>3000);
-  }
-  assert.equal(require('node:fs').existsSync(resolve(__dirname,'../assets/maps/guard.js')),false,'Guard saiu do Wingman');
-  assert.equal(require('node:fs').existsSync(resolve(__dirname,'../assets/maps/elysion.js')),false,'Elysion saiu do Wingman');
+test('Sandstone is the only Plant the Bomb map (5v5 and Wingman): author credit, safe spawns, two bombsites and light textures',()=>{
+  const g0=game();assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',g0.context)),['sandstone']);assert.deepEqual(Array.from(vm.runInContext('WARFACE_MAPS',g0.context)),['sandstone']);
+  for(const old of ['ribeira','estacao','sanctum','neon','forge','overgrowth','palace','factory','catalog'])assert.equal(require('node:fs').existsSync(resolve(__dirname,'../assets/maps/'+old+'.js')),false,old+' saiu do jogo');
+  const key='sandstone',g=game({mode:'bomb'}),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const source=cx.sourceWorld,meta=source.meta,map=g.MAPS[key];
+  assert.equal(g.DM.nav.audit.spawnsConnected,g.DM.nav.audit.spawnsTotal,'todos os spawns ligados');assert.equal(meta.t.length,5);assert.equal(meta.ct.length,5);
+  assert.equal(map.author,'amogusstrikesback2');assert.equal(map.credit,'Sandstone · mapa de amogusstrikesback2');assert.equal(meta.credit,'amogusstrikesback2');
+  // Atacantes no alto do minimapa do autor (+z), Defensores embaixo (-z).
+  assert.ok(meta.t.every(p=>p[1]>25)&&meta.ct.every(p=>p[1]<-25));
+  for(const p of meta.t.concat(meta.ct)){const y=source.ground(p[0],p[1],p[3]);assert.ok(Number.isFinite(y)&&Math.abs(y-p[3])<1);assert.equal(source.overlap(p[0],y+.03,p[1],1.8,.3),false,'spawn livre');}
+  assert.deepEqual(meta.sites.map(s=>s.name),['A','B']);
+  for(const site of meta.sites){assert.equal(cx.bombInSite(site.lx,site.lz,site.y0),true,site.name);assert.equal(cx.bombInSite(site.lx,site.lz,site.y1+1.8),false,'cannot plant from a floor above the site');
+    for(const p of site.parts){const x=(p[0]+p[2])/2,z=(p[1]+p[3])/2;assert.equal(cx.bombInSite(x,z,source.ground(x,z,site.y1)),true,site.name+' parte');}}
+  // O B é em L (duas partes): o canto da caixa que fica fora do L não conta como área de plantar.
+  const B=meta.sites[1],out=[(B.parts[1][0]+B.parts[1][2])/2,(B.parts[1][3]+B.parts[0][3])/2];assert.ok(out[0]<B.parts[0][0]&&out[1]>B.parts[1][3]);assert.equal(cx.bombInSite(out[0],out[1],0),false);
+  assert.ok(source.mesh.opaque>0);assert.ok(source.count<45000);assert.equal(meta.sourceSha256.length,64);
+  const packed=sourcePacked[key],uv=Buffer.from(packed.mesh.uv,'base64'),pat=Buffer.from(packed.mesh.pattern,'base64'),pos=Buffer.from(packed.mesh.position,'base64');
+  assert.equal(uv.length/8,pos.length/12);assert.equal(pat.length,pos.length/12);assert.ok([...pat].every(v=>v<=10));assert.ok(new Set(pat).size>=5);
+  for(let p=0;p<pos.length;p+=12)for(let axis=0;axis<3;axis++){const v=pos.readFloatLE(p+axis*4);assert.ok(v>=meta.bounds[axis]-.001&&v<=meta.bounds[axis+3]+.001);}
+  for(const dir of ['','thumb/'])assert.ok(readFileSync(resolve(__dirname,'../assets/menu/play/'+dir+key+'.webp')).length>3000);
 });
 test('actual player physics follows the native paths from T to CT and to every active bombsite',()=>{
   for(const key of WINGMAN){
@@ -1569,7 +1568,7 @@ test('the player plants only inside the site, the bomb defuses faster with a kit
   cx.bombPlayerAction(1 / 30, t + 9100); assert.equal(g.DM.phase, 'end'); assert.equal(A.why, 'defuse'); assert.equal(A.win, g.P.team);
 });
 test('a short bot match plays rounds with plants or eliminations, swaps sides at the half and ends at the target', () => {
-  const { g, cx, A, BM, step } = bombWorld('sanctum', 'BOMB.half=2;BOMB.target=3;BOMB.maxRounds=4;');
+  const { g, cx, A, BM, step } = bombWorld('sandstone', 'BOMB.half=2;BOMB.target=3;BOMB.maxRounds=4;');
   const sides = [], reasons = new Set(); let plants = 0, lastRound = 0;
   let t = step(10000, 900000, t => {
     if (A.r !== lastRound) { lastRound = A.r; sides.push(BM.tTeam); }
@@ -1978,7 +1977,7 @@ test('Plant the Bomb bots: the map study finds attacker entrances, hidden gather
   }
 });
 test('Plant the Bomb bots walk together: the one far ahead waits, the group executes together, and holders watch instead of chasing noise', () => {
-  const { g, cx, step } = bombWorld('sanctum');
+  const { g, cx, step } = bombWorld('sandstone');
   const ev = s => vm.runInContext(s, cx);
   ev('ARENA.sizes = DM.byId.get(G.me).team===0 ? [3,2] : [2,3]; arenaBuildActors(teamRoster()); dmRefreshTargets();');
   let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500, () => { g.P.alive = false; });
@@ -1995,7 +1994,7 @@ test('Plant the Bomb bots walk together: the one far ahead waits, the group exec
   assert.equal(holder.watch, holder.lastSeen, 'só vira para o barulho, sem sair da posição');
 });
 test('Plant the Bomb bots use their operator skills with the plan: Detector alarms its entrance, attackers pop Ghost/Brutus/Finder on the execute', () => {
-  const { g, cx, step } = bombWorld('sanctum');
+  const { g, cx, step } = bombWorld('sandstone');
   const ev = s => vm.runInContext(s, cx);
   ev('ARENA.sizes = DM.byId.get(G.me).team===0 ? [3,2] : [2,3]; arenaBuildActors(teamRoster()); dmRefreshTargets();');
   let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500, () => { g.P.alive = false; });
@@ -2009,7 +2008,7 @@ test('Plant the Bomb bots use their operator skills with the plan: Detector alar
   assert.ok(t1.silentUntil > t, 'Ghost liga os passos mudos na entrada'); assert.ok(t2.toughUntil > t, 'Brutus liga a couraça na entrada');
 });
 test('falling into an abyss kills after the fall, counts as a death without giving anyone a kill, and drops the bomb', () => {
-  const { g, cx, step } = bombWorld('neon');
+  const { g, cx, step } = bombWorld('sandstone');
   const ev = s => vm.runInContext(s, cx);
   let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500);
   const floor = ev('sourceWorld.floorMin');
@@ -2209,27 +2208,20 @@ test('Prefire: the first approach opens one holding angle instead of several sim
 });
 
 
-test('Factory 5v5 credits guilhxrme e João and keeps the registered source of their GLB', () => {
-  const g = game(); assert.equal(g.MAPS.factory.credit, 'Factory 5v5 · guilhxrme e João');
-  const report = JSON.parse(readFileSync(resolve(__dirname, '..', 'assets/maps/factory-source.json'), 'utf8'));
-  assert.equal(report.sourceSha256, '31da400e3b909d5a18af65f60f888a91c1777f7100748cffde53483213d3930b'); assert.equal(report.triangles, 2556);
-});
-test('Warface 5v5: two maps, separate Wingman choices, ten distinct safe spawns and connected bombsites',()=>{
-  for(const key of ['palace','factory']){
+test('5v5 on Sandstone: ten distinct safe spawns, attackers on top and defenders below, two bombsites',()=>{
+  for(const key of ['sandstone']){
     const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();
     assert.equal(g.S.mode,'bomb');assert.equal(g.S.warfaceMap,key);assert.equal(g.MAPS[key].warface,true);
     assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',cx)),WINGMAN);
     assert.equal(cx.MAP.plant.t.length,5);assert.equal(cx.MAP.plant.ct.length,5);
     for(const side of ['t','ct'])for(let i=0;i<5;i++){const p=cx.MAP.plant[side][i];assert.equal(cx.sourceWorld.overlap(p[0],p[3]+.005,p[1],1.8,.3),false);for(let j=0;j<i;j++){const q=cx.MAP.plant[side][j];assert.ok(Math.hypot(p[0]-q[0],p[1]-q[1])>=1.35);}}
-    if(key==='palace')assert.ok(cx.MAP.plant.ct.every(p=>p[1]<0)&&cx.MAP.plant.t.every(p=>p[1]>0),'Palace defenders at top, attackers at bottom');
-    else assert.ok(cx.MAP.plant.ct.every(p=>p[0]<0)&&cx.MAP.plant.t.every(p=>p[0]>0),'Factory follows the original blue-left/red-right bases');
-    assert.equal(cx.MAP.plant.sites.length,2);assert.ok(cx.sourceWorld.mesh.opaque/3<3000);
-    const report=JSON.parse(readFileSync(resolve(__dirname,'../assets/maps/'+key+'-source.json'),'utf8'));assert.ok(report.sourceSha256.length===64);
+    assert.ok(cx.MAP.plant.ct.every(p=>p[1]<0)&&cx.MAP.plant.t.every(p=>p[1]>0),'Defensores embaixo (-z), Atacantes em cima (+z)');
+    assert.equal(cx.MAP.plant.sites.length,2);assert.ok(cx.sourceWorld.mesh.opaque/3<130000);assert.equal(cx.sourceWorld.meta.sourceSha256.length,64);
   }
 });
 
-test('Warface: actual walking reaches both bombsites and the opposite base from both teams without jumping',()=>{
-  for(const key of ['palace','factory']){
+test('Sandstone: actual walking reaches both bombsites and the opposite base from both teams without jumping',()=>{
+  for(const key of ['sandstone']){
     const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();const nav=g.DM.nav,map=cx.MAP;
     for(const side of ['t','ct'])for(const goal of [...map.plant.sites.map(s=>[s.lx,s.lz,0,s.y0+.1]),map.plant[side==='t'?'ct':'t'][0]]){
       const start=map.plant[side][0],actor={pos:new Vec(start[0],start[3]+.002,start[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
@@ -2238,14 +2230,14 @@ test('Warface: actual walking reaches both bombsites and the opposite base from 
         while(Math.hypot(x-actor.pos.x,z-actor.pos.z)>.16&&frames++<400){const dx=x-actor.pos.x,dz=z-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,Math.min(4.5,d*10),false,1/128);}
         assert.ok(frames<400,key+' '+side+' blocked at '+id+' '+JSON.stringify(actor.pos));assert.ok(Number.isFinite(actor.pos.y)&&actor.pos.y>-5);
       }
-      assert.ok(Math.hypot(actor.pos.x-goal[0],actor.pos.z-goal[1])<1,key+' missed destination');
+      assert.ok(Math.hypot(actor.pos.x-goal[0],actor.pos.z-goal[1])<1,key+' '+side+' missed destination '+JSON.stringify(goal)+' at '+JSON.stringify(actor.pos));
     }
   }
 });
 
 
 test('5v5 starts ten actors on the authored attacking and defending bases using the existing bomb rules',()=>{
-  for(const key of ['palace','factory']){const {g,cx,A,BM,step}=bombWorld(key,"S.mode='bomb'");step(10000,1100);
+  for(const key of ['sandstone']){const {g,cx,A,BM,step}=bombWorld(key,"S.mode='bomb'");step(10000,1100);
     assert.deepEqual(Array.from(A.sizes),[5,5]);assert.equal(A.bomb,true);assert.equal(g.DM.bots.length,9);assert.equal(g.DM.actors.length,10);
     assert.equal(g.DM.phase,'freeze');assert.ok(g.DM.actors.every(e=>e.alive&&e.hp===100));
     for(const e of g.DM.actors){const side=e.team===BM.tTeam?'t':'ct';assert.ok(cx.MAP.plant[side].some(p=>Math.hypot(e.pos.x-p[0],e.pos.z-p[1])<.1));}
@@ -2253,8 +2245,26 @@ test('5v5 starts ten actors on the authored attacking and defending bases using 
   }
 });
 
-test('native stairs and slopes stay walkable with varied approach offsets in the Wingman maps, Prefire and Palace',()=>{
-  for(const key of [...WINGMAN,'infernoprefire','palace']){
+test('buy phase like Valorant: everyone walks inside the spawn, the barriers hold the exits until the round starts, buying works anywhere in the spawn',()=>{
+  const {g,cx,BM,step}=bombWorld('sandstone',"S.mode='bomb'");step(10000,1100);const ev=s=>vm.runInContext(s,cx);
+  assert.equal(g.DM.phase,'freeze');assert.equal(ev('barriersUp()'),true);const bars=cx.MAP.barriers;assert.equal(bars.length,5);
+  // Cada barreira: quem vem do lado do spawn anda até ela e para; depois que a rodada começa, passa.
+  const tSpawn=cx.MAP.plant.t[0],ctSpawn=cx.MAP.plant.ct[0];
+  for(const b of bars){
+    const mx=(b[0]+b[2])/2,mz=(b[1]+b[3])/2,nx=-(b[3]-b[1]),nz=b[2]-b[0],nl=Math.hypot(nx,nz),home=Math.abs(mz-tSpawn[1])<Math.abs(mz-ctSpawn[1])?tSpawn:ctSpawn;
+    let sx=nx/nl,sz=nz/nl;if((home[0]-mx)*sx+(home[1]-mz)*sz<0){sx=-sx;sz=-sz;}
+    const run=live=>{ev(live?"DM.phase='live'":"DM.phase='freeze'");const y=cx.sourceWorld.ground(mx+sx*1.2,mz+sz*1.2,3),a={pos:new Vec(mx+sx*1.2,y+.002,mz+sz*1.2),vel:new Vec(),h:1.8,onGround:true,crouch:false,landSpread:0};
+      for(let f=0;f<200;f++)g.physics(a,-sx,-sz,4.5,false,1/128);return (a.pos.x-mx)*sx+(a.pos.z-mz)*sz;};
+    assert.ok(run(false)>.25,'barreira segura na compra '+b);assert.ok(run(true)<-.5,'barreira some com a rodada '+b);
+  }
+  ev("DM.phase='freeze'");g.P.pos.set(tSpawn[0],tSpawn[3],tSpawn[1]);
+  // compra em qualquer ponto do spawn, mesmo longe dos pontos de nascimento
+  const far=cx.MAP.plant[g.P.team===BM.tTeam?'t':'ct'][0];g.P.pos.set(far[0]+11,far[3],far[1]);assert.equal(cx.bombCanBuy(g.P,ev('now()')),true);
+  ev("DM.phase='live'");assert.equal(ev('barriersUp()'),false);
+});
+
+test('native stairs and slopes stay walkable with varied approach offsets in Sandstone and Prefire',()=>{
+  for(const key of [...WINGMAN,'infernoprefire']){
     const g=game(),cx=g.context;cx.buildMap(key);g.dmBuildNav();const n=g.DM.nav,map=cx.sourceWorld,edges=[];
     for(const a of n.walk)for(let d=0;d<4;d++){const b=n.links[a*4+d];if(b<0)continue;const rise=n.height[b]-n.height[a];if(rise<.08||rise>.505)continue;if(map.overlap(n.x[a],n.height[a]+.005,n.z[a],1.8,.3)||map.overlap(n.x[b],n.height[b]+.005,n.z[b],1.8,.3))continue;edges.push([a,b]);}
     assert.ok(edges.length>20,key);let attempts=0;

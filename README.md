@@ -9,17 +9,15 @@ Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de min
 | Modo | Sozinho | Online |
 |---|---|---|
 | Elimination | Times de 1 a 8 de cada lado (1v1, 2v2, 1v5, 5v5, 8v8…), completados por bots | Sala para até 16 pessoas, no tamanho escolhido por quem cria |
-| Plant the Bomb | 5 contra 5 em Palace ou Factory, dois bombsites; você + 4 aliados contra 5 bots | — |
-| Wingman | Plant the Bomb 2 contra 2 em Guard ou Elysion, regras do Wingman; você e um bot contra dois bots | — |
+| Plant the Bomb | 5 contra 5 no Sandstone, dois bombsites; você + 4 aliados contra 5 bots | — |
+| Wingman | Plant the Bomb 2 contra 2 no Sandstone, regras do Wingman; você e um bot contra dois bots | — |
 | TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
 | Practice | Treino livre de mira com 1 a 12 bots | — |
 
 **Modos antigos:** 1v1, 2v2 e XvX viraram um modo só, o **Elimination**: ao clicar nele você já escolhe quantos jogadores tem em cada time, e um duelo é só o 1 contra 1. O antigo Plant the Bomb 2v2 virou o **Wingman**, e o antigo 5v5 virou o **Plant the Bomb**. Configurações salvas migram sozinhas (quem estava no 1v1 cai no Elimination 1v1, no 2v2 cai no 2v2).
 
-**Plant the Bomb (5v5):** escolha o modo na lista, depois **Palace** ou **Factory**. O **Factory 5v5** é um mapa próprio de **guilhxrme e João**, recriado a partir do GLB deles com proporções ajustadas ao jogador: 1,5× na horizontal e a altura original. O crédito aparece no menu e no início da partida. É uma base que reutiliza as regras de bomba e a IA já existentes; não há uma nova lógica tática específica para esses mapas. Há cinco pontos de nascimento separados por lado. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e aliados; inimigos não aparecem. Os spawns são **azul = defensor**, **vermelho = atacante**. No Palace, a defesa fica na parte superior e o ataque na inferior; no Factory, as bases seguem a orientação da referência original, defesa à esquerda e ataque à direita.
-
-Os dois modelos enviados foram convertidos offline, com cores chapadas inspiradas nas referências originais do Warface. As imagens de seleção vêm dos próprios mapas do jogo, em 1280 × 720, sem carregar cenas 3D no menu. Os GLBs originais e as ferramentas de revisão não são necessários para jogar.
+**Plant the Bomb (5v5):** escolha o modo na lista. O mapa é o **Sandstone**, de **amogusstrikesback2** (crédito no menu e no início da partida). Há cinco pontos de nascimento separados por lado: os **Atacantes** começam no alto do mapa e os **Defensores** embaixo. Os dois bombsites ficam pintados de vermelho no chão: o **A** é o piso de lajotas, o **B** é a área em L em volta do chafariz. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e os aliados; inimigos não aparecem.
 
 ## Como jogar com seu parceiro
 
@@ -40,11 +38,12 @@ No **Elimination**, escolha o tamanho de **Seu time** e do **Time inimigo** (1 a
 
 ## Wingman e Plant the Bomb
 
-Atacantes contra Defensores. O **Wingman** é o Plant the Bomb 2 contra 2 em Guard e Elysion, com as regras do modo Wingman do CS; o **Plant the Bomb** é o 5 contra 5 em Palace e Factory, com as mesmas regras de bomba, economia e operadores. Antes da partida você escolhe um **operador**.
+Atacantes contra Defensores. O **Wingman** é o Plant the Bomb 2 contra 2, com as regras do modo Wingman do CS; o **Plant the Bomb** é o 5 contra 5, com as mesmas regras de bomba, economia e operadores. Os dois usam o **Sandstone**. Antes da partida você escolhe um **operador**.
 
 Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu, igual nos dois times. Quem é quem fica pelos contornos, como no Valorant. Os aliados aparecem através das paredes com o corpo inteiro preenchido em azul-água e uma borda mais forte. Os inimigos têm um contorno fino só na borda de fora da silhueta (sem linhas entre cabeça, tronco e pernas), que não atravessa paredes. Por padrão ele é vermelho, e em **Configurações → Vídeo → Contorno dos inimigos** dá para trocar para amarelo ou roxo. A mesma cor vale para as silhuetas e os pontos no minimapa do Finder e do Detector. Os contornos também valem no 1v1, 2v2, XvX, TDM e DM: o aliado azul-água só existe onde há time.
 
 - **Partida:** primeiro a 9 rodadas, troca de lado depois da 8ª (a economia recomeça); 8 a 8 termina empatado.
+- **Fase de compra (como no Valorant):** nos 10 s de preparação todos andam livremente pelo próprio spawn; barreiras azuis translúcidas fecham as saídas e somem quando a rodada começa. Dá para comprar em qualquer ponto do spawn.
 - **Tempos:** 10 s de preparação, compra até 20 s depois do início da rodada, 1:30 de rodada, bomba de 40 s. Plantar leva 3,2 s; desarmar leva 10 s, ou 5 s com kit.
 - **Economia (Wingman):** $800 iniciais e teto de $8.000. A vitória paga $2.750 por eliminação ou tempo esgotado e $3.000 por desarme ou detonação. A derrota paga $2.000, $2.300, $2.600 e no máximo $2.900 por derrotas seguidas, voltando ao início quando o time vence; os Atacantes que plantaram e perderam ganham mais $600. Plantar ou desarmar paga $300. O abate paga conforme a arma: faca $1.500, escopeta $900, SMG $600, AWP $100 e o resto $300.
 - **Loja (B):** pistolas, SMG e escopeta, rifles (AK, Galil e Glock só para Atacantes; M4, FAMAS, USP-S e kit só para Defensores). A loja só lista o que o seu lado pode comprar. Como no CS, os Atacantes começam com a Glock e os Defensores com a USP-S. Os bots compram a Galil ou a FAMAS quando não dá para o rifle cheio com colete, precisão, granadas (1 HE, 2 flashes, 1 smoke, até 4 no total) e equipamento (colete, colete + capacete, kit de desarme só para Defensores). Só compra perto do próprio spawn e dentro do tempo. **Botão direito vende** o que foi comprado nesta rodada pelo preço cheio e devolve o equipamento anterior. O colete reduz o dano no corpo conforme a penetração da arma.
@@ -69,7 +68,7 @@ Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu
 - **Armas no chão:** **G** larga a arma que está na mão (ou a C4). Quem morre deixa cair a melhor arma que tinha: a primária ou, sem ela, a pistola. Passar por cima pega a arma se o espaço dela estiver vazio; com o espaço ocupado, **E** troca pela sua, que fica no chão. Quem largou a arma só consegue pegar de volta depois de 1,5 s. Os bots sem primária vão buscar uma arma caída a até 14 m, exceto quem está com a bomba ou desarmando. As armas somem na troca de rodada.
 - **Assistir:** quem morre passa a ver, em primeira pessoa, o que um companheiro ainda vivo vê: a mira dele e a arma dele na mão, com o coice e o clarão dos tiros. **Mouse 1** passa para o próximo companheiro e **Mouse 2** volta. Não dá para assistir o time inimigo; sem companheiro vivo (ou no 1 contra 1), a câmera fica parada onde você morreu. Vale no Elimination, no Plant the Bomb e no Wingman.
 - **HUD:** dinheiro, colete, C4, barra de plantar/desarmar e o nome da área onde você está. Com a bomba plantada não há contagem: no lugar do relógio aparece o ícone da C4, que pisca junto com o bipe, cada vez mais rápido, como no CS e no Valorant. O bipe sai da bomba: de longe (mais de 38 m) não se ouve, e o volume aumenta conforme você se aproxima, vindo do lado em que ela está.
-- **Abismo:** quem cai do prédio (o 39º andar do Elysion) morre depois de cerca de 2 s de queda. A morte entra no placar sem dar abate a ninguém e aparece como QUEDA no feed. Se a pessoa estava com a bomba, ela fica no último chão firme onde pisou.
+- **Abismo:** quem cai para fora do chão do mapa morre depois de cerca de 2 s de queda. A morte entra no placar sem dar abate a ninguém e aparece como QUEDA no feed. Se a pessoa estava com a bomba, ela fica no último chão firme onde pisou.
 - **Granadas:** como no CS. Apertar o botão puxa o pino: o braço recua e fica armado enquanto o botão estiver apertado. Ao soltar, o braço arremessa e a granada só sai da mão no meio do movimento. Um clique rápido espera o pino sair. O esquerdo joga longe, o direito joga perto e os dois juntos jogam a meia distância.
 
 ### Operadores
@@ -92,14 +91,9 @@ Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os 
 | Brutus | Couraça: por 5 s recebe 10% menos dano, exceto de headshots. Bots ligam ao entrar numa troca de tiros | Ombreiras amarelas, placa no peito com divisa e protetor de queixo |
 | Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Só um alarme por vez: colocar outro desfaz o anterior. Quem chega a 3,2 m faz ele apitar, aparece como silhueta (na cor do contorno inimigo) no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
 
-### Mapas de bomba
+### Mapa de bomba
 
-**Créditos:** **Guard**, de **poLemin**, e **Elysion**, de **Big_SG21**, convertidos dos BSPs enviados pelo usuário (ports de **Alex Road**). A geometria, os caminhos, os desníveis e as colisões vêm desses arquivos. O acabamento usa cores chapadas dos materiais originais com a grade do jogo, sem carregar as texturas ou os sons dos mapas.
-
-- **Guard:** traçado do arquivo fornecido, incluindo ponte, arcos, escadas, coberturas e escada vertical. Um bombsite A.
-- **Elysion:** recorte **Wingman**, com somente o **A** e as passagens da imagem de referência. A sala lateral continua como passagem; o segundo plant do port foi removido. A casca externa do prédio foi cortada. Spawns selecionados nas salas indicadas pela referência, usando posições do BSP.
-
-Os dados são carregados somente ao entrar nesses mapas e funcionam também abrindo `index.html` por `file://`. A navegação dos bots vem pré-calculada. Há detalhes de conversão, limites e instruções para regenerar os arquivos em [assets/maps/README.md](assets/maps/README.md).
+**Sandstone**, de **amogusstrikesback2** (Sketchfab, CC-BY 4.0), convertido do GLB enviado pelo autor: vila de arenito murada, com casas, palmeiras, mercado e telhados alcançáveis pelas escadas. Os spawns, os bombsites e as barreiras seguem as marcações do autor no minimapa. Detalhes da conversão e instruções para regenerar estão em [assets/maps/README.md](assets/maps/README.md).
 
 ## TDM
 
