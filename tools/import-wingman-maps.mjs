@@ -429,9 +429,9 @@ if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   const args = process.argv.slice(2), keys = Object.keys(WINGMAN_MAPS);
   if (args.length !== keys.length) throw Error('Usage: node tools/import-wingman-maps.mjs ' + keys.map(k => '<' + WINGMAN_MAPS[k].file + '>').join(' '));
   const out = resolve(import.meta.dirname, '../assets/maps'); mkdirSync(out, { recursive: true });
-  // A Ribeira (mapa original, tools/build-ribeira.mjs) continua no catálogo, na frente.
+  // Os mapas originais (tools/build-*.mjs) continuam no catálogo, na frente.
   const previous = {}; try { new Function('globalThis', readFileSync(resolve(out, 'catalog.js'), 'utf8'))(previous); } catch {}
-  const catalog = previous.SOURCE_MAP_CATALOG?.ribeira ? { ribeira: previous.SOURCE_MAP_CATALOG.ribeira } : {};
+  const catalog = Object.fromEntries(Object.entries(previous.SOURCE_MAP_CATALOG || {}).filter(([, v]) => v.original));
   for (const [i, key] of keys.entries()) {
     const map = importWingmanMap(resolve(args[i]), key), packed = packMap(map), bytes = gzipSync(Buffer.from(JSON.stringify(packed)), { level: 9 });
     catalog[key] = { name: map.name, credit: map.credit, ax: map.ax, az: map.az, t: map.t, ct: map.ct, sites: map.sites };

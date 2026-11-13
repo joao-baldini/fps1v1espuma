@@ -10,9 +10,9 @@ const sourceCatalog={};vm.runInNewContext(readFileSync(resolve(__dirname,'../ass
 vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/prefire-catalog.js'),'utf8'),sourceCatalog);
 vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/warface-catalog.js'),'utf8'),sourceCatalog);
 const sourcePacked={};
-const WINGMAN=['ribeira','sanctum','neon','forge','overgrowth'];
+const WINGMAN=['ribeira','estacao','sanctum','neon','forge','overgrowth'];
 for(const id of [...WINGMAN,'inferno','palace','factory']){
-  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:ribeira|sanctum|neon|forge|overgrowth|inferno|palace|factory)=("[A-Za-z0-9+/=]+");/);
+  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:ribeira|estacao|sanctum|neon|forge|overgrowth|inferno|palace|factory)=("[A-Za-z0-9+/=]+");/);
   assert.ok(encoded,'Missing generated BSP payload: '+id);sourcePacked[id]=JSON.parse(gunzipSync(Buffer.from(JSON.parse(encoded[1]),'base64')));
 }
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8');
@@ -1490,12 +1490,12 @@ function bombWorld(map = 'sanctum', setup) {
   return { g, cx, A, BM, step };
 }
 test('Wingman maps keep the BSP spawns, connected floors and bombsites, credit their authors and use light textures',()=>{
-  const expected={ribeira:{sites:1,author:undefined},sanctum:{sites:1,author:'alicate madeira 4'},neon:{sites:1,author:'zelzstorm'},forge:{sites:2,author:'Blind'},overgrowth:{sites:2,author:'jd40'}};
+  const expected={ribeira:{sites:1,author:undefined},estacao:{sites:1,author:undefined},sanctum:{sites:1,author:'alicate madeira 4'},neon:{sites:1,author:'zelzstorm'},forge:{sites:2,author:'Blind'},overgrowth:{sites:2,author:'jd40'}};
   for(const [key,want]of Object.entries(expected)){
     const g=game({mode:'bomb'}),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const source=cx.sourceWorld,meta=source.meta,map=g.MAPS[key];
     assert.equal(g.DM.nav.audit.spawnsConnected,g.DM.nav.audit.spawnsTotal,key+': todos os spawns ligados');assert.ok(meta.t.length>=2&&meta.ct.length>=2);
     assert.equal(meta.sites.length,want.sites,key);assert.equal(map.author,want.author);
-    if(want.author){assert.ok(map.credit.includes(want.author));assert.equal(meta.credit,want.author);}else assert.equal(map.credit,'Ribeira · mapa original');
+    if(want.author){assert.ok(map.credit.includes(want.author));assert.equal(meta.credit,want.author);}else assert.equal(map.credit,map.name+' · mapa original');
     for(const p of meta.t.concat(meta.ct)){const y=source.ground(p[0],p[1],p[3]);assert.ok(Number.isFinite(y)&&Math.abs(y-p[3])<1,key);assert.equal(source.overlap(p[0],y+.03,p[1],1.8,.3),false,key+' spawn livre');}
     for(const site of meta.sites){const x=(site.x0+site.x1)/2,z=(site.z0+site.z1)/2;assert.equal(cx.bombInSite(x,z,site.y0),true,key+' '+site.name);assert.equal(cx.bombInSite(x,z,site.y1+1.8),false,'cannot plant from a floor above the site');}
     assert.ok(source.mesh.opaque>0);assert.ok(source.count<45000);assert.equal(meta.sourceSha256.length,64);
