@@ -263,13 +263,13 @@ test('detailed weapon models: every gun stays within a triangle budget and suppo
   const v=L.vertices,cap=[];for(let i=0;i<L.indices.length;i+=3){const [a,b,c]=[L.indices[i],L.indices[i+1],L.indices[i+2]];if(a<6&&b<6&&c<6)cap.push([a,b,c]);}
   for(const [a,b,c] of cap){const A=[v[a*3+2],v[a*3+1]],B=[v[b*3+2],v[b*3+1]],C=[v[c*3+2],v[c*3+1]];area+=Math.abs((B[0]-A[0])*(C[1]-A[1])-(B[1]-A[1])*(C[0]-A[0]))/2;}
   assert.equal(cap.length,4);assert.ok(Math.abs(area-(.2*.05+.05*.15))<1e-9,String(area));
-  // As duas M4 dividem o corpo; muda só a frente (trilhos e quebra-chamas na M4A4, guarda-mão fino e silenciador na M4A1-S).
-  const body=vm.runInContext('M4_BODY.length',cx);assert.ok(body>20);
-  for(let i=0;i<body;i++){assert.equal(guns.m4a4[i],guns.m4a1s[i]);}
+  // A M4A1-S usa o corpo de M4 com guarda-mão fino e silenciador; a M4A4 saiu do jogo.
+  const body=vm.runInContext('M4_BODY.length',cx);assert.ok(body>20);assert.equal(guns.m4a4,undefined);
+  for(let i=0;i<body;i++){assert.equal(guns.m4a1s[i],vm.runInContext('M4_BODY',cx)[i]);}
   const minZ=k=>Math.min(...guns[k].map(p=>p[0][2]));
-  assert.ok(Math.abs(minZ('m4a4')+.785)<1e-9);assert.ok(minZ('m4a1s')<-.94&&minZ('m4a1s')>-.95);
+  assert.ok(minZ('m4a1s')<-.94&&minZ('m4a1s')>-.95);
   const tris=k=>cx.boxModel(guns[k]).geometry.p.length/9;
-  for(const key of ['rifle','m4a4','m4a1s','galil','famas','ump','bucky','ssg','sniper','usps','glock','medgun','he','flash','smoke','c4','pistol']){
+  for(const key of ['rifle','m4a1s','galil','famas','ump','bucky','ssg','sniper','usps','glock','medgun','he','flash','smoke','c4','pistol']){
     assert.ok(tris(key)>(['he','flash','smoke','c4'].includes(key)?150:300),key+' tem detalhe: '+tris(key));
     for(const skin of ['padrao','neon','brasa','glacial']){
       const geo=cx.boxModel(cx.skinPartsFor(key,skin,guns[key])).geometry;
@@ -329,15 +329,15 @@ test('Deagle sound has a low body, leading crack and delayed metal, and draw sou
   for(const t of [12000,12110,12110,12599,12600,12600,12799,12800])cx.deagleDrawTick(t);
   assert.deepEqual(cues,[0,1]);g.tick(13000);g.selectWeapon('rifle');g.selectWeapon('pistol');cx.deagleDrawTick(13750);assert.deepEqual(cues,[0,1]);
 });
-test('exclusive skins: Vanguarda (AWP), Alien (AK), Blaster (M4A1-S) and Buzzer (M4A4) recolor their own model, add details, own tracers and sounds', () => {
+test('exclusive skins: Vanguarda (AWP), Alien (AK), Blaster and Buzzer (M4A1-S) recolor their own model, add details, own tracers and sounds', () => {
   const g=game(),cx=g.context;
   cx.THREE.Color=class{constructor(h){this.setHex(h||0);}setHex(h){this.r=(h>>16&255)/255;this.g=(h>>8&255)/255;this.b=(h&255)/255;return this;}getHSL(o){o.l=(Math.max(this.r,this.g,this.b)+Math.min(this.r,this.g,this.b))/2;return o;}};
   cx.basicMat={};cx.geoFrom=out=>out;
   vm.runInContext(section('const FACES =','function geoFrom'),cx);vm.runInContext(section('function weaponMesh(','/* ================= Mapas'),cx);vm.runInContext(section('// Modelos das armas:','// braços: mão'),cx);
   const guns=vm.runInContext('GUNS',cx),fn=n=>vm.runInContext(n,cx);
-  const want={vanguarda:['sniper',[0xf4f4f2,0xff6a13,0x1c1c1e],0xff7a2a],alien:['rifle',[0x9cff2e,0x121314,0xf2f2f2],0x7dff3a],blaster:['m4a1s',[0xf4f6f8,0x5ec8ff,0x121416],0xff3030],buzzer:['m4a4',[0xffc81a,0x141414],0xffc81a]};
+  const want={vanguarda:['sniper',[0xf4f4f2,0xff6a13,0x1c1c1e],0xff7a2a],alien:['rifle',[0x9cff2e,0x121314,0xf2f2f2],0x7dff3a],blaster:['m4a1s',[0xf4f6f8,0x5ec8ff,0x121416],0xff3030],buzzer:['m4a1s',[0xffc81a,0x141414],0xffc81a]};
   for(const [id,[gun,colors,tracer]] of Object.entries(want)){
-    assert.ok(fn('skinFits')(gun,id));for(const other of ['rifle','m4a4','m4a1s','sniper','pistol'].filter(k=>k!==gun))assert.equal(fn('skinFits')(other,id),false,id+' em '+other);
+    assert.ok(fn('skinFits')(gun,id));for(const other of ['rifle','m4a1s','sniper','pistol'].filter(k=>k!==gun))assert.equal(fn('skinFits')(other,id),false,id+' em '+other);
     assert.equal(fn('skinUnlocked')(id),true,'liberada');
     const parts=cx.skinPartsFor(gun,id,guns[gun]);assert.ok(parts.length>guns[gun].length,'tem detalhes extras');
     for(let i=0;i<guns[gun].length;i++)assert.equal(parts[i][3],guns[gun][i][3],'mesma geometria');
@@ -513,7 +513,6 @@ test('AK-47 has exactly five percent less vertical and horizontal recoil across 
     assert.ok(Math.abs(current.P.recoilP-previous.P.recoilP*.95)<1e-12);
     assert.ok(Math.abs(current.P.recoilY-previous.P.recoilY*.95)<1e-12);
   }
-  assert.equal(current.W.m4a4.recoilScale,.69);
   assert.equal(current.W.m4a1s.recoilScale,.53);
 });
 
@@ -574,7 +573,7 @@ test('weapon size on screen: +45% around the trigger hand, with per-weapon fits 
     assert.ok(Math.abs(fixed[0] - ax) < 1e-12 && Math.abs(fixed[1] - A[1] - (fit.y || 0)) < 1e-12 && Math.abs(fixed[2] - A[2]) < 1e-12, w);
   }
   // Os fuzis seguem o padrão puro; a Deagle (vista de trás) fica menor e mais baixa para não subir até o meio da tela.
-  for (const w of ['rifle', 'm4a4', 'm4a1s', 'galil', 'famas', 'ump', 'bucky', 'ssg', 'sniper', 'usps', 'glock']) assert.equal(ev(`VM_FIT['${w}']`), undefined, w);
+  for (const w of ['rifle', 'm4a1s', 'galil', 'famas', 'ump', 'bucky', 'ssg', 'sniper', 'usps', 'glock']) assert.equal(ev(`VM_FIT['${w}']`), undefined, w);
   assert.ok(ev("VM_FIT.pistol.s") < 1 && ev("VM_FIT.pistol.y") < 0);
 });
 test('viewmodel settings migrate, clamp each axis, reset, and change only the held model', () => {
@@ -764,11 +763,15 @@ test('old settings migrate and invalid equipment falls back to usable slots', ()
   assert.equal(g.S.botWeapon, 'rifle');
   assert.equal(g.S.startSlot, 'rifle');
   // O antigo slot de precisão (tecla 4) some: quem nascia com ele passa a ter a arma na primária.
-  const old = game({ loadout: { rifle: 'm4a4', sniper: 'ssg' }, startSlot: 'sniper' });
+  const old = game({ loadout: { rifle: 'm4a1s', sniper: 'ssg' }, startSlot: 'sniper' });
   assert.equal(old.S.loadout.rifle, 'ssg'); assert.equal(old.S.startSlot, 'rifle'); assert.equal(old.S.loadout.sniper, undefined);
   assert.deepEqual(Array.from(old.ORDER), ['ssg', 'pistol', 'knife']);
-  const kept = game({ loadout: { rifle: 'm4a4', sniper: 'ssg' }, startSlot: 'pistol' });
-  assert.equal(kept.S.loadout.rifle, 'm4a4'); assert.equal(kept.S.loadout.sniper, undefined);
+  const kept = game({ loadout: { rifle: 'm4a1s', sniper: 'ssg' }, startSlot: 'pistol' });
+  assert.equal(kept.S.loadout.rifle, 'm4a1s'); assert.equal(kept.S.loadout.sniper, undefined);
+  // A M4A4 saiu do jogo: quem tinha ela salva (na primária, no bot ou no Practice) passa para a M4A1-S.
+  const gone = game({ loadout: { rifle: 'm4a4' }, botWeapon: 'm4a4', aimbotzWeapon: 'm4a4' });
+  assert.equal(gone.W.m4a4, undefined); assert.equal(gone.S.loadout.rifle, 'm4a1s'); assert.equal(gone.S.botWeapon, 'm4a1s'); assert.equal(gone.S.aimbotzWeapon, 'm4a1s');
+  assert.ok(!gone.ORDER.includes('m4a4') && !gone.CATEGORIES.rifle.includes('m4a4') && !gone.DM_POOLS.all.includes('m4a4'));
 });
 
 test('every element the page script looks up by id exists in the HTML (a missing one stops the whole page)', () => {
@@ -815,10 +818,10 @@ test('every equipment combination equips, switches, shoots and reloads each sele
 
 test('equipment edits take effect on the next spawn, with the chosen starting slot', () => {
   const g = game(); g.spawnSelf(0);
-  g.S.loadout.rifle = 'm4a4'; g.S.startSlot = 'pistol';
-  g.selectWeapon('m4a4'); assert.equal(g.P.weapon, 'rifle');
+  g.S.loadout.rifle = 'm4a1s'; g.S.startSlot = 'pistol';
+  g.selectWeapon('m4a1s'); assert.equal(g.P.weapon, 'rifle');
   g.spawnSelf(0); assert.equal(g.P.weapon, 'pistol');
-  g.selectWeapon('m4a4'); assert.equal(g.P.weapon, 'm4a4');
+  g.selectWeapon('m4a1s'); assert.equal(g.P.weapon, 'm4a1s');
   // AWP e Scout são primárias: entram no slot 1, no lugar do fuzil.
   assert.ok(g.CATEGORIES.rifle.includes('sniper') && g.CATEGORIES.rifle.includes('ssg')); assert.equal(g.CATEGORIES.sniper, undefined);
   g.S.loadout.rifle = 'sniper'; g.S.startSlot = 'rifle'; g.spawnSelf(0);
@@ -830,7 +833,8 @@ test('outside Plant the Bomb: free shop with every gun (no grenades or gear); ke
   cx.G.mode = 'bot'; g.spawnSelf(0);
   assert.equal(ev('bombOn()'), false); assert.equal(ev('freeShopOn()'), true);
   const listed = [...ev('shopColsFor(P)').flatMap(([, items]) => [...items])];
-  for (const k of ['glock', 'usps', 'pistol', 'ump', 'bucky', 'galil', 'rifle', 'famas', 'm4a4', 'm4a1s', 'ssg', 'sniper']) assert.ok(listed.includes(k), k);
+  for (const k of ['glock', 'usps', 'pistol', 'ump', 'bucky', 'galil', 'rifle', 'famas', 'm4a1s', 'ssg', 'sniper']) assert.ok(listed.includes(k), k);
+  assert.ok(!listed.includes('m4a4'), 'a M4A4 saiu da loja');
   for (const k of ['he', 'flash', 'smoke', 'kevlar', 'helmet', 'kit']) assert.ok(!listed.includes(k), k);
   assert.ok(listed.every(k => ev(`freeShopBlock('${k}')`) === ''));
   cx.G.mode = 'aimbotz'; assert.equal(ev('freeShopOn()'), false); cx.G.mode = 'bot';
@@ -857,8 +861,8 @@ test('damage follows the Valorant tables (rounded down, no helmet), with distanc
   // Vandal: 160/40/34 até 50 m, sem queda; capacete não muda nada.
   for (const dist of [0, 20, 49.9]) { assert.equal(d('rifle', 'head', dist), 160); assert.equal(d('rifle', 'head', dist, true), 160); }
   assert.equal(d('rifle', 'body'), 40); assert.equal(d('rifle', 'stomach'), 40); assert.equal(d('rifle', 'leg'), 34);
-  // Phantom (M4A4/M4A1-S): 156 até 20 m, 140 depois.
-  for (const k of ['m4a4', 'm4a1s']) { assert.equal(d(k, 'head', 19), 156); assert.equal(d(k, 'head', 21), 140); assert.equal(d(k, 'leg', 5), 33); }
+  // Phantom (M4A1-S): 156 até 20 m, 140 depois.
+  for (const k of ['m4a1s']) { assert.equal(d(k, 'head', 19), 156); assert.equal(d(k, 'head', 21), 140); assert.equal(d(k, 'leg', 5), 33); }
   // Spectre: três faixas; Bulldog; Sheriff (159,5 → 159); Ghost cai em 30 m; Classic; Marshal; Bucky por chumbo.
   assert.deepEqual([5, 20, 40].map(x => d('ump', 'body', x)), [26, 22, 20]);
   assert.equal(d('galil', 'head'), 115); assert.equal(d('famas', 'body'), 35);
@@ -872,7 +876,7 @@ test('damage follows the Valorant tables (rounded down, no helmet), with distanc
 test('Valorant accuracy: first-shot spread, a 27.5% dead zone, movement error that grows with speed, air and landing', () => {
   const g = game(), W = g.W.rifle, ref = W.speed, deg = x => x * Math.PI / 180, inac = (e, ads = false) => g.inaccuracy(e, W, ads, 0);
   const e = entity(); e.moveCap = 1;
-  assert.ok(Math.abs(inac(e) - deg(.25)) < 1e-12, 'Vandal parada: 0,25°'); assert.ok(Math.abs(inac(e, true) - deg(.157)) < 1e-12, 'com a mira: 0,157°');
+  assert.ok(Math.abs(inac(e) - deg(.25)) < 1e-12, 'Vandal parada: 0,25°'); assert.ok(Math.abs(inac(e, true) - deg(.25)) < 1e-12, 'sem ADS: o botão direito não muda a precisão');
   e.crouch = true; assert.ok(Math.abs(inac(e) - deg(.21)) < 1e-12, 'agachada: 0,21°'); e.crouch = false;
   e.vel.x = ref * .27; assert.ok(Math.abs(inac(e) - deg(.25)) < 1e-12, 'zona morta: sem erro de movimento');
   e.vel.x = ref; assert.ok(Math.abs(inac(e) - deg(6.25)) < 1e-9, 'correndo: +6°');
@@ -1547,7 +1551,7 @@ test('Plant the Bomb buys follow Wingman prices, sides and limits, and round rew
   let t = step(10000, 1000);
   assert.equal(A.bomb, true); assert.equal(g.DM.phase, 'freeze');
   assert.equal(g.P.money, 800); for (const e of g.DM.bots) assert.ok(e.money <= 800 && e.money >= 0, String(e.money));
-  const side = vm.runInContext('sideOf(P)', cx), rifle = side === 't' ? 'm4a4' : 'rifle';
+  const side = vm.runInContext('sideOf(P)', cx), rifle = side === 't' ? 'm4a1s' : 'rifle';
   assert.equal(cx.bombBuyBlock(g.P, rifle, t), side === 't' ? 'Só Defensores' : 'Só Atacantes');
   assert.equal(cx.bombBuy(g.P, 'kevlar', t), true); assert.equal(g.P.money, 150); assert.equal(g.P.inv.armor, 100);
   assert.equal(cx.bombBuyBlock(g.P, 'kevlar', t), 'Já tem');
@@ -1606,7 +1610,9 @@ test('Valorant spray: first shot centered, the Vandal climbs then swings sideway
   assert.ok(Math.max(...v.slice(8).map(p => Math.abs(p[0]))) > 1.5, 'depois do topo vai para o lado');
   assert.ok(v.every(p => Math.abs(p[0]) <= V.yaw[0] + V.jit * 6), 'lado limitado pela amplitude');
   // Phantom sobe menos; correndo a Vandal sobe 1,8×; agachada parada o lado é 15% menor.
-  assert.ok(spray('m4a4', 12)[11][1] < spray('rifle', 12)[11][1]);
+  assert.ok(spray('m4a1s', 12)[11][1] < spray('rifle', 12)[11][1]);
+  // M4A1-S: recuo 10% acima da Phantom (subida, lado e tremida).
+  { const v = g.W.m4a1s.val; assert.ok(Math.abs(v.pitch[0] - 4.4 * 1.1) < 1e-9 && Math.abs(v.yaw[0] - 1.9 * 1.1) < 1e-9 && Math.abs(v.jit - .1 * 1.1) < 1e-9); }
   const runV = spray('rifle', 4, { speed: 5.4 })[3][1], stV = spray('rifle', 4)[3][1]; assert.ok(Math.abs(runV - stV * 1.8) < 1e-9);
   // Calor do spray: 1º tiro → máximo em 6 balas; volta ao 1º tiro depois do Gun Recovery Time.
   cx.valReset(g.P); g.P.crouch = false; g.P.vel.set(0, 0, 0); let t = 20000;
@@ -1738,9 +1744,9 @@ test('Prefire sends one feed event per target and also reports the player death 
   cx.aimbotzHit(20,'body','rifle',target.id);assert.equal(g.events.filter(e=>e.topic==='feed').length,0);
   cx.aimbotzHit(100,'head','pistol',target.id);cx.aimbotzHit(100,'head','pistol',target.id);
   assert.deepEqual(g.events.filter(e=>e.topic==='feed'),[{topic:'feed',killer:cx.G.me,victim:target.id,w:'pistol',hs:true}]);
-  const other=g.DM.bots[1];cx.prefireDamage(g.P,100,'body','m4a4',other,10010);cx.prefireDamage(g.P,100,'body','m4a4',other,10011);
+  const other=g.DM.bots[1];cx.prefireDamage(g.P,100,'body','m4a1s',other,10010);cx.prefireDamage(g.P,100,'body','m4a1s',other,10011);
   assert.equal(g.events.filter(e=>e.topic==='feed').length,2);
-  assert.deepEqual(g.events.filter(e=>e.topic==='feed')[1],{topic:'feed',killer:other.id,victim:g.P.id,w:'m4a4',hs:false});
+  assert.deepEqual(g.events.filter(e=>e.topic==='feed')[1],{topic:'feed',killer:other.id,victim:g.P.id,w:'m4a1s',hs:false});
 });
 
 test('AWP accuracy follows CS2: scoped cone .002 (.0015 crouched), no-scope .0808, wild above 34% of 200 u/s, walking with Shift stays precise', () => {
@@ -2042,7 +2048,7 @@ test('the C4 beep comes from the bomb: silent far away, louder as you get closer
   assert.equal(hear(60), 0, 'longe: não ouve');
   const mid = hear(18), near = hear(2); assert.ok(mid > 0 && near > mid, `perto ${near} > meio ${mid}`);
 });
-test('Classic (Glock) right click fires 3 pellets for 3 rounds; Bulldog (Galil/FAMAS) aimed fires 3-round bursts; Valorant ADS toggles zoom, fire rate and speed', () => {
+test('Classic (Glock) right click fires 3 pellets for 3 rounds; Bulldog (Galil/FAMAS) right click fires a 3-round burst; there is no ADS outside scopes', () => {
   const g = game(), cx = g.context;
   cx.buildMap('aimbotz'); cx.G.mode = 'aimbotz'; g.spawnSelf(0, [0, 9, 0]); cx.aimbotzSetup();
   cx.aimbotzEquip('glock'); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.reloadEnd = 0;
@@ -2051,21 +2057,23 @@ test('Classic (Glock) right click fires 3 pellets for 3 rounds; Bulldog (Galil/F
   assert.ok(Math.abs(g.P.nextFire - (50000 + 1000 / 2.22)) < 1e-6, '2,22 tiros alternativos por segundo');
   g.P.m1Press = true; g.updateWeapon(0, 50400); assert.equal(start - am.mag, 3, 'espera o intervalo');
   for (const weapon of ['famas', 'galil']) {
-    cx.aimbotzEquip(weapon); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.reloadEnd = 0; g.P.ads = true; g.updateWeapon(1, 60000); assert.equal(g.P.adsK, 1);
-    am = g.P.ammo[weapon]; start = am.mag; let t = 60010;
-    g.P.m1Press = true; g.updateWeapon(0, t); assert.equal(start - am.mag, 1, weapon + ': primeiro tiro na hora');
+    cx.aimbotzEquip(weapon); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.reloadEnd = 0;
+    am = g.P.ammo[weapon]; start = am.mag; const t = 60010;
+    g.P.m2Press = true; g.updateWeapon(0, t); assert.equal(start - am.mag, 1, weapon + ': primeiro tiro na hora');
     g.updateWeapon(0, t + 70); assert.equal(start - am.mag, 1);
     g.updateWeapon(0, t + 75); g.updateWeapon(0, t + 150); assert.equal(start - am.mag, 3, weapon + ': três tiros a 13,3/s');
-    g.P.m1Press = true; g.updateWeapon(0, t + 300); assert.equal(start - am.mag, 3, 'espera antes da próxima rajada');
-    g.P.m1Press = true; g.updateWeapon(0, t + 476); assert.equal(start - am.mag, 4, '2,1 rajadas por segundo');
-    g.P.ads = false; g.updateWeapon(1, 70000);
+    g.P.m2Press = true; g.updateWeapon(0, t + 300); assert.equal(start - am.mag, 3, 'espera antes da próxima rajada');
+    g.P.m2Press = true; g.updateWeapon(0, t + 476); assert.equal(start - am.mag, 4, '2,1 rajadas por segundo');
+    assert.equal(g.P.zoom, 0); assert.equal(cx.adsOn(g.P), false, 'rajada sem zoom');
+    g.P.m1Press = true; g.updateWeapon(0, t + 2000); assert.equal(start - am.mag, 5, 'esquerdo: tiro normal');
   }
-  // Mira da Vandal: zoom 1,25×, 90% da cadência, 76% da velocidade, câmera segue o recuo inteiro.
-  cx.aimbotzEquip('rifle'); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.reloadEnd = 0; g.P.ads = true; g.updateWeapon(1, 80000);
-  assert.equal(cx.adsOn(g.P), true); assert.ok(Math.abs(Math.tan(cx.zoomH() * Math.PI / 360) - Math.tan(g.S.fov * Math.PI / 360) / 1.25) < 1e-9);
-  assert.equal(cx.viewRecoilScale(), 1);
-  g.shoot(80010, false); assert.ok(Math.abs(g.P.nextFire - (80010 + 1000 / 8.775)) < 1e-6);
-  cx.startReload(81000); g.updateWeapon(0, 81001); assert.equal(g.P.ads, false, 'recarregar tira a mira');
+  // Sem ADS: os fuzis não dão zoom, atiram na cadência normal e a câmera mostra só parte do recuo.
+  cx.aimbotzEquip('rifle'); g.P.drawEnd = 0; g.P.nextFire = 0; g.P.reloadEnd = 0; g.P.m2Press = true; g.updateWeapon(1, 80000);
+  assert.equal(cx.adsOn(g.P), false); assert.equal(cx.zoomH(), g.S.fov); assert.equal(cx.viewRecoilScale(), .45);
+  g.shoot(80010, false); assert.ok(Math.abs(g.P.nextFire - (80010 + 1000 / 9.75)) < 1e-6);
+  for (const k of Object.keys(g.W)) if (g.W[k].val && g.W[k].val.ads) assert.ok(g.W[k].scope, k + ' tem mira sem luneta');
+  // A Marshal (SSG) continua com a luneta de 3,5×.
+  cx.aimbotzEquip('ssg'); g.P.zoom = 1; assert.ok(Math.abs(Math.tan(cx.zoomH() * Math.PI / 360) - Math.tan(g.S.fov * Math.PI / 360) / 3.5) < 1e-9); assert.equal(cx.adsOn(g.P), true);
 });
 test('Plant the Bomb: Glock is the Attackers starting pistol, USP-S the Defenders; Galil is Attackers-only and FAMAS Defenders-only', () => {
   const { g, cx, step } = bombWorld();
@@ -2079,8 +2087,8 @@ test('Plant the Bomb: Glock is the Attackers starting pistol, USP-S the Defender
   assert.ok(cx.bombBuy(c1, 'famas', t)); assert.equal(c1.inv.primary, 'famas'); assert.equal(c1.money, 9000 - 2050);
   // A loja não lista o que é exclusivo do outro lado.
   const listed = e => [...ev('shopColsFor')(e).flatMap(([, items]) => items)];
-  assert.deepEqual(listed(t1).filter(i => ['glock', 'galil', 'rifle', 'usps', 'famas', 'm4a4', 'm4a1s', 'kit'].includes(i)).sort().join(), 'galil,glock,rifle');
-  assert.deepEqual(listed(c1).filter(i => ['glock', 'galil', 'rifle', 'usps', 'famas', 'm4a4', 'm4a1s', 'kit'].includes(i)).sort().join(), 'famas,kit,m4a1s,m4a4,usps');
+  assert.deepEqual(listed(t1).filter(i => ['glock', 'galil', 'rifle', 'usps', 'famas', 'm4a1s', 'kit'].includes(i)).sort().join(), 'galil,glock,rifle');
+  assert.deepEqual(listed(c1).filter(i => ['glock', 'galil', 'rifle', 'usps', 'famas', 'm4a1s', 'kit'].includes(i)).sort().join(), 'famas,kit,m4a1s,usps');
   for (const e of [t1, c1]) for (const i of ['pistol', 'ump', 'bucky', 'ssg', 'sniper', 'he', 'flash', 'smoke', 'kevlar', 'helmet']) assert.ok(listed(e).includes(i), i);
 });
 test('stairs: the player runs up a covered Guard staircase at full speed instead of being bounced by the step edges', () => {
@@ -2139,7 +2147,7 @@ test('Prefire: bots have 100 HP, take real weapon damage, disappear once, and ne
   assert.equal(g.prefire.killed,1);assert.equal(g.stat(g.P.id).k,1);
   assert.ok(!g.DM.playerTargets.some(h=>h.actor===bot.id));
   cx.locked=false;cx.prefireTick(1,1000000);assert.equal(bot.alive,false);assert.equal(g.prefire.killed,1);
-  assert.equal(g.dmDamage(g.DM.bots[1],100,'body','m4a4',g.DM.bots[2],10001),0);
+  assert.equal(g.dmDamage(g.DM.bots[1],100,'body','m4a1s',g.DM.bots[2],10001),0);
 });
 
 test('Prefire: defenders react, shoot and reload without moving, and walls block their vision and bullets',()=>{
@@ -2157,7 +2165,7 @@ test('Prefire: death resets all targets and time, elapsed time has no limit, and
   const g=prefireFixture(),cx=g.context;
   cx.aimbotzHit(100,'head','rifle',g.DM.bots[0].id);cx.prefireTick(.1,10100);
   assert.equal(g.prefire.elapsed,100);
-  g.dmDamage(g.P,100,'body','m4a4',g.DM.bots[1],10200);assert.equal(g.P.alive,false);
+  g.dmDamage(g.P,100,'body','m4a1s',g.DM.bots[1],10200);assert.equal(g.P.alive,false);
   g.tick(11600);cx.prefireTick(.1,11600);
   assert.equal(g.P.hp,100);assert.equal(g.P.alive,true);assert.equal(g.prefire.killed,0);assert.equal(g.prefire.elapsed,0);
   assert.ok(g.DM.bots.every(b=>b.hp===100&&b.alive));
@@ -2342,7 +2350,7 @@ test('Plant the Bomb weapon drops: G drops the gun in hand with its ammo, the de
   const { g, cx, step } = bombWorld();
   const ev = s => vm.runInContext(s, cx);
   let t = step(10000, 1500);
-  g.P.money = 9000; const rifle = ev('sideOf(P)') === 't' ? 'rifle' : 'm4a4';
+  g.P.money = 9000; const rifle = ev('sideOf(P)') === 't' ? 'rifle' : 'm4a1s';
   assert.ok(cx.bombBuy(g.P, rifle, t)); g.selectWeapon(rifle); g.P.ammo[rifle].mag = 17;
   ev(`playerDropWeapon(${t})`);
   assert.equal(g.P.inv.primary, null); assert.ok(!g.ORDER.includes(rifle)); assert.notEqual(g.P.weapon, rifle);

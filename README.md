@@ -108,8 +108,8 @@ Dois times de 2 a 8 (você e bots contra bots) nos mapas de DM, com renascimento
 ## Armas novas e granadas
 
 - **Glock-18:** pistola inicial dos Atacantes no Plant the Bomb, com as regras do Classic. O clique esquerdo dá um tiro; o direito dispara **3 chumbos de uma vez** (gasta 3 balas).
-- **Galil AR:** rifle barato dos Atacantes ($1.800), com as regras da Bulldog: com a mira (botão direito), atira em rajadas de 3.
-- **FAMAS:** rifle barato dos Defensores ($2.050), também com as regras da Bulldog (rajada de 3 com a mira).
+- **Galil AR:** rifle barato dos Atacantes ($1.800), com as regras da Bulldog. O botão direito dispara uma rajada de 3, sem zoom.
+- **FAMAS:** rifle barato dos Defensores ($2.050), também com as regras da Bulldog (rajada de 3 no botão direito).
 - **UMP-45:** submetralhadora com as regras da Spectre: precisa em movimento, perde dano com a distância.
 - **Bucky:** escopeta com 15 chumbos por disparo; o dano soma por vítima. Letal de perto e fraca de longe. O botão direito lança um cartucho que estoura em 5 chumbos a 7,5 m.
 - **HE:** explode em 1,6 s, até 98 de dano caindo com a distância (7 m), só com linha de visão.
@@ -123,7 +123,7 @@ Clique esquerdo lança a granada longe; o direito joga perto. As granadas quicam
 Todas as armas, menos a Karambit, ganharam modelos mais detalhados. Em vez de caixas, cada peça é um perfil lateral recortado (côncavo quando precisa), tubos facetados para canos, silenciadores e lunetas, e caixas pequenas para os detalhes:
 
 - **AK-47:** caixa com tampa e mola, guarda-mão de madeira em duas partes com ranhuras, carregador curvo, alça de mira, massa com orelhas e freio de boca.
-- **M4A4 e M4A1-S:** dividem o mesmo corpo (trilho com dentes, alça rebatível, retém, janela de ejeção, tubo do amortecedor e coronha retrátil). A M4A4 tem guarda-mão de trilhos, massa em A e quebra-chamas; a M4A1-S, guarda-mão fino e silenciador com anéis.
+- **M4A1-S:** trilho com dentes, alça rebatível, retém, janela de ejeção, tubo do amortecedor, coronha retrátil, guarda-mão fino e silenciador com anéis. A M4A4 saiu do jogo; quem tinha ela salva no equipamento, no bot ou no Practice passa para a M4A1-S.
 - **Galil AR, FAMAS, UMP-45, Bucky e SSG 08:**
   - **Galil:** alavanca de manejo para cima e coronha esqueleto.
   - **FAMAS:** alça comprida e bipé dobrado nos lados.
@@ -212,7 +212,7 @@ Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de
 | Vanguarda | só AWP | branca com painéis laranja e pretos, luneta branca e faixa laranja no cano, inspirada na Asiimov do CS; rastro laranja | estrondo grave com eco metálico; acorde de sintetizador |
 | Alien | só AK-47 | verde-limão com tampa, carregador e cabo pretos, guarda-mão de cima branco e o rosto de um alien na coronha; rastro verde | zumbido de disco voador; teremim |
 | Blaster | só M4A1-S | branca espacial com guarda-mão e faixas azul-celeste, trilhos e detalhes pretos; rastro vermelho | laser; acorde de nave |
-| Buzzer | só M4A4 | amarela e preta, listrada como abelha (guarda-mão, coronha e carregador), com asas na coronha; rastro amarelo | zumbido; enxame |
+| Buzzer | só M4A1-S (era da M4A4, que saiu do jogo) | amarela e preta, listrada como abelha (coronha e carregador), com asas na coronha; rastro amarelo | zumbido; enxame |
 | Pulso Neon | armas de fogo | azul-marinho com filetes ciano e magenta | laser sintetizado; bipes de fliperama |
 | Brasa | armas de fogo | carvão com filetes laranja e dourado | estampido grave com estalos; gongo |
 | Glacial | armas de fogo | branco gelo e azul | disparo cristalino; sinos de gelo |
@@ -229,7 +229,7 @@ Abra **Arsenal** no topo ou clique em **Editar equipamento**. Escolha uma combin
 
 | Tecla | Categoria | Opções |
 |---|---|---|
-| 1 | Primária | AK-47, M4A4, M4A1-S com silenciador, Galil AR, FAMAS, UMP-45, Bucky, AWP, SSG 08 (Scout) |
+| 1 | Primária | AK-47, M4A1-S com silenciador, Galil AR, FAMAS, UMP-45, Bucky, AWP, SSG 08 (Scout) |
 | 2 | Pistola | Desert Eagle, USP-S com silenciador, Glock-18 |
 | 3 | Faca | Karambit, Butterfly |
 
@@ -285,8 +285,8 @@ No Elimination online vale o mapa escolhido por quem criou a sala.
 | Arma (regras do Valorant) | Cabeça / corpo / perna | Pente | Cadência |
 |---|---|---|---|
 | AK-47 (Vandal) | 160 / 40 / 34, sem queda até 50 m | 25 | 9,75/s |
-| M4A4 e M4A1-S (Phantom) | 156 / 39 / 33 até 20 m; 140 / 35 / 29 depois | 30 | 11/s |
-| Galil e FAMAS (Bulldog) | 115 / 35 / 29 | 24 | 10/s; rajada de 3 com a mira |
+| M4A1-S (Phantom) | 156 / 39 / 33 até 20 m; 140 / 35 / 29 depois | 30 | 11/s |
+| Galil e FAMAS (Bulldog) | 115 / 35 / 29 | 24 | 10/s; rajada de 3 no botão direito |
 | UMP-45 (Spectre) | 78 / 26 / 22; 66 / 22 / 18 a 15 m; 60 / 20 / 17 a 30 m | 30 | 13,3/s |
 | Bucky | 34 / 17 / 14 por chumbo (15 chumbos), caindo em 8 e 12 m | 5 | 1,1/s |
 | SSG 08 (Marshal) | 202 / 101 / 85 | 5 | 1,5/s (1,2/s com luneta) |
@@ -310,7 +310,7 @@ Todas as armas, menos a AWP, seguem as regras de tiro e movimento do Valorant. A
 
 **Movimento** (conferido por teste):
 - **Velocidade:** 6,75 m/s com a faca, multiplicada pela arma: Vandal, Phantom, Bulldog, Sheriff e Marshal 0,8 (5,4 m/s); Spectre, Ghost e Classic 0,85; Bucky 0,75.
-- **Shift e agachado:** Shift anda a 61% e agachado a 40%. Com a mira (ADS), o boneco anda a 76% (90% na Marshal com luneta).
+- **Shift e agachado:** Shift anda a 61% e agachado a 40%. Com a luneta, a Marshal anda a 90%.
 - **Chão (estilo Unreal):** com tecla apertada, o atrito puxa a velocidade para a direção da tecla. Na tecla oposta, isso freia forte (contra-strafe). A aceleração é fixa (32 m/s²). Sem tecla, freia com desaceleração fixa mais atrito.
 - **Constantes:** ajustadas aos tempos da Riot.
 
@@ -336,15 +336,18 @@ Todas as armas, menos a AWP, seguem as regras de tiro e movimento do Valorant. A
 - **Viés para o centro:** parado, as balas puxam para o centro do cone. Andando, ficam quase uniformes no cone.
 
 **Recuo:**
-- **Subida:** o primeiro tiro sai no centro. A bala sobe por uma curva até o topo da arma (Vandal ~5°, Phantom ~4,4°) e para de subir.
+- **Subida:** o primeiro tiro sai no centro. A bala sobe por uma curva até o topo da arma (Vandal ~5°, M4A1-S ~4,8°) e para de subir.
+- **M4A1-S:** recuo 10% maior que o da Phantom (subida, lado e tremida), ajuste próprio do jogo.
 - **Lado:** depois das balas protegidas (Vandal 6, Phantom 8, Spectre 5), o recuo vai para um lado. A cada bala há 10% de chance de trocar de lado, e cruzar de um lado ao outro leva o tempo da arma (0,6 s nos fuzis, 0,28 s na Spectre).
-- **Multiplicadores:** correndo ou no ar, a subida é 1,8× (Spectre 1,5× também no lado). Agachado e parado, o lado é 15% menor. Com a mira, o recuo é 10% menor.
+- **Multiplicadores:** correndo ou no ar, a subida é 1,8× (Spectre 1,5× também no lado). Agachado e parado, o lado é 15% menor. Com a luneta da Marshal, o recuo é 10% menor.
 - **Reset:** sem atirar, o recuo volta ao centro no Gun Recovery Time, junto com o spread.
 - **Estimativa:** o tamanho exato de cada recuo não é publicado pela Riot e foi estimado pelos sprays conhecidos.
-- **Câmera:** sem mira, a tela mostra parte do recuo (45%, ou 70% com o tremor sem suavizar). Com a mira, a câmera segue o recuo inteiro (*crosshair follows recoil*), e a arma vem para o centro da tela com a mira de ferro na linha do olho.
+- **Câmera:** a tela mostra parte do recuo (45%, ou 70% com o tremor sem suavizar); as balas seguem o recuo inteiro.
+- **Sem ADS:** o jogo não tem mira pelos aparelhos (ADS). Só as armas com luneta (AWP e SSG 08) dão zoom.
+- **Rastro:** sai do cano que aparece na tela e é um risco curto que viaja até onde a bala bateu, a 420 m/s. Antes era uma linha inteira e parada, que começava num ponto fixo à frente do olho e não no cano.
 
 **Botão direito:**
-- **Mira (ADS):** liga e desliga a mira nos fuzis e na Spectre. Dá zoom 1,25× (Spectre 1,15×), menos spread e recuo, 90% da cadência e 76% da velocidade. A Bulldog (Galil e FAMAS) atira em rajadas de 3 com a mira. Recarregar ou trocar de arma tira a mira.
+- **Bulldog (Galil e FAMAS):** rajada de 3 tiros a 13,3/s, sem zoom, 2,1 rajadas por segundo. No Valorant essa rajada vem com a mira; aqui ficou no botão direito.
 - **Classic (Glock):** um tiro de 3 chumbos que gasta 3 balas, a 2,22 tiros por segundo.
 - **Bucky:** um cartucho que voa reto até 7,5 m e estoura em 5 chumbos. Se acertar alguém antes, dá o dano de um chumbo.
 - **Marshal (SSG 08):** luneta de 3,5×, com tiro perfeito parado.
@@ -388,7 +391,7 @@ As armas têm animações próprias de saque e de recarga, com o CS como base. O
 - **Saque:** a arma sobe de baixo da tela girando e a mão esquerda chega no guarda-mão. Na AK, na Galil e na UMP, a mão ainda puxa a alavanca de manejo. Na AWP e na SSG, a mão direita passa o ferrolho.
 - **Recarga dos rifles e da UMP:** a arma inclina, a mão esquerda segura o pente, puxa, joga para fora da tela, traz o pente novo e encaixa com um tapa.
   - **AK e Galil:** o pente entra balançando. Depois, a mão passa por baixo da arma e puxa a alavanca do lado direito.
-  - **M4 e FAMAS:** a mão bate no retém do ferrolho.
+  - **M4A1-S e FAMAS:** a mão bate no retém do ferrolho.
   - **UMP:** a mão puxa a alavanca do lado esquerdo.
 - **Pistolas (USP-S, Glock e Deagle):** a arma sobe e inclina, o pente cai pelo cabo, e a mão esquerda traz o novo de baixo e encaixa com um tapa. Na Deagle vazia, o ferrolho fica travado para trás até o fim da recarga e então é solto.
 - **AWP e SSG 08:** depois de cada tiro, a mão direita sai do cabo, levanta a alavanca do ferrolho, puxa, empurra e abaixa, como no CS. A animação cabe dentro do intervalo entre tiros. A recarga troca o pente e passa o ferrolho no final.
@@ -407,7 +410,7 @@ A cada tiro a arma dá um coice na mão: vai um pouco para trás e levanta a boc
 | C | Agachar (no ar, encolhe as pernas para subir nas caixas) |
 | Espaço | Pular / segurar para bunnyhop assistido |
 | Mouse 1 | Atirar |
-| Mouse 2 | Mira (ADS) dos fuzis e da Spectre (liga/desliga) / luneta da AWP e da SSG / tiro alternativo da Glock (3 chumbos) e da Bucky (cartucho) / golpe forte da faca |
+| Mouse 2 | Luneta da AWP e da SSG / rajada de 3 da Galil e da FAMAS / tiro alternativo da Glock (3 chumbos) e da Bucky (cartucho) / golpe forte da faca |
 | 1 2 3 | Primária (fuzis, SMG, escopeta, AWP e Scout), pistola e faca; no Plant the Bomb, 4 alterna granadas e 5 pega a bomba |
 | Q / rodinha | Última arma / trocar arma |
 | G | Largar a arma na mão |

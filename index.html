@@ -206,7 +206,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
     <div class="fld"><span>Código de skin</span><div class="row"><input id="skinCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Código de skin" placeholder="Digite o código"><button id="btnSkinCode" type="button">Desbloquear</button></div><small id="skinCodeMsg">A AK-47 Sublime só aparece para quem tem o código.</small></div>
     <div class="grid2">
       <label class="fld"><span>Arma ao nascer</span><select data-k="startSlot" aria-label="Arma ao nascer"><option value="rifle">Primária · 1</option><option value="pistol">Pistola · 2</option><option value="knife">Faca · 3</option></select></label>
-      <label class="fld"><span>Arma do bot</span><select data-k="botWeapon" aria-label="Arma do bot"><option value="rifle">AK-47</option><option value="m4a4">M4A4</option><option value="m4a1s">M4A1-S</option><option value="ump">UMP-45</option><option value="bucky">Bucky</option><option value="pistol">Desert Eagle</option><option value="usps">USP-S</option><option value="glock">Glock-18</option><option value="galil">Galil AR</option><option value="famas">FAMAS</option><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
+      <label class="fld"><span>Arma do bot</span><select data-k="botWeapon" aria-label="Arma do bot"><option value="rifle">AK-47</option><option value="m4a1s">M4A1-S</option><option value="ump">UMP-45</option><option value="bucky">Bucky</option><option value="pistol">Desert Eagle</option><option value="usps">USP-S</option><option value="glock">Glock-18</option><option value="galil">Galil AR</option><option value="famas">FAMAS</option><option value="sniper">AWP</option><option value="ssg">SSG 08 · Scout</option></select></label>
     </div>
     <label class="chk"><input type="checkbox" data-k="armor">Colete e capacete para todos (fora do Plant the Bomb e do Wingman)</label>
     <div class="fld" id="colorField"><span>Cor do seu boneco no 1v1</span><div class="sw" id="pcolors"></div></div>
@@ -379,16 +379,16 @@ function applyVmSize(hands, side = 1, w = P.weapon) {
   const fit = VM_FIT[w] || {}, k = VM_SIZE * (fit.s || 1); hands.scale.set(side * k, k, k);
   hands.position.set(side * ((1 - k) * VM_ANCHOR[0] + (fit.x || 0)), (1 - k) * VM_ANCHOR[1] + (fit.y || 0), (1 - k) * VM_ANCHOR[2]);
 }
-function viewRecoilScale() { const base = S.smoothRecoil ? VIEW_RECOIL : .7; return base + (1 - base) * (W[P.weapon]?.val ? (P.adsK || 0) : 0); }
-// Zoom do Valorant: campo de visão dividido pelo multiplicador (1,25× nos fuzis, 1,15× na Spectre, 3,5× na Marshal).
+function viewRecoilScale() { return S.smoothRecoil ? VIEW_RECOIL : .7; }
+// Zoom da luneta: a Marshal (SSG) divide o campo de visão por 3,5; a AWP usa os dois níveis do CS.
 function zoomedH(z) { return 2 * Math.atan(Math.tan(S.fov * DEG / 2) / z) / DEG; }
 function zoomH() {
   const w = W[P.weapon], v = w && w.val;
-  if (v && v.ads) return w.scope ? (P.zoom ? zoomedH(v.ads.zoom) : S.fov) : zoomedH(1 + (v.ads.zoom - 1) * (P.adsK || 0));
+  if (v && v.ads && w.scope) return P.zoom ? zoomedH(v.ads.zoom) : S.fov;
   return P.zoom === 1 ? 40 : (P.zoom === 2 ? 10 : S.fov);
 }
-// Mira do Valorant (ADS) completa ou luneta: usa a precisão e a cadência de mira.
-function adsOn(e) { const w = W[e.weapon]; return !!w && (w.scope ? e.zoom > 0 : !!(w.val && w.val.ads && (e.adsK || 0) >= 1)); }
+// Sem ADS no jogo: só a luneta (AWP e SSG) muda precisão e cadência.
+function adsOn(e) { const w = W[e.weapon]; return !!w && !!w.scope && e.zoom > 0; }
 const xrayEnabled = () => S.name === 'forsaken';
 const aimbotEnabled = () => S.name === 'KQLY';
 const cleanName = n => (typeof n === 'string' ? n : '').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮]/g, '').trim().slice(0, 16) || 'Jogador';
@@ -403,8 +403,6 @@ const W = {
   knife:  { name: 'Karambit', melee: true, dmg: 40, heavy: 65, rof: 450, heavyRof: 1000, range: 1.9, speed: 6.35, draw: 800, snd: 'knife' },
   sniper: { name: 'AWP', dmg: 115, mult: { head: 4, body: 1, leg: .75 }, rof: 1460, mag: 10, res: 30, reload: 3600, speed: 5.08, auto: false,
             base: .0004, noscope: .07, move: .17, air: .3, shotSpread: 0, recover: 6, kickP: .054, kickY: .011, scope: true, scopedSpeed: 2.54, zoomMs: 220, helmetPen: .975, draw: 1000, snd: 'sniper' },
-  m4a4: { name: 'M4A4', dmg: 33, mult: { head: 4, body: 1, leg: .75 }, rof: 90, mag: 30, res: 90, reload: 3100, speed: 5.715, auto: true,
-    base: .0014, move: .065, air: .22, shotSpread: .0028, recover: 7, pattern: true, recoilScale: .69, helmetPen: .7, headshotKillRange: 35, draw: 550, snd: 'm4a4' },
   m4a1s: { name: 'M4A1-S', dmg: 38, mult: { head: 3.475, body: 1, leg: .75 }, rof: 100, mag: 20, res: 80, reload: 3100, speed: 5.715, auto: true,
     base: .0011, move: .06, air: .21, shotSpread: .0021, recover: 8, pattern: true, recoilScale: .53, helmetPen: .7, headshotKillRange: 35, silenced: true, draw: 550, snd: 'm4a1s' },
   usps: { name: 'USP-S', dmg: 35, mult: { head: 4, body: 1, leg: .75 }, rof: 170, mag: 12, res: 24, reload: 2200, speed: 6.096, auto: false,
@@ -439,9 +437,9 @@ const W = {
 const GRENADES = ['he', 'flash', 'smoke'];
 // Slot 1 é a primária: fuzis, SMG, escopeta e também AWP/Scout (como no CS). 2 pistola, 3 faca.
 const SLOT = { Digit1: 'rifle', Digit2: 'pistol', Digit3: 'knife' };
-const CATEGORIES = { rifle: ['rifle', 'm4a4', 'm4a1s', 'galil', 'famas', 'ump', 'bucky', 'sniper', 'ssg'], pistol: ['pistol', 'usps', 'glock'], knife: ['knife', 'butterfly'] };
+const CATEGORIES = { rifle: ['rifle', 'm4a1s', 'galil', 'famas', 'ump', 'bucky', 'sniper', 'ssg'], pistol: ['pistol', 'usps', 'glock'], knife: ['knife', 'butterfly'] };
 const ALL_WEAPONS = Object.keys(W), ORDER = [];
-const DM_POOLS = {pistol:['pistol','usps','glock'],sniper:['sniper','ssg'],rifle:['rifle','m4a4','m4a1s','galil','famas'],all:['rifle','m4a4','m4a1s','galil','famas','ump','pistol','usps','glock','sniper','ssg']};
+const DM_POOLS = {pistol:['pistol','usps','glock'],sniper:['sniper','ssg'],rifle:['rifle','m4a1s','galil','famas'],all:['rifle','m4a1s','galil','famas','ump','pistol','usps','glock','sniper','ssg']};
 const DM_LABELS = {pistol:'pistolas',sniper:'precisão',rifle:'rifles',all:'tudo liberado'};
 const DM_BOT_NAMES = ['donk','ZywOo','m0NESY','NiKo','KSCERATO','ropz','YEKINDAR','molodoy','coldzera'];
 // Nomes extras para times grandes (até 8v8): completam os bots além dos nove do DM.
@@ -455,6 +453,9 @@ function dmLoadoutOrder(loadout,category){
 }
 function configureLoadout() {
   ORDER.length = 0;
+  // A M4A4 saiu do jogo: quem tinha ela salva passa a usar a M4A1-S.
+  for (const slot of ['rifle', 'sniper']) if (S.loadout[slot] === 'm4a4') S.loadout[slot] = 'm4a1s';
+  if (S.botWeapon === 'm4a4') S.botWeapon = 'm4a1s'; if (S.aimbotzWeapon === 'm4a4') S.aimbotzWeapon = 'm4a1s';
   // Equipamentos antigos tinham um slot só de precisão (tecla 4): quem nascia com ele passa a ter a arma na primária.
   if (S.loadout.sniper !== undefined) { if (S.startSlot === 'sniper' && CATEGORIES.rifle.includes(S.loadout.sniper)) S.loadout.rifle = S.loadout.sniper; delete S.loadout.sniper; }
   if (S.startSlot === 'sniper') S.startSlot = 'rifle';
@@ -476,7 +477,7 @@ const PAT = [[0,0],[.016,.001],[.02,.002],[.024,-.002],[.026,.003],[.026,.004],[
 /* ================= Skins ================= */
 // Cada skin troca as cores do modelo, o som do tiro e o som de abate (que sobe de tom a cada abate seguido, como no Valorant).
 // "Sublime" (nome da linha Prime no Valorant em português) é exclusiva da AK: marfim, ouro e energia ciano, com modelo próprio.
-const FIREARMS = ['rifle','m4a4','m4a1s','galil','famas','ump','bucky','pistol','usps','glock','sniper','ssg'];
+const FIREARMS = ['rifle','m4a1s','galil','famas','ump','bucky','pistol','usps','glock','sniper','ssg'];
 const SKINS = {
   padrao:  { name: 'Padrão', for: null, desc: 'Acabamento original.' },
   sublime: { name: 'Sublime', for: ['rifle'], lock: 'a0ae4456e6fd4a5c7974355a34cfe9aa5ddd469272b195abe9b99259aa1fadd9', css: ['#f2eadb','#d9a93a','#5ff6ff'], desc: 'Marfim, ouro e energia ciano. Tiro elétrico e sinos ao abater.' },
@@ -485,7 +486,7 @@ const SKINS = {
   vanguarda: { name: 'Vanguarda', for: ['sniper'], css: ['#f4f4f2','#ff6a13','#1c1c1e'], tracer: 0xff7a2a, desc: 'Branca com painéis laranja e pretos, inspirada na Asiimov do CS. Estrondo grave com eco metálico; acorde de sintetizador ao abater.' },
   alien:   { name: 'Alien', for: ['rifle'], css: ['#9cff2e','#121314','#f2f2f2'], tracer: 0x7dff3a, desc: 'Verde-limão com detalhes em preto e branco e o rosto de um alien na coronha. Rastro verde, tiro com zumbido de disco voador e teremim ao abater.' },
   blaster: { name: 'Blaster', for: ['m4a1s'], css: ['#f4f6f8','#5ec8ff','#121416'], tracer: 0xff3030, desc: 'Branca espacial com azul-celeste e detalhes pretos. Rastro vermelho, tiro de laser e acorde de nave ao abater.' },
-  buzzer:  { name: 'Buzzer', for: ['m4a4'], css: ['#ffc81a','#121212','#fff1b0'], tracer: 0xffc81a, desc: 'Amarela e preta, listrada como abelha, com asas na coronha. Rastro amarelo, tiro com zumbido e enxame ao abater.' },
+  buzzer:  { name: 'Buzzer', for: ['m4a1s'], css: ['#ffc81a','#121212','#fff1b0'], tracer: 0xffc81a, desc: 'Amarela e preta, listrada como abelha, com asas na coronha. Rastro amarelo, tiro com zumbido e enxame ao abater.' },
   glacial: { name: 'Glacial', for: FIREARMS, body: 0xe2f1fa, metal: 0x86afcc, glow: [0x6fe0ff, 0xffffff], css: ['#e2f1fa','#86afcc','#6fe0ff'], desc: 'Disparo cristalino e sinos de gelo.' },
 };
 const SKIN_IDS = Object.keys(SKINS);
@@ -549,11 +550,11 @@ const SKIN_MODELS = {
       ...skinSide([[-.24, -.09], [-.18, -.09], [-.185, -.13], [-.245, -.128]], .0274, 0x5ec8ff, .0006),
       GTB([0, .006, -.88], [0, .006, -.872], .0228, .0228, 0x5ec8ff, 16), GTB([0, .006, -.76], [0, .006, -.752], .0228, .0228, 0x5ec8ff, 16),
       [[-.002, .028, -.93], [.002, .0285, -.74], 0x121416]] },
-  // M4A4 Buzzer: amarela e preta como abelha, com faixas pretas no guarda-mão, na coronha e no carregador, e asas na coronha.
-  buzzer: { gun: 'm4a4', map: () => ({ [M4_UP]: 0xffc81a, [M4_LOW]: 0x141414, [M4_DARK]: 0x141414, [M4_RAIL]: 0x141414, [M4_POLY]: 0xffc81a, 0x15191b: 0x141414, 0x14181a: 0x141414,
+  // Buzzer (era da M4A4, removida; agora na M4A1-S, que tem o mesmo corpo): amarela e preta como abelha, faixas pretas na coronha
+  // e no carregador, e asas na coronha.
+  buzzer: { gun: 'm4a1s', map: () => ({ [M4_UP]: 0xffc81a, [M4_LOW]: 0x141414, [M4_DARK]: 0x141414, [M4_RAIL]: 0x141414, [M4_POLY]: 0xffc81a, 0x15191b: 0x141414, 0x14181a: 0x141414,
       0x2a3033: 0xffc81a, 0x2c3134: 0x141414, 0x1b1f21: 0x141414 }),
     extra: () => [
-      ...[-.335, -.39, -.445, -.5].map(z => GTB([0, .0, z], [0, .0, z - .022], .0366, .0366, 0x141414, 8, Math.PI / 8)),
       ...[.2, .245, .29].flatMap(z => [[[.0284, -.06, z], [.0294, .034, z + .018], 0x141414], [[-.0294, -.06, z], [-.0284, .034, z + .018], 0x141414]]),
       ...[-.105, -.15].flatMap(y => [[[.0274, y, -.27], [.0284, y + .02, -.17], 0x141414], [[-.0284, y, -.27], [-.0274, y + .02, -.17], 0x141414]]),
       ...skinSide([[.21, .03], [.25, .05], [.29, .045], [.27, .028]], .0285, 0xfff1b0), ...skinSide([[.215, .022], [.26, .012], [.28, .018], [.25, .028]], .0285, 0xfff1b0),
@@ -1582,7 +1583,6 @@ function physics(e, wx, wz, maxS, jump, dt, accelGoal = maxS) {
 // estudo público do cs2spraylab (descrições, sem código copiado) e o código do Source publicado pela Valve.
 const CS_W = {
   rifle: {"src":"ak47","dmg":36.0,"mag":30,"cycle":[0.1,0.1],"auto":true,"speed":[215.0,215.0],"spread":[0.0006,0.0006],"stand":[0.00641,0.00641],"crouch":[0.00481,0.00481],"move":[0.17506,0.17506],"fire":[0.0078,0.0078],"jump":[0.14076,0.14076],"jumpInitial":0.10094,"jumpApex":0.0,"land":[0.000242,0.000242],"rec":[0.368,0.506,0.305257,0.419728],"recBullets":[2,5],"seed":223,"angle":[0.0,0.0],"angleVar":[70.0,70.0],"kick":[30.0,30.0],"kickVar":[0.0,0.0],"armorRatio":1.55,"hs":4.0,"rangeMod":0.98,"pen":2.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.4,0.55]},
-  m4a4: {"src":"m4a1","dmg":33.0,"mag":30,"cycle":[0.09,0.09],"auto":true,"speed":[225.0,225.0],"spread":[0.0006,0.00045],"stand":[0.0049,0.0049],"crouch":[0.0041,0.00368],"move":[0.13788,0.122],"fire":[0.007,0.00634],"jump":[0.09727,0.09727],"jumpInitial":0.09441,"jumpApex":0.0,"land":[0.000192,0.000197],"rec":[0.338941,0.466044,0.2421,0.332888],"recBullets":[2,5],"seed":38965,"angle":[0.0,0.0],"angleVar":[70.0,70.0],"kick":[23.0,23.0],"kickVar":[0.0,0.0],"armorRatio":1.4,"hs":4.0,"rangeMod":0.97,"pen":2.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.4,0.55]},
   m4a1s: {"src":"m4a1_silencer","dmg":38.0,"mag":20,"cycle":[0.1,0.1],"auto":true,"speed":[225.0,225.0],"spread":[0.0006,0.0005],"stand":[0.0049,0.0049],"crouch":[0.0041,0.0041],"move":[0.09288,0.122],"fire":[0.012,0.007],"jump":[0.0997,0.0997],"jumpInitial":0.09677,"jumpApex":0.0,"land":[0.000197,0.000197],"rec":[0.338941,0.466044,0.2421,0.332888],"recBullets":[2,5],"seed":38965,"angle":[0.0,0.0],"angleVar":[65.0,65.0],"kick":[25.0,21.0],"kickVar":[3.0,0.0],"armorRatio":1.4,"hs":3.475,"rangeMod":0.94,"pen":2.0,"tracer":[3.0,0.0],"pellets":1,"flinch":[0.4,0.4]},
   galil: {"src":"galilar","dmg":30.0,"mag":35,"cycle":[0.09,0.09],"auto":true,"speed":[215.0,215.0],"spread":[0.0006,0.0006],"stand":[0.00877,0.00778],"crouch":[0.00658,0.00484],"move":[0.12356,0.10652],"fire":[0.007,0.00585],"jump":[0.14978,0.14978],"jumpInitial":0.10539,"jumpApex":0.0,"land":[0.000256,0.000256],"rec":[0.3,0.5,0.15,0.47],"recBullets":[2,5],"seed":51191,"angle":[0.0,0.0],"angleVar":[70.0,70.0],"kick":[21.0,21.0],"kickVar":[1.0,1.0],"armorRatio":1.55,"hs":4.0,"rangeMod":0.98,"pen":2.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.4,0.55]},
   famas: {"src":"famas","dmg":30.0,"mag":25,"cycle":[0.09,0.09],"auto":true,"speed":[220.0,220.0],"spread":[0.0006,0.0006],"stand":[0.00759,0.00369],"crouch":[0.0055,0.00325],"move":[0.09934,0.09934],"fire":[0.00605,0.00335],"jump":[0.11039,0.11039],"jumpInitial":0.09477,"jumpApex":0.0,"land":[0.000205,0.000205],"rec":[0.25,0.5,0.12,0.48],"recBullets":[2,5],"seed":39623,"angle":[0.0,0.0],"angleVar":[60.0,50.0],"kick":[20.0,20.0],"kickVar":[1.0,1.0],"armorRatio":1.4,"hs":4.0,"rangeMod":0.96,"pen":2.0,"tracer":[3.0,3.0],"pellets":1,"flinch":[0.4,0.55]},
@@ -1739,7 +1739,7 @@ function scopeLineState(e,w,t,height,fov){
 // (velocidade de andar em 0,055 s, zona morta em 0,104 s, parada total em 0,160 s, medidos na Phantom) vêm de um post de
 // desenvolvedor da Riot citado pela comunidade. O tamanho de cada recuo (graus por tiro) não é publicado: foi estimado
 // pelos padrões de spray conhecidos.
-// Arma deste jogo → arma do Valorant: AK-47 → Vandal, M4A4 e M4A1-S → Phantom, Galil e FAMAS → Bulldog, UMP → Spectre,
+// Arma deste jogo → arma do Valorant: AK-47 → Vandal, M4A1-S → Phantom, Galil e FAMAS → Bulldog, UMP → Spectre,
 // Bucky → Bucky, SSG 08 → Marshal, Desert Eagle → Sheriff, USP-S → Ghost, Glock → Classic.
 const VAL = {
   run: 6.75,          // m/s com a faca; cada arma multiplica (runSpeedMultiplier)
@@ -1755,24 +1755,21 @@ const VAL = {
 // spreadN: tiros para chegar ao spread máximo. rec: Gun Recovery Time (s). tap: Tap Efficiency.
 // pitch: [subida total (°), tiros para chegar ao topo, curva]. yaw: [amplitude (°), balas protegidas, chance de trocar de
 // lado por bala, tempo para cruzar de um lado ao outro (s)]. runPitch/runYaw: multiplicador do recuo correndo ou no ar.
-// dmg: [até (m), cabeça, corpo, perna]. ads: zoom, cadência e velocidade com a mira. burst: rajada no ADS (Bulldog).
+// dmg: [até (m), cabeça, corpo, perna]. ads: zoom, cadência e velocidade com a luneta (só a Marshal). burst: rajada no botão direito (Bulldog).
 const VAL_W = {
   rifle: { src: 'Vandal', mul: .8, rps: 9.75, mag: 25, reload: 2500, equip: 1000, auto: true, pen: 'medium',
-    dmg: [[50, 160, 40, 34]], spread: { hip: [[.25, 1], [.21, .85]], ads: [[.157, 1.02], [.13, .87]] }, spreadN: 6,
-    move: [.8, 3, 6, 10], rec: .375, tap: 6, pitch: [5.2, 9, 1.25], yaw: [2.6, 6, .1, .6], jit: .12, runPitch: 1.8, runYaw: 1,
-    ads: { zoom: 1.25, rps: 8.775, run: .76, ms: 220 } },
-  m4a4: { src: 'Phantom', mul: .8, rps: 11, mag: 30, reload: 2500, equip: 1000, auto: true, pen: 'medium', silenced: true,
-    dmg: [[20, 156, 39, 33.15], [50, 140, 35, 29.75]], spread: { hip: [[.2, .9], [.17, .76]], ads: [[.11, .91], [.09, .78]] }, spreadN: 7,
-    move: [.8, 3, 6, 10], rec: .35, tap: 4, pitch: [4.4, 9, 1.2], yaw: [1.9, 8, .1, .6], jit: .1, runPitch: 1.8, runYaw: 1,
-    ads: { zoom: 1.25, rps: 9.9, run: .76, ms: 220 } },
+    dmg: [[50, 160, 40, 34]], spread: { hip: [[.25, 1], [.21, .85]] }, spreadN: 6,
+    move: [.8, 3, 6, 10], rec: .375, tap: 6, pitch: [5.2, 9, 1.25], yaw: [2.6, 6, .1, .6], jit: .12, runPitch: 1.8, runYaw: 1 },
+  m4a1s: { src: 'Phantom', mul: .8, rps: 11, mag: 30, reload: 2500, equip: 1000, auto: true, pen: 'medium', silenced: true,
+    dmg: [[20, 156, 39, 33.15], [50, 140, 35, 29.75]], spread: { hip: [[.2, .9], [.17, .76]] }, spreadN: 7,
+    move: [.8, 3, 6, 10], rec: .35, tap: 4, pitch: [4.84, 9, 1.2], yaw: [2.09, 8, .1, .6], jit: .11, runPitch: 1.8, runYaw: 1 }, // recuo 10% acima da Phantom (pedido do jogo)
   galil: { src: 'Bulldog', mul: .8, rps: 10, mag: 24, reload: 2500, equip: 1000, auto: true, pen: 'medium',
-    dmg: [[50, 115.5, 35, 29.75]], spread: { hip: [[.3, 1.25], [.26, 1.06]], ads: [[.1, 1.5], [.08, 1.12]] }, spreadN: 6,
+    dmg: [[50, 115.5, 35, 29.75]], spread: { hip: [[.3, 1.25], [.26, 1.06]] }, spreadN: 6,
     move: [.8, 3, 6, 10], rec: .35, tap: 4, pitch: [4.2, 8, 1.25], yaw: [2.2, 5, .1, .6], jit: .12, runPitch: 1.8, runYaw: 1,
-    ads: { zoom: 1.25, rps: 6.316, run: .76, ms: 220, burst: { n: 3, gap: 75, every: 475 } } },
+    burst: { n: 3, gap: 75, every: 475 } }, // sem mira: o botão direito dispara a rajada de 3 da Bulldog
   ump: { src: 'Spectre', mul: .85, rps: 13.333, mag: 30, reload: 2250, equip: 750, auto: true, pen: 'low', silenced: true,
-    dmg: [[15, 78, 26, 22.1], [30, 66, 22, 18.7], [50, 60, 20, 17]], spread: { hip: [[.4, 1.4], [.34, 1.19]], ads: [[.25, 1.25], [.21, 1.06]] }, spreadN: 6,
-    move: [.15, 1, 2.5, 10], rec: .33, tap: 3, pitch: [3.6, 7, 1.6], yaw: [1.7, 5, .1, .28], jit: .15, runPitch: 1.5, runYaw: 1.5,
-    ads: { zoom: 1.15, rps: 12, run: .76, ms: 180 } },
+    dmg: [[15, 78, 26, 22.1], [30, 66, 22, 18.7], [50, 60, 20, 17]], spread: { hip: [[.4, 1.4], [.34, 1.19]] }, spreadN: 6,
+    move: [.15, 1, 2.5, 10], rec: .33, tap: 3, pitch: [3.6, 7, 1.6], yaw: [1.7, 5, .1, .28], jit: .15, runPitch: 1.5, runYaw: 1.5 },
   bucky: { src: 'Bucky', mul: .75, rps: 1.1, mag: 5, reload: 2500, equip: 1000, auto: false, pen: 'low',
     dmg: [[8, 34, 17, 14], [12, 26, 13, 11.05], [50, 18, 9, 7.65]], pellets: 15, pelletSpread: [3, 2.34], spread: { hip: [[0, 0], [0, 0]] }, spreadN: 1,
     move: [.5, 1, 2, 4], rec: .9, tap: 1, pitch: [4, 1, 1], yaw: [0, 99, 0, 1], jit: .4, runPitch: 1, runYaw: 1,
@@ -1792,7 +1789,6 @@ const VAL_W = {
     move: [.5, 1.1, 2.3, 7], rec: .3, tap: 3, pitch: [2.8, 6, 1.1], yaw: [.8, 2, .4, .4], jit: .25, runPitch: 1, runYaw: 1,
     alt: { pellets: 3, rps: 2.22, spread: [[1.9, 5.78], [1.71, 5.21]], move: [0, .6, 1.5, 2.25], pitch: 3.2 } },
 };
-VAL_W.m4a1s = { ...VAL_W.m4a4 };
 VAL_W.famas = { ...VAL_W.galil };
 // Liga os números às armas: dano por tabela (sem capacete, arredondado para baixo), cadência, pente, recarga, saque e velocidade.
 for (const k in VAL_W) {
@@ -1869,7 +1865,7 @@ function valFired(e, k, t, ads = false, rnd = Math.random) {
   const h0 = s.heat, h1 = Math.min(valCap(v), h0 + inc), n = v.pitch[1], curve = x => 1 - Math.pow(1 - clamp(x / n, 0, 1), v.pitch[2]);
   const moving = !e.onGround || (valMoveState(e) === 2 && Math.hypot(e.vel.x, e.vel.z) > VAL.run * v.mul * VAL.deadzone);
   const still = e.onGround && e.crouch && Math.hypot(e.vel.x, e.vel.z) < VAL.run * v.mul * VAL.deadzone;
-  const adsK = ads ? .9 : 1, pm = (moving ? v.runPitch : 1) * adsK, ym = (moving ? v.runYaw : 1) * (still ? .85 : 1) * adsK;
+  const scopeK = ads ? .9 : 1, pm = (moving ? v.runPitch : 1) * scopeK, ym = (moving ? v.runYaw : 1) * (still ? .85 : 1) * scopeK;
   // armas de tiro único (pistolas, Marshal, Bucky) sobem um pouco mesmo no topo da curva
   let up = v.pitch[0] * (curve(h1) - curve(h0));
   if (!v.auto) up = Math.max(up, v.pitch[0] / Math.max(1, n) * inc * .5);
@@ -1931,7 +1927,6 @@ const AU = {
     if (skin && skin !== 'padrao' && SKINS[skin]) return this.skinShot(skin, w, v, pan);
     if (w === 'rifle') { this.noise(0.16, 2600, 0.7, 0.5 * v, pan); this.tone(120, 0.09, 0.32 * v, 'triangle', pan, -60); }
     else if (w === 'sniper') { this.noise(.44, 1050, .65, .68 * v, pan); this.tone(62, .36, .60 * v, 'sine', pan, -26); this.tone(118, .09, .13 * v, 'triangle', pan, -65); this.noise(.055, 3800, .8, .18 * v, pan, 'highpass'); }
-    else if (w === 'm4a4') { this.noise(.13, 2200, .7, .42 * v, pan); this.tone(135, .085, .28 * v, 'triangle', pan, -70); }
     else if (w === 'm4a1s' || w === 'usps') { this.noise(.07, 1250, 1.1, .22 * v, pan, 'bandpass'); this.tone(w === 'usps' ? 210 : 155, .065, .17 * v, 'sine', pan, -75); }
     else if (w === 'ssg') { this.noise(.28, 2400, .6, .5 * v, pan); this.tone(105, .19, .36 * v, 'triangle', pan, -65); }
     else if (w === 'glock') { this.noise(.07, 2500, 1, .3 * v, pan); this.tone(245, .05, .2 * v, 'triangle', pan, -95); }
@@ -2246,18 +2241,6 @@ const M4_BODY = [
   GSH([[.316, .038], [.332, .038], [.332, -.083], [.316, -.083]], .029, 0x15191b),
   [[-.008, -.03, .2], [.008, -.018, .26], M4_DARK], ...gSym([.028, -.01, .21], [.03, .02, .3], M4_DARK),
 ];
-GUNS.m4a4 = M4_BODY.concat([
-  GTB([0, .0, -.296], [0, .0, -.535], .036, .036, 0x2a3033, 8, Math.PI / 8),
-  [[-.012, .033, -.53], [.012, .041, -.30], M4_RAIL], ...gRail(-.528, -.302, .041, .048, .015, M4_RAIL),
-  ...gSym([.033, -.008, -.53], [.042, .008, -.30], M4_RAIL), [[-.012, -.042, -.53], [.012, -.033, -.30], M4_RAIL],
-  ...[-.5, -.45, -.4, -.35].flatMap(z => gSym([.0335, .012, z], [.0345, .024, z + .028], 0x14181a)),
-  GTB([0, .0, -.306], [0, .0, -.292], .04, .04, M4_LOW, 8, Math.PI / 8),
-  GSH([[-.535, -.012], [-.576, -.012], [-.576, .01], [-.566, .075], [-.552, .075], [-.535, .035]], .011, M4_LOW),
-  ...gSym([.006, .058, -.567], [.011, .08, -.551], M4_LOW), [[-.0015, .058, -.562], [.0015, .078, -.557], 0x0d1012],
-  GTB([0, .006, -.738], [0, .006, -.53], .0085, .0085, 0x2c3134, 8, Math.PI / 8),
-  GTB([0, .006, -.785], [0, .006, -.735], .0115, .0115, 0x1b1f21, 8, Math.PI / 8),
-  [[-.0125, .0, -.775], [.0125, .012, -.755], 0x0b0d0e],
-]);
 GUNS.m4a1s = M4_BODY.concat([
   GTB([0, .004, -.296], [0, .004, -.535], .029, .029, M4_LOW, 12),
   [[-.01, .029, -.53], [.01, .036, -.30], M4_RAIL], ...gRail(-.526, -.304, .036, .042, .012, M4_RAIL, .026),
@@ -2525,7 +2508,7 @@ const ARMS = {
   knife:  [],
   sniper: [{ hand: [0, -.05, -.45], from: [0, -.065, -.43], to: [-.24, -.34, -.04] }, { hand: [0, -.09, .01], from: [.01, -.10, .04], to: [.17, -.32, .33] }],
 };
-ARMS.m4a4 = ARMS.m4a1s = ARMS.rifle; ARMS.usps = ARMS.pistol; ARMS.ssg = ARMS.sniper; ARMS.butterfly = [];
+ARMS.m4a1s = ARMS.rifle; ARMS.usps = ARMS.pistol; ARMS.ssg = ARMS.sniper; ARMS.butterfly = [];
 ARMS.medgun = ARMS.pistol; ARMS.glock = ARMS.pistol; ARMS.galil = ARMS.rifle;
 ARMS.famas = [{ hand: [0, -.07, -.31], from: [0, -.085, -.29], to: [-.24, -.34, -.02] }, { hand: [0, -.10, -.14], from: [.01, -.11, -.11], to: [.17, -.32, .30] }];
 ARMS.c4 = [{ hand: [-.07, -.085, -.02], from: [-.08, -.10, .0], to: [-.22, -.33, .26] }, { hand: [.07, -.085, -.02], from: [.08, -.10, .0], to: [.16, -.33, .32] }];
@@ -2545,10 +2528,10 @@ function limb(group, from, to, thick, mat) {
   m.quaternion.setFromUnitVectors(UPZ, b.clone().sub(a).normalize());
   group.add(m);
 }
-const MUZZLE = { rifle: [0, .01, -.675], pistol: [0, .043, -.357], sniper: [0,.025,-.945], m4a4: [0,.006,-.79], m4a1s: [0,.006,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.9], ump: [0,.005,-.48], bucky: [0,.014,-.75], glock: [0,.006,-.226], galil: [0,.007,-.68], famas: [0,.005,-.593] };
+const MUZZLE = { rifle: [0, .01, -.675], pistol: [0, .043, -.357], sniper: [0,.025,-.945], m4a1s: [0,.006,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.9], ump: [0,.005,-.48], bucky: [0,.014,-.75], glock: [0,.006,-.226], galil: [0,.007,-.68], famas: [0,.005,-.593] };
 const VM_BASE = { rifle: [.15, -.16, -.40], pistol: [.13, -.105, -.38], knife: [.005, -.11, -.38], sniper: [.15, -.16, -.38] };
-VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.galil = VM_BASE.rifle; VM_BASE.famas = [.15, -.165, -.36]; VM_BASE.glock = VM_BASE.pistol; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.he = VM_BASE.flash = VM_BASE.smoke = [.13, -.15, -.38]; VM_BASE.c4 = [.06, -.13, -.36]; VM_BASE.medgun = VM_BASE.pistol; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
-const VM_YAW = { glock: .03, galil: .05, famas: .05, rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0, ump: .05, bucky: .05, he: .03, flash: .03, smoke: .03, c4: 0, medgun: .03 };
+VM_BASE.m4a1s = VM_BASE.galil = VM_BASE.rifle; VM_BASE.famas = [.15, -.165, -.36]; VM_BASE.glock = VM_BASE.pistol; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.he = VM_BASE.flash = VM_BASE.smoke = [.13, -.15, -.38]; VM_BASE.c4 = [.06, -.13, -.36]; VM_BASE.medgun = VM_BASE.pistol; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
+const VM_YAW = { glock: .03, galil: .05, famas: .05, rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0, ump: .05, bucky: .05, he: .03, flash: .03, smoke: .03, c4: 0, medgun: .03 };
 VM_BASE.usps=[.13,-.145,-.38];VM_BASE.medgun=VM_BASE.usps;VM_BASE.glock=VM_BASE.usps;
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: .95, depthWrite: false, blending: THREE.AdditiveBlending });
 const flashGeo = new THREE.PlaneGeometry(.13, .13);
@@ -2947,7 +2930,7 @@ const vmBody = {}, vmSkin = {};
 const VM_PARTS = {
   rifle: { mag: c => c[1] < -.1 && c[2] > -.34 && c[2] < -.15, bolt: c => c[0] > .02 && c[1] > 0 && c[1] < .03 && c[2] > -.25 && c[2] < -.21, kind: 'side', rock: .14 },
   galil: { mag: c => c[1] < -.1 && c[2] > -.3 && c[2] < -.15, bolt: c => c[0] > .02 && c[2] > -.27 && c[2] < -.23, kind: 'side', rock: .12 },
-  m4a4: { mag: c => c[1] < -.1 && c[2] > -.3 && c[2] < -.15, kind: 'tap' }, // M4: o polegar bate no retém do ferrolho, como no CS
+  m4a1s: { mag: c => c[1] < -.1 && c[2] > -.3 && c[2] < -.15, kind: 'tap' }, // M4: o polegar bate no retém do ferrolho, como no CS
   famas: { mag: c => c[1] < -.08 && c[2] > 0 && c[2] < .08, kind: 'tap' },
   ump: { mag: c => c[1] < -.09 && c[2] > -.25 && c[2] < -.15, bolt: c => c[0] < -.02 && c[2] > -.27 && c[2] < -.22, kind: 'left' },
   bucky: { pump: (c, s) => Math.abs(c[0]) < .03 && c[1] > -.05 && c[1] < 0 && c[2] > -.56 && c[2] < -.24 && s[2] < .3, kind: 'pump' },
@@ -2957,7 +2940,6 @@ const VM_PARTS = {
   glock: { mag: c => c[1] < -.14, magBody: [[-.015, -.147, .0], [.015, -.05, .05], 0x1a1c1f], kind: 'pistol' },
   pistol: { mag: c => c[1] < -.15, magBody: [[-.014, -.165, .005], [.014, -.05, .06], 0x2a2f35] },
 };
-VM_PARTS.m4a1s = VM_PARTS.m4a4;
 const partBox = p => { const c = [], s = []; for (let j = 0; j < 3; j++) { c.push((p[0][j] + p[1][j]) / 2); s.push(Math.abs(p[1][j] - p[0][j])); } return [c, s]; };
 function splitGun(k, list) {
   const spec = VM_PARTS[k] || {}, out = { body: [], mag: [], bolt: [], pump: [] };
@@ -3211,8 +3193,21 @@ let tracerI = 0;
 function tracer(a, b, ms, hex = TRACER_HEX) {
   const t = tracers[tracerI++ % tracers.length], arr = t.l.geometry.attributes.position.array;
   t.l.material.color.setHex(hex); t.l.material.opacity = hex === TRACER_HEX ? .75 : .95;
-  arr[0] = a[0]; arr[1] = a[1]; arr[2] = a[2]; arr[3] = b[0]; arr[4] = b[1]; arr[5] = b[2];
-  t.l.geometry.attributes.position.needsUpdate = true; t.l.visible = true; t.until = now() + (ms || 60);
+  // Rastro como risco curto que viaja do cano até onde a bala bateu (e não uma linha inteira parada): mostra o caminho real.
+  t.a = [a[0], a[1], a[2]]; t.d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; t.len = Math.hypot(t.d[0], t.d[1], t.d[2]) || 1e-6; t.t0 = now(); t.min = ms || 60;
+  arr[0] = arr[3] = a[0]; arr[1] = arr[4] = a[1]; arr[2] = arr[5] = a[2];
+  t.l.geometry.attributes.position.needsUpdate = true; t.l.visible = true; t.until = t.t0 + Math.max(t.min, (t.len + TRACER_STREAK) / TRACER_SPEED * 1000);
+  tracerStep(t, t.t0);
+}
+// Velocidade (m/s) e comprimento (m) do risco do rastro. Tiros curtos ficam visíveis pelo menos o tempo pedido.
+const TRACER_SPEED = 420, TRACER_STREAK = 5;
+function tracerStep(tr, t) {
+  const age = Math.max(0, t - tr.t0) / 1000, head = Math.min(tr.len, age * TRACER_SPEED + .5);
+  let tail = clamp(head - TRACER_STREAK, 0, tr.len);
+  if (t - tr.t0 < tr.min) tail = Math.min(tail, Math.max(0, tr.len - TRACER_STREAK));
+  const arr = tr.l.geometry.attributes.position.array, ka = tail / tr.len, kb = head / tr.len;
+  for (let i = 0; i < 3; i++) { arr[i] = tr.a[i] + tr.d[i] * ka; arr[3 + i] = tr.a[i] + tr.d[i] * kb; }
+  tr.l.geometry.attributes.position.needsUpdate = true;
 }
 
 /* ================= Estado ================= */
@@ -3477,7 +3472,7 @@ function spawnSelf(side, spec) {
   // Fora do Plant the Bomb (que tem economia), todos nascem com colete e capacete se a opção estiver ligada.
   if (!bombOn()) { P.helmet = !!S.armor; P.armor = S.armor ? 100 : 0; }
   P.hp = 100; P.alive = true; P.crouch = false; P.duck = 0; P.duckSpeed = DUCK.ideal; P.wantDuck = false; P.h = H_STAND; P.eyeOff = EYE_STAND; P.onGround = true;
-  P.recoilP = P.recoilY = P.shots = P.spread = 0; csReset(P); valReset(P); P.ads = false; P.adsK = 0; P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null; P.nadePrep = P.nadePending = null; P.throwT = 0;
+  P.recoilP = P.recoilY = P.shots = P.spread = 0; csReset(P); valReset(P); P.zoom = 0; P.reloadEnd = 0; P.tagUntil = 0; P.killedBy = null; P.nadePrep = P.nadePending = null; P.throwT = 0;
   refillAmmo(P);
   P.weapon = S.loadout[CATEGORIES[S.startSlot] ? S.startSlot : 'rifle']; P.lastW = S.loadout.pistol;
   if(G.mode==='dm'){
@@ -3538,11 +3533,10 @@ function playerInput(dt, t) {
   const dk = P.duck * P.duck * (3 - 2 * P.duck);
   P.eyeOff = EYE_STAND + (EYE_CROUCH - EYE_STAND) * dk;
   const w = W[P.weapon], val = !!w.val || !!w.melee || !w.cs;
-  // Valorant em tudo menos a AWP: corrida da arma, Shift a 61%, agachado a 40%, mira (ADS) com a velocidade da mira.
+  // Valorant em tudo menos a AWP: corrida da arma, Shift a 61%, agachado a 40%.
   P.valMove = val;
   let maxS = w.speed;
   if (P.zoom) maxS = w.scopedSpeed || maxS;
-  if (w.val && w.val.ads && !w.scope && P.ads) maxS *= w.val.ads.run;
   const walk = K('ShiftLeft') || K('ShiftRight') ? (val ? VAL.walk : WALK_MUL) : 1, duckMul = 1 + ((val ? VAL.crouch : CROUCH_MUL) - 1) * P.duck;
   P.walking = walk < 1;
   maxS *= Math.min(walk, duckMul);
@@ -3578,7 +3572,7 @@ function playerInput(dt, t) {
 function selectWeapon(k) {
   if (!ORDER.includes(k) || k === P.weapon || !P.alive) return;
   P.lastW = P.weapon; P.weapon = k; P.drawEnd = now() + W[k].draw; P.reloadEnd = 0; P.zoom = 0; P.shots = 0; applyFov();
-  P.recoilP = P.recoilY = P.spread = P.kick = P.swing = 0; csReset(P); valReset(P); P.ads = false; P.adsK = 0;
+  P.recoilP = P.recoilY = P.spread = P.kick = P.swing = 0; csReset(P); valReset(P);
   P.inspT = 0; P.kAnim = null; P.knifeSide = 0; P.nadePrep = null; if (W[k].melee) beginKnifeAnimation('draw',now());
   P.deagleShot=null;P.deagleDrawKey=0;P.deagleDrawStage=0;
 }
@@ -3599,7 +3593,7 @@ function completeReload(t) {
 // Agachado (no chão), o recuo de cada tiro é 15% menor.
 const CROUCH_RECOIL = .85;
 // Coice da arma na mão, como no CS:GO: cada tiro empurra a arma para trás e levanta a boca; uma mola a traz de volta.
-const VM_KICK = { sniper: 3.4, ssg: 2.6, bucky: 3.0, rifle: 1.7, galil: 1.5, famas: 1.4, m4a4: 1.45, m4a1s: 1.3, ump: 1.2, usps: 1.6, glock: 1.3 };
+const VM_KICK = { sniper: 3.4, ssg: 2.6, bucky: 3.0, rifle: 1.7, galil: 1.5, famas: 1.4, m4a1s: 1.3, ump: 1.2, usps: 1.6, glock: 1.3 };
 const VM_SPRING = { k: 420, damp: 30 };
 function vmKickImpulse(k) { const a = P.vmKick || (P.vmKick = { z: 0, v: 0 }); a.v += VM_KICK[k] || 0; }
 // Mola amortecida (passos fixos, estável em qualquer FPS): devolve o recuo visual atual (0 = repouso).
@@ -3730,7 +3724,8 @@ function shoot(t, heavy) {
     if (w.cs) [ox, oy] = csSpreadOffset(inac, w.cs.spread[mode]);
   }
   const dir = aim ? aim.direction : dirFrom(P.yaw + P.recoilY + ox, P.pitch + P.recoilP + oy);
-  const mz = muzzleWorld();
+  // O rastro sai do cano que aparece na tela (o da arma em primeira pessoa), e não de um ponto fixo à frente do olho.
+  const mz = (typeof viewMuzzleWorld === 'function' && viewMuzzleWorld()) || muzzleWorld();
   let end;
   if (alt && v.air && !aim) {
     // Cartucho da Bucky: voa reto até 7,5 m (ou até a parede) e estoura em 5 chumbos; se acertar alguém antes, dá um chumbo.
@@ -3830,14 +3825,14 @@ function updateWeapon(dt, t) {
   }
   if (canAct && !w.melee && am.mag === 0 && am.res > 0 && t >= P.nextFire) startReload(t);
   const trig = w.auto || w.melee ? P.m1 : P.m1Press;
-  // Rajada da Bulldog (Galil/FAMAS) com a mira: cada clique dispara 3 tiros a 13,3/s; 2,1 rajadas por segundo.
-  const vb = w.val && w.val.ads && w.val.ads.burst && adsOn(P) ? w.val.ads.burst : null;
+  // Rajada da Bulldog (Galil/FAMAS) no botão direito: 3 tiros a 13,3/s; 2,1 rajadas por segundo.
+  const vb = w.val && w.val.burst ? w.val.burst : null;
   if (P.burstLeft > 0 && (P.burstW !== P.weapon || !canAct || P.reloadEnd)) P.burstLeft = 0;
   if (canAct && t >= P.nextFire && !P.burstLeft) {
     if (w.melee && (P.m2 || P.m2Press)) shoot(t,true);
     else if (w.val && (w.val.alt || w.val.air) && P.m2Press && P.ammo[P.weapon].mag > 0) shoot(t,true);
-    else if (vb && P.m1Press && P.ammo[P.weapon].mag > 0) { P.burstLeft = vb.n; P.burstW = P.weapon; P.burstAt = t; P.burstCfg = { gap: vb.gap, after: vb.every - (vb.n - 1) * vb.gap }; }
-    else if (trig && !vb) shoot(t,false);
+    else if (vb && P.m2Press && P.ammo[P.weapon].mag > 0) { P.burstLeft = vb.n; P.burstW = P.weapon; P.burstAt = t; P.burstCfg = { gap: vb.gap, after: vb.every - (vb.n - 1) * vb.gap }; }
+    else if (trig) shoot(t,false);
   }
   if (P.burstLeft > 0 && t >= P.burstAt) {
     P.inBurst = true; shoot(t,false); P.inBurst = false; P.burstLeft--;
@@ -3846,9 +3841,6 @@ function updateWeapon(dt, t) {
   }
   P.m1Press = false; P.m2Press = false;
   // Aim punch, índice do recuo e precisão do CS evoluem a cada quadro (punch em passos de 1/128 s).
-  // Mira (ADS) do Valorant: botão direito liga/desliga; entra no tempo da arma; sai ao recarregar, sacar ou morrer.
-  if (!(w.val && w.val.ads && !w.scope) || !P.alive || P.reloadEnd || t < P.drawEnd) P.ads = false;
-  { const v = w.val, ms = v && v.ads ? v.ads.ms : 200, before = P.adsK || 0; P.adsK = clamp(before + (P.ads ? 1 : -1) * dt * 1000 / ms, 0, 1); if (P.adsK !== before) applyFov(); }
   if (w.val) valRecover(P, P.weapon, t);
   else if (w.cs) csTick(P, P.weapon, dt, t); else if (P.aim) { P.aim.acc = Math.min(P.aim.acc + dt, .25); while (P.aim.acc >= CS_PUNCH.step) { P.aim.acc -= CS_PUNCH.step; csPunchStep(P.aim, CS_PUNCH.step); } }
   syncPunch(t);
@@ -4795,7 +4787,7 @@ function prefireSetup(t){
   Object.assign(DM,{mode:'prefire',active:true,tdm:false,phase:'live',endsAt:Infinity,nextSoundAt:0});
   DM.bots=INFERNO_PREFIRE.spots.map((spot,i)=>{
     const b=dmMakeBot(i);Object.assign(b,{id:'PF'+i,name:spot.name,alive:true,hp:100,helmet:false,team:1,
-      w:'m4a4',mag:W.m4a4.mag,yaw:spot.yaw,readyAt:t+1100,respawnAt:Infinity});
+      w:'m4a1s',mag:W.m4a1s.mag,yaw:spot.yaw,readyAt:t+1100,respawnAt:Infinity});
     b.pos.set(spot.x,spot.y,spot.z);return b;
   });
   DM.actors.length=0;DM.actors.push(P,...DM.bots);DM.byId.clear();
@@ -5419,8 +5411,8 @@ function teamTick(dt, t) {
 const BOMB = { beepRange: 38, half: 8, target: 9, maxRounds: 16, freezeMs: 10000, buyMs: 20000, roundMs: 90000, bombMs: 40000, plantMs: 3200, defuseMs: 10000, kitMs: 5000, endMs: 5000,
   start: 800, max: 8000, win: { kill: 2750, bomb: 3000, defuse: 3000, time: 2750 }, lossBase: 2000, lossStep: 300, lossMax: 2900, plantTeam: 600, plantMe: 300, defuseMe: 300,
   tTeam: 0, streak: [0, 0], planted: null, dropped: null, carrier: null, roundStart: 0, plantedBy: null, beepAt: 0, gfx: null, lastWhy: '' };
-const PRICES = { glock: 200, usps: 200, galil: 1800, famas: 2050, pistol: 700, ump: 1200, bucky: 1050, rifle: 2700, m4a4: 3100, m4a1s: 2900, ssg: 1700, sniper: 4750, he: 300, flash: 200, smoke: 300, kevlar: 650, helmet: 1000, kit: 400 };
-const SIDE_ONLY = { rifle: 't', galil: 't', glock: 't', m4a4: 'ct', m4a1s: 'ct', famas: 'ct', usps: 'ct', kit: 'ct' };
+const PRICES = { glock: 200, usps: 200, galil: 1800, famas: 2050, pistol: 700, ump: 1200, bucky: 1050, rifle: 2700, m4a1s: 2900, ssg: 1700, sniper: 4750, he: 300, flash: 200, smoke: 300, kevlar: 650, helmet: 1000, kit: 400 };
+const SIDE_ONLY = { rifle: 't', galil: 't', glock: 't', m4a1s: 'ct', famas: 'ct', usps: 'ct', kit: 'ct' };
 const NADE_MAX = { he: 1, flash: 2, smoke: 1 };
 const SIDE_NAMES = { t: 'Atacantes', ct: 'Defensores' };
 const bombOn = () => G.mode === 'team' && ARENA.bomb;
@@ -5465,7 +5457,7 @@ function bombPrice(e, item) {
   return PRICES[item] ?? Infinity;
 }
 // Motivo de não poder comprar (ou '' se pode).
-const SHOP_COLS = [['Pistolas', ['glock', 'usps', 'pistol']], ['SMG e escopeta', ['ump', 'bucky']], ['Rifles', ['galil', 'rifle', 'famas', 'm4a4', 'm4a1s']], ['Precisão', ['ssg', 'sniper']], ['Granadas', ['he', 'flash', 'smoke']], ['Equipamento', ['kevlar', 'helmet', 'kit']]];
+const SHOP_COLS = [['Pistolas', ['glock', 'usps', 'pistol']], ['SMG e escopeta', ['ump', 'bucky']], ['Rifles', ['galil', 'rifle', 'famas', 'm4a1s']], ['Precisão', ['ssg', 'sniper']], ['Granadas', ['he', 'flash', 'smoke']], ['Equipamento', ['kevlar', 'helmet', 'kit']]];
 // Na loja só aparece o que o seu lado pode comprar (o que é exclusivo do outro lado nem é listado).
 // Fora do Plant the Bomb a loja é grátis e tem todas as armas dos dois lados, sem granadas nem equipamento (colete e capacete são padrão).
 const shopColsFor = e => !bombOn() ? SHOP_COLS.filter(([title]) => title !== 'Granadas' && title !== 'Equipamento')
@@ -5514,7 +5506,7 @@ function bombBuy(e, item, t) {
 // Compra dos bots: rifle e colete quando dá; força com SMG/escopeta; economiza no resto. Utilitários se sobrar.
 function bombBotBuy(e, t) {
   const side = sideOf(e), m = () => e.money, buy = k => bombBuy(e, k, t);
-  const rifle = side === 't' ? 'rifle' : (Math.random() < .5 ? 'm4a1s' : 'm4a4'), cheap = side === 't' ? 'galil' : 'famas';
+  const rifle = side === 't' ? 'rifle' : 'm4a1s', cheap = side === 't' ? 'galil' : 'famas';
   if (!e.inv.primary) {
     if (m() >= PRICES[rifle] + 1000) { buy(rifle); }
     // Rifle barato (Galil / FAMAS) quando não dá para o rifle cheio com colete.
@@ -6562,6 +6554,16 @@ function updateOpp(dt, t) {
 /* ================= Câmera e viewmodel ================= */
 function vfovFromH(h) { return 2 * Math.atan(Math.tan(h * DEG / 2) * 0.75) / DEG; }
 function applyFov() { camera.fov = vfovFromH(zoomH()); camera.updateProjectionMatrix(); }
+// Ponto do mundo que aparece exatamente onde está o cano da arma em primeira pessoa (que é desenhada numa cena à parte,
+// com outro campo de visão): projeta o cano na tela e volta para o mundo a 0,9 m do olho, na mesma direção da tela.
+const _vmz = new V3(), _vmd = new V3();
+function viewMuzzleWorld() {
+  const f = vmFlash[P.weapon]; if (!f || !P.alive || P.zoom) return null;
+  f.updateWorldMatrix(true, false); f.getWorldPosition(_vmz); _vmz.project(vmCam);
+  if (!(Math.abs(_vmz.x) < 1.2 && Math.abs(_vmz.y) < 1.2)) return null;
+  camera.updateMatrixWorld(); _vmd.set(_vmz.x, _vmz.y, .5).unproject(camera).sub(camera.position).normalize();
+  return [camera.position.x + _vmd.x * .9, camera.position.y + _vmd.y * .9, camera.position.z + _vmd.z * .9];
+}
 function updateCamera(dt, t) {
   if (specCamera(dt, t)) return;
   const dk = P.alive ? 0 : clamp((t - P.deathT) / 500, 0, 1);
@@ -6630,17 +6632,7 @@ function updateVM(dt, t) {
     if (P.kAnim && t >= P.kAnim.t0 + P.kAnim.duration) P.kAnim = null;
   }
   offsetViewmodel(vmRoot.position);
-  // Mira (ADS) do Valorant: a arma vai para o centro da tela, com a mira de ferro na linha do olho, e acompanha o recuo.
-  const ad = w.val && w.val.ads && !w.scope ? P.adsK || 0 : 0;
-  if (ad > 0) {
-    const fit = VM_FIT[P.weapon] || {}, k = VM_SIZE * (fit.s || 1), e = ad * ad * (3 - 2 * ad), sight = VM_ADS[P.weapon] || VM_ADS.rifle;
-    const ax = -((1 - k) * VM_ANCHOR[0] + (fit.x || 0)) / k, ay = -((1 - k) * VM_ANCHOR[1] + (fit.y || 0)) / k - sight[0];
-    vmRoot.position.x += (ax - vmRoot.position.x) * e; vmRoot.position.y += (ay - vmRoot.position.y) * e; vmRoot.position.z += (b[2] + sight[1] - vmRoot.position.z) * e;
-    vmRoot.rotation.y *= 1 - e; vmRoot.rotation.z *= 1 - e;
-  }
 }
-// Altura da mira de ferro acima da raiz da arma e quanto ela chega perto do olho, por arma (ajuste visual).
-const VM_ADS = { rifle: [.045, .02], m4a4: [.05, .02], m4a1s: [.05, .02], galil: [.045, .02], famas: [.06, .02], ump: [.045, .04] };
 
 /* ================= HUD ================= */
 const el = { aliveMe:$('aliveMe'),aliveOp:$('aliveOp'),armorValue:$('armorValue'),helmet:$('helmetIndicator'),healthFill:$('healthFill'),ammobox:$('ammobox'),weaponStatus:$('weaponStatus'),weaponTrack:$('weaponTrack'),weaponFill:$('weaponFill'),abState:$('abState'),ability: $('ability'), abName: $('abName'), abIcon: $('abIcon'), abCd: $('abCd'), loc: $('loc'), bombbox: $('bombbox'), bbMoney: $('bbMoney'), bbArmor: $('bbArmor'), bbC4: $('bbC4'), actbar: $('actbar'), actLbl: $('actLbl'), actFill: $('actFill'), blind: $('blindfx'), smoke: $('smokefx'), hud: $('hud'), xh: $('xh'), hitm: $('hitm'),  dmgdir: $('dmgdir'), red: $('redflash'), scope: $('scope'),
@@ -6686,7 +6678,7 @@ function flashRed() {
   el.red.style.transition = 'none'; el.red.style.opacity = 1;
   clearTimeout(redT); redT = setTimeout(() => { el.red.style.transition = 'opacity .5s'; el.red.style.opacity = 0; }, 80);
 }
-const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a4: 'M4A4', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY', glock: 'GLOCK', galil: 'GALIL', famas: 'FAMAS', he: 'HE', flash: 'FLASH', smoke: 'SMOKE', c4: 'C4', medgun: 'ESTIMULANTE', fall: 'QUEDA' };
+const WSHORT = { rifle: 'AK', pistol: 'DEAGLE', knife: 'KARAMBIT', sniper: 'AWP', m4a1s: 'M4A1-S', usps: 'USP-S', ssg: 'SCOUT', butterfly: 'BUTTERFLY', ump: 'UMP-45', bucky: 'BUCKY', glock: 'GLOCK', galil: 'GALIL', famas: 'FAMAS', he: 'HE', flash: 'FLASH', smoke: 'SMOKE', c4: 'C4', medgun: 'ESTIMULANTE', fall: 'QUEDA' };
 function feedWeaponIcon(key){
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 88 30');svg.setAttribute('role','img');svg.setAttribute('aria-label',W[key]?.name||WSHORT[key]||'Arma');
   const path=document.createElementNS(svg.namespaceURI,'path');
@@ -7244,7 +7236,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ================= Entrada ================= */
-function sensK() { let k = S.sens * 0.022 * DEG; if (P.zoom || (P.adsK > 0 && W[P.weapon]?.val)) k *= (zoomH() / S.fov) * S.zoomRatio; return k; }
+function sensK() { let k = S.sens * 0.022 * DEG; if (P.zoom) k *= (zoomH() / S.fov) * S.zoomRatio; return k; }
 document.addEventListener('mousemove', e => {
   if (!locked) return;
   const dx = e.movementX || 0, dy = e.movementY || 0;
@@ -7267,8 +7259,7 @@ document.addEventListener('mousedown', e => {
   else if (e.button === 2) {
     const w = W[P.weapon];
     if (w.scope) toggleScope(now());
-    else if (w.val && w.val.ads) { if (P.alive && !P.reloadEnd) P.ads = !P.ads; }
-    else if (w.val && (w.val.alt || w.val.air)) { P.m2Press = true; updateWeapon(0, now()); }
+    else if (w.val && (w.val.alt || w.val.air || w.val.burst)) { P.m2Press = true; updateWeapon(0, now()); }
     else if (w.melee) { P.m2 = P.m2Press = true; updateWeapon(0, now()); }
     else if (w.grenade || w.medgun) { P.m2Press = true; updateWeapon(0, now()); }
   }
@@ -7694,7 +7685,7 @@ function resize() {
 }
 addEventListener('resize', resize);
 
-function updateFx(t) { for (const tr of tracers) if (tr.l.visible && t > tr.until) tr.l.visible = false; }
+function updateFx(t) { for (const tr of tracers) if (tr.l.visible) { if (t > tr.until) tr.l.visible = false; else if (tr.a) tracerStep(tr, t); } }
 // Cor do contorno (preferência): contorno dos inimigos (DM, times, bomba e 1v1) e silhuetas das marcações.
 let outlineSynced = '';
 function syncOutline() {
