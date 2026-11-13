@@ -1,4 +1,4 @@
-# Mapas nativos: Sandstone e Inferno Prefire
+# Mapas nativos: Sandstone, Lily e Inferno Prefire
 
 ## Sandstone · Plant the Bomb (5v5 e Wingman)
 
@@ -19,10 +19,25 @@ node tools/import-sandstone.mjs "caminho/chicken_gun_fruzer_sandy.glb"
 node --test tests/game.test.cjs
 ```
 
+## Lily · Plant the Bomb (5v5)
+
+BSP enviado pelo usuário (`de_lily.bsp`, dentro de um ZIP), com permissão de uso e os devidos créditos; o nome do autor ainda não foi informado. `tools/import-lily.mjs` converte o arquivo:
+
+- **Estruturas 1:1:** paredes, pisos, escadas e colisão saem dos brushes do BSP (versão 21), na escala de 0,0254 m por unidade.
+- **Sem textura:** o mapa usa texturas de cor sólida embutidas (`materials/custom/*.vtf`, DXT1). O importador decodifica cada uma e usa a cor média como cor chapada do material: cinza claro #9a9a9a, cinza #5a5a5a, cinza escuro #3f3f3f, cinza médio #7e7d7e, quase branco #e1e1e1, vermelho dos telhados #c54a37, marrom #ce984d e laranja #e17d08.
+- **Props do CS:GO:** os modelos não vêm no arquivo. As caixas viram blocos nas medidas do nome (`dust_crate_style_01_32x64x64` = 32 × 64 × 64 unidades) e as pilhas de caixas têm 100 × 100 × 96. Caçambas, sacos de lixo, barris, caminhões, táxi e empilhadeira usam as medidas dos modelos originais; nos veículos, o eixo comprido é o y do modelo, medido pelo chão andável do CS em volta de cada um. Luminárias ficam de fora. Conferido com o `.nav` embutido: só um punhado de pontos de chão do CS cai sob algum bloco (topos de pilhas de caixas).
+- **Spawns e bombsites:** os 10 + 10 spawns e os dois `func_bomb_target` do BSP.
+- **Barreiras da compra:** as bordas das duas `func_buyzone`. Pela navegação, de dentro de cada spawn não se chega ao outro spawn nem a um bombsite durante a compra; na vista, a barreira só aparece nos trechos abertos.
+
+```powershell
+node tools/import-lily.mjs "caminho/de_lily.bsp"
+node --test tests/game.test.cjs
+```
+
 ## Dados usados pelo jogo
 
-- `warface-catalog.js`: nome, autor, dimensões, spawns, bombsites e barreiras do Sandstone, para o menu.
-- `sandstone.js` / `inferno.js`: malha indexada, colisões e navegação em arrays tipados, compactados com gzip e base64. São carregados só ao entrar na partida.
+- `warface-catalog.js`: nome, autor, modos, dimensões, spawns, bombsites e barreiras do Sandstone e do Lily, para o menu.
+- `sandstone.js` / `lily.js` / `inferno.js`: malha indexada, colisões e navegação em arrays tipados, compactados com gzip e base64. São carregados só ao entrar na partida.
 - `runtime.js`: colisão convexa com grade espacial, movimento, escadas, navegação e carregamento.
 
 ## Inferno · Prefire

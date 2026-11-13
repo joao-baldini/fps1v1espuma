@@ -87,7 +87,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
       <aside class="mode-navigation"><h1 id="lobbyTitle">Jogar</h1>
     <div class="modes" id="modeSel" role="radiogroup" aria-label="Modo de jogo">
       <button class="mode-card" type="button" role="radio" data-mode="elim"><span class="mode-copy"><b>Elimination</b><small>Monte o confronto · 1 a 8 por time</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Sandstone</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Sandstone e Lily</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Sandstone</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
@@ -107,6 +107,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
         <div class="map-grid dm-maps" id="dmMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
         <div class="map-grid" id="bombMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
         <div class="map-grid" id="warfaceMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
+        <div class="map-grid" id="practiceMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
 
           <p class="practice-map" id="practiceMap" hidden>Alvos parados e respawn imediato. Os quadros da arena ajustam bots, armas, munição e viewmodel.</p>
         </section>
@@ -325,7 +326,7 @@ function normalizeViewmodel(value) {
   return Object.fromEntries(Object.entries(VIEWMODEL_LIMITS).map(([axis,[min,max]])=>[axis,Math.round(clamp(fin(value?.[axis])?value[axis]:0,min,max)*10)/10]));
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sandstone', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sandstone', practiceMap: 'aimbotz', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right', viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -344,7 +345,8 @@ function loadS() {
   s.xvx = { mine: clamp(+s.xvx?.mine || 1, 1, 8), foes: clamp(+s.xvx?.foes || 1, 1, 8) };
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
   if (s.bombMap !== 'sandstone') s.bombMap = 'sandstone';
-  if (s.warfaceMap !== 'sandstone') s.warfaceMap = 'sandstone';
+  if (!['sandstone', 'lily'].includes(s.warfaceMap)) s.warfaceMap = 'sandstone';
+  if (!['aimbotz', 'sandstone', 'lily'].includes(s.practiceMap)) s.practiceMap = 'aimbotz';
   if (!['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(s.operator)) s.operator = 'finder';
   if (!['vermelho', 'amarelo', 'roxo'].includes(s.enemyOutline)) s.enemyOutline = 'vermelho';
   s.hitmarker = s.hitmarker !== false;
@@ -1259,17 +1261,20 @@ MAPS.aimbotz = {
     B.solid([-18, 0, 7], [18, .28, 14], K.plat);
   },
 };
-// Plant the Bomb (5v5 e Wingman): Sandstone, convertido do GLB do autor (amogusstrikesback2, CC-BY 4.0) por
-// tools/import-sandstone.mjs; o nick dele aparece no menu e na miniatura. Barreiras do spawn: fase de compra (bombBarriers).
+// Plant the Bomb: Sandstone (5v5 e Wingman), convertido do GLB do autor (amogusstrikesback2, CC-BY 4.0) por
+// tools/import-sandstone.mjs, e Lily (só 5v5), convertido do BSP por tools/import-lily.mjs. modes diz onde cada mapa
+// aparece; sem modes, nos dois. Barreiras do spawn: fase de compra (barriersUp).
 for(const [id,data]of Object.entries(WARFACE_MAP_CATALOG))MAPS[id]={name:data.name,theme:'praga',source:id,bomb:true,warface:true,ax:data.ax,az:data.az,
-  author:data.credit,credit:data.name+' · mapa de '+data.credit,barriers:data.barriers||[],
+  author:data.credit,credit:data.credit?data.name+' · mapa de '+data.credit:undefined,barriers:data.barriers||[],modes:data.modes||['5v5','wingman'],
   spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
 MAPS.infernoprefire={name:'Inferno · Prefire',theme:'terracota',source:'inferno',practice:true,
   ax:INFERNO_PREFIRE.ax,az:INFERNO_PREFIRE.az,
   plant:{t:[INFERNO_PREFIRE.spawn],ct:INFERNO_PREFIRE.spots.map(p=>[p.x,p.z,p.yaw,p.y])}};
 const MAP_IDS = Object.keys(MAPS).filter(id => !MAPS[id].dm && !MAPS[id].practice && !MAPS[id].bomb);
-const BOMB_MAPS = Object.keys(MAPS).filter(id => MAPS[id].bomb);
+const BOMB_MAPS = Object.keys(MAPS).filter(id => MAPS[id].bomb && (!MAPS[id].modes || MAPS[id].modes.includes('wingman')));
 const WARFACE_MAPS=Object.keys(MAPS).filter(id=>MAPS[id].warface);
+// Practice: a arena de mira e os mapas do Plant the Bomb (sozinho, sem tempo, compra livre, invulnerável, N voa).
+const PRACTICE_MAPS=['aimbotz',...Object.keys(MAPS).filter(id=>MAPS[id].bomb)];
 const isBombMode=()=>S.mode==='bomb'||S.mode==='wingman';
 const RAMP_FLIP = { '+z': '-z', '-z': '+z', '+x': '-x', '-x': '+x' };
 function rampHeightAt(r, x, z) {
@@ -1339,10 +1344,19 @@ function buildBarrierGfx(parent) {
   barrierGfx = null; if (!MAP.barriers || !MAP.barriers.length || !THREE.MeshBasicMaterial || !THREE.Group || !THREE.BoxGeometry || !parent || !parent.add) return;
   const group = new THREE.Group(), wall = new THREE.MeshBasicMaterial({ color: 0x48d6ff, transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide }),
     edge = new THREE.MeshBasicMaterial({ color: 0x9cecff, transparent: true, opacity: .75, depthWrite: false });
+  // Desenha só os trechos abertos de cada barreira (onde há chão livre); dentro das paredes ela não aparece.
   for (const b of MAP.barriers) {
-    const len = Math.hypot(b[2] - b[0], b[3] - b[1]), cx = (b[0] + b[2]) / 2, cz = (b[1] + b[3]) / 2, y = Math.min(sourceWorld.ground(b[0], b[1], 3), sourceWorld.ground(cx, cz, 3), sourceWorld.ground(b[2], b[3], 3)), yaw = Math.atan2(b[3] - b[1], b[2] - b[0]);
-    const add = (h, y0, mat, th) => { const m = new THREE.Mesh(new THREE.BoxGeometry(len, h, th), mat); m.position.set(cx, y0 + h / 2, cz); m.rotation.y = -yaw; m.renderOrder = 3; group.add(m); };
-    add(4, y - .05, wall, .04); for (const yy of [y + .02, y + 1.3, y + 2.6, y + 3.9]) add(.05, yy, edge, .06);
+    const full = Math.hypot(b[2] - b[0], b[3] - b[1]), steps = Math.max(1, Math.ceil(full / .4)), yaw = Math.atan2(b[3] - b[1], b[2] - b[0]), pieces = [];
+    let cur = null;
+    for (let i = 0; i <= steps; i++) {
+      const k = i / steps, x = b[0] + (b[2] - b[0]) * k, z = b[1] + (b[3] - b[1]) * k, y = sourceWorld.ground(x, z, 6), open = y > sourceWorld.meta.bounds[1] - 1 && !sourceWorld.overlap(x, y + .3, z, 1.4, .05);
+      if (open) { if (!cur) pieces.push(cur = { a: k, b: k, y }); cur.b = k; cur.y = Math.min(cur.y, y); } else cur = null;
+    }
+    for (const pc of pieces) {
+      const a = Math.max(0, pc.a - .5 / steps), e = Math.min(1, pc.b + .5 / steps), len = Math.max(.3, (e - a) * full), cx = b[0] + (b[2] - b[0]) * (a + e) / 2, cz = b[1] + (b[3] - b[1]) * (a + e) / 2, y = pc.y;
+      const add = (h, y0, mat, th) => { const m = new THREE.Mesh(new THREE.BoxGeometry(len, h, th), mat); m.position.set(cx, y0 + h / 2, cz); m.rotation.y = -yaw; m.renderOrder = 3; group.add(m); };
+      add(4, y - .05, wall, .04); for (const yy of [y + .02, y + 1.3, y + 2.6, y + 3.9]) add(.05, yy, edge, .06);
+    }
   }
   parent.add(group); barrierGfx = group;
 }
@@ -3622,6 +3636,15 @@ function playerInput(dt, t) {
   if (t < P.tagUntil) maxS *= val ? VAL.tag : 0.45;
   P.physTime = Math.min((P.physTime || 0) + dt, .0625);
   if (!P.prevPos) P.prevPos = new V3().copy(P.pos);
+  if (P.fly && mapPracticeOn()) {
+    // Voo livre: sem gravidade nem colisão; W/S seguem a mira, A/D de lado, Espaço sobe, C/Ctrl desce, Shift acelera.
+    let fx = 0, fz = 0, fy = 0;
+    if (canMove) { if (K('KeyW')) fz += 1; if (K('KeyS')) fz -= 1; if (K('KeyD')) fx += 1; if (K('KeyA')) fx -= 1; if (K('Space')) fy += 1; if (K('KeyC') || K('ControlLeft') || K('ControlRight')) fy -= 1; }
+    const cp = Math.cos(P.pitch), sp = Math.sin(P.pitch), speed = K('ShiftLeft') || K('ShiftRight') ? 22 : 9;
+    let vx = (-sy * cp) * fz + cy * fx, vy = sp * fz + fy, vz = (-cy * cp) * fz - sy * fx; const l = Math.hypot(vx, vy, vz);
+    if (l > 1e-6) { vx *= speed / l; vy *= speed / l; vz *= speed / l; }
+    P.prevPos.copy(P.pos); P.pos.x += vx * dt; P.pos.y += vy * dt; P.pos.z += vz * dt; P.vel.set(0, 0, 0); P.onGround = false; P.physTime = 0;
+  }
   while (P.physTime >= PHYS_STEP) {
     const jump = canMove && P.onGround && ((S.autoBhop && K('Space')) || t <= P.jumpUntil);
     // Direção deste passo pelas teclas no instante dele (fim do passo), não no início do quadro.
@@ -3861,6 +3884,7 @@ function armorCut(e, amount, part, weapon) {
   return amount;
 }
 function takeDamage(dmg, part, sx, sz, wkey, killerId) {
+  if (mapPracticeOn()) return;
   if(G.mode==='dm'||G.mode==='team')return dmDamage(P,dmg,part,wkey,DM.byId.get(killerId),now());
   if (!P.alive) return;
   dmg = armorCut(P, dmg, part, wkey);
@@ -4839,6 +4863,13 @@ const PREFIRE={active:false,loading:false,phase:'idle',elapsed:0,killed:0,lastTi
 const PREFIRE_LEVEL={...LEVELS.medio,burst:[2,3],spread:1.15};
 const PREFIRE_START_RADIUS=2.5;
 const prefireOn=()=>G.mode==='aimbotz'&&PREFIRE.active;
+// Practice num mapa do Plant the Bomb: sem bots nem rodada; loja grátis em qualquer lugar e a qualquer hora (dinheiro,
+// tempo e local de compra ilimitados), sem dano, e N liga/desliga o voo livre.
+const MAPPRACTICE={id:null};
+const mapPracticeOn=()=>G.mode==='aimbotz'&&!!MAPPRACTICE.id;
+// Granadas e vida sempre cheias no treino dos mapas.
+function mapPracticeTick(){if(!mapPracticeOn())return;P.nades=P.nades||{};for(const k of GRENADES)P.nades[k]=9;if(P.alive)P.hp=100;}
+function togglePracticeFly(){if(!mapPracticeOn()||!P.alive)return;P.fly=!P.fly;P.vel.set(0,0,0);P.onGround=false;toast(P.fly?'Voo ligado · Espaço sobe, C desce, Shift acelera · N desliga':'Voo desligado');}
 function prefireTime(ms){const seconds=Math.floor(ms/1000);return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')+'.'+String(Math.floor(ms%1000/10)).padStart(2,'0');}
 function aimbotzHideBoards(){for(const p of [aimbotzBoard,aimbotzViewmodelBoard,aimbotzPrefireBoard])if(p)p.mesh.visible=false;}
 function prefireStop(){PREFIRE.active=PREFIRE.loading=false;PREFIRE.phase='idle';aimbotzHideBoards();}
@@ -5068,7 +5099,7 @@ function aimbotzDrawViewmodelBoard() {
 }
 function aimbotzDrawPrefireBoard(){
   if(!aimbotzPrefireBoard)aimbotzPrefireBoard=aimbotzCreatePanel(AIMBOTZ_PREFIRE_BOARD);
-  const {mesh,ctx,texture}=aimbotzPrefireBoard;mesh.visible=!prefireOn();
+  const {mesh,ctx,texture}=aimbotzPrefireBoard;mesh.visible=!prefireOn()&&!mapPracticeOn();
   ctx.fillStyle='#151b24';ctx.fillRect(0,0,512,304);ctx.strokeStyle='#ffbc76';ctx.lineWidth=4;ctx.strokeRect(2,2,508,300);
   ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle='#ffbc76';ctx.font='bold 20px Arial';ctx.fillText('INFERNO  /  15 ALVOS',28,42);
   ctx.fillStyle='#faf1e5';ctx.font='bold 60px Arial';ctx.fillText('PREFIRE',28,111);
@@ -5077,7 +5108,7 @@ function aimbotzDrawPrefireBoard(){
   texture.needsUpdate=true;
 }
 function aimbotzClickBoard() {
-  if (!P.alive||prefireOn()||PREFIRE.loading) return false;
+  if (!P.alive||prefireOn()||mapPracticeOn()||PREFIRE.loading) return false;
   const recoil=viewRecoilScale(),direction=dirFrom(P.yaw+P.recoilY*recoil,P.pitch+P.recoilP*recoil+P.punch);
   const button = aimbotzButtonAt(eyePos(), direction) || aimbotzViewmodelButtonAt(eyePos(),direction) || aimbotzPrefireButtonAt(eyePos(),direction);
   if (!button) return false;
@@ -5539,7 +5570,7 @@ const SHOP_COLS = [['Pistolas', ['glock', 'usps', 'pistol']], ['SMG e escopeta',
 const shopColsFor = e => !bombOn() ? SHOP_COLS.filter(([title]) => title !== 'Granadas' && title !== 'Equipamento')
   : SHOP_COLS.map(([title, items]) => [title, items.filter(i => !SIDE_ONLY[i] || SIDE_ONLY[i] === sideOf(e))]).filter(([, items]) => items.length);
 // Loja grátis: 1v1, 2v2, XvX, DM e TDM (não no Practice/Prefire, que têm a própria escolha de arma).
-const freeShopOn = () => !!G.mode && !bombOn() && G.mode !== 'aimbotz';
+const freeShopOn = () => !!G.mode && !bombOn() && (G.mode !== 'aimbotz' || mapPracticeOn());
 // Escolher na loja grátis equipa a arma no slot dela (fica salva no seu equipamento) e já põe na mão. No DM, só a categoria da partida.
 function buyAllowed(k) { return !(G.mode === 'dm' && DM.active) || W[k].melee || DM_POOLS[DM.category].includes(k); }
 function freeShopBlock(item) { return !W[item] ? 'Indisponível' : !buyAllowed(item) ? 'Fora da categoria' : ''; }
@@ -6856,6 +6887,7 @@ function updateHUD(dt, t) {
   if (G.mode === 'aimbotz') {
     setT(el.nmMe, 'Abates'); setT(el.scMe, String(stat(G.me).k));
     setT(el.nmOp, 'Bots'); setT(el.scOp, String(S.aimbotzBots));
+    if(mapPracticeOn()){setT(el.nmMe,'Treino');setT(el.scMe,'∞');setT(el.nmOp,P.fly?'Voando':'N voa');setT(el.scOp,MAPS[MAPPRACTICE.id].name);}
     if(prefireOn()){setT(el.nmMe,'Abatidos');setT(el.scMe,String(PREFIRE.killed));setT(el.nmOp,'Restantes');setT(el.scOp,String(INFERNO_PREFIRE.spots.length-PREFIRE.killed));}
   }
   let label = 'aquecimento', time = '∞', cls = '';
@@ -7244,7 +7276,7 @@ function radarMarkers(t){
 }
 function radarSites(){return MAP.plant?(MAP.plant.sites||[MAP.plant.site]).filter(Boolean):[];}
 function updateTacticalRadar(t){
-  const visible=!!G.mode&&(G.mode!=='aimbotz'||prefireOn());setH($('tacticalRadar'),!visible);
+  const visible=!!G.mode&&(G.mode!=='aimbotz'||prefireOn()||mapPracticeOn());setH($('tacticalRadar'),!visible);
   if(!visible)return;if(RADAR.current!==MAP.id){RADAR.current=MAP.id;RADAR.nextAt=0;}
   // O radar é redesenhado a cada quadro (é só a imagem do mapa girada e os pontos), com a posição suavizada da câmera;
   // só o nome da área, que procura a região do mapa, atualiza a cada 0,1 s.
@@ -7272,6 +7304,7 @@ function rebuildOrder() {
   const lo=P.loadout||S.loadout;
   const order=G.mode==='dm'&&DM.active?dmLoadoutOrder(lo,DM.category):Object.keys(CATEGORIES).map(c=>lo[c]);
   ORDER.splice(0,ORDER.length,...order);
+  if(mapPracticeOn())ORDER.push(...GRENADES);
   if(!ORDER.includes(P.lastW)||P.lastW===P.weapon)P.lastW=ORDER.find(k=>k!==P.weapon)||P.weapon;
 }
 function applyLoadoutSelection(k,id) {
@@ -7363,7 +7396,9 @@ document.addEventListener('keydown', e => {
   else if (bombOn() && e.code === 'KeyX') useAbility(now());
   else if (bombOn() && e.code === 'KeyG') playerDropWeapon(now());
   else if (bombOn() && e.code === 'KeyE' && weaponSwapNear(now())) {}
-  else if (SLOT[e.code]) selectWeapon(G.mode==='aimbotz'?(SLOT[e.code]==='knife'?S.loadout.knife:S.aimbotzWeapon):(P.loadout||S.loadout)[SLOT[e.code]]);
+  else if (SLOT[e.code]) selectWeapon(G.mode==='aimbotz'&&!mapPracticeOn()?(SLOT[e.code]==='knife'?S.loadout.knife:S.aimbotzWeapon):(P.loadout||S.loadout)[SLOT[e.code]]);
+  else if (e.code === 'Digit4' && mapPracticeOn()) { const nades = ORDER.filter(k => W[k].grenade); if (nades.length) selectWeapon(nades[(nades.indexOf(P.weapon) + 1) % nades.length]); }
+  else if (e.code === 'KeyN' && mapPracticeOn()) togglePracticeFly();
   else if (e.code === 'Space') P.jumpUntil = now() + 100;
   else if (e.code === 'KeyQ') selectWeapon(P.lastW);
   else if (e.code === 'KeyR') { P.inspT = 0; startReload(now()); }
@@ -7400,7 +7435,7 @@ function showMenu(on) {
   $('inName').readOnly = !!G.mode;
   $('btnDmBoard').hidden=G.mode!=='dm';
   $('pauseNote').hidden = $('btnMenuArsenal').disabled = $('btnArsenal').disabled = G.mode === 'aimbotz';
-  if (G.mode === 'aimbotz') $('pauseInfo').textContent = prefireOn()?'Prefire · Inferno · '+PREFIRE.killed+'/15 · treino pausado':'Practice · ' + S.aimbotzBots + ' bots';
+  if (G.mode === 'aimbotz') $('pauseInfo').textContent = prefireOn()?'Prefire · Inferno · '+PREFIRE.killed+'/15 · treino pausado':mapPracticeOn()?'Practice · '+MAPS[MAPPRACTICE.id].name+' · N voa':'Practice · ' + S.aimbotzBots + ' bots';
   else if (G.mode) $('pauseInfo').textContent = (G.mode === 'online' ? 'Sala ' + NET.code + (G.opp ? ' · contra ' + nameOf(G.opp) : ' · esperando oponente') : G.mode==='dm'?(ARENA.net?'Sala DM '+ARENA.code:'Deathmatch · 9 bots '+LEVELS[DM.level].label)+' · '+DM_LABELS[DM.category]+' · o tempo continua no menu':G.mode==='team'?(ARENA.net?'Sala '+teamLabel()+' '+ARENA.code+(ARENA.host?' · '+arenaHumans().length+'/'+arenaCapacity()+' pessoas':''):teamLabel()+' com bots '+LEVELS[DM.level].label):'Treino contra bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label) + ' · ' + MAP.name;
 }
 function resetSession(spawn = null) {
@@ -7414,8 +7449,8 @@ let sessionLoadId=0;
 async function startSession(mode, opts = {}) {
   const loadId=++sessionLoadId;
   $('tacticalRadar').hidden=true;
-  prefireStop();
-  const map = mode === 'aimbotz' ? 'aimbotz' : mode==='team'&&S.mode==='bomb'?S.warfaceMap:mode === 'team' && S.mode === 'wingman' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
+  prefireStop();MAPPRACTICE.id=null;P.fly=false;
+  const map = mode === 'aimbotz' ? (PRACTICE_MAPS.includes(S.practiceMap) ? S.practiceMap : 'aimbotz') : mode==='team'&&S.mode==='bomb'?S.warfaceMap:mode === 'team' && S.mode === 'wingman' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
   if(MAPS[map].source){
     const required=S.mode==='bomb'?[map]:opts.online||S.bombMap==='rotacao'?BOMB_MAPS:[map];
     if(required.some(id=>!SourceMaps.get(id)))toast('Preparando '+MAPS[map].name+'…');
@@ -7426,12 +7461,19 @@ async function startSession(mode, opts = {}) {
   S.name = $('inName').value;
   saveS();
   AU.init();dmStop();arenaNetStop();ARENA.net=false;sleeveMat.color.set(pcolHex(S.pcol));G.mode=null;$('dmResult').hidden=true;el.hud.classList.remove('dm-over');el.hud.classList.toggle('dm',mode==='dm');el.hud.classList.toggle('bomb',mode==='team'&&isBombMode());
-  buildMap(map);resetSession(mode === 'aimbotz' ? AIMBOTZ_SPAWN : null);G.mode=mode;
+  buildMap(map);resetSession(mode === 'aimbotz' && map === 'aimbotz' ? AIMBOTZ_SPAWN : null);G.mode=mode;
   el.hud.hidden = false;
   if (xrayEnabled()) toast('Raio-X ativo');
   if (mode === 'aimbotz') {
     G.me = P.id = 'A'; G.opp = null; G.host = false; oppGroup.visible = false;
     G.view.ph = 'practice'; G.view.mp = MAP.id; P.pitch = -.02;
+    if (map !== 'aimbotz') {
+      MAPPRACTICE.id = map; DM.bots = []; DM.active = false; DM.mode = 'dm'; DM.tdm = false; DM.actors.length = 0; DM.actors.push(P); DM.byId.clear(); DM.byId.set(P.id, P);
+      P.loadout = Object.assign({}, S.loadout); rebuildOrder(); refillAmmo(P); mapPracticeTick(); selectWeapon(P.loadout.rifle); aimbotzSetInfiniteAmmo(S.aimbotzInfiniteAmmo); aimbotzHideBoards(); dmEnsureRender(); dmRender(now());
+      showMenu(false); lock();
+      banner('Practice · ' + MAPS[map].name, 'B compra grátis em qualquer lugar · 4 granadas ilimitadas · invulnerável · N liga o voo', '', 5000);
+      return;
+    }
     aimbotzSetup(); dmEnsureRender(); dmRender(now()); aimbotzDrawBoard();
     showMenu(false); lock();
     banner('Practice', 'Quadros atrás de você: bots, armas, munição e viewmodel. 1 / 3 ou Q troca arma e faca.', '', 4500);
@@ -7482,12 +7524,13 @@ let lobbyRoute = 'bots';
 const MODE_MENU = {
   elim: ['Elimination', 'Escolha de 1 a 8 jogadores em cada time. Uma vida por rodada; bots completam as vagas.'],
   tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
-  bomb: ['Plant the Bomb', '5 contra 5 no Sandstone. Atacantes plantam, Defensores defendem.'],
+  bomb: ['Plant the Bomb', '5 contra 5 no Sandstone ou no Lily. Atacantes plantam, Defensores defendem.'],
   wingman: ['Wingman', 'Plant the Bomb 2 contra 2 no Sandstone, com as regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
-  aimbotz: ['Practice', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
+  aimbotz: ['Practice', 'Treino livre na arena de mira ou sozinho nos mapas do Plant the Bomb (N voa, compra grátis).'],
 };
 const MAP_CARD_DETAILS = {
+  aimbotz: 'Arena de mira com alvos e quadros de ajuste',
   caixas: 'Arena aberta com caixas',
   patio: 'Praça elevada e rampas',
   torres: 'Torres e posições altas',
@@ -7499,6 +7542,7 @@ const MAP_CARD_DETAILS = {
   dmdeposito: 'Contêineres, passarelas e mirante',
   dmborgo: 'Ruelas, igreja e sacadas',
   sandstone: 'Mapa de amogusstrikesback2',
+  lily: 'Dois bombsites, cores chapadas do mapa original',
 };
 function mountMapCards(group, ids) {
   for (const id of ids) {
@@ -7543,6 +7587,7 @@ mountMapCards($('duelMaps'), [...MAP_IDS, 'rotacao']);
 mountMapCards($('dmMaps'), Object.keys(MAPS).filter(id => MAPS[id].dm));
 mountMapCards($('bombMaps'), BOMB_MAPS.length > 1 ? [...BOMB_MAPS, 'rotacao'] : BOMB_MAPS);
 mountMapCards($('warfaceMaps'),WARFACE_MAPS);
+mountMapCards($('practiceMaps'),PRACTICE_MAPS);
 function visibleMapRail(){return [...document.querySelectorAll('.map-grid')].find(group=>!group.hidden);}
 function updateMapNav(){
   const rail=visibleMapRail(),overflow=rail&&rail.clientWidth>0&&rail.scrollWidth>rail.clientWidth+1;
@@ -7565,12 +7610,12 @@ function getK(k) { return k.split('.').reduce((o, p) => o[p], S); }
 function setK(k, v) { const ps = k.split('.'); let o = S; for (let i = 0; i < ps.length - 1; i++) o = o[ps[i]]; o[ps[ps.length - 1]] = v; }
 const OUTFMT = { 'ch.alpha': v => Math.round(v * 100) + '%', scale: v => Math.round(v * 100) + '%', volume: v => Math.round(v * 100) + '%', fov: v => v + '°', zoomRatio: v => (+v).toFixed(2) };
 function syncLobbyPreview() {
-  const mode=S.mode,practice=mode==='aimbotz',tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='bomb',bomb=isBombMode(),duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?'aimbotz':dm?S.dmMap:five?S.warfaceMap:bomb?bombMap:duelMap;
+  const mode=S.mode,practice=mode==='aimbotz',tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='bomb',bomb=isBombMode(),duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?S.practiceMap:dm?S.dmMap:five?S.warfaceMap:bomb?bombMap:duelMap;
   const title=bomb&&!five&&S.bombMap==='rotacao'?'Rotação':MAPS[id]?.name||'Rotação',image=$('stageImage'),source='assets/menu/play/'+id+'.webp';
   if(image.getAttribute('src')!==source){image.srcset='assets/menu/play/thumb/'+id+'.webp 320w, '+source+' 1280w';image.src=source;}
   $('stageTitle').textContent=title;
-  $('stageDetail').textContent=bomb&&!five&&S.bombMap==='rotacao'?BOMB_MAPS.map(id=>MAPS[id].name).join(', ')+', alternados a cada rodada.':MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
-  $('lobbyFormat').textContent=practice?S.aimbotzBots+' alvos':tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':five?'5 contra 5':bomb?'2 contra 2 · Wingman':S.xvx.mine+' contra '+S.xvx.foes;
+  $('stageDetail').textContent=bomb&&!five&&S.bombMap==='rotacao'?BOMB_MAPS.map(id=>MAPS[id].name).join(', ')+', alternados a cada rodada.':practice&&id!=='aimbotz'?'Sozinho no mapa: compra grátis em qualquer lugar, granadas ilimitadas no 4, sem tempo, invulnerável · N liga o voo.':MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
+  $('lobbyFormat').textContent=practice?(S.practiceMap==='aimbotz'?S.aimbotzBots+' alvos':'Sozinho'):tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':five?'5 contra 5':bomb?'2 contra 2 · Wingman':S.xvx.mine+' contra '+S.xvx.foes;
   $('lobbyGoalLabel').textContent=practice?'Treino':dm?'Duração':'Vitória';
   $('lobbyGoal').textContent=practice?'Sem limite':tdm?S.tdmSize*10+' abates · 10 min':dm?'5 minutos':bomb?'9 rodadas · melhor de 16':S.target+' rodadas';
   const mini=$('loadoutMini'),weapons=Object.values(S.loadout),key=weapons.map(k=>k+':'+skinOf(k)).join('|');
@@ -7594,7 +7639,8 @@ function syncInputs(except) {
   $('duelMaps').hidden = dm || practice || bomb;
   $('dmMaps').hidden = !dm;
   selectRadio($('bombMaps'), 'map', S.bombMap); $('bombMaps').hidden = !bomb||five;selectRadio($('warfaceMaps'),'map',S.warfaceMap);$('warfaceMaps').hidden=!five;
-  $('practiceMap').hidden = !practice;
+  $('practiceMap').hidden = !practice || S.practiceMap !== 'aimbotz';
+  selectRadio($('practiceMaps'), 'map', S.practiceMap); $('practiceMaps').hidden = !practice;
   $('mapTitle').textContent = practice ? 'Treino livre' : 'Mapas';
   $('mapInfo').hidden = practice;
   $('mapInfo').textContent=online?'Vale o mapa de quem criar a sala.':five?WARFACE_MAPS.length+(WARFACE_MAPS.length>1?' mapas':' mapa'):dm?Object.values(MAPS).filter(m=>m.dm).length+' mapas':(bomb?BOMB_MAPS.length+(BOMB_MAPS.length>1?1:0):MAP_IDS.length+1)+(bomb&&BOMB_MAPS.length===1?' mapa':' opções');
@@ -7615,7 +7661,7 @@ function syncInputs(except) {
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
   const [title] = MODE_MENU[mode];
   $('lobbyMode').textContent = xvx ? 'Elimination ' + label : title;
-  $('modeInfo').textContent=practice?'Treine contra alvos parados e ajuste a arena nos quadros.':online?'Bots completam as vagas enquanto seus amigos entram.':tdm?'Renascimento contínuo e pontuação por equipe.':dm?'Todos contra todos, com renascimento contínuo.':bomb?'Plante ou desarme a bomba. Uma vida por rodada.':duo?'Uma vida por rodada, sem fogo amigo.':'A primeira eliminação decide a rodada.';
+  $('modeInfo').textContent=practice?'Arena de mira com alvos, ou sozinho nos mapas do Plant the Bomb para estudar o mapa.':online?'Bots completam as vagas enquanto seus amigos entram.':tdm?'Renascimento contínuo e pontuação por equipe.':dm?'Todos contra todos, com renascimento contínuo.':bomb?'Plante ou desarme a bomba. Uma vida por rodada.':duo?'Uma vida por rodada, sem fogo amigo.':'A primeira eliminação decide a rodada.';
   $('btnJoin').textContent='Entrar na sala';$('btnJoin').setAttribute('aria-label','Entrar na sala de '+title);
   for(const id of ['btnBot','btnDm','btnAimbotz']){$(id).textContent='Jogar';$(id).setAttribute('aria-label','Jogar '+(xvx?label:title));}
 
@@ -7728,6 +7774,7 @@ bindChoices($('duelMaps'), button => selectLobbyOption('map', button.dataset.map
 bindChoices($('dmMaps'), button => selectLobbyOption('dmMap', button.dataset.map));
 bindChoices($('bombMaps'), button => selectLobbyOption('bombMap', button.dataset.map));
 bindChoices($('warfaceMaps'),button=>selectLobbyOption('warfaceMap',button.dataset.map));
+bindChoices($('practiceMaps'),button=>selectLobbyOption('practiceMap',button.dataset.map));
 $('btnDm').addEventListener('click',()=>startSession('dm',{online:false}));
 $('btnAimbotz').addEventListener('click', () => startSession('aimbotz'));
 $('btnDmAgain').addEventListener('click',()=>{
@@ -7793,7 +7840,8 @@ function frame() {
   } else if (G.mode === 'team') teamTick(dt, t);
   else if (G.mode === 'bot') botUpdate(dt, t);
   else if (prefireOn()) prefireTick(dt,t);
-  if (G.mode === 'dm' || G.mode === 'team') nadesTick(dt, t);
+  if (G.mode === 'dm' || G.mode === 'team' || mapPracticeOn()) nadesTick(dt, t);
+  mapPracticeTick();
   if (G.host) hostTick(t);
   netTick(t);
   if(G.mode==='dm'||G.mode==='team'||G.mode==='aimbotz')dmRender(t,dt);else updateOpp(dt, t);

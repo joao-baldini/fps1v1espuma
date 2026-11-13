@@ -175,9 +175,10 @@ export function compileSourceMap(file,key,options={}){
   const polygons=[],hulls=[],report={sourceSha256:bsp.sha256,worldFaces:0,displacementTriangles:0,brushes:0,propHulls:0,propModels:0,missingModels:[],unsupportedProps:[]};
   const keep=points=>points.some(p=>p[2]>=base-512)&&points.every(p=>p.every(Number.isFinite));
   const propColors=new Map();
+  // options.materialColor(material): cor exata do material (ex.: a média da textura embutida), antes da média do BSP.
   // options.textures: guarda coordenadas de textura (texinfo do BSP, na escala real da textura) e o padrão do material.
   const planarUv=(points,n)=>{const a=Math.abs(n[0])>Math.abs(n[1])&&Math.abs(n[0])>Math.abs(n[2])?[1,2]:Math.abs(n[1])>Math.abs(n[2])?[0,2]:[0,1];return points.map(p=>[p[a[0]]/64,p[a[1]]/64]);};
-  const emit=(points,n,material,tag='world',tex=-1)=>{if(points.length<3||!keep(points))return;const rgb=bsp.materialColors.get(material),c=rgb?flatColor(rgb):propColors.get(material)??colorFor(material,n,key),face={p:points.map(convert),n:normal(n),c,glass:/glass|window/.test(material),tag};
+  const emit=(points,n,material,tag='world',tex=-1)=>{if(points.length<3||!keep(points))return;const rgb=bsp.materialColors.get(material),c=options.materialColor?.(material)??(rgb?flatColor(rgb):propColors.get(material)??colorFor(material,n,key)),face={p:points.map(convert),n:normal(n),c,glass:/glass|window/.test(material),tag};
     if(options.textures){const ti=bsp.texInfo[tex],size=ti&&bsp.texSize[ti.data];face.uv=ti&&size?points.map(p=>[(ti.s[0]*p[0]+ti.s[1]*p[1]+ti.s[2]*p[2]+ti.s[3])/size[0],(ti.t[0]*p[0]+ti.t[1]*p[1]+ti.t[2]*p[2]+ti.t[3])/size[1]]):planarUv(points,n);face.pat=patternFor(material);}
     polygons.push(face);};
   // src: de onde veio a peça de colisão (classe da entidade ou modelo), para auditoria da conversão.

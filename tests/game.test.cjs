@@ -11,8 +11,8 @@ vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/warface-catalo
 const sourcePacked={};
 // Plant the Bomb (5v5 e Wingman) usa só o Sandstone.
 const WINGMAN=['sandstone'];
-for(const id of [...WINGMAN,'inferno']){
-  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:sandstone|inferno)=("[A-Za-z0-9+/=]+");/);
+for(const id of [...WINGMAN,'lily','inferno']){
+  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:sandstone|lily|inferno)=("[A-Za-z0-9+/=]+");/);
   assert.ok(encoded,'Missing generated BSP payload: '+id);sourcePacked[id]=JSON.parse(gunzipSync(Buffer.from(JSON.parse(encoded[1]),'base64')));
 }
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8');
@@ -1489,8 +1489,8 @@ function bombWorld(map = 'sandstone', setup) {
   const step = (from, ms, each) => { let t = from; for (; t < from + ms; t += 1000 / 30) { g.tick(t); vm.runInContext(`teamTick(1/30,${t});nadesTick(1/30,${t})`, cx); if (each && each(t)) break; } return t; };
   return { g, cx, A, BM, step };
 }
-test('Sandstone is the only Plant the Bomb map (5v5 and Wingman): author credit, safe spawns, two bombsites and light textures',()=>{
-  const g0=game();assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',g0.context)),['sandstone']);assert.deepEqual(Array.from(vm.runInContext('WARFACE_MAPS',g0.context)),['sandstone']);
+test('Sandstone plays Plant the Bomb 5v5 and Wingman: author credit, safe spawns, two bombsites and light textures',()=>{
+  const g0=game();assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',g0.context)),['sandstone']);assert.deepEqual(Array.from(vm.runInContext('WARFACE_MAPS',g0.context)),['sandstone','lily']);
   for(const old of ['ribeira','estacao','sanctum','neon','forge','overgrowth','palace','factory','catalog'])assert.equal(require('node:fs').existsSync(resolve(__dirname,'../assets/maps/'+old+'.js')),false,old+' saiu do jogo');
   const key='sandstone',g=game({mode:'bomb'}),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const source=cx.sourceWorld,meta=source.meta,map=g.MAPS[key];
   assert.equal(g.DM.nav.audit.spawnsConnected,g.DM.nav.audit.spawnsTotal,'todos os spawns ligados');assert.equal(meta.t.length,5);assert.equal(meta.ct.length,5);
@@ -2208,20 +2208,21 @@ test('Prefire: the first approach opens one holding angle instead of several sim
 });
 
 
-test('5v5 on Sandstone: ten distinct safe spawns, attackers on top and defenders below, two bombsites',()=>{
-  for(const key of ['sandstone']){
+test('5v5 on Sandstone and Lily: ten distinct safe spawns, the authored sides and two bombsites',()=>{
+  for(const key of ['sandstone','lily']){
     const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();
     assert.equal(g.S.mode,'bomb');assert.equal(g.S.warfaceMap,key);assert.equal(g.MAPS[key].warface,true);
     assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',cx)),WINGMAN);
-    assert.equal(cx.MAP.plant.t.length,5);assert.equal(cx.MAP.plant.ct.length,5);
-    for(const side of ['t','ct'])for(let i=0;i<5;i++){const p=cx.MAP.plant[side][i];assert.equal(cx.sourceWorld.overlap(p[0],p[3]+.005,p[1],1.8,.3),false);for(let j=0;j<i;j++){const q=cx.MAP.plant[side][j];assert.ok(Math.hypot(p[0]-q[0],p[1]-q[1])>=1.35);}}
-    assert.ok(cx.MAP.plant.ct.every(p=>p[1]<0)&&cx.MAP.plant.t.every(p=>p[1]>0),'Defensores embaixo (-z), Atacantes em cima (+z)');
+    assert.ok(cx.MAP.plant.t.length>=5&&cx.MAP.plant.ct.length>=5);
+    for(const side of ['t','ct'])for(let i=0;i<cx.MAP.plant[side].length;i++){const p=cx.MAP.plant[side][i];assert.equal(cx.sourceWorld.overlap(p[0],p[3]+.005,p[1],1.8,.3),false);for(let j=0;j<i;j++){const q=cx.MAP.plant[side][j];assert.ok(Math.hypot(p[0]-q[0],p[1]-q[1])>=1.35);}}
+    if(key==='sandstone')assert.ok(cx.MAP.plant.ct.every(p=>p[1]<0)&&cx.MAP.plant.t.every(p=>p[1]>0),'Defensores embaixo (-z), Atacantes em cima (+z)');
+    else assert.ok(cx.MAP.plant.ct.every(p=>p[0]<-20)&&cx.MAP.plant.t.every(p=>p[0]>20),'Lily: CT à esquerda, TR à direita, como no radar');
     assert.equal(cx.MAP.plant.sites.length,2);assert.ok(cx.sourceWorld.mesh.opaque/3<130000);assert.equal(cx.sourceWorld.meta.sourceSha256.length,64);
   }
 });
 
-test('Sandstone: actual walking reaches both bombsites and the opposite base from both teams without jumping',()=>{
-  for(const key of ['sandstone']){
+test('Sandstone and Lily: actual walking reaches both bombsites and the opposite base from both teams without jumping',()=>{
+  for(const key of ['sandstone','lily']){
     const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();const nav=g.DM.nav,map=cx.MAP;
     for(const side of ['t','ct'])for(const goal of [...map.plant.sites.map(s=>[s.lx,s.lz,0,s.y0+.1]),map.plant[side==='t'?'ct':'t'][0]]){
       const start=map.plant[side][0],actor={pos:new Vec(start[0],start[3]+.002,start[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
@@ -2237,11 +2238,43 @@ test('Sandstone: actual walking reaches both bombsites and the opposite base fro
 
 
 test('5v5 starts ten actors on the authored attacking and defending bases using the existing bomb rules',()=>{
-  for(const key of ['sandstone']){const {g,cx,A,BM,step}=bombWorld(key,"S.mode='bomb'");step(10000,1100);
+  for(const key of ['sandstone','lily']){const {g,cx,A,BM,step}=bombWorld(key,"S.mode='bomb'");step(10000,1100);
     assert.deepEqual(Array.from(A.sizes),[5,5]);assert.equal(A.bomb,true);assert.equal(g.DM.bots.length,9);assert.equal(g.DM.actors.length,10);
     assert.equal(g.DM.phase,'freeze');assert.ok(g.DM.actors.every(e=>e.alive&&e.hp===100));
     for(const e of g.DM.actors){const side=e.team===BM.tTeam?'t':'ct';assert.ok(cx.MAP.plant[side].some(p=>Math.hypot(e.pos.x-p[0],e.pos.z-p[1])<.1));}
     assert.equal(g.DM.byId.get(BM.carrier).team,BM.tTeam);
+  }
+});
+
+test('Lily (5v5 only): 1:1 BSP structures in the flat colours of its own materials, CS:GO props as blocks, buy-zone barriers that close both spawns',()=>{
+  const g=game({mode:'5v5',warfaceMap:'lily'}),cx=g.context;cx.buildMap('lily');g.dmBuildNav();const meta=cx.sourceWorld.meta,map=g.MAPS.lily;
+  assert.equal(map.name,'Lily');assert.deepEqual(Array.from(map.modes),['5v5']);assert.ok(!Array.from(vm.runInContext('BOMB_MAPS',cx)).includes('lily'),'fora do Wingman');
+  assert.equal(map.credit,undefined);assert.deepEqual(meta.sites.map(s=>s.name),['A','B']);
+  for(const site of meta.sites)assert.equal(cx.bombInSite(site.lx,site.lz,site.y0),true,site.name);
+  // sem textura: só cores chapadas, exatamente as das texturas sólidas do mapa
+  const packed=sourcePacked.lily,col=Buffer.from(packed.mesh.color,'base64');assert.equal(packed.mesh.uv,undefined);
+  const colours=new Set();for(let i=0;i<col.length;i+=3)colours.add(((col[i]<<16)|(col[i+1]<<8)|col[i+2]).toString(16).padStart(6,'0'));
+  for(const c of ['9a9a9a','5a5a5a','c54a37','7e7d7e','e1e1e1','ce984d','3f3f3f'])assert.ok(colours.has(c),'cor do material '+c);
+  // barreiras = bordas das duas zonas de compra; pela navegação, nenhum spawn chega ao outro nem a um bombsite durante a compra
+  const bars=map.barriers;assert.equal(bars.length,8);const n=g.DM.nav,cross=(ax,az,bx,bz,b)=>{const s1=(x,z)=>(b[2]-b[0])*(z-b[1])-(b[3]-b[1])*(x-b[0]),s2=(x,z)=>(bx-ax)*(z-az)-(bz-az)*(x-ax);return s1(ax,az)*s1(bx,bz)<=0&&s2(b[0],b[1])*s2(b[2],b[3])<=0;};
+  const near=(x,z)=>{let best=0,bd=Infinity;for(const id of n.walk){const d=(n.x[id]-x)**2+(n.z[id]-z)**2;if(d<bd){bd=d;best=id;}}return best;};
+  for(const side of ['t','ct']){const seen=new Set(cx.MAP.plant[side].map(p=>near(p[0],p[1]))),q=[...seen];
+    while(q.length){const a=q.pop();for(let d=0;d<4;d++){const b=n.links[a*4+d];if(b<0||seen.has(b)||bars.some(br=>cross(n.x[a],n.z[a],n.x[b],n.z[b],br)))continue;seen.add(b);q.push(b);}}
+    const other=side==='t'?'ct':'t';assert.ok(!cx.MAP.plant[other].some(p=>seen.has(near(p[0],p[1]))),side+' fechado');for(const s of meta.sites)assert.ok(!seen.has(near(s.lx,s.lz)),side+' longe do '+s.name);}
+  for(const dir of ['','thumb/'])assert.ok(readFileSync(resolve(__dirname,'../assets/menu/play/'+dir+'lily.webp')).length>3000);
+});
+
+test('Practice on the Plant the Bomb maps: alone, free shop anywhere, endless grenades, no damage, N toggles free flight',()=>{
+  for(const key of ['sandstone','lily']){
+    const g=game(),cx=g.context,ev=s=>vm.runInContext(s,cx);
+    assert.deepEqual(Array.from(ev('PRACTICE_MAPS')),['aimbotz','sandstone','lily']);
+    cx.buildMap(key);ev("G.mode='aimbotz';MAPPRACTICE.id="+JSON.stringify(key)+";P.alive=true;P.hp=100;mapPracticeTick()");
+    assert.equal(ev('mapPracticeOn()'),true);assert.equal(ev('freeShopOn()'),true,'loja grátis em qualquer lugar e a qualquer hora');
+    assert.equal(ev('P.nades.smoke'),9);
+    ev("P.nades.smoke=0;mapPracticeTick()");assert.equal(ev('P.nades.smoke'),9,'granadas ilimitadas');
+    ev("takeDamage(90,'head',0,0,'rifle','X')");assert.equal(g.P.hp,100,'invulnerável');
+    ev('var toast=toast||(()=>{})');ev('togglePracticeFly()');assert.equal(g.P.fly,true);ev('togglePracticeFly()');assert.equal(g.P.fly,false);
+    ev("G.mode=null;MAPPRACTICE.id=null");
   }
 });
 
@@ -2263,8 +2296,8 @@ test('buy phase like Valorant: everyone walks inside the spawn, the barriers hol
   ev("DM.phase='live'");assert.equal(ev('barriersUp()'),false);
 });
 
-test('native stairs and slopes stay walkable with varied approach offsets in Sandstone and Prefire',()=>{
-  for(const key of [...WINGMAN,'infernoprefire']){
+test('native stairs and slopes stay walkable with varied approach offsets in Sandstone, Lily and Prefire',()=>{
+  for(const key of [...WINGMAN,'lily','infernoprefire']){
     const g=game(),cx=g.context;cx.buildMap(key);g.dmBuildNav();const n=g.DM.nav,map=cx.sourceWorld,edges=[];
     for(const a of n.walk)for(let d=0;d<4;d++){const b=n.links[a*4+d];if(b<0)continue;const rise=n.height[b]-n.height[a];if(rise<.08||rise>.505)continue;if(map.overlap(n.x[a],n.height[a]+.005,n.z[a],1.8,.3)||map.overlap(n.x[b],n.height[b]+.005,n.z[b],1.8,.3))continue;edges.push([a,b]);}
     assert.ok(edges.length>20,key);let attempts=0;

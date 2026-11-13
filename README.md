@@ -9,15 +9,15 @@ Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de min
 | Modo | Sozinho | Online |
 |---|---|---|
 | Elimination | Times de 1 a 8 de cada lado (1v1, 2v2, 1v5, 5v5, 8v8…), completados por bots | Sala para até 16 pessoas, no tamanho escolhido por quem cria |
-| Plant the Bomb | 5 contra 5 no Sandstone, dois bombsites; você + 4 aliados contra 5 bots | — |
+| Plant the Bomb | 5 contra 5 no Sandstone ou no Lily, dois bombsites; você + 4 aliados contra 5 bots | — |
 | Wingman | Plant the Bomb 2 contra 2 no Sandstone, regras do Wingman; você e um bot contra dois bots | — |
 | TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
-| Practice | Treino livre de mira com 1 a 12 bots | — |
+| Practice | Treino livre de mira com 1 a 12 bots, ou sozinho nos mapas do Plant the Bomb para estudar o mapa | — |
 
 **Modos antigos:** 1v1, 2v2 e XvX viraram um modo só, o **Elimination**: ao clicar nele você já escolhe quantos jogadores tem em cada time, e um duelo é só o 1 contra 1. O antigo Plant the Bomb 2v2 virou o **Wingman**, e o antigo 5v5 virou o **Plant the Bomb**. Configurações salvas migram sozinhas (quem estava no 1v1 cai no Elimination 1v1, no 2v2 cai no 2v2).
 
-**Plant the Bomb (5v5):** escolha o modo na lista. O mapa é o **Sandstone**, de **amogusstrikesback2** (crédito no menu e no início da partida). Há cinco pontos de nascimento separados por lado: os **Atacantes** começam no alto do mapa e os **Defensores** embaixo. Os dois bombsites ficam pintados de vermelho no chão: o **A** é o piso de lajotas, o **B** é a área em L em volta do chafariz. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e os aliados; inimigos não aparecem.
+**Plant the Bomb (5v5):** escolha o modo na lista e o mapa: **Sandstone**, de **amogusstrikesback2** (crédito no menu e no início da partida), ou **Lily**. No Sandstone, os **Atacantes** começam no alto do mapa e os **Defensores** embaixo; no Lily, o CT fica à esquerda e o TR à direita. Os bombsites ficam pintados de vermelho no chão: no Sandstone, o **A** é o piso de lajotas e o **B** é a área em L em volta do chafariz. O minimapa no canto mostra os caminhos, os sites A/B, o jogador e os aliados; inimigos não aparecem.
 
 ## Como jogar com seu parceiro
 
@@ -91,9 +91,13 @@ Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os 
 | Brutus | Couraça: por 5 s recebe 10% menos dano, exceto de headshots. Bots ligam ao entrar numa troca de tiros | Ombreiras amarelas, placa no peito com divisa e protetor de queixo |
 | Detector | Coloca um alarme no chão, que o inimigo só enxerga a menos de 7 m. Só um alarme por vez: colocar outro desfaz o anterior. Quem chega a 3,2 m faz ele apitar, aparece como silhueta (na cor do contorno inimigo) no ponto em que estava por 4 s e o alarme se destrói. Pode ser destruído a tiro, com aviso para o dono | Mochila laranja com sinalizador |
 
-### Mapa de bomba
+### Mapas de bomba
 
 **Sandstone**, de **amogusstrikesback2** (Sketchfab, CC-BY 4.0), convertido do GLB enviado pelo autor: vila de arenito murada, com casas, palmeiras, mercado e telhados alcançáveis pelas escadas. Os spawns, os bombsites e as barreiras seguem as marcações do autor no minimapa. Detalhes da conversão e instruções para regenerar estão em [assets/maps/README.md](assets/maps/README.md).
+
+**Lily** (só no Plant the Bomb 5v5), convertido do BSP enviado pelo usuário, com permissão de uso e os devidos créditos (o nome do autor entra no menu quando for informado). As estruturas são 1:1 com o mapa original: paredes, pisos, escadas e colisão vêm dos brushes do BSP. Não há textura: cada material usa a cor chapada da sua própria textura (os cinzas, o vermelho dos telhados, o marrom e o laranja do mapa). As caixas, pilhas de caixas, caçambas, barris, caminhões, táxi e empilhadeira do CS:GO não vêm no arquivo e são refeitos como blocos nas medidas e posições do mapa. As barreiras da fase de compra são as bordas das zonas de compra do próprio mapa.
+
+**Practice nos mapas:** na aba Practice, escolha **Sandstone** ou **Lily** em vez da arena. Você entra sozinho, sem tempo de rodada e invulnerável. A loja (**B**) é grátis e abre em qualquer lugar, a qualquer hora; **4** alterna HE, flash e smoke, que nunca acabam. **N** liga e desliga o voo livre: W/S seguem a mira, A/D vão de lado, **Espaço** sobe, **C** desce e **Shift** acelera.
 
 ## TDM
 
@@ -414,6 +418,7 @@ A cada tiro a arma dá um coice na mão: vai um pouco para trás e levanta a boc
 | R | Recarregar |
 | F | Inspecionar (giros da Karambit e Butterfly) |
 | B | Loja (grátis fora do Plant the Bomb e do Wingman) |
+| N | Voar (Practice nos mapas de bomba) |
 | Tab | Placar |
 | Esc | Menu de pausa |
 

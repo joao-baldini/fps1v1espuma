@@ -260,8 +260,10 @@ export async function compileSandstone(file) {
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename && !process.argv[2].startsWith('--')) {
   const map = await compileSandstone(resolve(process.argv[2])), packed = packMap(map), bytes = gzipSync(Buffer.from(JSON.stringify(packed)), { level: 9 }), out = resolve(import.meta.dirname, '../assets/maps');
   writeFileSync(resolve(out, 'sandstone.js'), '// Sandstone: convertido do GLB do autor (amogusstrikesback2, Sketchfab, CC-BY 4.0) por tools/import-sandstone.mjs.\n(globalThis.SOURCE_MAP_PAYLOADS??={}).sandstone=' + JSON.stringify(bytes.toString('base64')) + ';\n');
-  const catalog = { sandstone: { name: map.name, credit: map.credit, ax: map.ax, az: map.az, t: map.t, ct: map.ct, sites: map.sites, barriers: map.barriers } };
-  writeFileSync(resolve(out, 'warface-catalog.js'), '// Metadata only; geometry is lazy loaded.\nglobalThis.WARFACE_MAP_CATALOG=' + JSON.stringify(catalog) + ';\n');
+  const file = resolve(out, 'warface-catalog.js'), ctx = {}; try { new Function('globalThis', readFileSync(file, 'utf8'))(ctx); } catch {}
+  // mantém os outros mapas do catálogo (ex.: o Lily) e põe o Sandstone na frente
+  const catalog = { sandstone: { name: map.name, credit: map.credit, ax: map.ax, az: map.az, t: map.t, ct: map.ct, sites: map.sites, barriers: map.barriers }, ...Object.fromEntries(Object.entries(ctx.WARFACE_MAP_CATALOG || {}).filter(([k]) => k !== 'sandstone')) };
+  writeFileSync(file, '// Metadata only; geometry is lazy loaded.\nglobalThis.WARFACE_MAP_CATALOG=' + JSON.stringify(catalog) + ';\n');
   const tris = Buffer.from(packed.mesh.index, 'base64').length / 12;
   console.log('sandstone', bytes.length + ' bytes gzipped', tris + ' triangles', map.hulls.length + ' hulls', JSON.stringify({ zones: map.report.spawnZones, nav: map.report.navigation.nodes, pruned: map.report.navigationPruned, t: map.t, ct: map.ct, barriers: map.barriers, sites: map.sites.map(s => [s.name, s.parts]) }));
 }
