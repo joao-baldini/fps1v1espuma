@@ -4,7 +4,7 @@
 // common cover props (crates, barrels, hedges, cars, barriers, rocks, fences, railings, trees...) are approximated by
 // boxes and prisms from rules on the model name, and checked against the map's own navigation mesh (.nav): a prop that
 // would cover walkable floor is shrunk or left out. Surfaces get light procedural textures (no images).
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { compileSourceMap, rotation, PATTERNS } from './source-bsp.mjs';
@@ -332,7 +332,7 @@ function clipBox(map, lo, hi) {
 // steps, the same as physics() in index.html), from the centre and from 6 cm to each side.
 // Links that the body cannot actually cross (an invisible player clip on a kerb, a step that is a bit too tall) are
 // removed, so bots never plan through them. Spawns and bombsites must stay connected afterwards.
-function pruneNavigation(map) {
+export function pruneNavigation(map) {
   const nav = map.navigation, read = (s, T) => { const b = Buffer.from(s, 'base64'); return new T(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); };
   const X = read(nav.x, Float32Array), Z = read(nav.z, Float32Array), H = read(nav.height, Float32Array), L = read(nav.links, Int32Array), n = X.length;
   const native = new globalThis.SourceMaps.NativeMap(packMap(map));
@@ -429,7 +429,9 @@ if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   const args = process.argv.slice(2), keys = Object.keys(WINGMAN_MAPS);
   if (args.length !== keys.length) throw Error('Usage: node tools/import-wingman-maps.mjs ' + keys.map(k => '<' + WINGMAN_MAPS[k].file + '>').join(' '));
   const out = resolve(import.meta.dirname, '../assets/maps'); mkdirSync(out, { recursive: true });
-  const catalog = {};
+  // A Ribeira (mapa original, tools/build-ribeira.mjs) continua no catálogo, na frente.
+  const previous = {}; try { new Function('globalThis', readFileSync(resolve(out, 'catalog.js'), 'utf8'))(previous); } catch {}
+  const catalog = previous.SOURCE_MAP_CATALOG?.ribeira ? { ribeira: previous.SOURCE_MAP_CATALOG.ribeira } : {};
   for (const [i, key] of keys.entries()) {
     const map = importWingmanMap(resolve(args[i]), key), packed = packMap(map), bytes = gzipSync(Buffer.from(JSON.stringify(packed)), { level: 9 });
     catalog[key] = { name: map.name, credit: map.credit, ax: map.ax, az: map.az, t: map.t, ct: map.ct, sites: map.sites };

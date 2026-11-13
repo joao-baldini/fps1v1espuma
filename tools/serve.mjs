@@ -9,7 +9,7 @@ http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   const menuImage = /^\/assets\/menu\/(?:large\/|play\/(?:thumb\/)?)?[a-z0-9-]+\.webp$/.test(pathname);
   const audio = /^\/assets\/audio\/[a-z0-9-]+\.mp3$/.test(pathname);
-  const mapScript = /^\/assets\/maps\/(?:runtime|catalog|sanctum|neon|forge|overgrowth|inferno|prefire-catalog|warface-catalog|palace|factory)\.js$/.test(pathname);
+  const mapScript = /^\/assets\/maps\/(?:runtime|catalog|ribeira|sanctum|neon|forge|overgrowth|inferno|prefire-catalog|warface-catalog|palace|factory)\.js$/.test(pathname);
   const minimapImage=/^\/assets\/maps\/(?:palace|factory)-minimap\.svg$/.test(pathname);
   const agentScript = pathname === '/assets/agents/models.js';
   const menuStyle = /^\/assets\/ui\/(?:menu|hud)\.css$/.test(pathname);

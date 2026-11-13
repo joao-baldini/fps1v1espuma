@@ -344,7 +344,7 @@ function loadS() {
   if (!['elim', 'dm', 'tdm', 'aimbotz', 'bomb', 'wingman'].includes(s.mode)) s.mode = 'elim';
   s.xvx = { mine: clamp(+s.xvx?.mine || 1, 1, 8), foes: clamp(+s.xvx?.foes || 1, 1, 8) };
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
-  if (!['sanctum', 'neon', 'forge', 'overgrowth', 'rotacao'].includes(s.bombMap)) s.bombMap = 'sanctum';
+  if (!['ribeira', 'sanctum', 'neon', 'forge', 'overgrowth', 'rotacao'].includes(s.bombMap)) s.bombMap = 'ribeira';
   if(!['palace','factory'].includes(s.warfaceMap))s.warfaceMap='palace';
   if (!['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(s.operator)) s.operator = 'finder';
   if (!['vermelho', 'amarelo', 'roxo'].includes(s.enemyOutline)) s.enemyOutline = 'vermelho';
@@ -1253,13 +1253,13 @@ function statue(B, x, z, y = 0, size = 1) {
   dR(B, x - .02 * s, y + 1.98 * s, z - .25 * s, x + .02 * s, y + 2.2 * s, z + .25 * s, 0xd9a93a);
 }
 
-// Mapas do Wingman: geometria, rotas, alturas, spawns e bombsites vêm dos BSPs enviados (uso autorizado pelos autores);
-// o crédito de cada autor aparece no menu e na miniatura.
-const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', overgrowth: 'praga' };
+// Mapas do Wingman: a Ribeira é original (tools/build-ribeira.mjs); nos outros, geometria, rotas, alturas, spawns e
+// bombsites vêm dos BSPs enviados (uso autorizado pelos autores) e o crédito de cada autor aparece no menu e na miniatura.
+const WINGMAN_THEMES = { ribeira: 'praga', sanctum: 'praga', neon: 'elysion', forge: 'praga', overgrowth: 'praga' };
 for (const id of Object.keys(SOURCE_MAP_CATALOG)) {
   const data=SOURCE_MAP_CATALOG[id];
   MAPS[id]={name:data.name,theme:WINGMAN_THEMES[id]||'praga',bomb:true,source:id,ax:data.ax,az:data.az,author:data.credit,
-    credit:data.name+' · mapa de '+data.credit,
+    credit:data.original?data.name+' · mapa original':data.name+' · mapa de '+data.credit,
     spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
 }
 
@@ -7459,6 +7459,7 @@ const MAP_CARD_DETAILS = {
   dmborgo: 'Ruelas, igreja e sacadas',
   palace:'Pedra clara, pátios e passagens do palácio',
   factory:'Galpões, contêineres e rotas industriais',
+  ribeira: 'Cais, Mercado, Praça e Varanda',
   sanctum: 'Mapa de alicate madeira 4',
   neon: 'Mapa de zelzstorm',
   forge: 'Mapa de Blind',
