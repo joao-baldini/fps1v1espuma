@@ -123,7 +123,7 @@ Clique esquerdo lança a granada longe; o direito joga perto. As granadas quicam
 Todas as armas, menos a Karambit, ganharam modelos mais detalhados. Em vez de caixas, cada peça é um perfil lateral recortado (côncavo quando precisa), tubos facetados para canos, silenciadores e lunetas, e caixas pequenas para os detalhes:
 
 - **AK-47:** caixa com tampa e mola, guarda-mão de madeira em duas partes com ranhuras, carregador curvo, alça de mira, massa com orelhas e freio de boca.
-- **M4A1-S:** trilho com dentes, alça rebatível, retém, janela de ejeção, tubo do amortecedor, coronha retrátil, guarda-mão fino e silenciador com anéis. A M4A4 saiu do jogo; quem tinha ela salva no equipamento, no bot ou no Practice passa para a M4A1-S.
+- **M4A4 e M4A1-S:** dividem o mesmo corpo (trilho com dentes, alça rebatível, retém, janela de ejeção, tubo do amortecedor e coronha retrátil). A M4A4 tem guarda-mão de trilhos, massa em A e quebra-chamas; a M4A1-S, guarda-mão fino e silenciador com anéis.
 - **Galil AR, FAMAS, UMP-45, Bucky e SSG 08:**
   - **Galil:** alavanca de manejo para cima e coronha esqueleto.
   - **FAMAS:** alça comprida e bipé dobrado nos lados.
@@ -212,7 +212,7 @@ Cada skin troca o visual, o som do tiro e o som de abate. O som de abate sobe de
 | Vanguarda | só AWP | branca com painéis laranja e pretos, luneta branca e faixa laranja no cano, inspirada na Asiimov do CS; rastro laranja | estrondo grave com eco metálico; acorde de sintetizador |
 | Alien | só AK-47 | verde-limão com tampa, carregador e cabo pretos, guarda-mão de cima branco e o rosto de um alien na coronha; rastro verde | zumbido de disco voador; teremim |
 | Blaster | só M4A1-S | branca espacial com guarda-mão e faixas azul-celeste, trilhos e detalhes pretos; rastro vermelho | laser; acorde de nave |
-| Buzzer | só M4A1-S (era da M4A4, que saiu do jogo) | amarela e preta, listrada como abelha (coronha e carregador), com asas na coronha; rastro amarelo | zumbido; enxame |
+| Buzzer | só M4A4 | amarela e preta, listrada como abelha (guarda-mão, coronha e carregador), com asas na coronha; rastro amarelo | zumbido; enxame |
 | Pulso Neon | armas de fogo | azul-marinho com filetes ciano e magenta | laser sintetizado; bipes de fliperama |
 | Brasa | armas de fogo | carvão com filetes laranja e dourado | estampido grave com estalos; gongo |
 | Glacial | armas de fogo | branco gelo e azul | disparo cristalino; sinos de gelo |
@@ -229,7 +229,7 @@ Abra **Arsenal** no topo ou clique em **Editar equipamento**. Escolha uma combin
 
 | Tecla | Categoria | Opções |
 |---|---|---|
-| 1 | Primária | AK-47, M4A1-S com silenciador, Galil AR, FAMAS, UMP-45, Bucky, AWP, SSG 08 (Scout) |
+| 1 | Primária | AK-47, M4A4, M4A1-S com silenciador, Galil AR, FAMAS, UMP-45, Bucky, AWP, SSG 08 (Scout) |
 | 2 | Pistola | Desert Eagle, USP-S com silenciador, Glock-18 |
 | 3 | Faca | Karambit, Butterfly |
 
@@ -279,31 +279,35 @@ No Elimination online vale o mapa escolhido por quem criou a sala.
 - Primeiro a 10 rodadas vence (dá para mudar para 5, 8, 13 ou 16).
 - 3 s de freeze no começo de cada rodada. Rodada acaba na primeira morte.
 - Se o tempo acabar, vence quem tiver mais vida.
-- 100 de vida. O colete funciona como o escudo do Valorant (100 de colete = 50 de escudo, que absorve 66% de cada acerto até acabar). Capacete só conta contra a AWP.
+- 100 de vida. Colete e capacete como no CS: o colete corta o dano no peito e no estômago e o capacete na cabeça, conforme a penetração de cada arma; pernas passam direto.
 - Lado e ponto de nascimento são sorteados a cada rodada.
 
-| Arma (regras do Valorant) | Cabeça / corpo / perna | Pente | Cadência |
-|---|---|---|---|
-| AK-47 (Vandal) | 160 / 40 / 34, sem queda até 50 m | 25 | 9,75/s |
-| M4A1-S (Phantom) | 156 / 39 / 33 até 20 m; 140 / 35 / 29 depois | 30 | 11/s |
-| Galil e FAMAS (Bulldog) | 115 / 35 / 29 | 24 | 10/s; rajada de 3 no botão direito |
-| UMP-45 (Spectre) | 78 / 26 / 22; 66 / 22 / 18 a 15 m; 60 / 20 / 17 a 30 m | 30 | 13,3/s |
-| Bucky | 34 / 17 / 14 por chumbo (15 chumbos), caindo em 8 e 12 m | 5 | 1,1/s |
-| SSG 08 (Marshal) | 202 / 101 / 85 | 5 | 1,5/s (1,2/s com luneta) |
-| Desert Eagle (Sheriff) | 159 / 55 / 46; 145 / 50 / 42 depois de 30 m | 6 | 4/s |
-| USP-S (Ghost) | 105 / 30 / 25; 87 / 25 / 21 depois de 30 m | 13 | 6,75/s |
-| Glock-18 (Classic) | 78 / 26 / 22; 66 / 22 / 18 depois de 30 m | 12 | 6,75/s |
-| AWP (CS2) | 115 no peito, ×4 na cabeça | 5 | — |
-| Karambit / Butterfly | 40 / 65 | — | — |
+Dano, pente, reserva e cadência são os do CS2 em todas as armas (dados do `weapons.vdata`). Recuo, spread, movimento, recarga e saque seguem as regras do Valorant (seção abaixo), menos na AWP, que é toda do CS2.
 
-Dano arredondado para baixo, sem efeito de capacete. O estômago conta como corpo.
+| Arma | Cabeça sem / com capacete | Peito | Estômago | Perna | Pente / reserva | Cadência |
+|---|---|---|---|---|---|---|
+| AK-47 | 144 / 112 | 36 | 45 | 27 | 30 / 90 | 600/min |
+| M4A4 | 132 / 92 | 33 | 41 | 25 | 30 / 90 | 666/min |
+| M4A1-S | 132 / 92 | 38 | 48 | 29 | 20 / 80 | 600/min |
+| Galil AR | 120 / 93 | 30 | 38 | 23 | 35 / 90 | 666/min |
+| FAMAS | 120 / 84 | 30 | 38 | 23 | 25 / 90 | 666/min; rajada de 3 no botão direito |
+| UMP-45 | 140 / 91 | 35 | 44 | 26 | 25 / 100 | 666/min |
+| Bucky (Nova do CS) | 104 / 52 por chumbo, 9 chumbos | 26 | 33 | 20 | 8 / 32 | 1 a cada 0,88 s |
+| SSG 08 | 352 / 299 | 88 | 110 | 66 | 10 / 90 | 1 a cada 1,25 s |
+| AWP | 460 / 449 | 115 | 144 | 86 | 5 / 30 | 1 a cada 1,46 s |
+| Desert Eagle | 207 / 193 | 53 | 66 | 40 | 7 / 35 | 1 a cada 0,225 s |
+| USP-S | 140 / 71 | 35 | 44 | 26 | 12 / 24 | 1 a cada 0,17 s |
+| Glock-18 | 120 / 56 | 30 | 38 | 23 | 20 / 120 | 1 a cada 0,15 s |
+| Karambit / Butterfly | 40 / 65 | — | — | — | — | — |
+
+Valores de perto e sem colete no corpo. Com a distância, o dano cai pelo modificador de alcance do CS2 de cada arma (por exemplo, a UMP perde bem mais que a AK). A Bucky não existe no CS: usa os números da Nova. A cadência do CS também é a que as regras do Valorant usam (recuperação, Tap Efficiency e troca de lado do recuo). A Galil e a FAMAS usam a rajada de 3 no botão direito com o tempo da FAMAS do CS (0,075 s entre tiros, 0,55 s até a próxima). O tiro de 3 chumbos da Glock no botão direito continua do Valorant (2,22 por segundo), com o dano de bala da Glock em cada chumbo.
 
 ## Tiro e movimento como no Valorant
 
-Todas as armas, menos a AWP, seguem as regras de tiro e movimento do Valorant. A AWP continua com o modelo do CS2 (tiro e movimento), e o bunnyhop não mudou. Os modelos e nomes das armas são os do jogo; cada uma usa os números da arma equivalente do Valorant (tabela acima).
+Todas as armas, menos a AWP, seguem as regras de tiro e movimento do Valorant. A AWP continua com o modelo do CS2 (tiro e movimento), e o bunnyhop não mudou. Os modelos e nomes das armas são os do jogo; recuo e spread de cada uma vêm da arma equivalente do Valorant (AK → Vandal, M4A4 e M4A1-S → Phantom, Galil e FAMAS → Bulldog, UMP → Spectre, SSG → Marshal, Deagle → Sheriff, USP-S → Ghost, Glock → Classic). Dano, pente e cadência são os do CS2 (tabela acima).
 
 **De onde vêm os números:**
-- **Estatísticas oficiais das armas:** cadência, pente, recarga, saque, velocidade, dano por distância, zoom e modo de mira, expostas pela [valorant-api.com](https://valorant-api.com/v1/weapons).
+- **Estatísticas oficiais das armas:** recarga, saque, velocidade e zoom, expostas pela [valorant-api.com](https://valorant-api.com/v1/weapons). Dano, pente e cadência são os do CS2.
 - **Spread:** tabelas de spread (primeiro tiro e máximo, em pé, agachado e com mira; erro agachado, andando, correndo e no ar) e histórico de patches da [wiki do Valorant](https://valorant.fandom.com/wiki/Vandal).
 - **Regras de movimento e precisão:** notas de patch da Riot: [0.50](https://valorant.fandom.com/wiki/Patch_Notes/0.50) (Tap Efficiency, Gun Recovery Time, recuo lateral agachado), [2.02](https://valorant.fandom.com/wiki/Patch_Notes/2.02), [3.0](https://valorant.fandom.com/wiki/Patch_Notes/3.0) (tagging de 72,5%, zona morta de 27,5%), [6.11](https://valorant.fandom.com/wiki/Patch_Notes/6.11) (viés para o centro, recuo correndo) e [9.10](https://valorant.fandom.com/wiki/Patch_Notes/9.10) (erro andando 3° e correndo 6° nos fuzis).
 - **Tempos de parada:** medidos por um desenvolvedor da Riot na Phantom e repetidos por [guias](https://alviran.net/blog/valorant-movement-guide-2026/) e [fóruns](https://devtrackers.gg/valorant/p/f29d0021-walking-running-accuracy-too-high) da comunidade. O post original não foi encontrado.
@@ -337,7 +341,7 @@ Todas as armas, menos a AWP, seguem as regras de tiro e movimento do Valorant. A
 
 **Recuo:**
 - **Subida:** o primeiro tiro sai no centro. A bala sobe por uma curva até o topo da arma (Vandal ~5°, M4A1-S ~4,8°) e para de subir.
-- **M4A1-S:** recuo 10% maior que o da Phantom (subida, lado e tremida), ajuste próprio do jogo.
+- **M4A1-S:** recuo 10% maior que o da Phantom (subida, lado e tremida), ajuste próprio do jogo. A M4A4 usa o recuo da Phantom.
 - **Lado:** depois das balas protegidas (Vandal 6, Phantom 8, Spectre 5), o recuo vai para um lado. A cada bala há 10% de chance de trocar de lado, e cruzar de um lado ao outro leva o tempo da arma (0,6 s nos fuzis, 0,28 s na Spectre).
 - **Multiplicadores:** correndo ou no ar, a subida é 1,8× (Spectre 1,5× também no lado). Agachado e parado, o lado é 15% menor. Com a luneta da Marshal, o recuo é 10% menor.
 - **Reset:** sem atirar, o recuo volta ao centro no Gun Recovery Time, junto com o spread.
@@ -351,8 +355,6 @@ Todas as armas, menos a AWP, seguem as regras de tiro e movimento do Valorant. A
 - **Classic (Glock):** um tiro de 3 chumbos que gasta 3 balas, a 2,22 tiros por segundo.
 - **Bucky:** um cartucho que voa reto até 7,5 m e estoura em 5 chumbos. Se acertar alguém antes, dá o dano de um chumbo.
 - **Marshal (SSG 08):** luneta de 3,5×, com tiro perfeito parado.
-
-**Escudo:** o colete vale como escudo do Valorant (100 de colete = 50 de escudo) e absorve 66% de qualquer acerto (cabeça, corpo ou perna) até acabar. Contra a AWP, colete e capacete seguem o CS2.
 
 **Online:** nas salas, o colete é aplicado só na máquina de quem leva o tiro. Antes ele era descontado duas vezes, e acertos no estômago pela rede eram descartados.
 
@@ -391,7 +393,7 @@ As armas têm animações próprias de saque e de recarga, com o CS como base. O
 - **Saque:** a arma sobe de baixo da tela girando e a mão esquerda chega no guarda-mão. Na AK, na Galil e na UMP, a mão ainda puxa a alavanca de manejo. Na AWP e na SSG, a mão direita passa o ferrolho.
 - **Recarga dos rifles e da UMP:** a arma inclina, a mão esquerda segura o pente, puxa, joga para fora da tela, traz o pente novo e encaixa com um tapa.
   - **AK e Galil:** o pente entra balançando. Depois, a mão passa por baixo da arma e puxa a alavanca do lado direito.
-  - **M4A1-S e FAMAS:** a mão bate no retém do ferrolho.
+  - **M4A4, M4A1-S e FAMAS:** a mão bate no retém do ferrolho.
   - **UMP:** a mão puxa a alavanca do lado esquerdo.
 - **Pistolas (USP-S, Glock e Deagle):** a arma sobe e inclina, o pente cai pelo cabo, e a mão esquerda traz o novo de baixo e encaixa com um tapa. Na Deagle vazia, o ferrolho fica travado para trás até o fim da recarga e então é solto.
 - **AWP e SSG 08:** depois de cada tiro, a mão direita sai do cabo, levanta a alavanca do ferrolho, puxa, empurra e abaixa, como no CS. A animação cabe dentro do intervalo entre tiros. A recarga troca o pente e passa o ferrolho no final.
