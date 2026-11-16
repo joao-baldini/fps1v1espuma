@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Passada dos bots · Elimination</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#202c34;color:#f0f1ed;font:14px system-ui,sans-serif}canvas{display:block;width:100%;height:calc(100vh - 112px)}footer{height:112px;padding:16px 24px;background:#111a20;display:grid;gap:12px}.row{display:flex;align-items:center;gap:16px}button,input{font:inherit}button{background:#344550;color:inherit;border:1px solid #718591;border-radius:4px;padding:7px 14px;cursor:pointer}input{flex:1}output{min-width:38px}#status{margin-left:auto;color:#b5c5cf}strong{font-size:16px}
+</style>
+<canvas id="preview"></canvas><footer><div class="row"><strong>Elimination · passada leve com apoio dos pés</strong><span id="status">Carregando…</span></div><div class="row"><button id="play">Pausar</button><label for="phase">Passada</label><input id="phase" aria-label="Fase da passada" type="range" min="0" max="1000" value="0"><output id="percent">0%</output><span>Andar · correr · strafe</span></div></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(async()=>{
+  const source=await(await fetch('/index.html')).text(),script=source.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const section=(a,b)=>{const start=script.indexOf(a),end=script.indexOf(b,start);if(start<0||end<0)throw Error('Trecho do jogo ausente: '+a);return script.slice(start,end);};
+  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(42,innerWidth/(innerHeight-112),.01,50);
+  scene.background=new THREE.Color(0x455966);camera.position.set(3.8,2.7,7.8);camera.lookAt(0,.8,0);
+  const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('preview'),antialias:false,powerPreference:'high-performance'});renderer.setPixelRatio(1);
+  const factory=new Function('THREE','scene','camera',`
+    const V3=THREE.Vector3,TAU=Math.PI*2,clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),TUCK=.65;
+    const S={pcol:'vermelho'},pcolHex=()=>0xffffff;
+    ${section('const FACES =','/* ================= Mapas')}
+    const P={team:0},DM={mode:'team',actors:[],render:null},ARENA={bomb:false},SPEC={view:null},TEAM_COLORS=[0x4d9edf,0xd67556],W={rifle:{}};
+    const eliminationOn=()=>true,dmAllies=(a,b)=>a.team===b.team,botHeldWeapon=()=> 'rifle';
+    ${section('const GAIT =','const AIMBOTZ_BOARD =')}
+    return {DM,boxModel,basicMat,dmRender};
+  `),api=factory(THREE,scene,camera),meshes=[];
+  function pool(geometry,capacity=9){const m=new THREE.InstancedMesh(geometry,api.basicMat.clone(),capacity);m.frustumCulled=false;m.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(capacity*3).fill(1),3);m.count=0;scene.add(m);meshes.push(m);return m;}
+  function part(kind,list,px=0){const geo=api.boxModel(list).geometry;geo.computeBoundingBox();const hull=geo.clone(),box=geo.boundingBox;hull.userData={c:box.getCenter(new THREE.Vector3()),s:box.getSize(new THREE.Vector3())};
+    const mesh=pool(geo),enemy=pool(hull),fill=pool(geo),edge=pool(hull);for(const m of [enemy,fill,edge]){m.material.visible=false;m.userData.leg=kind.startsWith('leg');}mesh.userData.leg=kind.startsWith('leg');return {kind,mesh,px,hull,enemy,fill,edge};}
+  const rig={hipY:.81,tint:true,parts:[part('legL',[[[-.2,0,-.12],[-.02,.81,.12],0x888888]],-.11),part('legR',[[[.02,0,-.12],[.2,.81,.12],0x888888]],.11),part('body',[[[-.23,.81,-.15],[.23,1.52,.15],0xffffff],[[-.25,1.18,-.38],[.25,1.32,-.18],0xdddddd]]),part('head',[[[-.13,1.52,-.13],[.13,1.76,.13],0xf2cfa4],[[-.08,1.6,-.135],[.08,1.65,-.13],0x111111]])]};
+  const matrix=()=>new THREE.Matrix4(),vector=()=>new THREE.Vector3(),quaternion=()=>new THREE.Quaternion();
+  api.DM.render={meshes,rig,guns:{},color:new THREE.Color(),rigM:{m:matrix(),yaw:matrix(),loc:matrix(),back:matrix(),hull:matrix(),body:matrix(),v:vector(),s:vector(),ax:vector(),up:new THREE.Vector3(0,1,0),q:quaternion(),qb:quaternion(),qi:quaternion(),e:new THREE.Euler()}};
+  const actors=api.DM.actors=[0,1,2].map((index)=>({index,id:'bot'+index,team:1,alive:true,onGround:true,pos:vector(),vel:vector(),yaw:-.45,crouch:false,w:'rifle',safeUntil:0,flashUntil:0}));
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshBasicMaterial({color:0x344650}));floor.rotation.x=-Math.PI/2;floor.position.y=-.004;scene.add(floor);const grid=new THREE.GridHelper(30,60,0x6f8792,0x405762);scene.add(grid);
+  const phase=document.getElementById('phase'),play=document.getElementById('play');let playing=true,last=performance.now(),distance=0;
+  play.onclick=()=>{playing=!playing;play.textContent=playing?'Pausar':'Reproduzir';};phase.oninput=()=>{playing=false;play.textContent='Reproduzir';for(const b of actors)if(b.gait)b.gait.phase=Number(phase.value)/1000*Math.PI*2;};
+  function resize(){renderer.setSize(innerWidth,innerHeight-112,false);camera.aspect=innerWidth/(innerHeight-112);camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
+  const scratch=matrix();function frame(t){requestAnimationFrame(frame);const dt=Math.min((t-last)/1000,.05);last=t;if(playing)distance+=dt;
+    actors.forEach((b,i)=>{const speed=i===1?5.13:3.13,d=distance*speed;b.pos.set(i===2?d:0,0,i===2?0:-d);b.vel.set(i===2?speed:0,0,i===2?0:-speed);});
+    api.dmRender(t,playing?dt:0);
+    for(const mesh of meshes){const stride=mesh.userData.leg?3:1;for(let i=0;i<mesh.count;i++){const b=actors[Math.floor(i/stride)];mesh.getMatrixAt(i,scratch);scratch.elements[12]+=(b.index-1)*1.9-b.pos.x;scratch.elements[14]-=b.pos.z;mesh.setMatrixAt(i,scratch);}mesh.instanceMatrix.needsUpdate=true;}
+    if(playing)phase.value=Math.round((actors[0].gait.phase||0)/(Math.PI*2)*1000);document.getElementById('percent').value=Math.round(Number(phase.value)/10)+'%';renderer.render(scene,camera);document.getElementById('status').textContent=renderer.info.render.triangles+' triângulos · '+renderer.info.render.calls+' chamadas de desenho';
+  }requestAnimationFrame(frame);
+})().catch(error=>{document.getElementById('status').textContent=error.message;console.error(error);});
+</script>
+</html>

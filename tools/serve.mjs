@@ -17,7 +17,7 @@ http.createServer((req, res) => {
   const menuFont = /^\/assets\/ui\/fonts\/plex-sans-(?:regular|medium|semibold)\.woff2$/.test(pathname);
   const file = menuImage || audio || mapScript || agentScript || minimapImage || menuStyle || menuFont || hudScript ? resolve(root, pathname.slice(1))
     : pathname === '/reference.mp4' && reference ? resolve(reference)
-    : pathname === '/tools/knife-preview.html' ? resolve(root, 'tools/knife-preview.html')
+    : /^\/tools\/(?:knife|bot)-preview\.html$/.test(pathname) ? resolve(root, pathname.slice(1))
     : pathname === '/' || pathname === '/index.html' ? resolve(root, 'index.html') : null;
   if (!file) { res.writeHead(404); res.end(); return; }
   try {

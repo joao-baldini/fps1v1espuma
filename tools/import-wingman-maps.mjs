@@ -10,6 +10,7 @@ import { gzipSync } from 'node:zlib';
 import { compileSourceMap, rotation, PATTERNS } from './source-bsp.mjs';
 import { readNav, navHeightsAt } from './source-nav.mjs';
 import { packMap, bakeNavigation } from './import-source-maps.mjs';
+import { rebuildSanctum } from './import-sanctum.mjs';
 import '../assets/maps/runtime.js';
 
 export const WINGMAN_MAPS = {
@@ -248,6 +249,7 @@ function followRoutes(map, stepFn, V) {
 }
 
 export function importWingmanMap(file, key) {
+  if(key==='sanctum')return rebuildSanctum(file);
   const info = WINGMAN_MAPS[key];
   const map = compileSourceMap(file, key, { textures: true });
   map.name = info.name; map.credit = info.credit;

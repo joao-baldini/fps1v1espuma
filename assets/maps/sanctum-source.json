@@ -1,0 +1,4884 @@
+{
+  "sourceSha256": "44e31c81dd5396ee1ffec9eaa552e85982fd3f3d1cf2ad382f9076828257fc5d",
+  "worldFaces": 1149,
+  "displacementTriangles": 0,
+  "brushes": 305,
+  "propHulls": 0,
+  "propModels": 0,
+  "missingModels": [
+    "models/props_foliage/swamp_grass01.mdl",
+    "models/props/de_train/hr_t/metal_door_b/metal_door_b.mdl",
+    "models/props_wasteland/exterior_fence002c.mdl",
+    "models/props_wasteland/exterior_fence002b.mdl",
+    "models/props_highway/plywood_02.mdl",
+    "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_debris_01.mdl",
+    "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_debris_03.mdl",
+    "models/props/de_train/bush.mdl",
+    "models/props/de_dust/hr_dust/dust_cart/dust_cart_02.mdl",
+    "models/props_junk/cardboard_unfolded_04.mdl",
+    "models/props_highway/plywood_01.mdl",
+    "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_walkway_platform_64_02.mdl",
+    "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_debris_04.mdl",
+    "models/props_unique/processor_tank.mdl",
+    "models/props/de_nuke/hr_nuke/foliage/tree_small_beech_05.mdl",
+    "models/props/de_dust/dust_rusty_barrel.mdl",
+    "models/props/de_nuke/nuclearcontainerboxclosed.mdl",
+    "models/props/de_dust/hr_dust/dust_doors/dust_door_80x128_01.mdl",
+    "models/props/de_vertigo/barrel_single_tintable_01.mdl",
+    "models/props/de_boathouse/toolchest_01.mdl",
+    "models/props/de_boathouse/cart_utility_01.mdl",
+    "models/props/cs_militia/table_shed.mdl",
+    "models/props/cs_militia/shelves.mdl",
+    "models/props/cs_militia/caseofbeer01.mdl",
+    "models/props/coop_cementplant/coop_wooden_pallet/coop_wooden_pallet.mdl",
+    "models/props/crates/weapon_crate_a.mdl",
+    "models/props/ar_dizzy/dizzy_plywood_stack/dizzy_plywood_stack_02.mdl",
+    "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_debris_02.mdl",
+    "models/props/de_train/bush2.mdl",
+    "models/props/de_aztec/aztec_scaffolding_system_04.mdl",
+    "models/props/de_inferno/shell_pallet.mdl",
+    "models/props_foliage/urban_hedge_256_160.mdl",
+    "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+    "models/props/de_house/swat_van_generic.mdl",
+    "models/props/coop_cementplant/furniture/coop_wooden_table.mdl",
+    "models/props/coop_cementplant/furniture/coop_wooden_table_deco02.mdl",
+    "models/props/coop_cementplant/grenade_box/flashgrenade_box.mdl",
+    "models/props_foliage/urban_tree_giant01_small.mdl",
+    "models/props/de_inferno/hr_i/inferno_building_skybox/inferno_building_skybox_cheap02.mdl",
+    "models/props/cs_militia/rockwallb.mdl",
+    "models/props/de_inferno/hr_i/inferno_building_skybox/inferno_building_skybox.mdl",
+    "models/props/de_inferno/hr_i/inferno_folding_shutters/inferno_folding_shutters.mdl",
+    "models/props/de_inferno/hr_i/inferno_door_single/inferno_door_single.mdl",
+    "models/props_debris/floor_rubble1.mdl",
+    "models/props/de_vertigo/hvac_controller_03.mdl",
+    "models/props/de_vertigo/flexconduit_end.mdl",
+    "models/props/de_vertigo/hvac_ductb_straight_128_01.mdl",
+    "models/props/cs_assault/ladderaluminium128.mdl",
+    "models/props/de_vertigo/pallet_01.mdl",
+    "models/props/coop_cementplant/furniture/coop_folding_chair_folded.mdl",
+    "models/props/coop_cementplant/grenade_box/grenade_box_empty.mdl",
+    "models/props/de_dust/hr_dust/dust_doors/dust_door_89x106_07.mdl",
+    "models/props/de_prodigy/tirestack.mdl",
+    "models/props/de_train/de_train_signalbox_01.mdl",
+    "models/props/de_nuke/hr_nuke/chainlink_fence_001/chainlink_fence_001_256.mdl",
+    "models/props_urban/fence_gate002_256.mdl",
+    "models/props/de_dust/hr_dust/dust_crates/dust_crate_assembly_100x100_01.mdl",
+    "models/props/de_dust/hr_dust/dust_crates/dust_crate_assembly_100x100_01_tarp.mdl",
+    "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+    "models/props/de_inferno/wine_barrel_static.mdl",
+    "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_64x32x64.mdl",
+    "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl",
+    "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl",
+    "models/props_foliage/urban_balcony_planter01b.mdl",
+    "models/props/de_nuke/hr_nuke/nuke_cars/nuke_truck_02.mdl",
+    "models/props/de_nuke/hr_nuke/nuke_cars/nuke_truck_01_trailer.mdl",
+    "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+    "models/props/de_dust/hr_dust/dust_wood_pallet/dust_wood_pallet_stack_01.mdl",
+    "models/props/de_vertigo/construction_stack_plywood_01.mdl",
+    "models/props/de_vertigo/plywood_leaning.mdl",
+    "models/props/de_nuke/hr_nuke/chainlink_fence_001/chainlink_fence_cover_001_64.mdl",
+    "models/props/de_inferno/hr_i/wood_pile_a/wood_pile_a.mdl",
+    "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl",
+    "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bags_stack_a.mdl",
+    "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bag_a.mdl",
+    "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bag_b.mdl",
+    "models/props/de_dust/hr_dust/dust_patio_set/dust_patio_chair.mdl",
+    "models/props/de_dust/hr_dust/dust_patio_set/dust_patio_table.mdl",
+    "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_scaffold_116_01.mdl",
+    "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_37x37x74.mdl",
+    "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_64x64x57.mdl",
+    "models/props/de_train/hr_t/gate_fence_a/gate_fence_b.mdl",
+    "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl",
+    "models/props/de_overpass/metal_door_cafe.mdl",
+    "models/props/cs_militia/militiarock03.mdl",
+    "models/props/de_inferno/bomb_shells_1_wood.mdl",
+    "models/props/cs_militia/rocka.mdl",
+    "models/props/de_vertigo/scaffolding_walkway_02.mdl",
+    "models/props/de_vertigo/scaffolding_end.mdl",
+    "models/props/de_inferno/bomb_tanks.mdl"
+  ],
+  "unsupportedProps": [],
+  "flatColors": {
+    "method": "Original BSP material reflectivity and embedded model material averages; no runtime textures",
+    "materials": 82,
+    "models": 0,
+    "samples": {}
+  },
+  "rebuild": {
+    "version": 2,
+    "method": "Fresh BSP geometry plus independently rebuilt lightweight props",
+    "externalModelsEmbedded": 0,
+    "standardGameGrid": true,
+    "props": [
+      {
+        "index": 1,
+        "model": "models/props/de_train/hr_t/metal_door_b/metal_door_b.mdl",
+        "origin": [
+          463,
+          -1021,
+          45
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 2,
+        "model": "models/props_wasteland/exterior_fence002c.mdl",
+        "origin": [
+          772,
+          -793,
+          140
+        ],
+        "angles": [
+          0,
+          270,
+          0
+        ],
+        "scale": 1,
+        "parts": 14,
+        "solidParts": 3
+      },
+      {
+        "index": 3,
+        "model": "models/props_wasteland/exterior_fence002c.mdl",
+        "origin": [
+          639,
+          -673,
+          140.343994140625
+        ],
+        "angles": [
+          0,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 14,
+        "solidParts": 3
+      },
+      {
+        "index": 4,
+        "model": "models/props_wasteland/exterior_fence002b.mdl",
+        "origin": [
+          639,
+          -752,
+          140
+        ],
+        "angles": [
+          0,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 10,
+        "solidParts": 3
+      },
+      {
+        "index": 5,
+        "model": "models/props/de_dust/hr_dust/dust_metal_panels/dust_metal_panel_01_64x128.mdl",
+        "origin": [
+          807,
+          -779,
+          128.25
+        ],
+        "angles": [
+          90,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 7,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          803,
+          -759,
+          60
+        ],
+        "angles": [
+          81.5,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 10,
+        "model": "models/props/de_dust/hr_dust/dust_metal_panels/dust_metal_panel_01_64x128.mdl",
+        "origin": [
+          686,
+          -771,
+          128
+        ],
+        "angles": [
+          85.28410339355469,
+          111.95700073242188,
+          -163.4550018310547
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 11,
+        "model": "models/props/de_train/bush.mdl",
+        "origin": [
+          748,
+          -711,
+          48
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 12,
+        "model": "models/props/de_train/bush.mdl",
+        "origin": [
+          805,
+          -696,
+          53
+        ],
+        "angles": [
+          0,
+          36,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 13,
+        "model": "models/props/de_train/bush.mdl",
+        "origin": [
+          700,
+          -654,
+          54
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 14,
+        "model": "models/props/de_dust/hr_dust/dust_cart/dust_cart_02.mdl",
+        "origin": [
+          720,
+          -663,
+          65
+        ],
+        "angles": [
+          0,
+          338.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 16,
+        "model": "models/props_highway/plywood_01.mdl",
+        "origin": [
+          758,
+          -759,
+          65
+        ],
+        "angles": [
+          81.5,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 17,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          653,
+          -781,
+          63
+        ],
+        "angles": [
+          88.99759674072266,
+          355.7720031738281,
+          -3.7331900596618652
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 18,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_walkway_platform_64_02.mdl",
+        "origin": [
+          803.72998046875,
+          -614,
+          84
+        ],
+        "angles": [
+          -82,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 20,
+        "model": "models/props_unique/processor_tank.mdl",
+        "origin": [
+          813,
+          -703,
+          64
+        ],
+        "angles": [
+          0,
+          174,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 2
+      },
+      {
+        "index": 21,
+        "model": "models/props_wasteland/exterior_fence002b.mdl",
+        "origin": [
+          679,
+          -793,
+          140
+        ],
+        "angles": [
+          0,
+          270,
+          0
+        ],
+        "scale": 1,
+        "parts": 10,
+        "solidParts": 3
+      },
+      {
+        "index": 22,
+        "model": "models/props/de_train/bush.mdl",
+        "origin": [
+          715,
+          -713,
+          55
+        ],
+        "angles": [
+          0,
+          68,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 23,
+        "model": "models/props/de_train/bush.mdl",
+        "origin": [
+          774,
+          -621,
+          61
+        ],
+        "angles": [
+          0,
+          285,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 24,
+        "model": "models/props/de_nuke/hr_nuke/foliage/tree_small_beech_05.mdl",
+        "origin": [
+          724,
+          -690,
+          51
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 25,
+        "model": "models/props/de_dust/dust_rusty_barrel.mdl",
+        "origin": [
+          634,
+          -625,
+          64
+        ],
+        "angles": [
+          0,
+          338.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 26,
+        "model": "models/props/de_nuke/nuclearcontainerboxclosed.mdl",
+        "origin": [
+          886,
+          -1045,
+          82
+        ],
+        "angles": [
+          0,
+          185.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 27,
+        "model": "models/props/de_dust/hr_dust/dust_doors/dust_door_80x128_01.mdl",
+        "origin": [
+          1089,
+          -1089,
+          76
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 28,
+        "model": "models/props/de_vertigo/barrel_single_tintable_01.mdl",
+        "origin": [
+          882,
+          -1073,
+          64
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 29,
+        "model": "models/props/de_vertigo/barrel_single_tintable_01.mdl",
+        "origin": [
+          914,
+          -1073,
+          64
+        ],
+        "angles": [
+          0,
+          81.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 30,
+        "model": "models/props/de_vertigo/barrel_single_tintable_01.mdl",
+        "origin": [
+          889,
+          -1076,
+          108
+        ],
+        "angles": [
+          0,
+          338.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 31,
+        "model": "models/props/de_nuke/nuclearcontainerboxclosed.mdl",
+        "origin": [
+          886.0969848632812,
+          -1045,
+          122
+        ],
+        "angles": [
+          0,
+          351,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 32,
+        "model": "models/props/de_train/bush.mdl",
+        "origin": [
+          884,
+          -1072,
+          64
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 33,
+        "model": "models/props_wasteland/exterior_fence002b.mdl",
+        "origin": [
+          900,
+          -1008,
+          146
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 10,
+        "solidParts": 3
+      },
+      {
+        "index": 34,
+        "model": "models/props_wasteland/exterior_fence002b.mdl",
+        "origin": [
+          942,
+          -1054,
+          148
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 10,
+        "solidParts": 3
+      },
+      {
+        "index": 35,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          930,
+          -1024,
+          76
+        ],
+        "angles": [
+          89,
+          270,
+          -178.5
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 36,
+        "model": "models/props/de_boathouse/toolchest_01.mdl",
+        "origin": [
+          889,
+          -628,
+          76
+        ],
+        "angles": [
+          0,
+          339,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 37,
+        "model": "models/props/de_boathouse/cart_utility_01.mdl",
+        "origin": [
+          889,
+          -679,
+          76.22740173339844
+        ],
+        "angles": [
+          0,
+          293,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 38,
+        "model": "models/props/cs_militia/table_shed.mdl",
+        "origin": [
+          862,
+          -745,
+          79
+        ],
+        "angles": [
+          0,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 5
+      },
+      {
+        "index": 39,
+        "model": "models/props/cs_militia/shelves.mdl",
+        "origin": [
+          868,
+          -745,
+          161
+        ],
+        "angles": [
+          0,
+          270,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 41,
+        "model": "models/props/coop_cementplant/coop_wooden_pallet/coop_wooden_pallet.mdl",
+        "origin": [
+          1134,
+          -624,
+          103
+        ],
+        "angles": [
+          77.0000991821289,
+          180.32899475097656,
+          -0.1743919998407364
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 42,
+        "model": "models/props/crates/weapon_crate_a.mdl",
+        "origin": [
+          874,
+          -711,
+          162
+        ],
+        "angles": [
+          0,
+          50.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 43,
+        "model": "models/props/ar_dizzy/dizzy_plywood_stack/dizzy_plywood_stack_02.mdl",
+        "origin": [
+          1141,
+          -668,
+          76
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 45,
+        "model": "models/props/de_dust/hr_dust/dust_metal_panels/dust_metal_panel_01_64x128.mdl",
+        "origin": [
+          1151,
+          -756,
+          141
+        ],
+        "angles": [
+          90,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 46,
+        "model": "models/props/de_train/bush2.mdl",
+        "origin": [
+          878,
+          -984,
+          48
+        ],
+        "angles": [
+          -33,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 47,
+        "model": "models/props/de_train/bush2.mdl",
+        "origin": [
+          877,
+          -926.8090209960938,
+          49
+        ],
+        "angles": [
+          -33,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 48,
+        "model": "models/props/de_train/bush2.mdl",
+        "origin": [
+          877,
+          -828,
+          49
+        ],
+        "angles": [
+          -33,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 0
+      },
+      {
+        "index": 49,
+        "model": "models/props/de_nuke/nuclearcontainerboxclosed.mdl",
+        "origin": [
+          1102,
+          -306,
+          84.09980010986328
+        ],
+        "angles": [
+          0,
+          323,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 50,
+        "model": "models/props/de_aztec/aztec_scaffolding_system_04.mdl",
+        "origin": [
+          1805,
+          577,
+          128
+        ],
+        "angles": [
+          78,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 3
+      },
+      {
+        "index": 51,
+        "model": "models/props/de_inferno/shell_pallet.mdl",
+        "origin": [
+          1110,
+          74,
+          179
+        ],
+        "angles": [
+          0,
+          92,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 52,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          2016,
+          790,
+          222
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 53,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          2150,
+          792,
+          235
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 54,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          2278,
+          743,
+          395
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 55,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          2330,
+          633,
+          244
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 56,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          2334.25,
+          416,
+          243
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 57,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          2327,
+          207,
+          246
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 58,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          2295,
+          -34,
+          245
+        ],
+        "angles": [
+          0,
+          76,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 59,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1914,
+          317,
+          387
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 60,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1053,
+          -1164,
+          183
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 61,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          828,
+          -1145.760009765625,
+          179
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 62,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          589,
+          -1150,
+          193
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 63,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          372,
+          -1138,
+          200
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 66,
+        "model": "models/props/de_house/swat_van_generic.mdl",
+        "origin": [
+          39,
+          1127,
+          89.5542984008789
+        ],
+        "angles": [
+          0,
+          218,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 2
+      },
+      {
+        "index": 67,
+        "model": "models/props/coop_cementplant/furniture/coop_wooden_table.mdl",
+        "origin": [
+          150.7689971923828,
+          1088.1400146484375,
+          89.2405014038086
+        ],
+        "angles": [
+          0,
+          308,
+          0
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 5
+      },
+      {
+        "index": 68,
+        "model": "models/props/coop_cementplant/furniture/coop_wooden_table_deco02.mdl",
+        "origin": [
+          162,
+          1091,
+          126.54900360107422
+        ],
+        "angles": [
+          0,
+          307.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 5
+      },
+      {
+        "index": 70,
+        "model": "models/props_foliage/urban_tree_giant01_small.mdl",
+        "origin": [
+          394.7909851074219,
+          1280.6400146484375,
+          89.5542984008789
+        ],
+        "angles": [
+          0,
+          165,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 71,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          364,
+          1424,
+          151
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 72,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          118,
+          1425.3900146484375,
+          150
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 73,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          -82,
+          1424.9000244140625,
+          152
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 74,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          -182,
+          1274,
+          166
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 75,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          -178.25900268554688,
+          1052,
+          149
+        ],
+        "angles": [
+          -3,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 77,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          -222.2469940185547,
+          -434,
+          47
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 78,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          -230.33399963378906,
+          -602,
+          50
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 79,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          -235.79400634765625,
+          -770,
+          46
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 80,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          281,
+          -1447,
+          40
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 81,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          113,
+          -1441.5400390625,
+          44
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 82,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          -55,
+          -1433.449951171875,
+          41
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 86,
+        "model": "models/props/de_inferno/hr_i/inferno_door_single/inferno_door_single.mdl",
+        "origin": [
+          167.5070037841797,
+          -220,
+          61
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 87,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          571,
+          1424.72998046875,
+          145
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 89,
+        "model": "models/props/de_vertigo/hvac_controller_03.mdl",
+        "origin": [
+          1897,
+          -79,
+          65
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 91,
+        "model": "models/props/de_vertigo/hvac_ductb_straight_128_01.mdl",
+        "origin": [
+          1737,
+          -8,
+          214
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 92,
+        "model": "models/props/de_vertigo/hvac_ductb_straight_128_01.mdl",
+        "origin": [
+          1865,
+          -8,
+          214
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 93,
+        "model": "models/props/cs_assault/ladderaluminium128.mdl",
+        "origin": [
+          1836,
+          98,
+          12
+        ],
+        "angles": [
+          -13,
+          270,
+          0
+        ],
+        "scale": 1,
+        "parts": 7,
+        "solidParts": 0
+      },
+      {
+        "index": 94,
+        "model": "models/props/de_vertigo/pallet_01.mdl",
+        "origin": [
+          1706,
+          -29,
+          64
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 95,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          1720,
+          -185,
+          65
+        ],
+        "angles": [
+          87.5,
+          270,
+          -180
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 96,
+        "model": "models/props/coop_cementplant/coop_wooden_pallet/coop_wooden_pallet.mdl",
+        "origin": [
+          1189,
+          -752,
+          104
+        ],
+        "angles": [
+          81.5,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 97,
+        "model": "models/props/coop_cementplant/furniture/coop_wooden_table.mdl",
+        "origin": [
+          1203,
+          -679,
+          75
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 5
+      },
+      {
+        "index": 101,
+        "model": "models/props/de_dust/hr_dust/dust_doors/dust_door_89x106_07.mdl",
+        "origin": [
+          1268,
+          -1091,
+          76
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 102,
+        "model": "models/props/de_prodigy/tirestack.mdl",
+        "origin": [
+          1401,
+          -1060,
+          76
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 103,
+        "model": "models/props/de_train/de_train_signalbox_01.mdl",
+        "origin": [
+          1489,
+          -1037,
+          76.58329772949219
+        ],
+        "angles": [
+          0,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 104,
+        "model": "models/props/de_nuke/hr_nuke/chainlink_fence_001/chainlink_fence_001_256.mdl",
+        "origin": [
+          1425.75,
+          -1093,
+          76
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 22,
+        "solidParts": 3
+      },
+      {
+        "index": 105,
+        "model": "models/props/de_dust/hr_dust/dust_doors/dust_door_80x128_01.mdl",
+        "origin": [
+          1426,
+          -729,
+          77
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 106,
+        "model": "models/props_urban/fence_gate002_256.mdl",
+        "origin": [
+          1512,
+          -512,
+          63
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 22,
+        "solidParts": 3
+      },
+      {
+        "index": 107,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_ladder_128_01.mdl",
+        "origin": [
+          1087,
+          -413,
+          62
+        ],
+        "angles": [
+          0,
+          180,
+          10
+        ],
+        "scale": 1,
+        "parts": 7,
+        "solidParts": 0
+      },
+      {
+        "index": 108,
+        "model": "models/props/de_nuke/hr_nuke/chainlink_fence_001/chainlink_fence_001_256.mdl",
+        "origin": [
+          1135,
+          -388,
+          52
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 22,
+        "solidParts": 3
+      },
+      {
+        "index": 109,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_assembly_100x100_01.mdl",
+        "origin": [
+          952.9229736328125,
+          -322,
+          67
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 111,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          1083,
+          -245,
+          64
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 112,
+        "model": "models/props/de_inferno/wine_barrel_static.mdl",
+        "origin": [
+          1022,
+          -224.93299865722656,
+          64
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 113,
+        "model": "models/props/de_inferno/wine_barrel_static.mdl",
+        "origin": [
+          992,
+          -244,
+          64.26329803466797
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 114,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_64x32x64.mdl",
+        "origin": [
+          1543,
+          -519,
+          98
+        ],
+        "angles": [
+          -90,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 115,
+        "model": "models/props/coop_cementplant/coop_wooden_pallet/coop_wooden_pallet.mdl",
+        "origin": [
+          1480,
+          -546,
+          91
+        ],
+        "angles": [
+          81.5,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 116,
+        "model": "models/props_foliage/urban_tree_giant01_small.mdl",
+        "origin": [
+          354,
+          -1106,
+          97
+        ],
+        "angles": [
+          0,
+          59.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 117,
+        "model": "models/props_foliage/urban_tree_giant01_small.mdl",
+        "origin": [
+          723,
+          -1137,
+          104
+        ],
+        "angles": [
+          0,
+          151,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 119,
+        "model": "models/props/de_aztec/aztec_scaffolding_system_04.mdl",
+        "origin": [
+          1763,
+          -163,
+          95
+        ],
+        "angles": [
+          16.502099990844727,
+          0.12731599807739258,
+          88.03990173339844
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 3
+      },
+      {
+        "index": 120,
+        "model": "models/props/de_aztec/aztec_scaffolding_system_04.mdl",
+        "origin": [
+          1737.1300048828125,
+          -155,
+          128
+        ],
+        "angles": [
+          83.8478012084961,
+          114.03900146484375,
+          -158.0749969482422
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 4
+      },
+      {
+        "index": 121,
+        "model": "models/props/de_aztec/aztec_scaffolding_system_04.mdl",
+        "origin": [
+          1778,
+          -213,
+          63
+        ],
+        "angles": [
+          0,
+          17.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 6
+      },
+      {
+        "index": 135,
+        "model": "models/props_foliage/urban_balcony_planter01b.mdl",
+        "origin": [
+          1413,
+          376,
+          165
+        ],
+        "angles": [
+          0,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 136,
+        "model": "models/props_foliage/urban_balcony_planter01b.mdl",
+        "origin": [
+          1410,
+          434,
+          164
+        ],
+        "angles": [
+          0,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 137,
+        "model": "models/props_foliage/urban_balcony_planter01b.mdl",
+        "origin": [
+          1448,
+          436,
+          165
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 138,
+        "model": "models/props_foliage/urban_balcony_planter01b.mdl",
+        "origin": [
+          1451,
+          378,
+          166
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 139,
+        "model": "models/props_foliage/urban_balcony_planter01b.mdl",
+        "origin": [
+          1431,
+          353,
+          166
+        ],
+        "angles": [
+          0,
+          270,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 140,
+        "model": "models/props/de_nuke/hr_nuke/nuke_cars/nuke_truck_02.mdl",
+        "origin": [
+          1896.0699462890625,
+          474.385986328125,
+          65.74569702148438
+        ],
+        "angles": [
+          0,
+          169,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 2
+      },
+      {
+        "index": 141,
+        "model": "models/props/de_nuke/hr_nuke/nuke_cars/nuke_truck_01_trailer.mdl",
+        "origin": [
+          1857,
+          483,
+          65.25
+        ],
+        "angles": [
+          0,
+          169,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 142,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          1879,
+          479,
+          112
+        ],
+        "angles": [
+          0,
+          261,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 143,
+        "model": "models/props/de_inferno/wine_barrel_static.mdl",
+        "origin": [
+          1939,
+          433,
+          116
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 144,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1981,
+          423,
+          110
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 145,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1984,
+          450,
+          110
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 146,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1959,
+          467,
+          111
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 147,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1959,
+          467,
+          152
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 148,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1984,
+          450,
+          151
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 149,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1981,
+          423,
+          151
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 150,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1951,
+          492,
+          111
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 151,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          2097.179931640625,
+          676,
+          64.25
+        ],
+        "angles": [
+          0,
+          317,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 152,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          2096,
+          676,
+          125
+        ],
+        "angles": [
+          0,
+          317,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 153,
+        "model": "models/props/de_dust/hr_dust/dust_wood_pallet/dust_wood_pallet_stack_01.mdl",
+        "origin": [
+          1935,
+          677,
+          64.73789978027344
+        ],
+        "angles": [
+          0,
+          322,
+          0
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 1
+      },
+      {
+        "index": 154,
+        "model": "models/props/de_dust/hr_dust/dust_wood_pallet/dust_wood_pallet_stack_01.mdl",
+        "origin": [
+          1932.8399658203125,
+          674.5759887695312,
+          89.92279815673828
+        ],
+        "angles": [
+          0,
+          147.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 1
+      },
+      {
+        "index": 155,
+        "model": "models/props/de_vertigo/construction_stack_plywood_01.mdl",
+        "origin": [
+          2229,
+          557,
+          65.72309875488281
+        ],
+        "angles": [
+          0,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 156,
+        "model": "models/props/de_vertigo/construction_stack_plywood_01.mdl",
+        "origin": [
+          2228.64990234375,
+          557,
+          98
+        ],
+        "angles": [
+          0,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 157,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          1109,
+          74,
+          189
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 158,
+        "model": "models/props/de_inferno/wine_barrel_static.mdl",
+        "origin": [
+          136,
+          141,
+          126
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 159,
+        "model": "models/props/de_inferno/wine_barrel_static.mdl",
+        "origin": [
+          163,
+          172,
+          128
+        ],
+        "angles": [
+          -30.5,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 160,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1292,
+          87,
+          260
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 161,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1519,
+          78,
+          266
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 162,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1756,
+          139,
+          266
+        ],
+        "angles": [
+          0,
+          40.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 163,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1869,
+          180,
+          271
+        ],
+        "angles": [
+          0,
+          271,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 164,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1212,
+          -31,
+          265
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 165,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1308,
+          -146,
+          270
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 166,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1514,
+          -151,
+          270
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 167,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1749,
+          -143,
+          265
+        ],
+        "angles": [
+          0,
+          0.9999859929084778,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 168,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1889,
+          -42,
+          253
+        ],
+        "angles": [
+          0,
+          271,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 169,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1978,
+          -233,
+          215
+        ],
+        "angles": [
+          0,
+          271,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 170,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1975.8900146484375,
+          -444,
+          218
+        ],
+        "angles": [
+          0,
+          271,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 171,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1835,
+          -554,
+          220
+        ],
+        "angles": [
+          0,
+          0.9999859929084778,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 172,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1600,
+          -562,
+          222
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 173,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1462,
+          -648,
+          219
+        ],
+        "angles": [
+          0,
+          271,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 174,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1555,
+          -803,
+          216
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 175,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1562,
+          -968,
+          216
+        ],
+        "angles": [
+          0,
+          271,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 176,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1364,
+          96.61080169677734,
+          62
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 177,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1335,
+          95.8323974609375,
+          62
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 178,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1363,
+          69.61080169677734,
+          62
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 179,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1354,
+          43.610801696777344,
+          62
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 180,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1334,
+          66.61080169677734,
+          64.19999694824219
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 181,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1364,
+          97,
+          104
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 182,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1363,
+          68.21389770507812,
+          105
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 183,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1354,
+          43.610801696777344,
+          104
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 184,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1336,
+          96.63890075683594,
+          104
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 185,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1334.77001953125,
+          66.61080169677734,
+          106
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 186,
+        "model": "models/props/de_inferno/hr_i/barrel_b/barrel_b.mdl",
+        "origin": [
+          1308.31005859375,
+          95.61080169677734,
+          63
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 187,
+        "model": "models/props/de_vertigo/construction_stack_plywood_01.mdl",
+        "origin": [
+          1600,
+          -118,
+          60
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 188,
+        "model": "models/props/de_vertigo/plywood_leaning.mdl",
+        "origin": [
+          1592,
+          -156,
+          95
+        ],
+        "angles": [
+          6.5,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 190,
+        "model": "models/props/de_nuke/hr_nuke/chainlink_fence_001/chainlink_fence_cover_001_64.mdl",
+        "origin": [
+          314,
+          209,
+          192
+        ],
+        "angles": [
+          0,
+          44,
+          -90
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 193,
+        "model": "models/props/de_nuke/hr_nuke/chainlink_fence_001/chainlink_fence_cover_001_64.mdl",
+        "origin": [
+          224,
+          301,
+          192
+        ],
+        "angles": [
+          0,
+          44,
+          -90
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 194,
+        "model": "models/props/de_nuke/hr_nuke/chainlink_fence_001/chainlink_fence_cover_001_64.mdl",
+        "origin": [
+          181,
+          357,
+          80
+        ],
+        "angles": [
+          -2.2364799976348877,
+          40.93960189819336,
+          -0.727770984172821
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 195,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          1894,
+          -470,
+          64
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 196,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          1893,
+          -470.85101318359375,
+          125
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 197,
+        "model": "models/props/de_inferno/hr_i/wood_pile_a/wood_pile_a.mdl",
+        "origin": [
+          1698,
+          -506,
+          109
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 198,
+        "model": "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl",
+        "origin": [
+          1922,
+          -203,
+          71
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 199,
+        "model": "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl",
+        "origin": [
+          1897,
+          -204,
+          71
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 200,
+        "model": "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl",
+        "origin": [
+          1920,
+          -203,
+          87
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 201,
+        "model": "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl",
+        "origin": [
+          1872,
+          -207,
+          71
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 2
+      },
+      {
+        "index": 202,
+        "model": "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl",
+        "origin": [
+          1883,
+          -207,
+          87
+        ],
+        "angles": [
+          0,
+          301.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 2
+      },
+      {
+        "index": 203,
+        "model": "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl",
+        "origin": [
+          1907,
+          -244,
+          72
+        ],
+        "angles": [
+          0,
+          0.4999699890613556,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 204,
+        "model": "models/props/de_inferno/hr_i/hay_bale/hay_bale_a.mdl",
+        "origin": [
+          1921,
+          -416.2850036621094,
+          86
+        ],
+        "angles": [
+          66.99490356445312,
+          178.7209930419922,
+          178.82200622558594
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 205,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1444,
+          -541,
+          378
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 206,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1455,
+          -805,
+          364
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 207,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1543,
+          -1096,
+          366
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 208,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1984,
+          -566,
+          286
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 209,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1955,
+          -142,
+          290
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 210,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1176,
+          -169,
+          406
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 211,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1179,
+          114,
+          400
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 212,
+        "model": "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bags_stack_a.mdl",
+        "origin": [
+          1479,
+          -868,
+          111.13500213623047
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 213,
+        "model": "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bags_stack_a.mdl",
+        "origin": [
+          1478.6700439453125,
+          -868,
+          133.13499450683594
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 214,
+        "model": "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bag_a.mdl",
+        "origin": [
+          1468,
+          -888,
+          147.13499450683594
+        ],
+        "angles": [
+          0,
+          269.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 215,
+        "model": "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bag_b.mdl",
+        "origin": [
+          1467,
+          -856,
+          150
+        ],
+        "angles": [
+          0,
+          96.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 216,
+        "model": "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bag_a.mdl",
+        "origin": [
+          1488,
+          -859,
+          147.13499450683594
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 217,
+        "model": "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bag_a.mdl",
+        "origin": [
+          1492,
+          -890,
+          148.13499450683594
+        ],
+        "angles": [
+          0,
+          275.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 218,
+        "model": "models/props/de_dust/hr_dust/dust_wood_pallet/dust_wood_pallet_stack_01.mdl",
+        "origin": [
+          1463,
+          -870,
+          76
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 1
+      },
+      {
+        "index": 219,
+        "model": "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bag_a.mdl",
+        "origin": [
+          1444,
+          -852,
+          104.79100036621094
+        ],
+        "angles": [
+          0,
+          96.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 220,
+        "model": "models/props/de_inferno/hr_i/concrete_bag_a/concrete_bag_b.mdl",
+        "origin": [
+          1445,
+          -888,
+          106
+        ],
+        "angles": [
+          0,
+          259,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 222,
+        "model": "models/props/de_dust/hr_dust/dust_patio_set/dust_patio_table.mdl",
+        "origin": [
+          1485,
+          -966,
+          76.90840148925781
+        ],
+        "angles": [
+          0,
+          87.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 5
+      },
+      {
+        "index": 223,
+        "model": "models/props/de_dust/hr_dust/dust_patio_set/dust_patio_table.mdl",
+        "origin": [
+          1485.4599609375,
+          -965,
+          147
+        ],
+        "angles": [
+          0,
+          296.5,
+          -180
+        ],
+        "scale": 1,
+        "parts": 5,
+        "solidParts": 5
+      },
+      {
+        "index": 224,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_scaffold_116_01.mdl",
+        "origin": [
+          1180,
+          -578,
+          182
+        ],
+        "angles": [
+          0,
+          272,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 3
+      },
+      {
+        "index": 225,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_37x37x74.mdl",
+        "origin": [
+          1229,
+          -554,
+          137
+        ],
+        "angles": [
+          -89.5,
+          180,
+          -180
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 226,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_37x37x74.mdl",
+        "origin": [
+          1227,
+          -592,
+          84
+        ],
+        "angles": [
+          -89.5,
+          180,
+          -180
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 227,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_64x64x57.mdl",
+        "origin": [
+          1218,
+          -546,
+          184
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 228,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_37x37x74.mdl",
+        "origin": [
+          1245,
+          -624,
+          204
+        ],
+        "angles": [
+          -89.5,
+          117.5,
+          180
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 235,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_64x64x57.mdl",
+        "origin": [
+          1216,
+          -481,
+          64.27259826660156
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 236,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1470,
+          -1138,
+          220
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 237,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1292,
+          -1139,
+          214
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 238,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1145,
+          -1129,
+          373
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 239,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          758.0670166015625,
+          419.2980041503906,
+          91
+        ],
+        "angles": [
+          0,
+          4,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 240,
+        "model": "models/props/de_inferno/shell_pallet.mdl",
+        "origin": [
+          757,
+          420.22601318359375,
+          81
+        ],
+        "angles": [
+          0,
+          94,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 241,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          782,
+          336.22601318359375,
+          91
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 242,
+        "model": "models/props/de_inferno/shell_pallet.mdl",
+        "origin": [
+          781,
+          337.22601318359375,
+          81
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 243,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          784.4920043945312,
+          252.6479949951172,
+          91
+        ],
+        "angles": [
+          0,
+          2,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 244,
+        "model": "models/props/de_inferno/shell_pallet.mdl",
+        "origin": [
+          783.4580078125,
+          253.61300659179688,
+          81
+        ],
+        "angles": [
+          0,
+          92,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 245,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          764,
+          409,
+          152
+        ],
+        "angles": [
+          0,
+          13,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 253,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_style_02_64x32x64.mdl",
+        "origin": [
+          346,
+          157,
+          82
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 254,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          418,
+          162,
+          82.27259826660156
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 255,
+        "model": "models/props/de_inferno/hr_i/wine_crate_a/wine_crate_a.mdl",
+        "origin": [
+          418,
+          162,
+          143
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 3,
+        "solidParts": 1
+      },
+      {
+        "index": 256,
+        "model": "models/props/de_train/hr_t/gate_fence_a/gate_fence_b.mdl",
+        "origin": [
+          177,
+          349,
+          146
+        ],
+        "angles": [
+          0,
+          134,
+          0
+        ],
+        "scale": 1,
+        "parts": 22,
+        "solidParts": 3
+      },
+      {
+        "index": 257,
+        "model": "models/props/de_train/hr_t/gate_fence_a/gate_fence_b.mdl",
+        "origin": [
+          268,
+          255,
+          146
+        ],
+        "angles": [
+          0,
+          134,
+          0
+        ],
+        "scale": 1,
+        "parts": 22,
+        "solidParts": 3
+      },
+      {
+        "index": 258,
+        "model": "models/props/de_train/hr_t/gate_fence_a/gate_fence_b.mdl",
+        "origin": [
+          312,
+          135,
+          146
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 22,
+        "solidParts": 3
+      },
+      {
+        "index": 280,
+        "model": "models/props/de_overpass/metal_door_cafe.mdl",
+        "origin": [
+          121,
+          797.6539916992188,
+          82
+        ],
+        "angles": [
+          0,
+          90,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 281,
+        "model": "models/props_foliage/urban_tree_giant01_small.mdl",
+        "origin": [
+          69,
+          976,
+          89
+        ],
+        "angles": [
+          0,
+          218,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 283,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          398,
+          684,
+          237
+        ],
+        "angles": [
+          0,
+          271,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 284,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          749.9949951171875,
+          530.9650268554688,
+          230
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 285,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          296,
+          849.4199829101562,
+          116
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 286,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          3,
+          544,
+          125
+        ],
+        "angles": [
+          0,
+          274.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 287,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          -3,
+          772,
+          123
+        ],
+        "angles": [
+          0,
+          274.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 288,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          550,
+          532,
+          234
+        ],
+        "angles": [
+          0,
+          359,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 289,
+        "model": "models/props_foliage/urban_tree_giant01_small.mdl",
+        "origin": [
+          35,
+          279,
+          108
+        ],
+        "angles": [
+          0,
+          106.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 290,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1447,
+          535,
+          224
+        ],
+        "angles": [
+          0,
+          5.499989986419678,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 291,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1213,
+          525,
+          230
+        ],
+        "angles": [
+          0,
+          358.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 292,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1646.6600341796875,
+          613.447998046875,
+          236
+        ],
+        "angles": [
+          0,
+          33,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 293,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          1781,
+          717,
+          236
+        ],
+        "angles": [
+          0,
+          33,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 294,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          404,
+          532,
+          385
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 295,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          387,
+          846,
+          375
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 296,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1169,
+          490,
+          402
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 297,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1563,
+          515,
+          408
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 298,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          1916,
+          770,
+          377
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 299,
+        "model": "models/props/de_inferno/hr_i/cypress_a/cypress_a_medium.mdl",
+        "origin": [
+          869,
+          165,
+          357
+        ],
+        "angles": [
+          1.9665000438690186,
+          259.4939880371094,
+          -0.36461400985717773
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 300,
+        "model": "models/props/cs_militia/militiarock03.mdl",
+        "origin": [
+          622,
+          -389,
+          54
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 301,
+        "model": "models/props/de_inferno/bomb_shells_1_wood.mdl",
+        "origin": [
+          508.95098876953125,
+          24.377500534057617,
+          143.3509979248047
+        ],
+        "angles": [
+          0,
+          266,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 302,
+        "model": "models/props/de_inferno/shell_pallet.mdl",
+        "origin": [
+          507.44000244140625,
+          22.9153995513916,
+          143.34500122070312
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 303,
+        "model": "models/props/de_inferno/shell_pallet.mdl",
+        "origin": [
+          590.3099975585938,
+          19,
+          144
+        ],
+        "angles": [
+          0,
+          266,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 304,
+        "model": "models/props/de_inferno/bomb_shells_1_wood.mdl",
+        "origin": [
+          591.8209838867188,
+          19.612300872802734,
+          144.3509979248047
+        ],
+        "angles": [
+          0,
+          266,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 305,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          326,
+          -448,
+          49
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 306,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          326,
+          -264,
+          47
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 307,
+        "model": "models/props/cs_militia/rockwallb.mdl",
+        "origin": [
+          327,
+          -92,
+          52
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 308,
+        "model": "models/props/cs_militia/rocka.mdl",
+        "origin": [
+          557,
+          -370,
+          77
+        ],
+        "angles": [
+          -29.915300369262695,
+          212.23599243164062,
+          -118.75199890136719
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 309,
+        "model": "models/props_foliage/urban_tree_giant01_small.mdl",
+        "origin": [
+          304,
+          -403,
+          65
+        ],
+        "angles": [
+          0,
+          59.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 310,
+        "model": "models/props/de_vertigo/scaffolding_walkway_02.mdl",
+        "origin": [
+          1103,
+          81,
+          175.25
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 311,
+        "model": "models/props/de_vertigo/scaffolding_end.mdl",
+        "origin": [
+          1055,
+          81,
+          82.25
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 2
+      },
+      {
+        "index": 312,
+        "model": "models/props/de_vertigo/scaffolding_end.mdl",
+        "origin": [
+          1151,
+          81,
+          82.25
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 2
+      },
+      {
+        "index": 313,
+        "model": "models/props/de_vertigo/scaffolding_end.mdl",
+        "origin": [
+          1055,
+          -15,
+          82.25
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 2
+      },
+      {
+        "index": 314,
+        "model": "models/props/de_vertigo/scaffolding_end.mdl",
+        "origin": [
+          1151,
+          -15,
+          82.25
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 2
+      },
+      {
+        "index": 315,
+        "model": "models/props/de_vertigo/scaffolding_walkway_02.mdl",
+        "origin": [
+          1103,
+          -15,
+          175.25
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 316,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          1052,
+          17,
+          82.25
+        ],
+        "angles": [
+          90,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 317,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          1054,
+          97,
+          82.25
+        ],
+        "angles": [
+          90,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 318,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          1052,
+          81,
+          82.25
+        ],
+        "angles": [
+          90,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 319,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          1053,
+          -12,
+          82
+        ],
+        "angles": [
+          90,
+          180,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 320,
+        "model": "models/props_highway/plywood_02.mdl",
+        "origin": [
+          1051,
+          -18,
+          82
+        ],
+        "angles": [
+          90,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 321,
+        "model": "models/props/de_inferno/bomb_tanks.mdl",
+        "origin": [
+          892,
+          -135,
+          82.25
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 2
+      },
+      {
+        "index": 322,
+        "model": "models/props_foliage/urban_hedge_256_160.mdl",
+        "origin": [
+          983.0339965820312,
+          526.7960205078125,
+          224
+        ],
+        "angles": [
+          0,
+          357.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 1,
+        "solidParts": 1
+      },
+      {
+        "index": 323,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_assembly_100x100_01.mdl",
+        "origin": [
+          476.9230041503906,
+          411.74798583984375,
+          82.25
+        ],
+        "angles": [
+          0,
+          0,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 325,
+        "model": "models/props/de_inferno/shell_pallet.mdl",
+        "origin": [
+          504.9079895019531,
+          20.626399993896484,
+          81.34519958496094
+        ],
+        "angles": [
+          0,
+          2.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 326,
+        "model": "models/props/de_inferno/bomb_shells_1_wood.mdl",
+        "origin": [
+          503.28399658203125,
+          21.962799072265625,
+          81.35099792480469
+        ],
+        "angles": [
+          0,
+          2.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      },
+      {
+        "index": 327,
+        "model": "models/props/de_inferno/shell_pallet.mdl",
+        "origin": [
+          587.7839965820312,
+          15.907099723815918,
+          82.34519958496094
+        ],
+        "angles": [
+          0,
+          356.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 4,
+        "solidParts": 1
+      },
+      {
+        "index": 328,
+        "model": "models/props/de_inferno/bomb_shells_1_wood.mdl",
+        "origin": [
+          586.3079833984375,
+          20,
+          81
+        ],
+        "angles": [
+          0,
+          356.5,
+          0
+        ],
+        "scale": 1,
+        "parts": 2,
+        "solidParts": 1
+      }
+    ],
+    "omitted": [
+      {
+        "index": 0,
+        "model": "models/props_foliage/swamp_grass01.mdl"
+      },
+      {
+        "index": 6,
+        "model": "models/props/de_dust/hr_dust/dust_metal_panels/dust_metal_panel_awning_cover_02.mdl"
+      },
+      {
+        "index": 8,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_debris_01.mdl"
+      },
+      {
+        "index": 9,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_debris_03.mdl"
+      },
+      {
+        "index": 15,
+        "model": "models/props_junk/cardboard_unfolded_04.mdl"
+      },
+      {
+        "index": 19,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_debris_04.mdl"
+      },
+      {
+        "index": 40,
+        "model": "models/props/cs_militia/caseofbeer01.mdl"
+      },
+      {
+        "index": 44,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_wood_debris_02.mdl"
+      },
+      {
+        "index": 64,
+        "model": "models/props/de_inferno/hr_i/wall_trim_a/wall_trim_a.mdl"
+      },
+      {
+        "index": 65,
+        "model": "models/props/de_inferno/hr_i/wall_trim_a/wall_trim_a.mdl"
+      },
+      {
+        "index": 69,
+        "model": "models/props/coop_cementplant/grenade_box/flashgrenade_box.mdl"
+      },
+      {
+        "index": 76,
+        "model": "models/props/de_inferno/hr_i/inferno_building_skybox/inferno_building_skybox_cheap02.mdl"
+      },
+      {
+        "index": 83,
+        "model": "models/props/de_inferno/hr_i/inferno_building_skybox/inferno_building_skybox.mdl"
+      },
+      {
+        "index": 84,
+        "model": "models/props/de_inferno/hr_i/inferno_folding_shutters/inferno_folding_shutters.mdl"
+      },
+      {
+        "index": 85,
+        "model": "models/props/de_inferno/hr_i/inferno_folding_shutters/inferno_folding_shutters.mdl"
+      },
+      {
+        "index": 88,
+        "model": "models/props_debris/floor_rubble1.mdl"
+      },
+      {
+        "index": 90,
+        "model": "models/props/de_vertigo/flexconduit_end.mdl"
+      },
+      {
+        "index": 98,
+        "model": "models/props/coop_cementplant/furniture/coop_folding_chair_folded.mdl"
+      },
+      {
+        "index": 99,
+        "model": "models/props/coop_cementplant/furniture/coop_folding_chair_folded.mdl"
+      },
+      {
+        "index": 100,
+        "model": "models/props/coop_cementplant/grenade_box/grenade_box_empty.mdl"
+      },
+      {
+        "index": 110,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_assembly_100x100_01_tarp.mdl"
+      },
+      {
+        "index": 118,
+        "model": "models/props/de_mirage/wall_hole_cbble_frame.mdl"
+      },
+      {
+        "index": 122,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl"
+      },
+      {
+        "index": 123,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 124,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 125,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 126,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 127,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 128,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl"
+      },
+      {
+        "index": 129,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 130,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 131,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 132,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 133,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl"
+      },
+      {
+        "index": 134,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl"
+      },
+      {
+        "index": 189,
+        "model": "models/props/cs_italy/paint_roller.mdl"
+      },
+      {
+        "index": 191,
+        "model": "models/props_foliage/swamp_grass01.mdl"
+      },
+      {
+        "index": 192,
+        "model": "models/props_foliage/swamp_grass01.mdl"
+      },
+      {
+        "index": 221,
+        "model": "models/props/de_dust/hr_dust/dust_patio_set/dust_patio_chair.mdl"
+      },
+      {
+        "index": 229,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 230,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl"
+      },
+      {
+        "index": 231,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl"
+      },
+      {
+        "index": 232,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 233,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 234,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 246,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl"
+      },
+      {
+        "index": 247,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 248,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_02.mdl"
+      },
+      {
+        "index": 249,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 250,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 251,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 252,
+        "model": "models/props/de_dust/hr_dust/dust_kasbah/dust_kasbah_flat_stones_cluster_01.mdl"
+      },
+      {
+        "index": 259,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 260,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 261,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 262,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 263,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 264,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 265,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 266,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 267,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 268,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 269,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 270,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 271,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 272,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 273,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 274,
+        "model": "models/props/de_inferno/hr_i/tile_set_a/tile_set_a.mdl"
+      },
+      {
+        "index": 275,
+        "model": "models/props/de_inferno/hr_i/wall_trim_a/wall_trim_a.mdl"
+      },
+      {
+        "index": 276,
+        "model": "models/props/de_inferno/hr_i/inferno_folding_shutters/inferno_folding_shutters.mdl"
+      },
+      {
+        "index": 277,
+        "model": "models/props/de_inferno/hr_i/wall_trim_a/wall_trim_a.mdl"
+      },
+      {
+        "index": 278,
+        "model": "models/props/de_inferno/hr_i/wall_trim_a/wall_trim_a.mdl"
+      },
+      {
+        "index": 279,
+        "model": "models/props/de_inferno/hr_i/wall_trim_a/wall_trim_a.mdl"
+      },
+      {
+        "index": 282,
+        "model": "models/props_foliage/swamp_grass01.mdl"
+      },
+      {
+        "index": 324,
+        "model": "models/props/de_dust/hr_dust/dust_crates/dust_crate_assembly_100x100_01_tarp.mdl"
+      }
+    ],
+    "spawnClearanceVolumes": 10,
+    "carvedParts": 8,
+    "originalNavAreas": 237,
+    "preservedWorldFaces": 1149
+  },
+  "navigation": {
+    "components": 11174,
+    "spawnsConnected": 10,
+    "spawnsTotal": 10,
+    "nodes": 1988,
+    "regions": [
+      {
+        "nodes": 1988,
+        "spawns": 10
+      },
+      {
+        "nodes": 693,
+        "spawns": 0
+      },
+      {
+        "nodes": 381,
+        "spawns": 0
+      },
+      {
+        "nodes": 219,
+        "spawns": 0
+      },
+      {
+        "nodes": 151,
+        "spawns": 0
+      },
+      {
+        "nodes": 146,
+        "spawns": 0
+      },
+      {
+        "nodes": 134,
+        "spawns": 0
+      },
+      {
+        "nodes": 127,
+        "spawns": 0
+      }
+    ]
+  },
+  "sourceFile": "wg_sanctum.bsp",
+  "center": [
+    998.251968503937,
+    -158.66929133858267,
+    53
+  ],
+  "scale": 0.0254,
+  "bounds": [
+    -32.97036776123046,
+    -1.905,
+    -40.692306372070306,
+    34.391549999999995,
+    16.255913343229,
+    34.349199999999996
+  ],
+  "playBounds": [
+    -23.099999999999998,
+    -23.8,
+    23.099999999999998,
+    23.8
+  ],
+  "ax": 26,
+  "az": 26,
+  "spawns": {
+    "t": [
+      [
+        21.3804,
+        5.6739716,
+        1.1082840750163994,
+        0.2793999910354614
+      ],
+      [
+        21.091856000000003,
+        2.835420000000001,
+        2.504547476611863,
+        0.2793999910354614
+      ],
+      [
+        22.525686,
+        4.301,
+        1.9198621771937625,
+        0.2793999910354614
+      ],
+      [
+        19.5008,
+        2.0150000000000006,
+        2.8012534494508987,
+        0.2793999910354614
+      ],
+      [
+        19.4754,
+        6.5616,
+        0.715584993317675,
+        0.2793999910354614
+      ]
+    ],
+    "ct": [
+      [
+        -18.675399999999996,
+        -22.5722,
+        3.01941960595019,
+        0.7365999817848206
+      ],
+      [
+        -21.139199999999995,
+        -22.775399999999998,
+        3.6302848441482056,
+        0.7365999817848206
+      ],
+      [
+        -19.996199999999998,
+        -21.1498,
+        3.2637657012293966,
+        0.7365999817848206
+      ],
+      [
+        -18.1166,
+        -20.819599999999998,
+        2.2427480888127134,
+        0.7365999817848206
+      ],
+      [
+        -22.155199999999997,
+        -21.0736,
+        3.9008108782073263,
+        0.7365999817848206
+      ]
+    ]
+  },
+  "sites": [
+    {
+      "name": "A",
+      "x0": -13.442999999999998,
+      "z0": -15.790399999999998,
+      "x1": -6.153199999999997,
+      "z1": -5.4525999999999994,
+      "y0": 0.7365999999999999,
+      "y1": 1.524,
+      "lx": -9.798099999999998,
+      "lz": -10.621499999999997
+    }
+  ],
+  "triangles": 13918,
+  "collisionHulls": 617,
+  "assetBytes": 212626
+}

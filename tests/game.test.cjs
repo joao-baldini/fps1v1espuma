@@ -1498,10 +1498,25 @@ test('Wingman maps keep the BSP spawns, connected floors and bombsites, credit t
     for(const p of meta.t.concat(meta.ct)){const y=source.ground(p[0],p[1],p[3]);assert.ok(Number.isFinite(y)&&Math.abs(y-p[3])<1,key);assert.equal(source.overlap(p[0],y+.03,p[1],1.8,.3),false,key+' spawn livre');}
     for(const site of meta.sites){const x=(site.x0+site.x1)/2,z=(site.z0+site.z1)/2;assert.equal(cx.bombInSite(x,z,site.y0),true,key+' '+site.name);assert.equal(cx.bombInSite(x,z,site.y1+1.8),false,'cannot plant from a floor above the site');}
     assert.ok(source.mesh.opaque>0);assert.ok(source.count<45000);assert.equal(meta.sourceSha256.length,64);
-    // Textura leve: cada vértice tem coordenadas de textura e um dos 11 padrões procedurais; nada de imagens.
-    const packed=sourcePacked[key],uv=Buffer.from(packed.mesh.uv,'base64'),pat=Buffer.from(packed.mesh.pattern,'base64'),pos=Buffer.from(packed.mesh.position,'base64');
-    assert.equal(uv.length/8,pos.length/12);assert.equal(pat.length,pos.length/12);assert.ok([...pat].every(v=>v<=10));
-    const used=new Set(pat);assert.ok(used.size>=5,key+' usa vários padrões: '+[...used]);
+    const packed=sourcePacked[key],pos=Buffer.from(packed.mesh.position,'base64');
+    if(key==='sanctum'){
+      // Sanctum uses the standard game's world-space grid, with no original texture UVs or material patterns.
+      assert.equal(packed.mesh.uv,undefined);assert.equal(packed.mesh.pattern,undefined);
+      const audit=JSON.parse(readFileSync(resolve(__dirname,'../assets/maps/sanctum-source.json'),'utf8'));
+      assert.equal(audit.rebuild.version,2);assert.equal(audit.sourceSha256,meta.sourceSha256);
+      assert.equal(audit.rebuild.preservedWorldFaces,1149);assert.equal(audit.rebuild.externalModelsEmbedded,0);
+      assert.ok(audit.triangles<20000);assert.ok(audit.rebuild.props.length>200);
+      // Original BSP spawn coordinates, reversed through the exact recentring transform.
+      const origins=[[1840,-382.054],[1828.64,-270.3],[1885.09,-328],[1766,-238],[1765,-417]];
+      for(let i=0;i<origins.length;i++)for(const axis of [0,1]){
+        const native=axis===0?meta.t[i][0]/meta.scale+meta.center[0]:meta.center[1]-meta.t[i][1]/meta.scale;
+        assert.ok(Math.abs(native-origins[i][axis])<.001);
+      }
+    }else{
+      const uv=Buffer.from(packed.mesh.uv,'base64'),pat=Buffer.from(packed.mesh.pattern,'base64');
+      assert.equal(uv.length/8,pos.length/12);assert.equal(pat.length,pos.length/12);assert.ok([...pat].every(v=>v<=10));
+      assert.ok(new Set(pat).size>=5,key+' usa vários padrões');
+    }
     for(let p=0;p<pos.length;p+=12)for(let axis=0;axis<3;axis++){const v=pos.readFloatLE(p+axis*4);assert.ok(v>=meta.bounds[axis]-.001&&v<=meta.bounds[axis+3]+.001,key+' recortado na área jogável');}
     // Miniatura do menu com o nick do autor (gerada a partir do mapa).
     for(const dir of ['','thumb/'])assert.ok(readFileSync(resolve(__dirname,'../assets/menu/play/'+dir+key+'.webp')).length>3000);
@@ -1521,6 +1536,21 @@ test('actual player physics follows the native paths from T to CT and to every a
     }
   }
 });
+test('rebuilt Sanctum lets every original spawn walk to the site and the opposite base with actual player physics',()=>{
+  const g=game(),cx=g.context;cx.buildMap('sanctum');g.dmBuildNav([]);const map=g.MAPS.sanctum,nav=g.DM.nav,site=map.plant.site;
+  for(const side of ['t','ct'])for(const from of map.plant[side]){
+    const targets=[map.plant[side==='t'?'ct':'t'][0],[(site.x0+site.x1)/2,(site.z0+site.z1)/2]];
+    for(const goal of targets){
+      const actor={pos:new Vec(from[0],cx.groundAt(from[0],from[1],from[3]),from[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
+      assert.equal(g.dmFindPath(actor,goal[0],goal[1]),true);
+      for(const id of actor.path){let frames=0;while(Math.hypot(nav.x[id]-actor.pos.x,nav.z[id]-actor.pos.z)>.12&&frames++<400){const dx=nav.x[id]-actor.pos.x,dz=nav.z[id]-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,4.5,false,1/128);}
+        assert.ok(frames<400,side+' spawn '+from.slice(0,2)+' stopped at '+id);
+      }
+      assert.ok(Math.hypot(actor.pos.x-goal[0],actor.pos.z-goal[1])<3.5);
+    }
+  }
+});
+
 test('native spatial ray queries match all convex hulls and keep player clips out of bullet collisions',()=>{
   for(const key of WINGMAN){
     const g=game(),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const map=cx.sourceWorld,nav=g.DM.nav;
@@ -2340,4 +2370,394 @@ test('spectator: when dead you watch living teammates in first person, never the
   ev('DM.actors.push(...__fake)'); const order = ev('specTargets()').map(e => e.id);
   ev('SPEC.id=null;specCurrent()'); assert.equal(ev('SPEC.id'), order[0]);
   ev('specNext(1)'); assert.equal(ev('SPEC.id'), order[1]); ev('specNext(-1)'); ev('specNext(-1)'); assert.equal(ev('SPEC.id'), order[order.length - 1]);
+});
+
+function eliminationWorld(mine = 1, foes = 5, map = 'caixas') {
+  const g = game({ mode: 'elim', modeV: 2, xvx: { mine, foes }, botLevel: 'dificil' }), cx = g.context;
+  vm.runInContext(section('let mapQueue', 'const SUN ='), cx);
+  Object.assign(cx, { clearDecals() {}, sleeveMat: { color: { set() {} } }, MAP_IDS: [map] });
+  cx.buildMap(map); cx.G.mode = 'team'; cx.G.opp = null; g.S.map = map;
+  g.time = 10000; cx.teamSetup(g.time, false);
+  g.advance = (ms, fps = 60) => {
+    const end = g.time + ms;
+    while (g.time < end - 1e-6) { const dt = Math.min(1 / fps, (end - g.time) / 1000); g.time += dt * 1000; g.tick(g.time); cx.teamTick(dt, g.time); }
+  };
+  g.advance(3900);
+  return Object.assign(g, { arena: vm.runInContext('ARENA', cx) });
+}
+test('Elimination: release and counter-strafe stop sooner, retain speed limits, and leave the other modes untouched', () => {
+  const g = game(), speed = g.W.rifle.speed;
+  const measure = (elim, input) => {
+    const e = entity(); e.valMove = true; e.elimMove = elim; e.vel.x = speed;
+    let ms = 0, distance = 0, accurateAt = 0;
+    while (e.vel.x > 0 && ms < 500) {
+      const before = e.pos.x; g.physics(e, input, 0, speed, false, g.PHYS_STEP);
+      distance += e.pos.x - before; ms += 1000 / 128;
+      if (!accurateAt && e.vel.x <= speed * .275) accurateAt = ms;
+    }
+    return { ms, distance, accurateAt };
+  };
+  const old = measure(false, 0), release = measure(true, 0), counter = measure(true, -1);
+  assert.ok(release.ms <= 140 && release.distance < old.distance * .75, JSON.stringify({ old, release }));
+  assert.ok(counter.ms <= 65 && counter.accurateAt < release.accurateAt, JSON.stringify(counter));
+  for (const input of [[1, 0], [1, 1]]) {
+    const e = entity(); e.elimMove = true;
+    for (let i = 0; i < 256; i++) g.physics(e, ...input, speed, false, g.PHYS_STEP);
+    assert.ok(Math.abs(Math.hypot(e.vel.x, e.vel.z) - speed * .95) < 1e-8);
+  }
+  for (const mode of ['dm', 'aimbotz', 'bot', 'team']) {
+    g.context.G.mode = mode; g.DM.mode = mode === 'team' ? 'team' : 'dm';
+    vm.runInContext('ARENA.bomb=true', g.context); g.spawnSelf(0); g.keys.add('KeyD'); g.playerInput(1 / 60, 10017);
+    assert.equal(g.P.elimMove, false, mode);
+  }
+});
+test('Elimination: the camera has no interpolation delay and movement events between frames are integrated only once', () => {
+  const results = [];
+  for (const fps of [30, 60, 144, 240]) {
+    const g = game(), cx = g.context;
+    cx.G.mode = 'team'; g.DM.mode = 'team'; g.DM.phase = 'live'; g.spawnSelf(0, [0, 0, 0]);
+    const events = [[10000, true, 'KeyD'], [10203, false, 'KeyD'], [10206, true, 'KeyA'], [10409, false, 'KeyA'], [10412, true, 'KeyD'], [10531, false, 'KeyD']];
+    let index = 0;
+    for (let frame = 1; frame <= fps; frame++) {
+      const t = 10000 + frame * 1000 / fps;
+      while (index < events.length && events[index][0] <= t) {
+        const [at, down, code] = events[index++]; g.tick(at); cx.syncEliminationInput(at); cx.keyEvent(code, down, at);
+        if (down) g.keys.add(code); else g.keys.delete(code);
+      }
+      g.tick(t); g.playerInput(1 / fps, t);
+      assert.equal(cx.renderPos(), g.P.pos);
+      assert.ok(g.P.physTime < 1e-8);
+    }
+    const x = g.P.pos.x; g.playerInput(1 / fps, 11000); assert.equal(g.P.pos.x, x, 'same timestamp must not move twice');
+    results.push(x);
+  }
+  assert.ok(Math.max(...results) - Math.min(...results) < .025, results.join(', '));
+  // Even a frame shorter than 1/128 s moves on screen immediately.
+  const g = game(), cx = g.context; cx.G.mode = 'team'; g.DM.mode = 'team'; g.DM.phase = 'live';
+  g.spawnSelf(0, [0, 0, 0]); g.keys.add('KeyD'); g.playerInput(.002, 10002);
+  assert.ok(g.P.pos.x > 0); assert.equal(cx.renderPos().x, g.P.pos.x);
+});
+test('Elimination: bots split lanes, hold and check angles, keep guns out, and never select hidden enemy positions', () => {
+  const g = eliminationWorld(), cx = g.context, foes = g.DM.bots.filter(b => b.team !== g.P.team);
+  assert.equal(new Set(foes.map(b => b.elim.lane)).size, foes.length);
+  assert.ok(new Set(foes.map(b => b.elim.role)).size >= 3);
+  assert.ok(new Set(foes.map(b => Math.round(b.elim.startAt))).size >= 4);
+  // A hidden enemy's coordinates must not be read by the route planner.
+  const original = g.P.pos; g.P.pos = new Proxy(original, { get() { throw new Error('planner read a hidden enemy position'); } });
+  for (const b of foes) { cx.elimChooseGoal(b, g.time + 5000); assert.ok(b.path.length || b.elim.state === 'hold'); }
+  g.P.pos = original;
+  // Isolate traversal from combat to measure pauses and route variety on the real arena.
+  g.DM.actors = foes; g.DM.byId.delete(g.P.id); cx.G.view.ph = 'live';
+  const states = new Map(foes.map(b => [b.id, new Set()])), origins = new Map(foes.map(b => [b.id, { x: b.pos.x, z: b.pos.z }]));
+  let held = 0, walked = 0;
+  for (let i = 0; i < 60 * 30; i++) {
+    const t = g.time + (i + 1) * 1000 / 60; g.tick(t);
+    for (const b of foes) {
+      cx.dmBotMove(b, 1 / 60, t, g.LEVELS.dificil); states.get(b.id).add(b.elim.state);
+      if (b.elim.state === 'hold' || b.elim.state === 'check') held++;
+      if (b.walking) walked++;
+      assert.equal(b.knifeOut, false); assert.equal(b.hopsLeft, 0);
+      assert.ok(Number.isFinite(b.pos.x) && Number.isFinite(b.pos.z));
+    }
+  }
+  assert.ok(held > 120, 'bots should spend real time holding angles: ' + held);
+  assert.ok(walked > 120, 'bots should clear some routes quietly');
+  assert.ok(foes.filter(b => states.get(b.id).has('hold')).length >= 2, JSON.stringify(foes.map(b => ({ role:b.elim.role, post:b.elim.post, states:[...states.get(b.id)], x:b.pos.x, z:b.pos.z, speed:Math.hypot(b.vel.x,b.vel.z), stuck:b.stuckRuns, goal:[vm.runInContext('navX',cx)(g.DM.nav,b.elim.goal),vm.runInContext('navZ',cx)(g.DM.nav,b.elim.goal)], next:b.path[b.pathAt], path:b.path.length }))));
+  assert.ok(foes.every(b => Math.hypot(b.pos.x - origins.get(b.id).x, b.pos.z - origins.get(b.id).z) > 2), 'holders must eventually reposition');
+});
+test('Elimination: reports arrive late, holds survive shared intel, lost contact is not an instant rush, and fresh rounds clear stuck state', () => {
+  const g = eliminationWorld(), cx = g.context, [a, b] = g.DM.bots.filter(b => b.team !== g.P.team), t = g.time + 2000;
+  a.elim.nextReport = 0; b.elim.report = null; b.seen = false; b.knowsUntil = 0;
+  b.elim.state = 'hold'; b.elim.holdUntil = t + 3000; b.elim.nextGlance = t + 5000;
+  cx.elimReport(a, g.P, t); const report = b.elim.report;
+  assert.ok(report.at >= t + 350 && report.at <= t + 800); assert.equal(b.knowsUntil, 0);
+  cx.elimBotTravel(b, 1 / 60, report.at - 1); assert.equal(b.knowsUntil, 0);
+  const input = cx.elimBotTravel(b, 1 / 60, report.at + 1);
+  assert.equal(b.knowsUntil, report.expires); assert.equal(b.elim.state, 'hold'); assert.equal(input[0], 0); assert.equal(input[1], 0);
+  b.elim.state = 'contact'; b.path.push(1); b.knowsUntil = t + 3000;
+  cx.elimBotTravel(b, 1 / 60, t + 1000); assert.equal(b.elim.state, 'hold'); assert.equal(b.path.length, 0);
+  assert.ok(b.elim.holdUntil >= t + 1280 && b.elim.holdUntil <= t + 1600, 'lost contact gets a brief check, not a long idle');
+  b.unstickUntil = t + 90000; b.walkStuck = b.stuckRuns = b.airStuck = 8;
+  cx.dmResetBot(b, { x: 0, y: 0, z: 0, yaw: 0 }, t, ['rifle'], t + 3000);
+  assert.equal(b.unstickUntil, 0); assert.equal(b.walkStuck, 0); assert.equal(b.stuckRuns, 0); assert.equal(b.airStuck, 0);
+});
+test('Elimination: hard bots strafe between bursts, counter-strafe before shots, reload, and react to sound without precise wall knowledge', () => {
+  const g = game({ botLevel: 'dificil' }), cx = g.context;
+  cx.G.mode = 'team'; g.DM.mode = 'team'; g.DM.active = true; g.DM.phase = 'live'; g.P.id = 'A'; g.P.team = 0;
+  g.spawnSelf(0, [0, -10, 0]); g.P.hp = 100000;
+  const b = cx.dmMakeBot(0); b.id = 'X1'; b.team = 1;
+  cx.dmResetBot(b, { x: 0, y: 0, z: 0, yaw: 0 }, 10000, ['rifle'], 10000);
+  b.alive = true; b.hp = 100000; b.readyAt = 10000; b.safeUntil = 0;
+  g.DM.bots = [b]; g.DM.actors = [g.P, b]; g.DM.byId = new Map([[g.P.id, g.P], [b.id, b]]); g.dmBuildNav([]);
+  vm.runInContext('ARENA.roundEnd=60000;ARENA.liveAt=10000', cx);
+  let shots = 0, moving = 0, crouched = 0, reloads = 0;
+  for (let i = 0; i < 60 * 14; i++) {
+    const t = 10000 + (i + 1) * 1000 / 60; g.tick(t); cx.dmBotMove(b, 1 / 60, t, g.LEVELS.dificil); g.dmRefreshTargets();
+    if (Math.hypot(b.vel.x, b.vel.z) > 1) moving++;
+    if (b.reloadEnd) reloads++;
+    const mag = b.mag; cx.dmBotFire(b, t, g.LEVELS.dificil);
+    if (b.mag < mag) { shots++; assert.ok(b.onGround && Math.hypot(b.vel.x, b.vel.z) < 1, 'firing while moving'); if (b.crouch) crouched++; }
+  }
+  assert.ok(shots >= 30 && moving > 30 && crouched > 0 && reloads > 0, JSON.stringify({ shots, moving, crouched, reloads }));
+  const t = 26000; b.knowsUntil = 0; b.elim.state = 'hold'; b.elim.holdUntil = t + 3000;
+  g.P.pos.set(b.pos.x+3, 0, b.pos.z-4); g.P.vel.x = 5; g.P.walking = false; g.P.lastShot = 0;
+  cx.botListen(b, g.P, 25, t);
+  assert.ok(b.elim.sound && b.elim.sound.until > t); assert.equal(b.knowsUntil, 0); assert.equal(b.elim.state, 'hold');
+  assert.ok(Math.hypot(b.elim.sound.x - g.P.pos.x, b.elim.sound.z - g.P.pos.z) > 0);
+});
+test('Elimination: all five arenas support a full 8v8 opening with bounded planning and no invalid positions', () => {
+  for (const map of ['caixas', 'patio', 'torres', 'ponte', 'fortes']) {
+    const g = eliminationWorld(8, 8, map), cx = g.context;
+    const origins = g.DM.bots.map(b => ({ x: b.pos.x, z: b.pos.z }));
+    let plans = 0; const choose = cx.elimChooseGoal;
+    cx.elimChooseGoal = (...args) => { plans++; return choose(...args); };
+    g.advance(15000, 30);
+    assert.equal(g.DM.actors.length, 16); assert.equal(g.DM.bots.length, 15);
+    assert.ok(plans < 160, map + ': excessive replanning ' + plans);
+    assert.ok(g.DM.bots.filter((b, i) => Math.hypot(b.pos.x - origins[i].x, b.pos.z - origins[i].z) > 3).length >= 10, map + ': bots failed to leave spawn');
+    for (const b of g.DM.bots) {
+      assert.ok([b.pos.x, b.pos.y, b.pos.z].every(Number.isFinite), map);
+      assert.ok(Math.abs(b.pos.x) < cx.AX && Math.abs(b.pos.z) < cx.AZ, map + ': left arena');
+      assert.ok(b.elim && !b.knifeOut, map);
+    }
+  }
+});
+test('Elimination: stuck recovery preserves a sole route to the goal and never teleports a grounded bot', () => {
+  const g = game(), cx = g.context;
+  cx.G.mode = 'team'; g.DM.mode = 'team';
+  const links = new Int32Array(24).fill(-1); links[1] = 1; links[4] = 0; links[5] = 2; links[8] = 1;
+  g.DM.nav = { w: 3, h: 1, plane: 3, step: 1, minX: 0, minZ: 0, height: new Float32Array(6), open: new Uint8Array([1, 1, 1, 0, 0, 0]), links, walk: [0, 1, 2] };
+  const b = cx.dmMakeBot(0); b.pos.set(0, 0, 0); b.lastPos.copy(b.pos); b.alive = true;
+  b.path = [1, 2]; b.stuckAt = 0; b.walkStuck = 1; b.stuckRuns = 2; g.DM.actors = [b];
+  cx.botPathInput(b, 1 / 60, 10000);
+  assert.equal(links[1], 1, 'cutting this edge would isolate the destination');
+  assert.equal(links[4], 0); assert.equal(b.pos.x, 0, 'recovery must walk instead of teleporting');
+  assert.ok(b.unstickUntil > 10000); assert.equal(b.planAt, 0);
+});
+test('Elimination: a stationary bot turns toward remembered contact without a waypoint overwriting its attention', () => {
+  const g = perceptionWorld(), cx = g.context, b = g.listener, t = 12000;
+  b.elim.startAt = 0; b.elim.state = 'advance'; b.elim.post = false; b.elim.turnV = b.elim.pitchV = 0;
+  b.knowsUntil = t + 3000; b.lastSeen.set(b.pos.x, b.pos.y, b.pos.z - 8); b.yaw = Math.PI / 2;
+  b.stuckAt = t + 5000; cx.elimChooseGoal(b, t); const before = b.yaw;
+  cx.botPathInput(b, 1 / 60, t); assert.equal(b.yaw, before, 'a waypoint must not turn the aim away');
+  let previous = b.yaw, peak = 0;
+  for (let i = 1; i <= 90; i++) {
+    cx.elimLook(b, 1 / 60, t + i * 1000 / 60, 0, 0);
+    peak = Math.max(peak, Math.abs(b.yaw - previous)); previous = b.yaw;
+  }
+  assert.ok(Math.abs(b.yaw) < .015, 'must face the last known angle, not the travel vector');
+  assert.ok(peak > .01 && peak < .11, 'turn should be gradual and bounded: ' + peak);
+});
+test('Elimination: an open route stays continuous instead of stopping for a periodic corner-check timer', () => {
+  const g = game(), cx = g.context; cx.G.mode = 'team'; g.DM.mode = 'team';
+  const b = cx.dmMakeBot(0); b.team = 1; b.alive = true; b.w = 'rifle'; b.mag = 30; b.readyAt = 0; b.pos.set(0, 0, 10);
+  g.DM.bots = g.DM.actors = [b]; g.dmBuildNav([]); cx.elimInitBot(b);
+  const t = 20000; vm.runInContext('ARENA.liveAt=20000;ARENA.roundEnd=80000', cx);
+  b.elim.startAt = 0; b.elim.role = 'anchor'; b.elim.state = 'advance'; b.elim.post = false; b.elim.checkAt = 0;
+  b.elim.goal = g.dmCell(0, -8); g.dmFindPath(b, 0, -8, 0); b.planAt = 60000; b.stuckAt = t + 1000;
+  for (let i = 0; i < 90; i++) {
+    const at = t + i * 1000 / 60, input = cx.elimBotTravel(b, 1 / 60, at);
+    assert.notEqual(b.elim.state, 'hold', 'no threat or cover justifies stopping on this open route');
+    assert.ok(Math.hypot(input[0], input[1]) > .5);
+    cx.botPhysics(b, input[0], input[1], g.W.rifle.speed, 1 / 60, at);
+  }
+  assert.ok(b.pos.z < 4, 'must make steady progress');
+});
+test('Elimination gait: stance feet stay planted in world space, swing feet lift, and stopping settles without jogging in place', () => {
+  const g = game(), cx = g.context;
+  for (const [vx, vz, yaw] of [[0, -3.13, 0], [5.13, 0, 0], [2.1, 2.1, .8]]) {
+    const gait = { grounded: true }; let x = 0, z = 0, previous = null, planted = 0, lifted = 0;
+    for (let i = 0; i < 360; i++) {
+      x += vx / 120; z += vz / 120; cx.gaitUpdate(gait, x, z, yaw, 1 / 120, false, { x:vx, z:vz }, true);
+      const pose = cx.elimLegPose(gait, 1, .81, 0), phase = gait.phase / (Math.PI * 2);
+      assert.ok(pose.lift >= 0 && pose.lift <= .106); assert.ok(pose.knee.every(Number.isFinite));
+      const world = { x:x + pose.ankle[0] * Math.cos(yaw) + pose.ankle[2] * Math.sin(yaw), z:z - pose.ankle[0] * Math.sin(yaw) + pose.ankle[2] * Math.cos(yaw), phase };
+      if (i > 180 && previous && phase < .53 && phase > previous.phase && previous.phase < .53) {
+        assert.ok(Math.hypot(world.x - previous.x, world.z - previous.z) < .001, 'support foot slid'); planted++;
+      }
+      if (pose.lift > .05) lifted++; previous = world;
+    }
+    assert.ok(planted > 30 && lifted > 30);
+    const phase = gait.phase;
+    for (let i = 0; i < 60; i++) cx.gaitUpdate(gait, x, z, yaw, 1 / 120, false, { x:0, z:0 }, true);
+    assert.equal(gait.phase, phase); assert.ok(gait.amp < .001);
+  }
+});
+
+function perceptionWorld() {
+  const g=game({botLevel:'dificil'}),cx=g.context;
+  cx.G.mode='team';g.DM.mode='team';g.DM.phase='live';g.DM.active=true;
+  g.P.id='A';g.P.team=0;g.spawnSelf(0,[0,14,0]);g.P.hp=10000;
+  const b=cx.dmMakeBot(0);b.id='X1';b.team=1;
+  cx.dmResetBot(b,{x:0,y:0,z:8,yaw:0},10000,['rifle'],10000);b.alive=true;b.readyAt=0;b.safeUntil=0;
+  g.DM.bots=[b];g.DM.actors=[g.P,b];g.DM.byId=new Map([[g.P.id,g.P],[b.id,b]]);g.dmBuildNav([]);
+  cx.elimInitBot(b);b.elim.startAt=Infinity;
+  vm.runInContext('ARENA.liveAt=10000;ARENA.roundEnd=90000',cx);
+  return Object.assign(g,{listener:b});
+}
+test('Elimination attention: quiet rear flanks stay invisible, including a remembered target and a fast knife on Shift',()=>{
+  const g=perceptionWorld(),cx=g.context,b=g.listener;
+  g.P.weapon='knife';g.P.walking=true;g.P.vel.set(3.91,0,0);g.P.lastShot=0;
+  b.target=g.P.id;b.lastAttacker=g.P.id;
+  for(let i=0;i<20;i++){
+    const t=12000+i*100;g.P.pos.set(Math.sin(i*.05)*3,0,b.pos.z+Math.cos(i*.05)*3);
+    cx.dmSense(b,t,g.LEVELS.dificil);cx.elimLook(b,.1,t,0,0);
+    assert.equal(b.seen,false,'proximity and old target IDs must not grant rear vision');
+    assert.equal(b.elim.sound,undefined);assert.equal(b.knowsUntil,0);assert.equal(b.fireReady,false);
+  }
+});
+test('Elimination attention: audible running behind a bot turns its view, then normal vision and reaction gates acquire the runner',()=>{
+  const g=perceptionWorld(),cx=g.context,b=g.listener;
+  g.P.pos.set(0,0,12);g.P.walking=false;g.P.vel.set(5.13,0,0);g.P.lastShot=0;
+  cx.dmSense(b,12000,g.LEVELS.dificil);
+  assert.ok(b.elim.sound);assert.equal(b.seen,false);assert.equal(b.knowsUntil,0);assert.equal(b.fireReady,false);
+  let acquired=0,ready=0;
+  for(let i=1;i<=120;i++){
+    const t=12000+i*1000/60;g.tick(t);cx.dmBotMove(b,1/60,t,g.LEVELS.dificil);
+    if(b.seen&&!acquired)acquired=t;
+    if(b.fireReady&&!ready)ready=t;
+  }
+  assert.ok(acquired>12000&&acquired<13300,'must investigate the audible direction: '+acquired);
+  assert.ok(ready>=acquired+g.LEVELS.dificil.react,'hearing must not bypass reaction: '+JSON.stringify({acquired,ready}));
+  const facing=Math.atan2(b.pos.x-g.P.pos.x,b.pos.z-g.P.pos.z);
+  assert.ok(Math.abs(Math.atan2(Math.sin(b.yaw-facing),Math.cos(b.yaw-facing)))<.2);
+});
+test('Elimination attention: silent movement never refreshes a sound snapshot and shots are heard where they happened',()=>{
+  const g=perceptionWorld(),cx=g.context,b=g.listener;
+  g.P.pos.set(0,0,12);g.P.walking=false;g.P.vel.set(5,0,0);cx.botListen(b,g.P,16,12000);
+  const heard=b.elim.sound;assert.ok(heard);
+  g.P.walking=true;g.P.pos=new Proxy(g.P.pos,{get(){throw Error('quiet footsteps leaked position');}});
+  cx.botListen(b,g.P,16,12700);assert.equal(b.elim.sound,heard);
+  cx.elimSetWatch(b,heard.until+1);assert.equal(b.elim.aimSource,null);assert.equal(b.knowsUntil,0);
+  g.P.pos=new Vec(10,0,8);g.P.lastShot=14000;g.P.lastShotWeapon='rifle';g.P.lastShotPos=new Vec(0,0,12);
+  cx.botListen(b,g.P,100,14010);
+  assert.ok(Math.hypot(b.elim.sound.x,b.elim.sound.z-12)<1.5,'shot noise must not track movement after firing');
+  assert.equal(b.knowsUntil,0);
+});
+test('Elimination attention: an occluded report points at a visible approach, and patrol angles do not read hidden actors',()=>{
+  const g=perceptionWorld(),cx=g.context,b=g.listener;
+  cx.boxes.push({min:[-3,0,3],max:[3,3,4]});g.dmBuildNav([]);
+  b.lastSeen.set(0,0,-8);b.knowsUntil=15000;b.elim.intelAt=12000;
+  g.P.pos=new Proxy(g.P.pos,{get(){throw Error('attention read a hidden actor');}});
+  cx.elimSetWatch(b,12010);let p=b.watch;
+  assert.equal(g.clearLine([b.pos.x,1.64,b.pos.z],[0,1.45,-8]),false);
+  assert.equal(g.clearLine([b.pos.x,1.64,b.pos.z],[p.x,p.y+1.45,p.z]),true,'must hold the visible opening, not aim through the wall');
+  assert.ok(Math.abs(p.x)>.5,'the useful approach goes around the central wall');
+  b.knowsUntil=0;cx.elimSetWatch(b,16000);p=b.watch;
+  assert.ok(g.clearLine([b.pos.x,1.64,b.pos.z],[p.x,p.y+1.45,p.z]));assert.equal(b.elim.aimSource,null);
+});
+test('Elimination attention: Shift emits no footsteps even above the old speed threshold, and running emits them again',()=>{
+  const g=perceptionWorld(),cx=g.context;let steps=0;
+  cx.AU=new Proxy({},{get:(_,key)=>()=>{if(key==='step')steps++;}});
+  g.P.weapon='knife';g.P.yaw=0;g.keys.add('KeyD');g.keys.add('ShiftLeft');
+  for(let i=1;i<=128;i++){g.tick(10000+i*1000/128);g.playerInput(1/128,10000+i*1000/128);}
+  assert.equal(g.P.walking,true);assert.ok(g.P.vel.x>3.2);assert.equal(steps,0);
+  g.keys.delete('ShiftLeft');
+  for(let i=129;i<=160;i++){g.tick(10000+i*1000/128);g.playerInput(1/128,10000+i*1000/128);}
+  assert.ok(steps>0);
+});
+test('Elimination attention: default sights cover visible routes toward the opposing base on every duel map',()=>{
+  for(const map of ['caixas','patio','torres','ponte','fortes']){
+    const g=eliminationWorld(1,5,map),cx=g.context;
+    for(const b of g.DM.bots){
+      b.knowsUntil=0;b.elim.sound=null;cx.elimSetWatch(b,g.time+2000);
+      const p=b.watch,eye=[b.pos.x,cx.botEyeY?cx.botEyeY(b):b.pos.y+1.62,b.pos.z];
+      assert.ok(Math.hypot(p.x-b.pos.x,p.z-b.pos.z)>2.4,map+': useless near-wall gaze');
+      assert.ok(g.clearLine(eye,[p.x,p.y+1.45,p.z]),map+': blocked sight');
+      const field=cx.elimBaseField(b),here=g.dmCell(b.pos.x,b.pos.z,b.pos.y),there=g.dmCell(p.x,p.z,p.y);
+      assert.ok(field[there]<field[here],map+': must cover an approach from the enemy base');
+    }
+  }
+});
+test('Elimination attention: quiet travel faces the route being opened instead of keeping the opposite base behind its movement',()=>{
+  const g=perceptionWorld(),cx=g.context,b=g.listener;
+  b.elim.state='advance';b.elim.post=false;b.knowsUntil=0;b.yaw=Math.PI/2;
+  g.dmFindPath(b,14,8,0);b.stuckAt=20000;
+  g.P.pos=new Proxy(g.P.pos,{get(){throw Error('patrol aim followed the hidden player');}});
+  for(let i=0;i<90;i++){const t=12000+i*1000/60;cx.botPathInput(b,1/60,t);cx.elimLook(b,1/60,t,1,0);}
+  assert.ok(Math.abs(b.yaw+Math.PI/2)<.2,'must face the corridor it is crossing: '+b.yaw);
+  assert.equal(b.knowsUntil,0);
+});
+test('Elimination attention: losing sight behind cover clears firing and retains only the last observed position',()=>{
+  const g=perceptionWorld(),cx=g.context,b=g.listener;
+  g.P.pos.set(0,0,0);g.P.walking=true;g.P.vel.set(3.9,0,0);
+  cx.dmSense(b,12000,g.LEVELS.dificil);assert.equal(b.seen,true);
+  b.elim.state='contact';b.reactAt=0;
+  cx.boxes.push({min:[-3,0,3],max:[3,3,4]});g.dmBuildNav([]);g.P.pos.x=2;
+  g.tick(12070);cx.dmBotMove(b,1/60,12070,g.LEVELS.dificil);
+  assert.equal(b.seen,false);assert.equal(b.fireReady,false);assert.equal(b.lastSeen.x,0);
+  const p=b.watch;assert.ok(g.clearLine([b.pos.x,1.64,b.pos.z],[p.x,p.y+1.45,p.z]));
+  assert.equal(b.elim.sound,undefined,'quiet movement after disappearing must not update location');
+});
+test('Elimination attention: a network guest keeps Shift footsteps silent on the host, then becomes audible when running',()=>{
+  const setup=()=>{
+    const g=fakeNet(game()),cx=g.context;vm.runInContext(section('let mapQueue','const SUN ='),cx);
+    cx.MAP=Object.assign({id:'caixas'},g.MAPS.caixas);cx.AX=cx.MAP.ax;cx.AZ=cx.MAP.az;cx.MAP_IDS=['caixas'];
+    cx.G.mode='team';g.S.mode='elim';g.S.map='caixas';g.S.xvx={mine:2,foes:2};g.S.teamSetup='versus';
+    vm.runInContext("ARENA.kind='team';ARENA.host=true;teamSetup(now(),true)",cx);return g;
+  };
+  const host=setup(),guest=setup(),pump=connect(host,guest,'passos');let t=10000;pump();
+  const tick=ms=>{t+=ms;host.tick(t);guest.tick(t);};
+  tick(1600);host.context.teamTick(0,t);pump();tick(3100);host.context.teamTick(0,t);pump();
+  const listener=host.DM.bots.find(b=>b.team!==guest.P.team);listener.pos.set(0,0,0);listener.elim.sound=null;
+  guest.P.weapon='knife';guest.P.walking=true;guest.P.pos.set(0,0,5);
+  for(let i=0;i<3;i++){tick(40);guest.P.pos.x+=.16;guest.context.arenaNetTick(t);pump();host.context.arenaUpdateProxies(t+100);}
+  const proxy=host.DM.byId.get('B');assert.equal(proxy.walking,true);assert.ok(proxy.speed>3.2);
+  host.context.botListen(listener,proxy,25,t);assert.equal(listener.elim.sound,null);
+  guest.P.walking=false;tick(40);guest.context.arenaNetTick(t);pump();host.context.arenaUpdateProxies(t+100);
+  assert.equal(proxy.walking,false);host.context.botListen(listener,proxy,25,t);
+  assert.ok(listener.elim.sound&&listener.elim.sound.source==='B');
+});
+test('Elimination patrol: measured movement stays active and faces its travel direction on all five arenas',()=>{
+  for(const map of ['caixas','patio','torres','ponte','fortes']){
+    const g=eliminationWorld(1,5,map),cx=g.context,bots=g.DM.bots.slice();
+    g.DM.actors=bots;g.DM.byId.delete(g.P.id);
+    const starts=bots.map(b=>cx.elimBaseField(b)[g.dmCell(b.pos.x,b.pos.z,b.pos.y)]),runs=new Map(),eyeY=vm.runInContext('botEyeY',cx),viewDir=vm.runInContext('dirFrom',cx);
+    let samples=0,stopped=0,moving=0,back=0,side=0,wall=0,longest=0;
+    for(let i=0;i<1200;i++){
+      const t=g.time+(i+1)*1000/60;g.tick(t);
+      for(const b of bots){
+        cx.dmBotMove(b,1/60,t,g.LEVELS.dificil);if(i<180)continue;samples++;
+        const speed=Math.hypot(b.vel.x,b.vel.z);if(speed<.25)stopped++;
+        const run=speed<.25&&b.elim.state!=='hold'?(runs.get(b)||0)+1:0;runs.set(b,run);longest=Math.max(longest,run);
+        if(speed>1){
+          moving++;const dot=(-Math.sin(b.yaw)*b.vel.x-Math.cos(b.yaw)*b.vel.z)/speed;
+          if(dot<-.1)back++;if(dot<.5)side++;
+          const hit=cx.traceMap([b.pos.x,eyeY(b),b.pos.z],viewDir(b.yaw,b.pitch),2);
+          if(hit&&hit.t<1.5)wall++;
+        }
+      }
+    }
+    const metrics={map,stopped:stopped/samples,back:back/moving,side:side/moving,wall:wall/moving,longestStop:longest/60};
+    assert.ok(metrics.stopped<.24,JSON.stringify(metrics));
+    assert.ok(metrics.back<.02&&metrics.side<.08,JSON.stringify(metrics));
+    assert.ok(metrics.wall<.025&&metrics.longestStop<3.5,JSON.stringify(metrics));
+    const progress=bots.filter((b,i)=>starts[i]-cx.elimBaseField(b)[g.dmCell(b.pos.x,b.pos.z,b.pos.y)]>10).length;
+    assert.ok(progress>=4,map+': patrol did not progress toward the opposing half');
+  }
+});
+test('Elimination patrol: grazing a Patio crate uses a real route instead of a coarse-grid shortcut',()=>{
+  const g=eliminationWorld(1,5,'patio'),cx=g.context,b=g.DM.bots[0];
+  b.pos.set(-13.701150897550637,0,3.094838095687902);b.vel.set(0,0,0);
+  assert.equal(g.overlapAny(b.pos.x,.01,b.pos.z,1.8),false);
+  assert.equal(g.dmWalkClear(b.pos.x,b.pos.z,-11.2,14.8,0,0),true,'coarse grid alone misses this corner');
+  assert.equal(cx.elimWalkClear(b.pos.x,b.pos.z,0,-11.2,14.8,0),false);
+  assert.ok(g.dmFindPath(b,-11.2,14.8,0));assert.ok(b.path.length>1);
+  const navX=vm.runInContext('navX',cx),navZ=vm.runInContext('navZ',cx),n=g.DM.nav;
+  for(const id of b.path){
+    let frames=0;const tx=navX(n,id),tz=navZ(n,id);
+    while(Math.hypot(tx-b.pos.x,tz-b.pos.z)>.15&&frames++<300){
+      const dx=tx-b.pos.x,dz=tz-b.pos.z,d=Math.hypot(dx,dz);g.physics(b,dx/d,dz/d,Math.min(4,d*8),false,1/128);
+    }
+    assert.ok(frames<300,'actual physics got stuck on waypoint '+id);
+  }
+  assert.ok(Math.hypot(b.pos.x+11.2,b.pos.z-14.8)<.3);
+});
+test('Elimination patrol: teammate avoidance keeps a full movement input instead of losing to ground friction',()=>{
+  const g=perceptionWorld(),cx=g.context,b=g.listener,mate=cx.dmMakeBot(1);
+  mate.id='X2';mate.team=b.team;mate.alive=true;mate.pos.set(b.pos.x,0,b.pos.z-.7);g.DM.actors.push(mate);
+  const input=cx.elimSpacing(b,0,-1);assert.ok(Math.hypot(...input)>.99);
+  b.elimMove=true;
+  for(let i=0;i<8;i++)g.physics(b,input[0],input[1],g.W.rifle.speed,false,1/128);
+  assert.ok(b.vel.z<-.5,'separation must not strand both bots in the doorway');
 });

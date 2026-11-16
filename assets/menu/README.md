@@ -4,4 +4,6 @@ A interface atual usa os arquivos em **play/**: cenas 16:9 em 1280 × 720 e mini
 
 O destaque só carrega a imagem selecionada. As miniaturas usam carregamento adiado. Não existe renderização contínua dos mapas no menu. CSS mantém as imagens em 16:9 e os controles da partida ficam ao lado em monitores de desktop.
 
+O Sanctum usa uma nova vista do pátio e das coberturas da reconstrução independente do BSP. As duas imagens anteriores foram substituídas; o enquadramento está em `play/cameras.json`.
+
 Os arquivos anteriores na raiz e em **large/** foram preservados; a seleção de mapas atual usa **play/**.

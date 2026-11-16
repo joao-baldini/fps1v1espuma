@@ -1534,7 +1534,10 @@ const dirFrom = (yaw, pitch) => [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitc
 // velocidade-alvo: senão, com alvo baixo (agachado, andando, luneta) a aceleração perde para o piso do atrito (80 u/s) e o
 // boneco quase não sai do lugar. A velocidade máxima continua sendo a da arma com os fatores.
 const ACCEL_BASE = 250 * .0254;
+// Elimination: atrito maior e aceleração direcional do Source, sem mudar velocidade máxima ou controle aéreo.
+const ELIM_MOVE = { friction: 11, stop: 3.5, accel: 10.8, speed: .95 };
 function physics(e, wx, wz, maxS, jump, dt, accelGoal = maxS) {
+  if (e.elimMove) maxS *= ELIM_MOVE.speed;
   const wl = Math.hypot(wx, wz);
   if (wl > 1) { wx /= wl; wz /= wl; }
   const jumping = e.onGround && jump;
@@ -1543,7 +1546,18 @@ function physics(e, wx, wz, maxS, jump, dt, accelGoal = maxS) {
     const speed = Math.hypot(e.vel.x, e.vel.z);
     if (speed > BHOP_CAP) { e.vel.x *= BHOP_CAP / speed; e.vel.z *= BHOP_CAP / speed; }
   }
-  if (e.onGround && e.valMove) {
+  if (e.onGround && e.elimMove) {
+    const sp = Math.hypot(e.vel.x, e.vel.z);
+    if (sp > 0) { const ns = Math.max(0, sp - Math.max(sp, ELIM_MOVE.stop) * ELIM_MOVE.friction * dt); e.vel.x *= ns / sp; e.vel.z *= ns / sp; }
+    if (wl > .01) {
+      const k = Math.min(wl, 1), dx = wx / k, dz = wz / k;
+      const add = maxS * k - (e.vel.x * dx + e.vel.z * dz);
+      if (add > 0) { const a = Math.min(add, ELIM_MOVE.accel * Math.max(ACCEL_BASE, accelGoal, maxS) * k * dt); e.vel.x += dx * a; e.vel.z += dz * a; }
+      // Mudar de W para D não conserva um excesso de velocidade na diagonal.
+      const speed = Math.hypot(e.vel.x, e.vel.z);
+      if (speed > maxS && sp <= maxS + .001) { e.vel.x *= maxS / speed; e.vel.z *= maxS / speed; }
+    }
+  } else if (e.onGround && e.valMove) {
     // Chão do Valorant (movimento do Unreal): com tecla, o atrito puxa a velocidade para a direção da tecla (tecla oposta
     // freia forte, o contra-strafe) e a aceleração é fixa; acima do limite (Shift, mira) freia até ele; sem tecla, freia
     // com desaceleração fixa + atrito. Parada total do contra-strafe ≈ 0,16 s, sem tecla ≈ 0,2 s, arrancada ≈ 0,17 s.
@@ -3515,7 +3529,7 @@ function spawnSelf(side, spec) {
     if(DM.category!=='all'||!ORDER.includes(P.weapon))P.weapon=ORDER.find(k=>!W[k].melee);
     P.lastW=ORDER.find(k=>k!==P.weapon)||P.weapon;
   }
-  P.kick = P.swing = P.punch = P.landSpread = P.physTime = P.jumpUntil = P.lastShot = 0; P.nextFire = 0;
+  P.kick = P.swing = P.punch = P.landSpread = P.physTime = P.jumpUntil = P.lastShot = 0; P.nextFire = 0; P.inputAt = now();
   P.deagleShot=null;P.deagleDrawKey=0;P.deagleDrawStage=0;
   P.m1 = P.m2 = P.m1Press = P.m2Press = false; P.knifeSide = 0; P.streak = 0;
   P.kAnim = null; if (W[P.weapon].melee) beginKnifeAnimation('draw',now()); P.inspT = 0;
@@ -3525,6 +3539,7 @@ function spawnSelf(side, spec) {
 // e não do quadro inteiro. Assim o counter-strafe e a parada começam na hora certa, a qualquer FPS.
 const RENDER_POS = new V3();
 function renderPos() {
+  if (eliminationOn()) return P.pos;
   const a = clamp((P.physTime || 0) / PHYS_STEP, 0, 1), pp = P.prevPos;
   if (!pp || !P.alive) return P.pos;
   const dx = P.pos.x - pp.x, dy = P.pos.y - pp.y, dz = P.pos.z - pp.z;
@@ -3543,6 +3558,10 @@ function keyEvent(c, down, t) {
   else if (k) k.up = t;
 }
 function playerInput(dt, t) {
+  const elim = eliminationOn();
+  // No Elimination os eventos podem adiantar o movimento entre quadros; o quadro seguinte só integra o que falta.
+  if (elim && P.inputAt != null) dt = clamp((t - P.inputAt) / 1000, 0, .0625);
+  P.inputAt = t; P.elimMove = elim;
   const v = G.view, canMove = P.alive && v.ph !== 'freeze' && locked && !playerBusy() && (G.mode==='dm'?DM.phase==='live':G.mode==='team'?DM.phase==='live'||DM.phase==='end':true);
   let fx = 0, fz = 0;
   if (canMove) { if (K('KeyW')) fz += 1; if (K('KeyS')) fz -= 1; if (K('KeyD')) fx += 1; if (K('KeyA')) fx -= 1; }
@@ -3583,10 +3602,11 @@ function playerInput(dt, t) {
   if (t < P.tagUntil) maxS *= val ? VAL.tag : 0.45;
   P.physTime = Math.min((P.physTime || 0) + dt, .0625);
   if (!P.prevPos) P.prevPos = new V3().copy(P.pos);
-  while (P.physTime >= PHYS_STEP) {
+  while (P.physTime >= (elim ? 1e-8 : PHYS_STEP)) {
+    const step = elim ? Math.min(PHYS_STEP * .5, P.physTime) : PHYS_STEP;
     const jump = canMove && P.onGround && ((S.autoBhop && K('Space')) || t <= P.jumpUntil);
     // Direção deste passo pelas teclas no instante dele (fim do passo), não no início do quadro.
-    const ts = t - (P.physTime - PHYS_STEP) * 1000;
+    const ts = t - (P.physTime - step) * 1000;
     let sx = 0, sz = 0;
     if (canMove) { if (keyHeldAt('KeyW', ts)) sz += 1; if (keyHeldAt('KeyS', ts)) sz -= 1; if (keyHeldAt('KeyD', ts)) sx += 1; if (keyHeldAt('KeyA', ts)) sx -= 1; }
     P.prevPos.copy(P.pos);
@@ -3594,16 +3614,19 @@ function playerInput(dt, t) {
     // fica em b² e volta em ~1,1/s; o pulo seguinte sai com força b, que volta 0,6/s. Sem a estamina antiga.
     const wasGround = P.onGround, vy0 = P.vel.y, lb = P.landB ?? 1, lt = P.landT ?? 1;
     const groundK = val ? 1 : Math.min(1, lb * lb + lt * 1.111189365386963), jumpK = Math.min(1, lb + clamp(lt, 0, 1) * .6000000238418579);
-    physics(P, -sy * sz + cy * sx, -cy * sz - sy * sx, maxS * groundK, jump, PHYS_STEP, ACCEL_BASE);
+    physics(P, -sy * sz + cy * sx, -cy * sz - sy * sx, maxS * groundK, jump, step, ACCEL_BASE);
     if (jump && jumpK < 1) P.vel.y -= JUMP_V * (1 - jumpK);
     if (!wasGround && P.onGround) { P.landB = clamp(1 + (vy0 / .0254) * .0005000000237487257, .2, 1); P.landT = 0; P.landAt = ts; }
-    else if (P.onGround) P.landT = lt + PHYS_STEP;
+    else if (P.onGround) P.landT = lt + step;
     if (jump) P.jumpUntil = 0;
-    P.landSpread *= Math.exp(-PHYS_STEP * 16);
-    P.physTime -= PHYS_STEP;
+    P.landSpread *= Math.exp(-step * 16);
+    P.physTime -= step;
   }
   const hs = Math.hypot(P.vel.x, P.vel.z);
-  if (P.onGround && hs > STEP_SPEED && P.alive) { P.stepT -= dt; if (P.stepT <= 0) { P.stepT = clamp(1.6 / hs, .27, .4); if (!(t < (P.silentUntil || 0))) AU.step(0.3, 0, stepKind(P)); } } else P.stepT = 0.12;
+  if (P.onGround && hs > STEP_SPEED && P.alive && (!elim || (!P.walking && !P.crouch))) { P.stepT -= dt; if (P.stepT <= 0) { P.stepT = clamp(1.6 / hs, .27, .4); if (!(t < (P.silentUntil || 0))) AU.step(0.3, 0, stepKind(P)); } } else P.stepT = 0.12;
+}
+function syncEliminationInput(t = now()) {
+  if (eliminationOn() && P.inputAt != null && t > P.inputAt) playerInput((t - P.inputAt) / 1000, t);
 }
 function selectWeapon(k) {
   if (!ORDER.includes(k) || k === P.weapon || !P.alive) return;
@@ -3740,6 +3763,7 @@ function shoot(t, heavy) {
   const v = w.val, ads = adsOn(P), alt = !!(heavy && v && (v.alt || v.air)), take = alt && v.alt ? Math.min(am.mag, v.alt.pellets) : 1;
   if (!infiniteMagazine()) am.mag -= take;
   P.nextFire = t + (v ? 1000 / (alt && v.alt ? v.alt.rps : ads && v.ads ? v.ads.rps : v.rps) : w.rof); P.lastShot = t;
+  if (eliminationOn()) { (P.lastShotPos || (P.lastShotPos = new V3())).copy(P.pos); P.lastShotWeapon = P.weapon; }
   if(prefireOn())prefireBegin(t);
   const aim = aimbotEnabled() ? aimbotTarget(e, t) : null;
   if (aim) {
@@ -3894,6 +3918,8 @@ const botShotTime = b => Math.max(b.reactAt, b.nextFire, b.burst > 0 ? 0 : b.pau
 const botStable = b => b.onGround && b.vel.x * b.vel.x + b.vel.z * b.vel.z < 1;
 
 function resetBotMovement(b, t) {
+  b.elim = null; b.elimMove = false;
+  if (eliminationOn()) { b.walking = false; b.watch = null; b.unstickUntil = b.airStuck = b.walkStuck = b.stuckRuns = 0; }
   b.knifeOut = false; b.knifeAt = t + 650; b.cautionUntil = 0;
   b.strafe = 1; b.strafeUntil = 0; b.crouchAt = b.crouchUntil = b.crouchK = 0;
   b.hopCheckAt = t + 1150 + (b.index || 1) * 75;
@@ -3905,6 +3931,7 @@ function botEquipGun(b, t) {
   b.nextFire = Math.max(b.nextFire, t + W[b.w].draw);
 }
 function botListen(b, enemy, distanceSq, t) {
+  if (b.elim && eliminationOn()) { elimListen(b, enemy, distanceSq, t); return; }
   const gunshot = enemy.lastShot > 0 && t - enemy.lastShot < 240 && distanceSq < (W[botHeldWeapon(enemy)].silenced ? 121 : 324);
   const running = distanceSq < 81 && enemy.onGround && !enemy.crouch && !(t < (enemy.silentUntil || 0)) &&
     (enemy.remote ? enemy.speed > STEP_SPEED : Math.hypot(enemy.vel.x, enemy.vel.z) > STEP_SPEED);
@@ -3930,6 +3957,7 @@ function botEngage(b, enemy, distance, t) {
   botSetCrouch(b, ready && t < b.crouchUntil);
 }
 function botFightMove(b, enemy, dx, dz, distance, aligned, t) {
+  if (b.elim) return elimFightMove(b, enemy, dx, dz, distance, aligned, t);
   const retreat = b.reloadEnd || !b.mag;
   if (!retreat && t + 115 >= botShotTime(b) && (aligned || b.burst > 0 || b.crouch)) return [0, 0, true];
   const forward = retreat ? -.62 : distance < 6 ? -.27 : distance > 19 && !W[b.w].scope ? .28 : 0;
@@ -4002,8 +4030,9 @@ function botPhysics(b, wx, wz, speed, dt, t, brake = false) {
     }
     if (brake && grounded) {
       const v = Math.hypot(b.vel.x, b.vel.z);
-      const afterFriction = Math.max(0, v - Math.max(v, STOP_SPEED) * FRICTION * PHYS_STEP);
-      const k = v > 0 ? Math.min(1, afterFriction / (ACCEL * speed * PHYS_STEP)) / v : 0;
+      const afterFriction = Math.max(0, v - Math.max(v, b.elimMove ? ELIM_MOVE.stop : STOP_SPEED) * (b.elimMove ? ELIM_MOVE.friction : FRICTION) * PHYS_STEP);
+      const acceleration = b.elimMove ? ELIM_MOVE.accel * Math.max(ACCEL_BASE, speed) : ACCEL * speed;
+      const k = v > 0 ? Math.min(1, afterFriction / (acceleration * PHYS_STEP)) / v : 0;
       x = -b.vel.x * k; z = -b.vel.z * k;
     } else if (!grounded && b.airSign) {
       const v = Math.hypot(b.vel.x, b.vel.z) || 1, vx = b.vel.x / v, vz = b.vel.z / v;
@@ -4277,7 +4306,7 @@ function dmFindPath(bot,x,z,y){
   const n=DM.nav,start=dmCell(bot.pos.x,bot.pos.z,bot.pos.y),goal=dmCell(x,z,y);bot.path.length=0;bot.pathAt=0;
   if(start===goal)return false;
   const gx=navX(n,goal),gz=navZ(n,goal);
-  if(dmWalkClear(bot.pos.x,bot.pos.z,gx,gz,bot.pos.y,n.height[goal])){bot.path.push(goal);return true;}
+  if(dmWalkClear(bot.pos.x,bot.pos.z,gx,gz,bot.pos.y,n.height[goal])&&(!bot.elim||elimWalkClear(bot.pos.x,bot.pos.z,bot.pos.y,gx,gz,n.height[goal]))){bot.path.push(goal);return true;}
   if(++n.stamp>=2147483647){n.seen.fill(0);n.stamp=1;}
   let head=0,tail=1;n.queue[0]=start;n.seen[start]=n.stamp;n.parent[start]=-1;
   while(head<tail&&n.seen[goal]!==n.stamp){const id=n.queue[head++];for(let d=0;d<4;d++){const next=n.links[id*4+d];if(next>=0&&n.seen[next]!==n.stamp){n.seen[next]=n.stamp;n.parent[next]=id;n.queue[tail++]=next;}}}
@@ -4288,9 +4317,12 @@ function botPathInput(b, dt, t) {
   const n = DM.nav;
   if (t < (b.unstickUntil || 0)) return [b.unstick[0], b.unstick[1], 1];
   let wx = 0, wz = 0, distance = 0;
-  for (let look = Math.min(b.pathAt + 4, b.path.length - 1); look > b.pathAt; look--) {
+  const lookAgain=!b.elim||t>=(b.elim.pathLookAt||0);
+  if(b.elim&&lookAgain)b.elim.pathLookAt=t+150;
+  for (let look = lookAgain?Math.min(b.pathAt + 4, b.path.length - 1):b.pathAt; look > b.pathAt; look--) {
     const id = b.path[look];
-    if (dmWalkClear(b.pos.x, b.pos.z, navX(n, id), navZ(n, id), b.pos.y, n.height[id])) {
+    const tx=navX(n,id),tz=navZ(n,id);
+    if (dmWalkClear(b.pos.x, b.pos.z, tx, tz, b.pos.y, n.height[id]) && (!b.elim||elimWalkClear(b.pos.x,b.pos.z,b.pos.y,tx,tz,n.height[id]))) {
       b.pathAt = look;
       break;
     }
@@ -4298,16 +4330,19 @@ function botPathInput(b, dt, t) {
   while (b.pathAt < b.path.length) {
     const id = b.path[b.pathAt], dx = navX(n, id) - b.pos.x, dz = navZ(n, id) - b.pos.z;
     distance = Math.hypot(dx, dz);
-    if (distance >= .4) {
+    if (distance >= (b.elim ? .3 : .4)) {
       wx = dx / distance; wz = dz / distance;
-      b.yaw += clamp(angDiff(b.yaw, Math.atan2(-dx, -dz)), -4 * dt, 4 * dt);
-      b.pitch *= Math.exp(-dt * 8);
+      if (!b.elim) {
+        b.yaw += clamp(angDiff(b.yaw, Math.atan2(-dx, -dz)), -4 * dt, 4 * dt);
+        b.pitch *= Math.exp(-dt * 8);
+      }
       break;
     }
     b.pathAt++;
   }
   if (t >= b.stuckAt) {
     const still = Math.hypot(b.pos.x - b.lastPos.x, b.pos.z - b.lastPos.z) < .3, next = b.path.length ? b.path[Math.min(b.pathAt, b.path.length - 1)] : -1;
+    const routeGoal = b.path[b.path.length - 1];
     if (still) {
       b.planAt = 0; b.knowsUntil = 0; b.path.length = 0;
       // Preso no ar numa fresta da colisão (caindo sem sair do lugar): volta para o ponto de navegação mais próximo.
@@ -4319,7 +4354,7 @@ function botPathInput(b, dt, t) {
     if (still && b.onGround && next >= 0 && ++b.walkStuck >= 2) {
       const cur = dmCell(b.pos.x, b.pos.z, b.pos.y), gx = navX(n, next), gz = navZ(n, next);
       const here = Math.hypot(navX(n, cur) - gx, navZ(n, cur) - gz);
-      const cut = [], goal = b.path[b.path.length - 1], body = DM.actors.some(e => e !== b && e.alive && Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) < 1.3);
+      const cut = [], goal = eliminationOn() ? routeGoal : b.path[b.path.length - 1], body = DM.actors.some(e => e !== b && e.alive && Math.hypot(e.pos.x - b.pos.x, e.pos.z - b.pos.z) < 1.3);
       // Encostado em outro boneco: só desvia, a rota em si está livre.
       if (!body) for (let k = 0; k < 4; k++) { const nb = n.links[cur * 4 + k]; if (nb >= 0 && Math.hypot(navX(n, nb) - gx, navZ(n, nb) - gz) < here) { cut.push([cur, k, nb]); n.links[cur * 4 + k] = -1; n.links[nb * 4 + (k ^ 1)] = -1; } }
       // Nunca isola o destino: se o corte separar o mapa, desfaz.
@@ -4327,7 +4362,8 @@ function botPathInput(b, dt, t) {
       // Passo para o lado para desencostar; se empacar de novo várias vezes, vai direto para o ponto seguinte (bem perto).
       const side = Math.random() < .5 ? -1 : 1, d = Math.hypot(gx - b.pos.x, gz - b.pos.z) || 1;
       b.unstick = [-(gz - b.pos.z) / d * side, (gx - b.pos.x) / d * side]; b.unstickUntil = t + 450;
-      if (++b.stuckRuns >= 3 && d < 2.5) { b.pos.set(gx, n.height[next] + .02, gz); b.vel.set(0, 0, 0); b.stuckRuns = 0; }
+      // No Elimination recupera a rota andando: não teleporta através da cobertura nem de um aliado.
+      if (++b.stuckRuns >= 3 && d < 2.5 && !eliminationOn()) { b.pos.set(gx, n.height[next] + .02, gz); b.vel.set(0, 0, 0); b.stuckRuns = 0; }
       b.walkStuck = 0;
     }
     if (!still) b.walkStuck = b.stuckRuns = 0;
@@ -4469,7 +4505,13 @@ function dmDamage(victim,amount,part,weapon,attacker,t){
   // Jogador remoto (2v2 online): a vida dele é de quem controla; o acerto vai pela rede.
   if(victim.remote){teamSendHit(victim,damage,part,weapon,attacker);return damage;}
   victim.hp-=damage;victim.tagUntil=t+350;victim.lastAttacker=attacker.id;
-  if (victim !== P) victim.cautionUntil = t + 1800;
+  if (victim !== P) {
+    victim.cautionUntil = t + 1800;
+    if (eliminationOn() && victim.elim) {
+      victim.elim.sound = { x: attacker.pos.x + (Math.random() - .5), y: attacker.pos.y, z: attacker.pos.z + (Math.random() - .5), until: t + 1500, at:t, source:attacker.id, priority:3 };
+      victim.elim.lookAt = 0;
+    }
+  }
   if(victim===P){hurtPunch();dmgDir(attacker.pos.x,attacker.pos.z);AU.hurt();flashRed();}
   if(victim.hp===0){
     victim.alive=false;victim.deathT=t;victim.respawnAt=team?Infinity:t+DM_RESPAWN_MS;victim.safeUntil=0;victim.vel.set(0,0,0);victim.reloadEnd=0;victim.target=null;
@@ -4507,7 +4549,7 @@ function dmSense(b,t,L){
     if(d>2304)continue;
     if (L.tactical) botListen(b, e, d, t);
     const yaw=Math.atan2(-dx,-dz),known=e.id===b.lastAttacker||e.id===b.target;
-    if(d>64&&!known&&Math.abs(angDiff(b.yaw,yaw))>1.65)continue;
+    if(eliminationOn() ? Math.abs(angDiff(b.yaw,yaw))>1.35 : d>64&&!known&&Math.abs(angDiff(b.yaw,yaw))>1.65)continue;
     const score=d*(e.id===b.target ? .7 : 1);if(score>=best)continue;
     if(!seeLine(eye,[e.pos.x,e.pos.y+(e.crouch?1.02:1.66),e.pos.z])&&!seeLine(eye,[e.pos.x,e.pos.y+(e.crouch?.72:1.2),e.pos.z]))continue;
     best=score;target=e;
@@ -4515,23 +4557,34 @@ function dmSense(b,t,L){
   if(target){
     if(b.target!==target.id||!b.seen){b.reactAt=t+L.react+Math.random()*L.vr;b.aimHead=Math.random()<L.hs;b.aimError=L.err;b.aimErrorAt=0;b.burst=0;if(L.tactical)b.planAt=b.strafeUntil=0;}
     b.target=target.id;b.seen=true;b.lastSeen.copy(target.pos);b.knowsUntil=t+2400;
-    if(DM.mode==='team')for(const mate of DM.bots)if(mate!==b&&mate.alive&&mate.team===b.team&&!mate.seen&&t>=mate.knowsUntil){mate.lastSeen.copy(target.pos);mate.knowsUntil=t+1800;mate.planAt=0;}
+    if (b.elim) { b.elim.intelAt = t; b.elim.sightAt = t + 65; }
+    if(eliminationOn()) elimReport(b, target, t);
+    else if(DM.mode==='team')for(const mate of DM.bots)if(mate!==b&&mate.alive&&mate.team===b.team&&!mate.seen&&t>=mate.knowsUntil){mate.lastSeen.copy(target.pos);mate.knowsUntil=t+1800;mate.planAt=0;}
   }else b.seen=false;
   b.thinkAt=t+155+b.index*4;
 }
 function dmBotMove(b,dt,t,L){
   b.fireReady=false;if(!b.alive)return;
+  if (eliminationOn() && !b.elim) elimInitBot(b);
   if(b.reloadEnd&&t>=b.reloadEnd){b.mag=W[b.w].mag;b.reloadEnd=0;}
   if(!b.mag&&!b.reloadEnd){b.reloadEnd=t+W[b.w].reload;b.shots=0;}
   if(t>=b.thinkAt)dmSense(b,t,L);
   const target=DM.byId.get(b.target);if(!target||!target.alive||t<target.safeUntil||t<(b.blindUntil||0))b.seen=false;
+  const elim = eliminationOn();
+  if (elim && b.seen && t >= b.elim.sightAt) {
+    b.elim.sightAt = t + 65;
+    const eye=[b.pos.x,botEyeY(b),b.pos.z], yaw=Math.atan2(b.pos.x-target.pos.x,b.pos.z-target.pos.z);
+    if (Math.abs(angDiff(b.yaw,yaw))>1.4 || (!seeLine(eye,[target.pos.x,target.pos.y+(target.crouch?1.02:1.66),target.pos.z]) && !seeLine(eye,[target.pos.x,target.pos.y+(target.crouch?.72:1.2),target.pos.z]))) b.seen=false;
+  }
   let wx=0,wz=0,brake=false,distance=0;
+  b.elimMove = elim; b.walking = false;
   if(t>=b.readyAt&&b.seen){
     const dx=target.pos.x-b.pos.x,dz=target.pos.z-b.pos.z;
     distance = Math.hypot(dx, dz);
     if (L.tactical) botEngage(b, target, distance, t);
+    if (elim) { b.elim.holdUntil = 0; b.elim.state = 'contact'; b.elim.contactAt = t; b.elim.turnV = b.elim.pitchV = 0; }
     const dy=target.pos.y+(b.aimHead?(target.crouch?1.0:1.64):(target.crouch?.72:1.2))-botEyeY(b);
-    if(t>=b.aimErrorAt){b.ex=(Math.random()*2-1)*b.aimError;b.ey=(Math.random()*2-1)*b.aimError*.55;b.aimError*=.7;b.aimErrorAt=t+260;}
+    if(t>=b.aimErrorAt){b.ex=(Math.random()*2-1)*b.aimError;b.ey=(Math.random()*2-1)*b.aimError*.55;b.aimError=elim?Math.max(L.err*.35,b.aimError*.7):b.aimError*.7;b.aimErrorAt=t+260;}
     const ty=Math.atan2(-dx,-dz)+b.ex,tp=Math.atan2(dy,distance)+b.ey,turn=L.turn*dt;
     b.yaw+=clamp(angDiff(b.yaw,ty),-turn,turn);b.pitch+=clamp(tp-b.pitch,-turn,turn);
     const aligned = Math.abs(angDiff(b.yaw,ty)) + Math.abs(tp-b.pitch) < .045;
@@ -4542,6 +4595,9 @@ function dmBotMove(b,dt,t,L){
       if(!(b.fireReady&&L.counter)&&!b.reloadEnd){wx=Math.cos(b.yaw)*b.strafe;wz=-Math.sin(b.yaw)*b.strafe;}
       if(b.reloadEnd){wx=-dx/(distance||1);wz=-dz/(distance||1);}
     }
+  }else if(t>=b.readyAt && elim){
+    [wx, wz, distance] = elimBotTravel(b, dt, t);
+    brake = !wx && !wz;
   }else if(t>=b.readyAt){
     const n=DM.nav;
     if(t>=b.planAt||b.pathAt>=b.path.length){
@@ -4555,17 +4611,25 @@ function dmBotMove(b,dt,t,L){
     if (L.tactical) botTravel(b, wx, wz, distance, t);
   }
   if(wx||wz)b.safeUntil=0;
-  const w=W[b.w], speed=w.scope&&b.seen&&(!L.tactical||brake)?w.scopedSpeed:w.speed;
+  const travelX=wx,travelZ=wz;
+  if (elim && (wx || wz)) [wx, wz] = elimSpacing(b, wx, wz);
+  if (elim && !b.seen) {
+    elimLook(b, dt, t, wx||wz?wx:travelX, wx||wz?wz:travelZ);
+    // Primeiro vira para a abertura que vai cruzar; não percorre a rota de costas enquanto marca outro lado.
+    if ((wx||wz)&&wx*-Math.sin(b.yaw)+wz*-Math.cos(b.yaw)<.1) { wx=wz=0;brake=true; }
+  }
+  const w=W[b.w], speed=(w.scope&&b.seen&&(!L.tactical||brake)?w.scopedSpeed:w.speed)*(b.walking?VAL.walk:1);
   botPhysics(b, wx, wz, speed, dt, t, brake);
   if (L.tactical && (!brake || !botStable(b))) b.fireReady = false;
   if(!b.fireReady)b.shots=Math.max(0,b.shots-dt*10);
-  if(b.onGround&&Math.hypot(b.vel.x,b.vel.z)>STEP_SPEED&&t>=b.stepAt){b.stepAt=t+340;if(t>=DM.nextStepAt&&!(t<(b.silentUntil||0))){const s=spat(b.pos.x,b.pos.z);if(s.v>.42){AU.step(s.v*.55,s.pan,stepKind(b));DM.nextStepAt=t+90;}}}
+  if(b.onGround&&Math.hypot(b.vel.x,b.vel.z)>STEP_SPEED&&(!elim||(!b.walking&&!b.crouch))&&t>=b.stepAt){b.stepAt=t+340;if(t>=DM.nextStepAt&&!(t<(b.silentUntil||0))){const s=spat(b.pos.x,b.pos.z);if(s.v>.42){AU.step(s.v*.55,s.pan,stepKind(b));DM.nextStepAt=t+90;}}}
 }
 function dmBotFire(b,t,L){
   if(!b.alive||!b.fireReady||b.knifeOut||b.reloadEnd||!b.mag||t<b.nextFire||t<b.readyAt)return;
   const w=W[b.w];
   if(b.burst<=0){if(t<b.pauseUntil)return;const e=DM.byId.get(b.target);b.burst=botBurstSize(b,L,e?Math.hypot(e.pos.x-b.pos.x,e.pos.z-b.pos.z):Infinity);}
   b.safeUntil=0;b.mag--;b.nextFire=t+w.rof;b.burst--;b.flashUntil=t+45;b.lastShot=t;
+  if (b.elim) { (b.lastShotPos || (b.lastShotPos = new V3())).copy(b.pos); b.lastShotWeapon = b.w; }
   if(!b.burst)b.pauseUntil=t+(w.scope?w.rof:w.auto?240:300)+Math.random()*180;
   const eye=[b.pos.x,botEyeY(b),b.pos.z],spread=inaccuracy(b,w,!!w.scope,(b.shots||0)*(w.cs?w.cs.fire[0]:0))*L.spread;
   const r=spread*Math.sqrt(Math.random()),a=Math.random()*TAU,dir=dirFrom(b.yaw+Math.cos(a)*r,b.pitch+Math.sin(a)*r+(w.auto?Math.min(b.shots,8)*.002:0));b.shots++;
@@ -4621,12 +4685,12 @@ function dmEnsureRender(){
   const meshes=[],dummy=new THREE.Object3D(),color=new THREE.Color();
   // A cor por instância precisa ser alocada com a capacidade total ANTES de zerar `count`:
   // o three r128 dimensiona instanceColor por `count`, e um buffer vazio faz a GPU descartar o desenho (bots invisíveis).
-  function pool(geometry, material) {
-    const mesh = new THREE.InstancedMesh(geometry, material.clone(), ACTOR_CAP);
+  function pool(geometry, material, capacity = ACTOR_CAP) {
+    const mesh = new THREE.InstancedMesh(geometry, material.clone(), capacity);
     mesh.layers.set(ACTOR_LAYER);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.frustumCulled = false;
-    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ACTOR_CAP * 3).fill(1), 3);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3).fill(1), 3);
     mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     mesh.count = 0;
     scene.add(mesh); meshes.push(mesh);
@@ -4658,14 +4722,16 @@ function dmEnsureRender(){
   // Peça animável: a malha do boneco (grava o stencil) e as cópias de contorno, preenchimento e borda do aliado.
   const stencil=m=>{const mt=m.material;mt.stencilWrite=true;mt.stencilRef=3;mt.stencilFunc=THREE.AlwaysStencilFunc;mt.stencilZPass=THREE.ReplaceStencilOp;};
   function rigPart(kind,mesh,px=0){
-    stencil(mesh);const hull=hullGeometry(mesh.geometry),enemy=pool(hull,enemyHull[0].material),fill=pool(mesh.geometry,fillMat),edge=pool(hull,edgeMat);
+    const capacity=mesh.instanceMatrix.count;
+    stencil(mesh);const hull=hullGeometry(mesh.geometry),enemy=pool(hull,enemyHull[0].material,capacity),fill=pool(mesh.geometry,fillMat,capacity),edge=pool(hull,edgeMat,capacity);
     enemy.renderOrder=5;fill.renderOrder=20;edge.renderOrder=21;return {kind,mesh,px,hull,enemy,fill,edge};
   }
-  const legL=pool(boxModel([[[-.2,0,-.12],[-.02,.81,.12],0x555555]]).geometry,basicMat),legR=pool(boxModel([[[.02,0,-.12],[.2,.81,.12],0x555555]]).geometry,basicMat);
+  // Coxa, canela e pé reutilizam a mesma caixa instanciada: nenhuma chamada de desenho extra.
+  const legL=pool(boxModel([[[-.2,0,-.12],[-.02,.81,.12],0x555555]]).geometry,basicMat,ACTOR_CAP*3),legR=pool(boxModel([[[.02,0,-.12],[.2,.81,.12],0x555555]]).geometry,basicMat,ACTOR_CAP*3);
   const helmetPart=rigPart('helmet',helmet);
   const rig={hipY:.81,tint:true,parts:[rigPart('legL',legL,-.11),rigPart('legR',legR,.11),rigPart('body',body),rigPart('head',head),helmetPart]};
   DM.render={meshes,dummy,color,legs,body,head,helmet,guns,protection,flash,ally,ghostLegs,ghostBody,ghostHead,ghostMats:[ghostLegs,ghostBody,ghostHead].map(m=>m.material),enemyHull,allyFill,allyEdge,pool,agents:{},agentEnemyHulls:[],
-    rig,rigPart,helmetPart,rigM:{m:new THREE.Matrix4(),yaw:new THREE.Matrix4(),loc:new THREE.Matrix4(),back:new THREE.Matrix4(),hull:new THREE.Matrix4(),body:new THREE.Matrix4(),v:new THREE.Vector3(),s:new THREE.Vector3(),ax:new THREE.Vector3(),q:new THREE.Quaternion(),qb:new THREE.Quaternion(),qi:new THREE.Quaternion(),e:new THREE.Euler()}};
+    rig,rigPart,helmetPart,rigM:{m:new THREE.Matrix4(),yaw:new THREE.Matrix4(),loc:new THREE.Matrix4(),back:new THREE.Matrix4(),hull:new THREE.Matrix4(),body:new THREE.Matrix4(),v:new THREE.Vector3(),s:new THREE.Vector3(),ax:new THREE.Vector3(),up:new THREE.Vector3(0,1,0),q:new THREE.Quaternion(),qb:new THREE.Quaternion(),qi:new THREE.Quaternion(),e:new THREE.Euler()}};
   DM.render.agentEnemyHulls.push(...rig.parts.map(part=>part.enemy));
   if(DM.mode==='team'&&ARENA.bomb)ensureAgentPools(DM.render);
 }
@@ -4679,7 +4745,8 @@ function meshesToGeometry(root){
 // agachado) a passada é curta. O comprimento do passo sai da abertura da perna (2·L·sen A), então a cadência fica
 // natural (cerca de 2,6 passadas por segundo correndo) em vez de um tremelique rápido. Direção e velocidade são suavizadas.
 const GAIT = { leg: .8, run: .7, walk: .34, side: .7 };
-function gaitUpdate(g, x, z, yaw, dt, crouch, vel) {
+function gaitUpdate(g, x, z, yaw, dt, crouch, vel, human = false) {
+  if (human) return elimGaitUpdate(g, x, z, yaw, dt, crouch, vel);
   let vx, vz;
   if (vel) { vx = vel.x; vz = vel.z; }
   else if (dt > 0 && g.px !== undefined) { vx = (x - g.px) / dt; vz = (z - g.pz) / dt; if (Math.hypot(vx, vz) > 15) vx = vz = 0; }
@@ -4698,13 +4765,50 @@ function gaitUpdate(g, x, z, yaw, dt, crouch, vel) {
 }
 // Ângulo da perna (lado 1 ou -1): pernas alternadas; de lado a passada é menor para as pernas não se cruzarem demais.
 function gaitLeg(g, side) { const fa = Math.abs(g.f), ra = Math.abs(g.r), mix = (fa + ra * GAIT.side) / Math.max(1e-3, fa + ra); return side * Math.sin(g.phase) * g.amp * mix; }
+function elimGaitUpdate(g, x, z, yaw, dt, crouch, vel) {
+  const distance = g.px == null ? 0 : Math.hypot(x - g.px, z - g.pz);
+  const vx = vel ? vel.x : dt > 0 && distance < 1 ? (x - (g.px ?? x)) / dt : 0;
+  const vz = vel ? vel.z : dt > 0 && distance < 1 ? (z - (g.pz ?? z)) / dt : 0;
+  g.px = x; g.pz = z;
+  const speed = Math.hypot(vx, vz), k = 1 - Math.exp(-20 * dt), sn = Math.sin(yaw), cs = Math.cos(yaw);
+  const run = clamp((speed - 2.5) / 2.6, 0, 1), target = Math.min(1, speed / 1.1) * (.34 + .36 * run) * (crouch ? .7 : 1);
+  g.amp = (g.amp || 0) + (target - (g.amp || 0)) * k;
+  if (speed > .15) {
+    g.f = -(vx * sn + vz * cs) / speed; g.r = (vx * cs - vz * sn) / speed;
+  } else if (g.f == null) { g.f = 1; g.r = 0; }
+  g.step = (.58 + .25 * run) * (crouch ? .72 : 1);
+  // Fase vem da distância percorrida, não de um relógio nem da velocidade atrasada por suavização.
+  if (distance < 1 && g.grounded !== false) g.phase = ((g.phase || 0) + distance * Math.PI / g.step) % TAU;
+  else if (g.phase == null) g.phase = 0;
+  return g;
+}
+function elimLegPose(g, side, hipY, drop) {
+  const key = side > 0 ? 'leftPose' : 'rightPose';
+  const p = g[key] || (g[key] = { hip: [0,0,0], knee: [0,0,0], ankle: [0,0,0], lift: 0 });
+  const phase = ((g.phase || 0) / TAU + (side < 0 ? .5 : 0)) % 1, duty = .53, moving = clamp((g.amp || 0) / .34, 0, 1);
+  const swing = clamp((phase - duty) / (1 - duty), 0, 1), reach = (g.step || .58) * duty;
+  const along = (phase < duty ? reach * (1 - 2 * phase / duty) : -reach * Math.cos(swing * Math.PI)) * moving;
+  p.lift = Math.sin(swing * Math.PI) * .105 * moving;
+  p.hip[0] = -side * .11; p.hip[1] = hipY - drop; p.hip[2] = 0;
+  p.ankle[0] = p.hip[0] + (g.r || 0) * along; p.ankle[1] = .075 + p.lift; p.ankle[2] = -(g.f || 0) * along;
+  const dx = p.ankle[0] - p.hip[0], dy = p.ankle[1] - p.hip[1], dz = p.ankle[2], d = Math.hypot(dx,dy,dz) || 1;
+  // Joelho dobra para a frente. O pé de apoio permanece no chão, inclusive ao strafar.
+  const projection = -dz / d, bx = -dx / d * projection, by = -dy / d * projection, bz = -1 - dz / d * projection;
+  const norm = Math.hypot(bx,by,bz) || 1, length = Math.max(.405, d * .515);
+  const bend = Math.min(.16, Math.sqrt(Math.max(0, length * length - d * d * .25)));
+  p.knee[0] = (p.hip[0] + p.ankle[0]) * .5 + bx / norm * bend;
+  p.knee[1] = (p.hip[1] + p.ankle[1]) * .5 + by / norm * bend;
+  p.knee[2] = p.ankle[2] * .5 + bz / norm * bend;
+  return p;
+}
 function dmRender(t, dt = 0){
   const r=DM.render;if(!r)return;for(const mesh of r.meshes){mesh.count=0;mesh.visible=true;}
   // Matriz de uma peça: posição e direção do boneco, pivô no quadril (pernas giram e encolhem ao agachar; tronco inclina).
   function rigMatrix(out,b,px,py,off,q,sy){const M=r.rigM;M.yaw.makeRotationY(b.yaw).setPosition(b.pos.x,b.pos.y,b.pos.z);M.loc.compose(M.v.set(px,py+off,0),q,M.s.set(1,sy,1));M.back.makeTranslation(-px,-py,0);return out.multiplyMatrices(M.yaw,M.loc).multiply(M.back);}
   function rigHull(out,base,hull,sy,w){const u=hull.userData,c=u.c,sz=u.s;return out.copy(base).multiply(r.rigM.loc.makeTranslation(c.x,c.y,c.z)).multiply(r.rigM.back.makeScale(1+2*w/sz.x,1+2*w/(sz.y*sy),1+2*w/sz.z));}
   function renderRig(rig,b,ally,drop){
-    const g=b.gait||(b.gait={});gaitUpdate(g,b.pos.x,b.pos.z,b.yaw,dt,b.crouch,b.remote?null:b.vel);
+    const human=eliminationOn()&&rig===r.rig,g=b.gait||(b.gait={});g.grounded=b.onGround;
+    gaitUpdate(g,b.pos.x,b.pos.z,b.yaw,dt,b.crouch,b.remote?null:b.vel,human);
     const M=r.rigM,hipY=rig.hipY,sy=(hipY-drop)/hipY;
     // Tronco: inclina para onde anda e balança de leve com a passada. A cabeça não sobe nem desce.
     M.e.set(-.06*g.f*g.amp,0,-.04*g.r*g.amp,'YXZ');M.qb.setFromEuler(M.e);
@@ -4712,6 +4816,25 @@ function dmRender(t, dt = 0){
     for(const part of rig.parts){
       if(part.kind==='helmet'&&!b.helmet)continue;
       const leg=part.kind==='legL'||part.kind==='legR';let q=M.qi;
+      if (human && leg) {
+        const pose=elimLegPose(g,part.kind==='legL'?1:-1,hipY,drop);
+        for(let segment=0;segment<3;segment++) {
+          let scaleY;
+          if(segment<2) {
+            const top=segment?pose.knee:pose.hip,bottom=segment?pose.ankle:pose.knee;
+            M.ax.set(top[0]-bottom[0],top[1]-bottom[1],top[2]-bottom[2]);scaleY=M.ax.length()/.81;
+            M.q.setFromUnitVectors(M.up,M.ax.normalize());M.loc.compose(M.v.set(...bottom),M.q,M.s.set(segment?.86:1,scaleY,segment?.86:1));
+          } else {
+            scaleY=.11/.81;M.loc.compose(M.v.set(pose.ankle[0],pose.lift,pose.ankle[2]-.035),M.qi,M.s.set(1.05,scaleY,1.3));
+          }
+          M.yaw.makeRotationY(b.yaw).setPosition(b.pos.x,b.pos.y,b.pos.z);M.back.makeTranslation(-part.px,0,0);
+          M.m.multiplyMatrices(M.yaw,M.loc).multiply(M.back);
+          part.mesh.setMatrixAt(part.mesh.count++,M.m);part.mesh.setColorAt(part.mesh.count-1,r.color);
+          if(ally)part.fill.setMatrixAt(part.fill.count++,M.m);
+          const edge=ally?part.edge:part.enemy;edge.setMatrixAt(edge.count++,rigHull(M.hull,M.m,part.hull,scaleY,w));
+        }
+        continue;
+      }
       if(leg){M.ax.set(g.f,0,g.r);if(M.ax.lengthSq()<1e-6)M.ax.set(1,0,0);M.ax.normalize();q=M.q.setFromAxisAngle(M.ax,gaitLeg(g,part.kind==='legL'?1:-1));}
       else if(part.kind==='body')q=M.qb;
       rigMatrix(M.m,b,leg?part.px:0,hipY,-drop,q,leg?sy:1);
@@ -5234,6 +5357,7 @@ const ARENA = { kind: 'team', net: false, host: true, code: '', peer: null, conn
 // Identificador da partida em curso (DM: o da partida de 5 minutos; times: o da série de rodadas).
 const arenaMatch = () => ARENA.kind === 'dm' ? G.view.m : ARENA.m;
 const arenaHumans = () => [G.me, ...ARENA.order.filter(id => ARENA.conns.has(id))];
+function eliminationOn() { return G.mode === 'team' && DM.mode === 'team' && !ARENA.bomb; }
 function arenaCapacity() { return ARENA.kind === 'dm' ? 10 : ARENA.sizes[0] + ARENA.sizes[1]; }
 function myTeam() { return P.team || 0; }
 function teamAlive(team) { let n = 0; for (const e of DM.actors) if (e.team === team && e.alive) n++; return n; }
@@ -5282,7 +5406,294 @@ function teamSetup(t, online) {
   dmBuildNav([]); dmRefreshTargets();
 }
 const teamLabel = () => ARENA.sizes[0] + 'v' + ARENA.sizes[1];
-// Meta dos bots: começam pelo meio do mapa; depois de alguns segundos vão atrás de um inimigo vivo.
+const ELIM_APPROACH = new WeakMap();
+// A grade sozinha permitia atalhos que raspavam uma quina e deixavam o bot travado.
+function elimWalkClear(x,z,y,tx,tz,ty) {
+  const distance=Math.hypot(tx-x,tz-z),steps=Math.max(1,Math.ceil(distance/.3));
+  let px=x,pz=z,py=y;
+  for(let i=1;i<=steps;i++){
+    const nx=x+(tx-x)*i/steps,nz=z+(tz-z)*i/steps,ny=navStep(px,pz,py,nx,nz,true,1);
+    if(!fin(ny)||!navFree(nx,ny,nz))return false;
+    px=nx;pz=nz;py=ny;
+  }
+  return Math.abs(py-ty)<.08;
+}
+// Elimination: decisões individuais só usam o mapa, contatos vistos e relatos que já chegaram.
+// A rota nunca consulta a posição atual de um inimigo escondido.
+function elimInitBot(b) {
+  const mates = DM.bots.filter(e => e.team === b.team), slot = mates.indexOf(b), count = mates.length;
+  const lane = count > 1 ? (slot / (count - 1) * 2 - 1) : Math.random() * 1.4 - .7;
+  const role = count > 1 ? ['anchor', 'probe', 'lurk'][(slot + ARENA.r) % 3] : 'probe';
+  b.elim = { lane, role, homeZ: b.pos.z, goal: -1, state: 'wait', holdUntil: 0, contactAt: 0, turnV: 0, pitchV: 0, post: false,
+    startAt: b.readyAt + Math.random() * 220 + slot * 35, nextReport: 0, report: null, nextGlance: 0, cornerAt: 0, corner: false, nextHoldAt:0,
+    intelAt:0, sightAt:0, lookAt:0, heardShots:new Map(), base:{x:0,y:0,z:-Math.sign(b.pos.z||1)*(MAP.spawn.z0+MAP.spawn.z1)*.5},
+    visited: [], watch: { x: lane * AX * .45, y: b.pos.y, z: -b.pos.z * .35 } };
+  b.watch = b.elim.watch;
+}
+function elimListen(b, enemy, distanceSq, t) {
+  const ai=b.elim, w=W[enemy.lastShotWeapon||botHeldWeapon(enemy)];
+  const gunshot=enemy.lastShot>0 && t>=enemy.lastShot && t-enemy.lastShot<240 && distanceSq<(w.silenced?196:900);
+  const speed=enemy.remote?enemy.speed:Math.hypot(enemy.vel.x,enemy.vel.z);
+  const running=enemy.onGround && !enemy.crouch && !enemy.walking && !(t<(enemy.silentUntil||0)) && speed>STEP_SPEED && distanceSq<169;
+  if (!gunshot&&!running) return;
+  if (gunshot&&ai.heardShots.get(enemy.id)===enemy.lastShot) return;
+  const old=ai.sound;
+  if (!gunshot&&old&&old.source===enemy.id&&t<(ai.hearAt||0)) return;
+  const origin=gunshot?(enemy.lastShotPos||enemy.pos):enemy.pos, eye=[b.pos.x,botEyeY(b),b.pos.z];
+  const blocked=!clearLine(eye,[origin.x,origin.y+1.3,origin.z]);
+  const radius=gunshot?(w.silenced?14:30)*(blocked?.8:1):13*(blocked?.65:1);
+  if (Math.hypot(origin.x-b.pos.x,origin.z-b.pos.z)>radius) return;
+  const priority=(gunshot?2:1)/Math.max(2,Math.sqrt(distanceSq));
+  if (old&&t<old.until&&t<(ai.hearAt||0)&&(!gunshot||old.source!==enemy.id)&&priority<=old.priority) return;
+  if (gunshot) ai.heardShots.set(enemy.id,enemy.lastShot);
+  const error=gunshot?1:1.6;
+  ai.sound={x:origin.x+(Math.random()*2-1)*error,y:origin.y,z:origin.z+(Math.random()*2-1)*error,at:t,until:t+(gunshot?1800:1400),source:enemy.id,priority};
+  ai.hearAt=t+500; ai.lookAt=0; b.cautionUntil=Math.max(b.cautionUntil,t+1500);
+}
+function elimReport(b, target, t) {
+  const ai = b.elim;
+  if (!ai || t < ai.nextReport) return;
+  ai.nextReport = t + 1100;
+  for (const mate of DM.bots) {
+    if (mate === b || !mate.alive || mate.team !== b.team || !mate.elim || mate.seen || mate.elim.report) continue;
+    mate.elim.report = { x: target.pos.x, y: target.pos.y, z: target.pos.z, seenAt:t, at: t + 350 + Math.random() * 450, expires: t + 2600 };
+  }
+}
+function elimChooseGoal(b, t) {
+  const n = DM.nav, ai = b.elim, elapsed = Math.max(0, t - ARENA.liveAt), left = ARENA.roundEnd - t;
+  const sound=ai.sound&&t<ai.sound.until?ai.sound:null;
+  const focus=sound&&sound.at>(ai.intelAt||0)?sound:t<b.knowsUntil?b.lastSeen:sound;
+  const intel = !!focus, urgent = left < 12000, field=elimBaseField(b),here=field[dmCell(b.pos.x,b.pos.z,b.pos.y)];
+  const progress = urgent ? 2 : elapsed > 18000 ? 1.7 : elapsed > 10000 ? 1.4 : elapsed > 4500 ? 1.1 : ai.role === 'anchor' ? .65 : .8;
+  const gx = intel ? focus.x + ai.lane * 1.8 : ai.lane * (urgent ? MAP.spawn.hx * .65 : AX * .58);
+  const gz = intel ? focus.z : ai.homeZ * (1 - progress);
+  const shortlist = [];
+  for (let i = 0; i < 64; i++) {
+    const id = n.walk[Math.floor(Math.random() * n.walk.length)], x = navX(n, id), z = navZ(n, id);
+    const distance = Math.hypot(x - b.pos.x, z - b.pos.z);
+    if (distance < 2 || distance > (urgent ? 35 : 14) || Math.abs(n.height[id] - b.pos.y) > 3) continue;
+    let score = -Math.hypot(x - gx, z - gz) - distance * .12 + Math.random() * 2;
+    if(!intel){score+=Math.min(10,here-field[id])*.45;if(field[id]>here+1)score-=12;}
+    for (const visited of ai.visited) if (Math.hypot(x - navX(n, visited), z - navZ(n, visited)) < 4) score -= 6;
+    for (const mate of DM.bots) if (mate !== b && mate.alive && mate.team === b.team) {
+      const other = mate.elim?.goal;
+      if (other >= 0 && Math.hypot(x - navX(n, other), z - navZ(n, other)) < 3) score -= 9;
+      if (Math.hypot(x - mate.pos.x, z - mate.pos.z) < 2) score -= 5;
+    }
+    shortlist.push({ id, score });
+  }
+  shortlist.sort((a, c) => c.score - a.score);
+  let best = -Infinity, goal = dmCell(gx, gz, b.pos.y), post = false;
+  // Só os melhores candidatos fazem testes de cobertura, para não lançar centenas de raios por quadro.
+  for (const candidate of shortlist.slice(0, 8)) {
+    const id = candidate.id, x = navX(n, id), z = navZ(n, id), y = n.height[id], forward = -Math.sign(ai.homeZ || 1);
+    const cover = [-1, 1].some(side => !clearLine([x, y + .9, z], [x + side * 1.15, y + .9, z + forward * 1.8]));
+    const sight = clearLine([x, y + 1.62, z], [x, y + 1.3, z + forward * 5]);
+    const score = candidate.score + (cover ? 3 : 0) + (sight ? 2 : -2);
+    if (score > best) { best = score; goal = id; post = cover && sight; }
+  }
+  ai.goal = goal; ai.post = post; ai.state = intel ? 'search' : 'advance'; ai.holdUntil = 0;
+  // Mantém a intenção até chegar: recalcular a cada poucos segundos fazia o bot oscilar entre destinos.
+  b.planAt = t + 12000; ai.cornerAt = ai.pathLookAt = 0;
+  if (!dmFindPath(b, navX(n, goal), navZ(n, goal), n.height[goal])) {
+    const cur=dmCell(b.pos.x,b.pos.z,b.pos.y),next=Array.from(n.links.subarray(cur*4,cur*4+4)).filter(id=>id>=0).sort((a,c)=>field[a]-field[c])[0];
+    if(next!=null){ai.goal=next;ai.post=false;b.path.push(next);b.pathAt=0;}
+    else{ai.goal=-1;ai.state='hold';ai.holdUntil=t+180;}
+  } else b.planAt = t + Math.max(8000, b.path.length * n.step / (W[b.w].speed * ELIM_MOVE.speed) * 1500);
+}
+// Distância das passagens até a base adversária: geometria pública do mapa, sem consultar jogadores.
+function elimBaseField(b) {
+  const n=DM.nav, side=Math.sign(b.elim.homeZ||1);
+  let cached=ELIM_APPROACH.get(n); if(!cached){cached=new Map();ELIM_APPROACH.set(n,cached);}
+  if(!cached.has(side)){const p=b.elim.base;cached.set(side,navBfs(n,dmCell(p.x,p.z)));}
+  return cached.get(side);
+}
+function elimVisibleAngle(b, field, focus) {
+  const n=DM.nav, ai=b.elim, eye=[b.pos.x,botEyeY(b),b.pos.z], start=dmCell(b.pos.x,b.pos.z,b.pos.y);
+  let cur=start, watch=null, best=-Infinity, heading=Math.atan2(b.pos.x-focus.x,b.pos.z-focus.z);
+  for(let step=0;step<22;step++){
+    let next=-1, cost=Infinity;
+    for(let k=0;k<4;k++){const id=n.links[cur*4+k];if(id<0||field[id]<0||field[id]>=field[cur])continue;
+      const score=field[id]+Math.abs(navX(n,id)-ai.lane*AX*.5)*.02;if(score<cost){next=id;cost=score;}}
+    if(next<0)break;cur=next;
+    const x=navX(n,cur),z=navZ(n,cur),y=n.height[cur],d=Math.hypot(x-b.pos.x,z-b.pos.z);
+    if(step===0)heading=Math.atan2(b.pos.x-x,b.pos.z-z);
+    if(d<2.4||d>22||!clearLine(eye,[x,y+1.45,z]))continue;
+    const score=(field[start]-field[cur])*1.5+Math.min(d,14)*.25;
+    if(score>best){best=score;watch={x,y,z};}
+  }
+  if(watch&&Math.hypot(watch.x-b.pos.x,watch.z-b.pos.z)>=4)return watch;
+  // Em uma quina, escolhe a abertura real mais útil; o fallback nunca fica atrás de uma parede.
+  let openness=-Infinity;
+  for(const offset of [0,.35,-.35,.7,-.7,1.1,-1.1,1.55,-1.55,Math.PI]){
+    const dir=dirFrom(heading+offset,0),hit=traceMap(eye,dir,14),d=Math.max(.5,hit?hit.t-.4:14);
+    const x=b.pos.x+dir[0]*d,z=b.pos.z+dir[2]*d,id=dmCell(x,z,b.pos.y),y=n.height[id];
+    if(!clearLine(eye,[x,y+1.45,z]))continue;
+    const progress=field[id]>=0&&field[start]>=0?field[start]-field[id]:0;
+    const score=Math.min(d,12)+progress*(field[start]>4?1.3:.25)-Math.abs(offset)*.4;
+    if(score>openness){openness=score;watch={x,y,z};}
+  }
+  return watch||{x:b.pos.x-Math.sin(heading)*.5,y:b.pos.y,z:b.pos.z-Math.cos(heading)*.5};
+}
+function elimTravelAngle(b,wx,wz) {
+  const n=DM.nav,eye=[b.pos.x,botEyeY(b),b.pos.z],heading=Math.atan2(-wx,-wz);
+  let watch=null,best=-Infinity;
+  for(let i=b.pathAt;i<Math.min(b.pathAt+5,b.path.length);i++){
+    const id=b.path[i],x=navX(n,id),z=navZ(n,id),y=n.height[id],d=Math.hypot(x-b.pos.x,z-b.pos.z);
+    const angle=Math.abs(angDiff(heading,Math.atan2(b.pos.x-x,b.pos.z-z)));
+    if(d<2||angle>.85||!clearLine(eye,[x,y+1.45,z]))continue;
+    const score=Math.min(d,10)-angle*4;if(score>best){best=score;watch={x,y,z};}
+  }
+  if(watch&&Math.hypot(watch.x-b.pos.x,watch.z-b.pos.z)>4)return watch;
+  for(const offset of [0,.35,-.35,.7,-.7]){
+    const dir=dirFrom(heading+offset,0),hit=traceMap(eye,dir,10),d=Math.max(.25,hit?hit.t-.4:10);
+    const x=b.pos.x+dir[0]*d,z=b.pos.z+dir[2]*d,y=b.pos.y;
+    if(!clearLine(eye,[x,y+1.45,z]))continue;
+    const score=Math.min(d,9)-Math.abs(offset)*4;if(score>best){best=score;watch={x,y,z};}
+  }
+  return watch||{x:b.pos.x+wx*2,y:b.pos.y,z:b.pos.z+wz*2};
+}
+function elimSetWatch(b, t, wx=0, wz=0) {
+  const ai=b.elim,n=DM.nav,sound=ai.sound&&t<ai.sound.until?ai.sound:null;
+  const evidence=sound&&sound.at>(ai.intelAt||0)?sound:t<b.knowsUntil?b.lastSeen:sound;
+  const moving=Math.hypot(wx,wz)>.05,heading=moving?Math.atan2(-wx,-wz):0;
+  const canWatchEvidence=evidence&&(!moving||Math.abs(angDiff(heading,Math.atan2(b.pos.x-evidence.x,b.pos.z-evidence.z)))<1);
+  let watch;
+  if(canWatchEvidence&&clearLine([b.pos.x,botEyeY(b),b.pos.z],[evidence.x,evidence.y+1.45,evidence.z]))watch={x:evidence.x,y:evidence.y,z:evidence.z};
+  else if(moving)watch=elimTravelAngle(b,wx,wz);
+  else if(evidence){
+    const old=ai.evidenceField;
+    if(!old||old.nav!==n||Math.hypot(old.x-evidence.x,old.y-evidence.y,old.z-evidence.z)>1){
+      ai.evidenceField={nav:n,x:evidence.x,y:evidence.y,z:evidence.z,field:navBfs(n,dmCell(evidence.x,evidence.z,evidence.y))};
+    }
+    watch=elimVisibleAngle(b,ai.evidenceField.field,evidence);
+  }else watch=elimVisibleAngle(b,elimBaseField(b),ai.base);
+  ai.watch=watch;b.watch=watch;ai.aimSource=evidence;ai.lookX=b.pos.x;ai.lookZ=b.pos.z;ai.movingLook=moving;ai.travelYaw=heading;
+  ai.lookAt=Math.min(t+(moving?260:550)+(b.index||0)*7,evidence===b.lastSeen?b.knowsUntil:evidence?evidence.until:Infinity);ai.nextGlance=ai.lookAt;
+}
+// Controle de atenção independente da rota: contato/ruído > ângulo guardado > trecho à frente.
+// A velocidade angular amortecida evita giros mecânicos nos nós da navegação (Booth, GDC 2004).
+function elimLook(b, dt, t, wx, wz) {
+  const ai = b.elim,moving=Math.hypot(wx,wz)>.05,heading=moving?Math.atan2(-wx,-wz):0;
+  if(t>=ai.lookAt||moving!==ai.movingLook||(moving&&Math.abs(angDiff(ai.travelYaw,heading))>.3)||Math.hypot(b.pos.x-(ai.lookX??b.pos.x),b.pos.z-(ai.lookZ??b.pos.z))>1)elimSetWatch(b,t,wx,wz);
+  const watch=ai.watch;
+  if (!watch) return;
+  const dx = watch.x - b.pos.x, dz = watch.z - b.pos.z, d = Math.hypot(dx, dz);
+  if (d < .25) return;
+  const error = angDiff(b.yaw, Math.atan2(-dx, -dz)), pitch = Math.atan2((watch.y || 0) + 1.35 - botEyeY(b), d);
+  const k = 1 - Math.exp(-22 * dt), desired = clamp(error * 9, -6.2, 6.2);
+  ai.turnV += (desired - ai.turnV) * k; ai.pitchV += (clamp((pitch - b.pitch) * 7, -2, 2) - ai.pitchV) * k;
+  b.yaw += clamp(ai.turnV * dt, -Math.abs(error), Math.abs(error)); b.pitch += ai.pitchV * dt;
+}
+function elimFightMove(b, enemy, dx, dz, distance, aligned, t) {
+  const ai = b.elim, retreat = b.reloadEnd || !b.mag, x = dx / (distance || 1), z = dz / (distance || 1);
+  if (!retreat && t + 105 >= botShotTime(b) && (aligned || b.burst > 0 || b.crouch)) return [0, 0, true];
+  // Uma passada deliberada entre rajadas; não inverte A/D repetidamente por um relógio.
+  if (t >= (ai.fightAt || 0) || !!retreat !== ai.retreat) {
+    ai.retreat = !!retreat;
+    let best = -Infinity, side = b.strafe || (ai.lane >= 0 ? 1 : -1);
+    if (!retreat && ai.fightShot !== b.lastShot && Math.random() < .7) side = -side;
+    ai.fightShot = b.lastShot;
+    const forward = retreat ? -.8 : distance < 6 ? -.3 : 0;
+    const eye = [enemy.pos.x, botEyeY(enemy), enemy.pos.z];
+    for (const candidate of [side, -side]) {
+      const tx = b.pos.x + (x * forward - z * candidate) * 1.6, tz = b.pos.z + (z * forward + x * candidate) * 1.6;
+      const y = navStep(b.pos.x, b.pos.z, b.pos.y, tx, tz, true, 4);
+      if (!fin(y)) continue;
+      const covered = !clearLine(eye, [tx, y + 1.3, tz]);
+      const score = (covered ? retreat ? 6 : 1.5 : 0) + (candidate === side ? .4 : 0) + Math.random() * .7;
+      if (score > best) { best = score; b.strafe = candidate; }
+    }
+    if (best === -Infinity) b.strafe = 0;
+    ai.fightForward = forward; ai.fightAt = t + (retreat ? 650 : 320 + Math.random() * 190);
+  }
+  return [x * ai.fightForward - z * b.strafe, z * ai.fightForward + x * b.strafe, false];
+}
+function elimBotTravel(b, dt, t) {
+  const ai = b.elim, n = DM.nav;
+  botEquipGun(b, t); b.hopsLeft = b.airSign = 0; botSetCrouch(b, false);
+  if (ai.report && t >= ai.report.at) {
+    const report = ai.report; ai.report = null;
+    if (t < report.expires && t >= b.knowsUntil) {
+      b.lastSeen.set(report.x, report.y, report.z); b.knowsUntil = report.expires;
+      ai.intelAt=report.seenAt||report.at;ai.lookAt=0;
+      if(ai.state==='hold')ai.holdUntil=Math.min(ai.holdUntil,t+400);
+      // Quem marca um ângulo recebe a informação sem abandonar imediatamente a cobertura.
+      if (ai.state !== 'hold') b.planAt = 0;
+    }
+  }
+  if (t < ai.startAt) { b.lastPos.copy(b.pos); b.stuckAt = t + 900; return [0, 0, 0]; }
+  const sound=ai.sound&&t<ai.sound.until&&ai.sound.at>(ai.intelAt||0)?ai.sound:null;
+  if(sound&&(!ai.investigated||t-ai.investigateAt>1200||Math.hypot(sound.x-ai.investigated.x,sound.z-ai.investigated.z)>2.5)){
+    ai.investigated={x:sound.x,z:sound.z};ai.investigateAt=t;ai.holdUntil=0;ai.state='search';b.planAt=0;
+  }
+  if (ai.state === 'contact') {
+    // Perdeu o contato: primeiro segura a última passagem, depois limpa a área; sem perseguir através da parede.
+    ai.state = 'hold'; ai.holdUntil = t + 280 + Math.random() * 320; ai.goal = -1;ai.nextHoldAt=t+6500;
+    b.path.length = 0; b.pathAt = 0; b.planAt = 0; elimSetWatch(b, t);
+  }
+  if (ai.state === 'hold' && t < ai.holdUntil) {
+    if (t >= ai.nextGlance) elimSetWatch(b, t);
+    b.lastPos.copy(b.pos); b.stuckAt = t + 900;
+    return [0, 0, 0];
+  }
+  const reached = ai.goal >= 0 && Math.hypot(navX(n, ai.goal) - b.pos.x, navZ(n, ai.goal) - b.pos.z) < .65;
+  if (reached && ai.state !== 'hold') { ai.visited.push(ai.goal); if (ai.visited.length > 6) ai.visited.shift(); }
+  if (reached && ai.state !== 'hold' && t>=(ai.nextHoldAt||0) && (ai.post || t < b.knowsUntil)) {
+    ai.state = 'hold';
+    const duration = ai.role === 'anchor' ? 1000 + Math.random() * 700 : ai.role === 'lurk' ? 700 + Math.random() * 500 : 350 + Math.random() * 450;
+    ai.holdUntil = t + Math.min(duration, ARENA.roundEnd - t < 12000 ? 400 : duration);ai.nextHoldAt=ai.holdUntil+6000+Math.random()*2000;
+    b.path.length = 0; b.pathAt = 0; elimSetWatch(b, t);
+    b.lastPos.copy(b.pos); b.stuckAt = t + 900;
+    return [0, 0, 0];
+  }
+  if (reached || ai.state === 'wait' || ai.state === 'hold' || t >= b.planAt || b.pathAt >= b.path.length) {
+    elimChooseGoal(b, t);
+    if (ai.state === 'hold') return [0, 0, 0];
+    elimSetWatch(b, t);
+  }
+  const input = botPathInput(b, dt, t);
+  // Arma pronta e passo silencioso perto do contato, do posto ou de uma esquina.
+  if (t >= ai.cornerAt) {
+    const id=b.path[b.pathAt],next=b.path[b.pathAt+1];ai.corner=false;
+    if(id!=null&&next!=null){
+      const dx=navX(n,id)-b.pos.x,dz=navZ(n,id)-b.pos.z,d=Math.hypot(dx,dz),nx=navX(n,next)-navX(n,id),nz=navZ(n,next)-navZ(n,id),nd=Math.hypot(nx,nz);
+      ai.corner=d<1.7&&d>.05&&nd>.05&&(dx*nx+dz*nz)/(d*nd)<.7;
+    }
+    ai.cornerAt = t + 120;
+  }
+  const goalDistance = ai.goal >= 0 ? Math.hypot(navX(n, ai.goal) - b.pos.x, navZ(n, ai.goal) - b.pos.z) : Infinity;
+  const evidence=sound||(t<b.knowsUntil?b.lastSeen:null);
+  b.walking = !!(evidence&&Math.hypot(evidence.x-b.pos.x,evidence.z-b.pos.z)<8) || ai.corner || (ai.post&&t>=(ai.nextHoldAt||0)&&goalDistance<1.5);
+  return input;
+}
+function elimSpacing(b, wx, wz) {
+  let x = wx, z = wz;
+  for (const mate of DM.actors) {
+    if (mate === b || !mate.alive || mate.team !== b.team || Math.abs(mate.pos.y - b.pos.y) > 1.3) continue;
+    const dx = b.pos.x - mate.pos.x, dz = b.pos.z - mate.pos.z, d = Math.hypot(dx, dz);
+    if (d >= 1.6) continue;
+    if (d < .05) { x += b.elim.lane >= 0 ? .7 : -.7; continue; }
+    const k = (1.6 - d) / 1.6;
+    x += dx / d * k * 1.6; z += dz / d * k * 1.6;
+    // Dá passagem com um passo lateral; só espera quando os dois lados realmente estão bloqueados.
+    if (d < .85 && wx * dx + wz * dz < -.25 && b.id > mate.id) {
+      const preferred=b.elim.lane>=(mate.elim?.lane||0)?1:-1;
+      let clear=false;
+      for(const side of [preferred,-preferred]){
+        const sx=-wz*side,sz=wx*side;
+        if(fin(navStep(b.pos.x,b.pos.z,b.pos.y,b.pos.x+sx*.3,b.pos.z+sz*.3,true,2))){x+=sx*1.6;z+=sz*1.6;clear=true;break;}
+      }
+      if(!clear)return [0,0];
+    }
+  }
+  const length = Math.hypot(x, z);
+  // Separação escolhe a direção, não a força da tecla: vetores quase cancelados não venciam o atrito e travavam o grupo.
+  if (length > .05) { x /= length; z /= length; }
+  if (!fin(navStep(b.pos.x, b.pos.z, b.pos.y, b.pos.x + x * .16, b.pos.z + z * .16, true, 2))) return [0, 0];
+  return [x, z];
+}
+// Meta antiga só é usada pelos outros modos de times.
 function teamGoalCell(b, t) {
   if (ARENA.bomb) return bombGoalCell(b, t);
   const n = DM.nav, foes = DM.actors.filter(e => e.alive && e.team !== b.team);
@@ -5364,6 +5775,7 @@ function teamApplyRound(d) {
       e.safeUntil = 0; dmUpdateHitboxes(e);
     }
     if (ARENA.bomb) bombAfterSpawn(t);
+    else if (eliminationOn()) for (const b of DM.bots) elimInitBot(b);
   }
   if (prev !== next) { ARENA.shownPhase = next; teamBanner(d); }
 }
@@ -6358,13 +6770,13 @@ function proxySample(e, t) {
   const rt = t - INTERP; let a = s[0], b = null;
   for (let i = s.length - 1; i >= 0; i--) if (s[i].t <= rt) { a = s[i]; b = s[i + 1] || null; break; }
   const L = s[s.length - 1];
-  if (b) { const k = clamp((rt - a.t) / Math.max(1, b.t - a.t), 0, 1); return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k, yaw: a.yaw + angDiff(a.yaw, b.yaw) * k, pi: b.pi, c: b.c, a: L.a, w: b.w, hp: L.hp, g: b.g, helmet: L.helmet, sf: L.sf }; }
+    if (b) { const k = clamp((rt - a.t) / Math.max(1, b.t - a.t), 0, 1); return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k, yaw: a.yaw + angDiff(a.yaw, b.yaw) * k, pi: b.pi, c: b.c, a: L.a, w: b.w, hp: L.hp, g: b.g, helmet: L.helmet, sf: L.sf, q:b.q }; }
   return Object.assign({}, a, { a: L.a, hp: L.hp, sf: L.sf });
 }
-function proxyPush(e, x, y, z, yaw, pi, c, w, hp, a, g, helmet, sf) {
+function proxyPush(e, x, y, z, yaw, pi, c, w, hp, a, g, helmet, sf, q) {
   if (![x, y, z, yaw].every(fin)) return;
   if (a && e.dead) { e.dead = false; e.snaps.length = 0; } // renasceu: não desliza do ponto da morte até o spawn
-  e.snaps.push({ t: now(), x, y, z, yaw, pi: fin(pi) ? clamp(pi, -1.6, 1.6) : 0, c: c ? 1 : 0, w: W[w] ? w : 'rifle', hp: fin(hp) ? clamp(hp, 0, 100) : 100, a: a ? 1 : 0, g: g ? 1 : 0, helmet: helmet ? 1 : 0, sf: sf ? 1 : 0 });
+  e.snaps.push({ t: now(), x, y, z, yaw, pi: fin(pi) ? clamp(pi, -1.6, 1.6) : 0, c: c ? 1 : 0, w: W[w] ? w : 'rifle', hp: fin(hp) ? clamp(hp, 0, 100) : 100, a: a ? 1 : 0, g: g ? 1 : 0, helmet: helmet ? 1 : 0, sf: sf ? 1 : 0, q:q===1?1:0 });
   if (e.snaps.length > 40) e.snaps.shift();
 }
 function arenaUpdateProxies(t) {
@@ -6374,8 +6786,9 @@ function arenaUpdateProxies(t) {
     const moved = Math.hypot(s.x - e.px, s.z - e.pz); e.px = s.x; e.pz = s.z;
     e.speed += (moved / Math.max(.001, (t - (e.lastT || t)) / 1000) - e.speed) * .2; e.lastT = t;
     e.pos.set(s.x, s.y, s.z); e.yaw = s.yaw; e.pitch = s.pi; e.crouch = !!s.c; e.w = s.w; e.hp = s.hp; e.helmet = !!s.helmet; e.onGround = !!s.g;
+    if(eliminationOn())e.walking=!!s.q;
     e.alive = !!s.a && !e.dead && (DM.mode !== 'team' || e.deadRound !== ARENA.r); e.safeUntil = s.sf ? t + 250 : 0;
-    if (e.alive && e.onGround && e.speed > STEP_SPEED + .2 && t >= (e.stepAt || 0)) { e.stepAt = t + 340; const a = spat(e.pos.x, e.pos.z); if (a.v > .3) AU.step(a.v * .7, a.pan, stepKind(e)); }
+    if (e.alive && e.onGround && e.speed > STEP_SPEED + .2 && (!eliminationOn()||(!e.walking&&!e.crouch)) && t >= (e.stepAt || 0)) { e.stepAt = t + 340; const a = spat(e.pos.x, e.pos.z); if (a.v > .3) AU.step(a.v * .7, a.pan, stepKind(e)); }
   }
 }
 function arenaSend(m) { const c = ARENA.hostConn; if (c && c.open) { try { c.send(m); } catch (e) {} } }
@@ -6391,7 +6804,8 @@ function arenaRelayShot(id, w, sk, o, e) {
 }
 function arenaStateRow(e) {
   const t = now();
-  return [e.id, r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), Math.round(angDiff(0, e.yaw) * 1000) / 1000, Math.round((e.pitch || 0) * 1000) / 1000, e.crouch ? 1 : 0, botHeldWeapon(e), e.hp, e.alive ? 1 : 0, e.onGround ? 1 : 0, e.helmet ? 1 : 0, e.alive && t < e.safeUntil ? 1 : 0];
+  const row=[e.id, r2(e.pos.x), r2(e.pos.y), r2(e.pos.z), Math.round(angDiff(0, e.yaw) * 1000) / 1000, Math.round((e.pitch || 0) * 1000) / 1000, e.crouch ? 1 : 0, botHeldWeapon(e), e.hp, e.alive ? 1 : 0, e.onGround ? 1 : 0, e.helmet ? 1 : 0, e.alive && t < e.safeUntil ? 1 : 0];
+  if(eliminationOn())row.push(e.walking?1:0);return row;
 }
 function arenaNetTick(t) {
   if (ARENA.host && ARENA.kind === 'dm' && ARENA.lastPhase !== DM.phase) { ARENA.lastPhase = DM.phase; ARENA.lastBeat = 0; }
@@ -6402,15 +6816,15 @@ function arenaNetTick(t) {
     if (t - ARENA.lastBeat > 1500) { ARENA.lastBeat = t; for (const id of ARENA.conns.keys()) arenaSendTo(id, { t: 'welcome', id }); arenaBroadcast(ARENA.kind === 'dm' ? { t: 'd', d: dmStateMsg(t) } : { t: 'r', d: teamRoundMsg(t) }); }
   } else if (ARENA.hostConn && ARENA.hostConn.open && HUMAN_SLOTS.includes(G.me)) {
     arenaSend({ t: 's', p: [r2(P.pos.x), r2(P.pos.y), r2(P.pos.z)], y: Math.round(angDiff(0, P.yaw) * 1000) / 1000, pi: Math.round(P.pitch * 1000) / 1000,
-      c: P.crouch ? 1 : 0, w: P.weapon, hp: P.hp, a: P.alive ? 1 : 0, g: P.onGround ? 1 : 0, helmet: P.helmet ? 1 : 0, sf: P.alive && t < (P.safeUntil || 0) ? 1 : 0 });
+      c: P.crouch ? 1 : 0, w: P.weapon, hp: P.hp, a: P.alive ? 1 : 0, g: P.onGround ? 1 : 0, helmet: P.helmet ? 1 : 0, sf: P.alive && t < (P.safeUntil || 0) ? 1 : 0, q: eliminationOn()&&P.walking?1:0 });
   }
 }
 // Mensagens recebidas: `from` é quem mandou (no juiz) ou o próprio juiz (em quem entrou).
 function arenaOnData(from, m) {
   if (!m || typeof m !== 'object') return;
   const t = now(), match = arenaMatch();
-  if (m.t === 's' && ARENA.host) { const e = DM.byId.get(from); if (e && e.remote && Array.isArray(m.p) && m.p.length === 3) proxyPush(e, m.p[0], m.p[1], m.p[2], m.y, m.pi, m.c, m.w, m.hp, m.a, m.g, m.helmet, m.sf); }
-  else if (m.t === 'w' && !ARENA.host && Array.isArray(m.a)) { for (const r of m.a.slice(0, 10)) { if (!Array.isArray(r) || r[0] === G.me) continue; const e = DM.byId.get(r[0]); if (e && e.remote) proxyPush(e, r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12]); } }
+  if (m.t === 's' && ARENA.host) { const e = DM.byId.get(from); if (e && e.remote && Array.isArray(m.p) && m.p.length === 3) proxyPush(e, m.p[0], m.p[1], m.p[2], m.y, m.pi, m.c, m.w, m.hp, m.a, m.g, m.helmet, m.sf, m.q); }
+  else if (m.t === 'w' && !ARENA.host && Array.isArray(m.a)) { for (const r of m.a.slice(0, 10)) { if (!Array.isArray(r) || r[0] === G.me) continue; const e = DM.byId.get(r[0]); if (e && e.remote) proxyPush(e, r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13]); } }
   else if (m.t === 'r' && !ARENA.host && ARENA.kind === 'team') teamApplyRound(m.d);
   else if (m.t === 'd' && !ARENA.host && ARENA.kind === 'dm') dmApplyState(m.d);
   else if (m.t === 'welcome' && !ARENA.host && HUMAN_SLOTS.includes(m.id)) {
@@ -6438,6 +6852,7 @@ function arenaOnData(from, m) {
       const id = ARENA.host ? from : d.id, e = DM.byId.get(id);
       if (!e || e === P || !Array.isArray(d.s) || d.s.length !== 6 || !d.s.every(fin)) return;
       const w = W[d.w] ? d.w : 'rifle'; e.flashUntil = t + 50; if (!W[w].melee) e.lastShot = t;
+      if(eliminationOn()&&!W[w].melee){(e.lastShotPos||(e.lastShotPos=new V3())).set(d.s[0],e.pos.y,d.s[2]);e.lastShotWeapon=w;}
       tracer([d.s[0], d.s[1], d.s[2]], [d.s[3], d.s[4], d.s[5]], 70, skinTracer(skinFits(w, d.sk) ? d.sk : null));
       const a = spat(d.s[0], d.s[2]); AU.shot(W[w].snd, a.v, a.pan, skinFits(w, d.sk) ? d.sk : null);
       if (ARENA.host) arenaBroadcast({ t: 'e', k: 'shot', d: { id, w, sk: d.sk, s: d.s } }, from);
@@ -6602,8 +7017,8 @@ function viewMuzzleWorld() {
 function updateCamera(dt, t) {
   if (specCamera(dt, t)) return;
   const dk = P.alive ? 0 : clamp((t - P.deathT) / 500, 0, 1);
-  // A física anda em passos de 1/128 s; a câmera mostra a posição interpolada entre os dois últimos passos (como no CS),
-  // para o deslocamento por quadro ficar regular em qualquer FPS. Teleportes (spawn, morte) não interpolam.
+  // Elimination mostra a posição atual, já integrada até este quadro. Nos outros modos a câmera interpola os passos
+  // fixos de 1/128 s. Teleportes (spawn, morte) não interpolam.
   const rp = renderPos();
   camera.position.set(rp.x, rp.y + P.eyeOff * (1 - 0.75 * dk), rp.z);
   // A preferência muda só o recuo visível; as balas seguem o recuo inteiro nas duas opções.
@@ -7287,6 +7702,7 @@ document.addEventListener('mousedown', e => {
   if (SHOP.open) { if (BUY.hover && e.button === 0) BUY.hover.click(); else if (BUY.hover && e.button === 2 && BUY.hover.dataset.item && bombOn() && bombSell(P, BUY.hover.dataset.item, now())) { renderShop(now()); moveVCursor(); } return; }
   if (BUY.open) { if (e.button === 0 && BUY.hover) BUY.hover.click(); return; }
   if (!P.alive && (e.button === 0 || e.button === 2) && specActive(now())) { specNext(e.button === 2 ? -1 : 1); return; }
+  syncEliminationInput();
   if (e.button === 0) {
     if (G.mode === 'aimbotz' && aimbotzClickBoard()) return;
     P.m1 = true; P.m1Press = true; updateWeapon(0, now());
@@ -7316,6 +7732,7 @@ document.addEventListener('keydown', e => {
   if (BUY.open) { if (SLOT[e.code]) selectBuySlot(SLOT[e.code]); else if (e.code==='KeyB') closeBuy(); return; }
   if (SHOP.open) { if (e.code === 'KeyB' || e.code === 'Escape') closeShop(); return; }
   if (MINI.open) { if (e.code === 'KeyX' || e.code === 'Escape') closeMinimap(); return; }
+  syncEliminationInput();
   keyEvent(e.code, true, now()); keys.add(e.code);
   if (bombOn() && /^Digit[1-5]$/.test(e.code)) bombSlotKey(e.code);
   else if (bombOn() && e.code === 'KeyB') openShop();
@@ -7330,8 +7747,8 @@ document.addEventListener('keydown', e => {
   else if (e.code === 'KeyB' && freeShopOn()) openShop();
   else if (e.code === 'KeyB' && G.mode !== 'aimbotz') { if (BUY.open) closeBuy(); else openBuy(true); }
 });
-document.addEventListener('keyup', e => { keyEvent(e.code, false, now()); keys.delete(e.code); });
-window.addEventListener('blur', () => { keys.clear(); P.m1 = P.m2 = P.m1Press = P.m2Press = false; P.jumpUntil = 0; });
+document.addEventListener('keyup', e => { syncEliminationInput(); keyEvent(e.code, false, now()); keys.delete(e.code); });
+window.addEventListener('blur', () => { syncEliminationInput(); keys.clear(); P.m1 = P.m2 = P.m1Press = P.m2Press = false; P.jumpUntil = 0; });
 
 function lock() {
   try {
@@ -7750,6 +8167,7 @@ function frame() {
   if(!$('opPick').hidden){renderOperatorPreview(t);return;}
   if(!G.mode)return;
   playerInput(dt, t);
+  if (eliminationOn()) updateWeapon(dt, t);
   if (G.mode === 'dm') {
     if(ARENA.net&&!ARENA.host)dmGuestTick(dt,t);else{if(ARENA.net)arenaUpdateProxies(t);dmTick(dt,t);}
     if(ARENA.net)arenaNetTick(t);
@@ -7760,7 +8178,7 @@ function frame() {
   if (G.host) hostTick(t);
   netTick(t);
   if(G.mode==='dm'||G.mode==='team'||G.mode==='aimbotz')dmRender(t,dt);else updateOpp(dt, t);
-  updateWeapon(dt, t);
+  if (!eliminationOn()) updateWeapon(dt, t);
   updateCamera(dt, t);
   updateVM(dt, t);
   updateRoundAudio(t);updateHUD(dt, t);updateTacticalRadar(t);

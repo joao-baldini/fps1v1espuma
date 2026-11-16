@@ -1,4 +1,23 @@
-# Mapas nativos: Guard, Elysion, Inferno Prefire, Palace e Factory
+# Mapas nativos e conversões offline
+
+## Sanctum · reconstrução independente
+
+O Sanctum atual substitui a primeira conversão do Wingman. `tools/import-sanctum.mjs` começa diretamente em `wg_sanctum.bsp`, sem ler a malha ou os objetos de `sanctum.js` anterior. O relatório `sanctum-source.json` registra o SHA-256, escala, materiais, objetos reconstruídos, áreas de navegação, pontos de nascimento e contagens.
+
+Os 1.149 polígonos visíveis da arquitetura são extraídos do BSP, preservando as paredes, pisos, escadas, distâncias e alturas na escala de 0,0254 m por unidade Source. O cenário completo substitui o recorte anterior. O acabamento é a grade padrão do jogo, com cores chapadas de pedra clara, madeira e verde, sem texturas, imagens ou shaders novos. A imagem grande e a miniatura do menu são renders dessa nova geometria.
+
+O BSP referencia modelos externos do CS que não estão incorporados nele. Esses objetos recebem geometria própria e leve nas posições, ângulos e escalas declarados no arquivo; não são cópias exatas das malhas externas ausentes. Pallets têm base baixa, as pilhas de caixas respeitam o espaçamento vertical, caixas inclinadas mantêm colisão, cercas têm barras visíveis e a tela da cerca bloqueia movimento mas deixa tiros passarem. Árvores usam copas facetadas e colisão apenas nos troncos. Recortes mínimos de segurança ao redor dos dez nascimentos são aplicados ao visual e à colisão juntos, sem deslocar os spawns.
+
+A navegação é refeita a partir das novas colisões. Os testes percorrem os caminhos com a física real, a partir de todos os nascimentos dos dois lados, até a base oposta e o bombsite. Outros testes verificam degraus, consultas de tiros, fechamentos convexos e os erros anteriores de dimensão dos pallets. A malha tem cerca de 14 mil triângulos e o payload compactado, 208 KiB; ele só é carregado quando o mapa entra em jogo.
+
+```powershell
+node tools/import-sanctum.mjs "caminho/wg_sanctum.bsp"
+node --test tests/game.test.cjs tests/hud-radar.test.cjs tests/sanctum-import.test.cjs
+```
+
+O importador geral do Wingman também encaminha Sanctum para esse conversor novo. Neon, Forge e Overgrowth continuam usando suas conversões anteriores.
+
+## Conversões anteriores e ferramentas compartilhadas
 
 Conversão offline dos BSPs fornecidos pelo usuário: `de_guard_csgo.bsp` e `de_elysion.bsp`, extraídos de `guard_feito_por_mim.zip` e `de_elysion_9e838.rar`. Guard é de **poLemin**; Elysion é de **Big_SG21**. Os arquivos fornecidos são ports de **Alex Road**. Os relatórios `*-source.json` registram o SHA-256 de cada BSP, posições, escala, navegação e contagens.
 

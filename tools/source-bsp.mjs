@@ -179,6 +179,7 @@ export function compileSourceMap(file,key,options={}){
   const planarUv=(points,n)=>{const a=Math.abs(n[0])>Math.abs(n[1])&&Math.abs(n[0])>Math.abs(n[2])?[1,2]:Math.abs(n[1])>Math.abs(n[2])?[0,2]:[0,1];return points.map(p=>[p[a[0]]/64,p[a[1]]/64]);};
   const emit=(points,n,material,tag='world',tex=-1)=>{if(points.length<3||!keep(points))return;const rgb=bsp.materialColors.get(material),c=rgb?flatColor(rgb):propColors.get(material)??colorFor(material,n,key),face={p:points.map(convert),n:normal(n),c,glass:/glass|window/.test(material),tag};
     if(options.textures){const ti=bsp.texInfo[tex],size=ti&&bsp.texSize[ti.data];face.uv=ti&&size?points.map(p=>[(ti.s[0]*p[0]+ti.s[1]*p[1]+ti.s[2]*p[2]+ti.s[3])/size[0],(ti.t[0]*p[0]+ti.t[1]*p[1]+ti.t[2]*p[2]+ti.t[3])/size[1]]):planarUv(points,n);face.pat=patternFor(material);}
+    if(options.materialNames)face.material=material;
     polygons.push(face);};
   const collision=(ps,b,mask=3)=>{if(b[5]<base-512)return;const pts=corners(b).map(convert),bb=bounds(pts);hulls.push({planes:ps.map(plane),min:bb.slice(0,3),max:bb.slice(3),mask});};
   const surfaceCollider=(points,n)=>{

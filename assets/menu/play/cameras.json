@@ -179,6 +179,20 @@
       ],
       "fov": 60,
       "actorLayer": 1
+    },
+    "sanctum": {
+      "from": [
+        -25,
+        17,
+        18
+      ],
+      "to": [
+        -8,
+        1,
+        -10
+      ],
+      "fov": 50,
+      "source": "BSP rebuild v2"
     }
   }
 }
