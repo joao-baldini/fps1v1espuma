@@ -112,10 +112,27 @@ export function rebuildSanctum(file,{bake=true}={}){
   const sourceToWorld=p=>map.convert(p),props=map.bsp.staticProps();
   const corridors=[];
   for(const p of map.t.concat(map.ct))corridors.push({lo:[p[0]-.8,-1000,p[1]-.8],hi:[p[0]+.8,1000,p[1]+.8],floor:p[3]-.3});
-  report.rebuild.spawnClearanceVolumes=corridors.length;report.rebuild.carvedParts=0;
-  for(const [index,prop]of props.entries()){
+  report.rebuild.spawnClearanceVolumes=corridors.length;report.rebuild.carvedParts=0;report.rebuild.settled=0;
+  // Assentar caixotes, barris e paletes: de baixo para cima, cada um desce (ou sobe um pouco) até o chão visível ou até
+  // o topo do objeto já assentado embaixo, para nada ficar flutuando nem afundado.
+  const support=new globalThis.SourceMaps.NativeMap(packMap({...map,hulls:map.hulls.filter(h=>h.mask&2)})),placed=[];
+  const SETTLE=/crate|barrel|drum|pallet|hay_bale|concrete_bag|plywood.*stack|construction_stack|wood_pile|nuclearcontainer|tirestack/;
+  const order=[...props.entries()].sort((a,b)=>a[1].origin[2]-b[1].origin[2]);
+  for(const [index,prop]of order){
     const parts=sanctumPropParts(prop.model);if(!parts.length){report.rebuild.omitted.push({index,model:prop.model});continue;}
     const rot=rotation(prop.angles),xf=p=>sourceToWorld(rot(p.map(v=>v*prop.scale)).map((v,i)=>v+prop.origin[i]));
+    if(SETTLE.test(prop.model)){
+      const solidPoints=()=>parts.filter(p=>p.solid).flatMap(p=>facesForPart(p).flat().map(xf));
+      let pts=solidPoints();
+      if(pts.length){
+        const bb=bounds(pts),cx=(bb[0]+bb[3])/2,cz=(bb[2]+bb[5])/2,bottom=bb[1];
+        let top=support.ground(cx,cz,bottom-.3);
+        for(const b of placed)if(cx>=b.x0&&cx<=b.x1&&cz>=b.z0&&cz<=b.z1&&b.top<=bottom+.25&&b.top>top)top=b.top;
+        const gap=bottom-top;
+        if(top>-1e3&&((gap>.015&&gap<3.5)||(gap<-.015&&gap>-.45))){prop.origin=[prop.origin[0],prop.origin[1],prop.origin[2]-gap/map.scale];report.rebuild.settled++;pts=solidPoints();}
+        const b2=bounds(pts);placed.push({x0:b2[0],x1:b2[3],z0:b2[2],z1:b2[5],top:b2[4]});
+      }
+    }
     const entry={index,model:prop.model,origin:prop.origin,angles:prop.angles,scale:prop.scale,parts:parts.length,solidParts:0};
     const propBounds=bounds(parts.flatMap(p=>facesForPart(p).flat().map(xf)));
     const cuts=corridors.filter(c=>propBounds[4]>c.floor+.5&&propBounds[1]<c.floor+1.8);

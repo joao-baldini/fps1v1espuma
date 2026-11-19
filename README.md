@@ -98,11 +98,11 @@ Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os 
 
 ### Mapas de bomba
 
-No **Wingman 2v2**, escolha **Sanctum**, **Neon**, **Forge**, **Overgrowth** ou **Sable**. Os créditos dos mapas são, respectivamente, **alicate madeira 4**, **zelzstorm**, **Blind**, **jd40** e **dorg** (mapas usados com a permissão dos autores).
+No **Wingman 2v2**, escolha **Sanctum**, **Neon**, **Forge** ou **Sable**. Os créditos dos mapas são, respectivamente, **alicate madeira 4**, **zelzstorm**, **Blind** e **dorg** (mapas usados com a permissão dos autores). Em todos eles, caixotes e barris ficam apoiados no chão ou na pilha, com o tamanho real e textura de caixote; no Sable, o portão do spawn CT é uma grade de ferro.
 
 **Wingman com amigos:** em Wingman, escolha **Com amigos**, combine um código de sala e clique em **Entrar na sala**. Depois de escolher o operador, quem entrar primeiro cria a sala e é o juiz da partida (rodadas, bomba e bots); o mapa vale o de quem criou. Em **Times na sala**, **lados opostos** coloca cada pessoa num time e **mesmo time** junta vocês contra bots; bots completam as vagas do 2v2. A bomba (pegar, plantar, desarmar e explodir), o placar, a economia (prêmios de rodada, abate, plantio e desarme), as compras e os operadores ficam sincronizados.
 
-O **Sanctum** foi reconstruído por um conversor próprio a partir do BSP enviado: arquitetura completa, dez nascimentos originais e bombsite A, cores chapadas e grade padrão do jogo. As coberturas externas ausentes no BSP recebem modelagem própria e leve: pallets baixos, caixas com alturas corrigidas, barris e cercas vazadas. Não carrega texturas do CS. A malha anterior e as duas prévias do menu foram substituídas. O relatório e as instruções de regeneração estão em [assets/maps/README.md](assets/maps/README.md).
+O **Sanctum** foi reconstruído por um conversor próprio a partir do BSP enviado: arquitetura completa, dez nascimentos originais e bombsite A, cores chapadas e grade padrão do jogo. As coberturas externas ausentes no BSP recebem modelagem própria e leve: pallets baixos, caixas com alturas corrigidas, barris e cercas vazadas. Caixotes, barris e paletes são assentados no chão ou na pilha de baixo, sem flutuar. Não carrega texturas do CS. A malha anterior e as duas prévias do menu foram substituídas. O relatório e as instruções de regeneração estão em [assets/maps/README.md](assets/maps/README.md).
 
 Os dados são carregados somente ao entrar nesses mapas e funcionam também abrindo `index.html` por `file://`. A navegação dos bots vem pré-calculada. Há detalhes de conversão, limites e instruções para regenerar os arquivos em [assets/maps/README.md](assets/maps/README.md).
 
@@ -167,7 +167,7 @@ Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e
 
 ### Treino livre nos mapas do Wingman
 
-Na faixa **Treino livre** do Practice, escolha **Sanctum**, **Neon**, **Forge**, **Overgrowth** ou **Sable** em vez da arena de mira. Você entra sozinho no mapa e pode treinar sem limites:
+Na faixa **Treino livre** do Practice, escolha **Sanctum**, **Neon**, **Forge** ou **Sable** em vez da arena de mira. Você entra sozinho no mapa e pode treinar sem limites:
 
 - **Tempo:** não acaba; o placar mostra **∞**.
 - **Dinheiro e área de compra:** **B** abre a loja grátis em qualquer lugar e a qualquer hora. Escolher uma arma já a equipa.

@@ -215,7 +215,28 @@ function lanternStrings(box) {
   return out;
 }
 
+// Grade e portão de ferro (Inferno): barras verticais com ponta, travessas e moldura; a colisão é uma placa só que
+// bloqueia a passagem e deixa o tiro passar entre as barras (máscara 1).
+// Grade de ferro (portão e gradil com pontas). Nesses modelos do CS a largura fica no eixo Y do modelo (o X é a
+// espessura), como mostram os gradis enfileirados de 64 em 64 unidades ao longo da parede.
+function ironBars(width, z0, height, step, gate) {
+  return box => {
+    const out = [], iron = 0x2c2e31, hw = width / 2, t = gate ? 1.6 : 1.1, bar = (y0, y1, x, zA, zB) => box(-x, x, y0, y1, zA, zB, false);
+    for (let y = -hw + step / 2; y < hw; y += step) {
+      out.push({ faces: bar(y - t / 2, y + t / 2, t / 2, z0, z0 + height), mask: 0, color: iron, pat: P.metal });
+      out.push({ faces: bar(y - t, y + t, t, z0 + height, z0 + height + (gate ? 5 : 3.5)), mask: 0, color: iron, pat: P.metal });
+    }
+    for (const zz of gate ? [z0 + 2, z0 + height * .5, z0 + height - 3] : [z0 + 2, z0 + height - 3])
+      out.push({ faces: bar(-hw, hw, 1.2, zz, zz + 2.4), mask: 0, color: iron, pat: P.metal });
+    if (gate) for (const y of [-hw, hw, 0]) out.push({ faces: bar(y - 2, y + 2, 2, z0, z0 + height + 2), mask: 0, color: iron, pat: P.metal });
+    out.push({ faces: bar(-hw, hw, 1, z0, z0 + height + 4), mask: 1, noDraw: true, color: iron, pat: P.metal });
+    return out;
+  };
+}
+
 export const SABLE_PROPS = [
+  [/gate_a\/gate_a/, () => ({ custom: ironBars(128, -68, 132, 8, true) })],
+  [/railingspikedgate/, () => ({ custom: ironBars(64, 0, 46, 6, false) })],
   [/street_lanterns0[12]/, () => ({ custom: lanternStrings })],
   [/ornate_lamp|it_lantern|light02_32/, () => ({ custom: box => [{ faces: box(-5, 5, -5, 5, -14, -2, true), mask: 0, color: 0xffd08a, pat: P.lantern, faceUv: true }] })],
   // Medidas reais tiradas das pilhas do próprio mapa (o nome do modelo não é a medida): a lona é só um pano por cima

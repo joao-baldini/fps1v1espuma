@@ -15,7 +15,7 @@ node tools/import-sanctum.mjs "caminho/wg_sanctum.bsp"
 node --test tests/game.test.cjs tests/hud-radar.test.cjs tests/sanctum-import.test.cjs
 ```
 
-O importador geral do Wingman também encaminha Sanctum para esse conversor novo. Neon, Forge e Overgrowth continuam usando suas conversões anteriores.
+O importador geral do Wingman também encaminha Sanctum para esse conversor novo. Neon, Forge e Sable continuam usando suas conversões anteriores.
 
 ## Neon · acabamento do Akihabara
 
@@ -55,6 +55,10 @@ A textura é tingida pelo brilho para chegar à cor real do material (cor do vé
 
 Objetos com textura própria usam coordenadas por face (de 0 a 1), para a moldura do caixote e os aros do barril caírem no lugar.
 
+**Caixotes e barris em todos os mapas convertidos.** Neon, Forge e Sable usam a textura de caixote (moldura com X) e a de barril (aduelas com aros) em cada face. Quando o nome do modelo traz as medidas (`dust_crate_style_02_37x37x74`), o caixote tem esse tamanho exato e não é mais encolhido pela checagem da malha de navegação, que antes deixava caixotes pequenos e desencontrados da pilha. Barris de madeira da Inferno ficam marrons; os enferrujados e os de aviso, nas cores deles.
+
+**Assentamento.** Os modelos do CS costumam ficar alguns centímetros acima do chão, ou apoiados em algo que não existe aqui. De baixo para cima, cada caixote, barril, saco, palete ou bloco desce até o chão visível ou até o topo do objeto já assentado embaixo (ou sobe, se estiver afundado até 45 cm). A conta usa os 8 cantos da caixa já girada. Só superfícies que aparecem servem de apoio: as colisões invisíveis do mapa original (*clips*) não contam. Caixas de luz e de ar-condicionado (presas na parede ou no telhado) e os prédios do skybox não se mexem. O Sanctum, que tem conversor próprio, recebe o mesmo assentamento. Resultado: Neon 111, Forge 87, Sable 62 e Sanctum 63 objetos assentados, com todos os spawns ligados.
+
 ## Sable · Wingman
 
 O Sable é o mapa de **dorg**, usado com a permissão do autor (Steam Workshop 1369768878). O arquivo enviado, `de_sable.bsp`, é um zip com o BSP Source 21 dentro e é extraído antes da conversão. Ele passa pelo mesmo importador do Wingman.
@@ -63,7 +67,7 @@ A estrutura é a do original, sem mudanças: a geometria, as alturas, as colisõ
 
 O acabamento usa as cores reais de cada material, pelo mesmo método do Neon (`styleNeon` em `tools/neon-style.mjs`): o VMT e o VTF embutidos quando existem; senão, a refletividade que o BSP guarda de cada textura, convertida para sRGB. O desenho fica com os padrões procedurais do jogo: tijolo, reboco, madeira, pedra, telhado e paralelepípedo, conforme o nome do material. As texturas originais do CS (`de_inferno/hr_i` e outras) não vêm dentro do BSP, então não há imagens.
 
-O mapa não traz nenhum modelo próprio: os 627 objetos são modelos padrão do CS. Eles são aproximados pelas regras do importador (barris, fardos de feno, caixotes, ciprestes, pilares, grades...). Os caixotes usam as medidas reais tiradas das pilhas do mapa (o nome do modelo não é a medida: o caixote de vinho tem 62 unidades), e as lonas (`_tarp`), que são só um pano sobre um caixote que já existe, ficam de fora. Os caixotes têm moldura, tábuas e travessa; os barris são de madeira com aros. O corredor coberto ganhou varais de lanternas de papel acesas no lugar dos modelos `street_lanterns`, e os lampiões viraram luzes pequenas. Ruas de laje usam lajotas; calçamento usa paralelepípedos; os corredores têm painéis de madeira. Regras extras (`SABLE_PROPS`) também cobrem a Vespa, os sofás, as cadeiras, os sacos e as floreiras. Enfeites finos (molduras, calhas, janelas, portas na parede) ficam de fora, como nos outros mapas. O tema de luz é o `terracota`.
+O mapa não traz nenhum modelo próprio: os 627 objetos são modelos padrão do CS. Eles são aproximados pelas regras do importador (barris, fardos de feno, caixotes, ciprestes, pilares, grades...). Os caixotes usam as medidas reais tiradas das pilhas do mapa (o nome do modelo não é a medida: o caixote de vinho tem 62 unidades), e as lonas (`_tarp`), que são só um pano sobre um caixote que já existe, ficam de fora. Os caixotes têm moldura, tábuas e travessa; os barris são de madeira com aros. O corredor coberto ganhou varais de lanternas de papel acesas no lugar dos modelos `street_lanterns`, e os lampiões viraram luzes pequenas. Ruas de laje usam lajotas; calçamento usa paralelepípedos; os corredores têm painéis de madeira. O portão do spawn CT (`gate_a`) e as grades com pontas (`railingspikedgate`) viram grades de ferro de verdade: barras com pontas e travessas, mais uma colisão invisível que bloqueia a passagem do jogador e deixa os tiros passarem pelo vão. Antes só apareciam as molduras, vazias. Regras extras (`SABLE_PROPS`) também cobrem a Vespa, os sofás, as cadeiras, os sacos e as floreiras. Enfeites finos (molduras, calhas, janelas, portas na parede) ficam de fora, como nos outros mapas. O tema de luz é o `terracota`.
 
 ## Conversões anteriores e ferramentas compartilhadas
 

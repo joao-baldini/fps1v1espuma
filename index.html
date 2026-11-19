@@ -88,7 +88,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
     <div class="modes" id="modeSel" role="radiogroup" aria-label="Modo de jogo">
       <button class="mode-card" type="button" role="radio" data-mode="elim"><span class="mode-copy"><b>Elimination</b><small>Monte o confronto · 1 a 8 por time</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Palace e Factory</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Sanctum, Neon, Forge, Overgrowth e Sable</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Sanctum, Neon, Forge e Sable</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><span class="mode-copy"><b>Practice</b><small>Encontre sua mira</small></span></button>
@@ -361,8 +361,8 @@ function loadS() {
   if (!['elim', 'dm', 'tdm', 'aimbotz', 'bomb', 'wingman'].includes(s.mode)) s.mode = 'elim';
   s.xvx = { mine: clamp(+s.xvx?.mine || 1, 1, 8), foes: clamp(+s.xvx?.foes || 1, 1, 8) };
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
-  if (!['sanctum', 'neon', 'forge', 'overgrowth', 'sable', 'rotacao'].includes(s.bombMap)) s.bombMap = 'sanctum';
-  if (!['aimbotz', 'sanctum', 'neon', 'forge', 'overgrowth', 'sable'].includes(s.practiceMap)) s.practiceMap = 'aimbotz';
+  if (!['sanctum', 'neon', 'forge', 'sable', 'rotacao'].includes(s.bombMap)) s.bombMap = 'sanctum';
+  if (!['aimbotz', 'sanctum', 'neon', 'forge', 'sable'].includes(s.practiceMap)) s.practiceMap = 'aimbotz';
   if(!['palace','factory'].includes(s.warfaceMap))s.warfaceMap='palace';
   if (!['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(s.operator)) s.operator = 'finder';
   if (!['vermelho', 'amarelo', 'roxo'].includes(s.enemyOutline)) s.enemyOutline = 'vermelho';
@@ -1307,7 +1307,7 @@ function statue(B, x, z, y = 0, size = 1) {
 
 // Mapas do Wingman: geometria, rotas, alturas, spawns e bombsites vêm dos BSPs enviados (uso autorizado pelos autores);
 // o crédito de cada autor aparece no menu e na miniatura.
-const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', overgrowth: 'praga', sable: 'terracota' };
+const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', sable: 'terracota' };
 for (const id of Object.keys(SOURCE_MAP_CATALOG)) {
   const data=SOURCE_MAP_CATALOG[id];
   MAPS[id]={name:data.name,theme:WINGMAN_THEMES[id]||'praga',bomb:true,source:id,ax:data.ax,az:data.az,author:data.credit,
@@ -8226,7 +8226,7 @@ const MODE_MENU = {
   elim: ['Elimination', 'Escolha de 1 a 8 jogadores em cada time. Uma vida por rodada; bots completam as vagas.'],
   tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
   bomb: ['Plant the Bomb', '5 contra 5 em Palace e Factory. Atacantes plantam, Defensores defendem.'],
-  wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge, Overgrowth e Sable, com as regras do Wingman.'],
+  wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge e Sable, com as regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
   aimbotz: ['Practice', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
 };
@@ -8246,7 +8246,6 @@ const MAP_CARD_DETAILS = {
   sanctum: 'Mapa de alicate madeira 4',
   neon: 'Mapa de zelzstorm',
   forge: 'Mapa de Blind',
-  overgrowth: 'Mapa de jd40',
   sable: 'Mapa de dorg',
 };
 function mountMapCards(group, ids) {

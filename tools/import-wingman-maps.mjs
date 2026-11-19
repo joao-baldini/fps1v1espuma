@@ -1,5 +1,5 @@
-// Converts the four Wingman BSPs supplied by the user (used with the authors' permission) into the game's map format.
-// Usage: node tools/import-wingman-maps.mjs <wg_sanctum.bsp> <wg_neon.bsp> <wg_forge.bsp> <wg_overgrowth.bsp> <de_sable.bsp>
+// Converts the Wingman BSPs supplied by the user (used with the authors' permission) into the game's map format.
+// Usage: node tools/import-wingman-maps.mjs <wg_sanctum.bsp> <wg_neon.bsp> <wg_forge.bsp> <de_sable.bsp>
 // Geometry, collision, spawns and bombsites come from each BSP. Stock CS:GO props are not inside the files, so the
 // common cover props (crates, barrels, hedges, cars, barriers, rocks, fences, railings, trees...) are approximated by
 // boxes and prisms from rules on the model name, and checked against the map's own navigation mesh (.nav): a prop that
@@ -18,12 +18,11 @@ export const WINGMAN_MAPS = {
   sanctum: { name: 'Sanctum', credit: 'alicate madeira 4', file: 'wg_sanctum.bsp' },
   neon: { name: 'Neon', credit: 'zelzstorm', file: 'wg_neon.bsp' },
   forge: { name: 'Forge', credit: 'Blind', file: 'wg_forge.bsp' },
-  overgrowth: { name: 'Overgrowth', credit: 'jd40', file: 'wg_overgrowth.bsp' },
   sable: { name: 'Sable', credit: 'dorg', file: 'de_sable.bsp' },
 };
 
 const add = (a, b) => a.map((v, i) => v + b[i]), mul = (a, s) => a.map(v => v * s), dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const P = PATTERNS;
+const P = PATTERNS, CRATE = 0xb08850;
 const C = { wood: 0x8a6a45, crate: 0x9a7a4e, metal: 0x66737a, barrel: 0x5f6b62, stone: 0x9b958a, rock: 0x8c877d, foliage: 0x4e6b38, trunk: 0x5b4632, car: 0x7b858e, concrete: 0xaaa69d, hay: 0xc4a65c, fence: 0x8b939a, plaster: 0xc9bca5, cloth: 0x6d6a5c };
 
 // Prop rules: size in model units [length (x), width (y), height (z)], origin at the base centre.
@@ -31,14 +30,18 @@ const dims3 = m => { const d = m.match(/(\d+)x(\d+)x(\d+)/); return d ? [+d[1], 
 const tail = (m, re, def) => { const d = m.match(re); return d ? +d[1] : def; };
 const SKIP = /(wire|cable|light|lamp|fixture|sign|decal|pipe|trim|merlon|window|door|vent|gutter|curb|grass|weed|vine|ivy|clover|flower|garbage|beercan|bottle|paper|socket|alarm|extinguisher|sprinkler|button|gauge|valve|joist|beam|rebar|conduit|plate|bumper|leaves|card|tarp_|windowtarp|manhole|_cap|noose|endcap|support|attachment|bell|ceiling|frame|shutter|bars|loose_board|cinderblock|pot_|planter|chair|junctionbox|exhaust|fan_|ladder|scaffold|arch|poster|graffiti|debris|trash_|can_|cup|book|clutter|rope|chain_|hose|faucet|outlet|switch|camera|speaker|radio|phone|keyboard|monitor|computer|clock|picture|painting|mirror|towel|curtain|blind|flag|banner|awning|canopy|umbrella)/;
 const RULES = [
-  [/crate_assembly_(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)/); return { size: [+d[1], +d[2], 100], color: C.crate, pat: P.wood }; }],
-  [/(\d+)x(\d+)x(\d+)/, m => ({ size: dims3(m), color: /crate|wood|box/.test(m) ? C.crate : C.concrete, pat: /crate|wood|box/.test(m) ? P.wood : P.concrete })],
-  [/barrel|drum|keg/, m => /wine_barrel/.test(m) ? { size: [44, 34, 34], color: C.wood, pat: P.wood } : { size: [30, 30, 44], cyl: true, color: C.barrel, pat: P.metal }],
+  // Caixotes e barris usam a textura própria de cada face (moldura com X, aduelas com aros), como no Sable. Quando o
+  // nome do modelo traz as medidas, o tamanho é exato e não é encolhido pela checagem da malha de navegação.
+  [/crate_assembly_(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)/); return { size: [+d[1], +d[2], 100], color: CRATE, pat: P.crate, faceUv: true, exact: true }; }],
+  [/(\d+)x(\d+)x(\d+)/, m => /crate/.test(m) ? { size: dims3(m), color: CRATE, pat: P.crate, faceUv: true, exact: true }
+    : { size: dims3(m), color: /wood|box/.test(m) ? C.crate : C.concrete, pat: /wood|box/.test(m) ? P.wood : P.concrete }],
+  [/barrel|drum|keg/, m => /wine_barrel/.test(m) ? { size: [44, 34, 34], color: C.wood, pat: P.wood }
+    : { size: [28, 28, 42], cyl: true, color: /de_inferno\/|wood/.test(m) ? 0x8a5a34 : /rust/.test(m) ? 0x9a5a3a : /warning|yellow/.test(m) ? 0xd9a531 : /blue/.test(m) ? 0x3f6ea8 : C.barrel, pat: P.barrel, faceUv: true, exact: true }],
   [/hay_bale/, () => ({ size: [64, 40, 40], color: C.hay, pat: P.ground })],
   [/concrete_bags?_stack|sandbag/, () => ({ size: [64, 44, 30], color: C.cloth, pat: P.concrete })],
   [/pallet_stack|pallet_barrels|shell_pallet|bomb_shells|wood_pallet_stack/, () => ({ size: [48, 40, 40], color: C.wood, pat: P.wood })],
   [/plywood|sheetrock_stack/, () => ({ size: [96, 48, 30], color: C.wood, pat: P.wood })],
-  [/wine_crate|crate/, () => ({ size: [48, 40, 40], color: C.crate, pat: P.wood })],
+  [/wine_crate|crate/, () => ({ size: [48, 40, 40], color: CRATE, pat: P.crate, faceUv: true })],
   [/hedge/, m => { const d = m.match(/hedge_(\d+)_(\d+)/); return { size: d ? [+d[1], 48, +d[2]] : [128, 48, 96], color: C.foliage, pat: P.foliage, elongated: !!d }; }],
   [/cypress/, () => ({ tree: { trunk: 14, height: 300, crown: [56, 56, 250], crownAt: 40 } })],
   [/palm_tree/, () => ({ tree: { trunk: 16, height: 330, crown: [200, 200, 60], crownAt: 290 } })],
@@ -108,11 +111,32 @@ function approximateProps(map, nav, report, extraRules = []) {
     }
     return hit / total;
   };
+  // Assentar caixotes, barris e afins: o modelo do CS pode estar alguns centímetros acima do chão, ou apoiado em algo que
+  // não existe aqui. De baixo para cima, cada um desce até o chão real ou até o topo do objeto já assentado embaixo.
+  // Só superfícies que se veem (paredes, chão, objetos): as colisões invisíveis do mapa original não servem de apoio.
+  const native = new globalThis.SourceMaps.NativeMap(packMap({ ...map, hulls: map.hulls.filter(h => h.mask & 2) })), placed = [];
+  const SETTLE = /crate|barrel|drum|keg|box|pallet|ibc|sack|bag|cinderblock|hay_bale|spool|dumpster|containerbox/;
+  // Caixas de luz e de ar-condicionado ficam presas na parede ou no telhado, e os prédios do skybox flutuam de propósito.
+  const NO_SETTLE = /skybox|power_?box|electrical|ac_box|fusebox|mailbox/;
+  props.sort((a, b) => a.origin[2] - b.origin[2]);
+  stats.settled = 0;
   for (const prop of props) {
     if (!prop.model || bsp.pak.has(prop.model.replace(/\.mdl$/, '.phy')) || prop.origin[2] < base - 512) continue;
     const spec = propSpec(prop.model, extraRules);
     if (!spec) { stats.unknown.set(prop.model, (stats.unknown.get(prop.model) || 0) + 1); continue; }
-    const rot = rotation(prop.angles), s = prop.scale || 1, tilted = Math.abs(prop.angles[0]) > 25 || Math.abs(prop.angles[2]) > 25;
+    // Giros de 90° (caixote deitado) contam como alinhados: só giros "tortos" perdem a colisão.
+    const straight = i => { const v = ((prop.angles[i] % 90) + 90) % 90; return v < 12 || v > 78; };
+    const rot = rotation(prop.angles), s = prop.scale || 1, tilted = !(straight(0) && straight(2));
+    if (spec.size && SETTLE.test(prop.model) && !NO_SETTLE.test(prop.model)) {
+      const [L, W, H] = spec.size, box = () => [0, 1].flatMap(i => [0, 1].flatMap(j => [0, 1].map(k => convert(add(rot(mul([(i - .5) * L, (j - .5) * W, k * H], s)), prop.origin)))));
+      let cs = box();
+      const c = [0, 1, 2].map(i => cs.reduce((t, q) => t + q[i], 0) / 8), bottom = Math.min(...cs.map(q => q[1]));
+      let top = native.ground(c[0], c[2], bottom - .3);
+      for (const b of placed) if (c[0] >= b.x0 && c[0] <= b.x1 && c[2] >= b.z0 && c[2] <= b.z1 && b.top <= bottom + .25 && b.top > top) top = b.top;
+      const gap = bottom - top;
+      if (top > -1e3 && ((gap > .015 && gap < 3.5) || (gap < -.015 && gap > -.45))) { prop.origin[2] -= gap / scale; stats.settled++; cs = box(); }
+      placed.push({ model: prop.model, x0: Math.min(...cs.map(q => q[0])), x1: Math.max(...cs.map(q => q[0])), z0: Math.min(...cs.map(q => q[2])), z1: Math.max(...cs.map(q => q[2])), y0: Math.min(...cs.map(q => q[1])), top: Math.max(...cs.map(q => q[1])) });
+    }
     const xf = p => add(rot(mul(p, s)), prop.origin);
     const out = [];
     let mask = prop.solid && !tilted ? (spec.mask ?? 3) : 0;
@@ -130,7 +154,7 @@ function approximateProps(map, nav, report, extraRules = []) {
     } else {
       let [L, W, H] = spec.size, x0 = -L / 2, x1 = L / 2, y0 = -W / 2, y1 = W / 2;
       const baseZ = prop.origin[2];
-      if (mask & 1) {
+      if ((mask & 1) && !spec.exact) {
         // The navigation mesh is ground truth for where players walk: pick the anchor that covers the least walkable
         // floor, shrink once if needed, and leave the prop out when it still blocks a walkway.
         const options = [[x0, x1]];
@@ -149,7 +173,7 @@ function approximateProps(map, nav, report, extraRules = []) {
     }
     stats.approximated++;
     for (const piece of out) {
-      for (const f of piece.faces) {
+      if (!piece.noDraw) for (const f of piece.faces) {
         const pts = f.p, ax = Math.abs(f.n[0]) > Math.abs(f.n[1]) && Math.abs(f.n[0]) > Math.abs(f.n[2]) ? [1, 2] : Math.abs(f.n[1]) > Math.abs(f.n[2]) ? [0, 2] : [0, 1];
         map.polygons.push({ p: pts.map(convert), n: [f.n[0], f.n[2], -f.n[1]], c: piece.color, glass: !!piece.glass, tag: 'prop', uv: piece.faceUv && f.uv ? f.uv : pts.map(p => [p[ax[0]] / 64, p[ax[1]] / 64]), pat: piece.pat });
       }
@@ -160,7 +184,8 @@ function approximateProps(map, nav, report, extraRules = []) {
       }
     }
   }
-  report.props = { approximated: stats.approximated, solidPieces: stats.solid, shrunk: stats.shrunk, droppedOnWalkways: stats.dropped, unknownModels: stats.unknown.size, unknownInstances: [...stats.unknown.values()].reduce((s, v) => s + v, 0) };
+  report.stacked = placed;
+  report.props = { settled: stats.settled, approximated: stats.approximated, solidPieces: stats.solid, shrunk: stats.shrunk, droppedOnWalkways: stats.dropped, unknownModels: stats.unknown.size, unknownInstances: [...stats.unknown.values()].reduce((s, v) => s + v, 0) };
 }
 
 // Keep only the playable area (removes the 3D skybox and far scenery), with a margin for the boundary walls.
