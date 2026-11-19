@@ -100,6 +100,8 @@ Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os 
 
 No **Wingman 2v2**, escolha **Sanctum**, **Neon**, **Forge**, **Overgrowth** ou **Sable**. Os créditos dos mapas são, respectivamente, **alicate madeira 4**, **zelzstorm**, **Blind**, **jd40** e **dorg** (mapas usados com a permissão dos autores).
 
+**Wingman com amigos:** em Wingman, escolha **Com amigos**, combine um código de sala e clique em **Entrar na sala**. Depois de escolher o operador, quem entrar primeiro cria a sala e é o juiz da partida (rodadas, bomba e bots); o mapa vale o de quem criou. Em **Times na sala**, **lados opostos** coloca cada pessoa num time e **mesmo time** junta vocês contra bots; bots completam as vagas do 2v2. A bomba (pegar, plantar, desarmar e explodir), o placar, a economia (prêmios de rodada, abate, plantio e desarme), as compras e os operadores ficam sincronizados.
+
 O **Sanctum** foi reconstruído por um conversor próprio a partir do BSP enviado: arquitetura completa, dez nascimentos originais e bombsite A, cores chapadas e grade padrão do jogo. As coberturas externas ausentes no BSP recebem modelagem própria e leve: pallets baixos, caixas com alturas corrigidas, barris e cercas vazadas. Não carrega texturas do CS. A malha anterior e as duas prévias do menu foram substituídas. O relatório e as instruções de regeneração estão em [assets/maps/README.md](assets/maps/README.md).
 
 Os dados são carregados somente ao entrar nesses mapas e funcionam também abrindo `index.html` por `file://`. A navegação dos bots vem pré-calculada. Há detalhes de conversão, limites e instruções para regenerar os arquivos em [assets/maps/README.md](assets/maps/README.md).
