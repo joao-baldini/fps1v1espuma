@@ -17,6 +17,19 @@ node --test tests/game.test.cjs tests/hud-radar.test.cjs tests/sanctum-import.te
 
 O importador geral do Wingman também encaminha Sanctum para esse conversor novo. Neon, Forge e Overgrowth continuam usando suas conversões anteriores.
 
+## Neon · acabamento do Akihabara
+
+O Neon é o Akihabara de **zelzstorm** (Adroon na arte). A geometria, as colisões, os spawns e o bombsite continuam vindo de `wg_neon.bsp`, pelo mesmo importador do Wingman. O acabamento foi refeito com base nas fotos do mapa original. Tudo fica em `tools/neon-style.mjs`:
+
+- **Cores reais de cada material.** O importador lê os VMT embutidos no BSP, seguindo `patch → include`, e usa a refletividade da textura (VTF embutido ou dado do BSP) multiplicada pela tinta `$color` de cada variação. É daí que saem as fachadas vermelha, rosa, bege, amarela e verde-limão, as placas azuis, vermelhas e verdes, o piso tátil amarelo e o compensado laranja. Como a refletividade é linear, ela é convertida para cor de tela (sRGB).
+- **Exceções vistas nas fotos.** O vidro das fachadas fica azul, como o reflexo do céu, com o padrão de grade de janelas. A água da vala do bombsite fica escura e esverdeada e é semitransparente.
+- **Padrões de superfície.** Painéis metálicos, plástico e mármore usam o padrão de placas. As versões listradas e as portas de enrolar usam o metal canelado.
+- **Placas e telões.** Os overlays grandes de propaganda (a partir de 4 m²) e o logotipo da Stein viram painéis colados 3 cm à frente da parede. A cor vem da média dos pixels visíveis do recorte do atlas usado, depois de decodificar o DXT do VTF. Um overlay só entra se a parede dele existe no mapa convertido. Os letreiros 3D (Stein, Switch+, ZURA...) viram caixas com as medidas do próprio modelo. Nada disso tem colisão.
+- **Objetos de obra que o BSP não traz.** São caixas d'água IBC azuis, blocos de concreto, sacos de cimento, vigas, feixes de vergalhão e grades de polícia, com a mesma checagem de passagem dos outros objetos aproximados.
+- **Paredes invisíveis no fim das ruas.** Elas foram achadas percorrendo todo o espaço alcançável (andando, pulando agachado e caindo) e procurando onde o corpo para numa colisão só de movimento enquanto o tiro passa livre. Os 17 trechos ficam no fim da rua norte (spawn CT), da rua sul, da saída do spawn TR, da rua oeste depois do andaime, na praça coberta a leste, na escada atrás dos cones e num beco ao lado do contêiner azul. Cada um ganhou um tapume de obra de 2,9 m: painéis brancos corrugados, faixa e régua azuis e montantes. O tapume é sólido para movimento e tiros; acima dele a colisão original continua.
+
+A área jogável alcançável foi comparada com o radar oficial do Akihabara e coincide com ele. Spawns, bombsite e navegação continuam conectados, e o tamanho do payload quase não mudou (cerca de 2,9 MB compactado). A imagem do menu (`menu/play/neon.webp` e a miniatura) é um render novo desse acabamento; a câmera está em `cameras.json`.
+
 ## Conversões anteriores e ferramentas compartilhadas
 
 Conversão offline dos BSPs fornecidos pelo usuário: `de_guard_csgo.bsp` e `de_elysion.bsp`, extraídos de `guard_feito_por_mim.zip` e `de_elysion_9e838.rar`. Guard é de **poLemin**; Elysion é de **Big_SG21**. Os arquivos fornecidos são ports de **Alex Road**. Os relatórios `*-source.json` registram o SHA-256 de cada BSP, posições, escala, navegação e contagens.

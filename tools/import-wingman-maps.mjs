@@ -11,6 +11,7 @@ import { compileSourceMap, rotation, PATTERNS } from './source-bsp.mjs';
 import { readNav, navHeightsAt } from './source-nav.mjs';
 import { packMap, bakeNavigation } from './import-source-maps.mjs';
 import { rebuildSanctum } from './import-sanctum.mjs';
+import { styleNeon, addNeonSignage, NEON_PROPS, NEON_HOARDINGS } from './neon-style.mjs';
 import '../assets/maps/runtime.js';
 
 export const WINGMAN_MAPS = {
@@ -67,8 +68,9 @@ const RULES = [
   [/tile_set/, () => ({ size: [48, 48, 24], color: C.plaster, pat: P.roof })],
   [/box|cardboard/, () => ({ size: [24, 24, 24], color: C.crate, pat: P.wood })],
 ];
-export function propSpec(model) {
+export function propSpec(model, extra = []) {
   const m = model.replace(/^models\//, '').replace(/\.mdl$/, '');
+  for (const [re, make] of extra) if (re.test(m)) return make(m);
   if (SKIP.test(m)) return null;
   for (const [re, make] of RULES) if (re.test(m)) return make(m);
   return null;
@@ -89,7 +91,7 @@ function shape(x0, x1, y0, y1, z0, z1, xf, rot, cyl = false) {
   return faces.map(f => ({ ...f, d: dot(f.n, f.p[0]) }));
 }
 
-function approximateProps(map, nav, report) {
+function approximateProps(map, nav, report, extraRules = []) {
   const { bsp, convert, center, scale, base } = map;
   const plane = (n, d) => [n[0], n[2], -n[1], (d - dot(n, center)) * scale];
   const props = bsp.staticProps().concat(bsp.entities.filter(e => /^(prop_dynamic|prop_physics)/.test(e.classname)).map(e => ({ model: (e.model || '').toLowerCase(), origin: (e.origin || '0 0 0').split(/\s+/).map(Number), angles: (e.angles || '0 0 0').split(/\s+/).map(Number), solid: Number(e.solid ?? 6), scale: Number(e.modelscale) || 1 })));
@@ -104,7 +106,7 @@ function approximateProps(map, nav, report) {
   };
   for (const prop of props) {
     if (!prop.model || bsp.pak.has(prop.model.replace(/\.mdl$/, '.phy')) || prop.origin[2] < base - 512) continue;
-    const spec = propSpec(prop.model);
+    const spec = propSpec(prop.model, extraRules);
     if (!spec) { stats.unknown.set(prop.model, (stats.unknown.get(prop.model) || 0) + 1); continue; }
     const rot = rotation(prop.angles), s = prop.scale || 1, tilted = Math.abs(prop.angles[0]) > 25 || Math.abs(prop.angles[2]) > 25;
     const xf = p => add(rot(mul(p, s)), prop.origin);
@@ -248,17 +250,52 @@ function followRoutes(map, stepFn, V) {
   return cut;
 }
 
+
+// Tapume de obra sobre uma parede invisível: painéis brancos de 2,9 m com faixa azul embaixo, régua no alto e
+// montantes a cada ~1,8 m. É sólido (bloqueia movimento e tiros); acima dele a colisão original continua.
+function addHoardings(map, lines) {
+  const native = new globalThis.SourceMaps.NativeMap(packMap(map));
+  const T = .12, H = 2.9;
+  const box = (x0, y0, z0, x1, y1, z1, c, pat, solid) => {
+    const v = [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]];
+    const quads = [[[4, 7, 6, 5], [0, 1, 0]], [[0, 1, 2, 3], [0, -1, 0]], [[0, 4, 5, 1], [0, 0, -1]], [[2, 6, 7, 3], [0, 0, 1]], [[0, 3, 7, 4], [-1, 0, 0]], [[1, 5, 6, 2], [1, 0, 0]]];
+    for (const [ids, n] of quads) {
+      const p = ids.map(i => v[i].slice()), ax = n[0] ? [2, 1] : n[2] ? [0, 1] : [0, 2];
+      map.polygons.push({ p, n, c, glass: false, tag: 'hoarding', uv: p.map(q => [q[ax[0]] / 1.8, q[ax[1]] / 1.8]), pat });
+    }
+    if (solid) map.hulls.push({ planes: [[1, 0, 0, x1], [-1, 0, 0, -x0], [0, 1, 0, y1], [0, -1, 0, -y0], [0, 0, 1, z1], [0, 0, -1, -z0]], min: [x0, y0, z0], max: [x1, y1, z1], mask: 3 });
+  };
+  for (const [ax, az, bx, bz] of lines) {
+    const alongX = Math.abs(bx - ax) > Math.abs(bz - az), len = alongX ? Math.abs(bx - ax) : Math.abs(bz - az);
+    const lo = alongX ? Math.min(ax, bx) : Math.min(az, bz), c = alongX ? az : ax;
+    // Chão: o mais baixo ao longo da linha (pode ser uma escada); o tapume desce até ele.
+    let floor = Infinity;
+    for (let t = 0; t <= len; t += .5) { const x = alongX ? lo + t : c, z = alongX ? c : lo + t; for (const dz of [-.6, .6]) { const g = native.ground(alongX ? x : x + dz, alongX ? z + dz : z); if (g > -50) floor = Math.min(floor, g); } }
+    if (!Number.isFinite(floor)) floor = 0;
+    const seg = (a, b, y0, y1, w, color, pat) => alongX ? box(lo + a, y0, c - w / 2, lo + b, y1, c + w / 2, color, pat, true) : box(c - w / 2, y0, lo + a, c + w / 2, y1, lo + b, color, pat, true);
+    seg(0, len, floor - .3, floor + .35, T + .02, 0x2c5fa8, P_METAL);       // faixa azul de baixo
+    seg(0, len, floor + .35, floor + H - .12, T, 0xe9ebed, P_METAL);        // painéis brancos corrugados
+    seg(0, len, floor + H - .12, floor + H, T + .04, 0x2c5fa8, P_METAL);    // régua azul do alto
+    const posts = Math.max(1, Math.round(len / 1.8));
+    for (let k = 0; k <= posts; k++) { const t = clampT(k * len / posts, .05, len - .05); seg(t - .05, t + .05, floor - .3, floor + H + .05, T + .1, 0x8d949b, P_METAL); }
+  }
+  map.report.hoardings = lines.length;
+}
+const P_METAL = PATTERNS.metal, clampT = (v, a, b) => Math.max(a, Math.min(b, v));
+
 export function importWingmanMap(file, key) {
   if(key==='sanctum')return rebuildSanctum(file);
   const info = WINGMAN_MAPS[key];
-  const map = compileSourceMap(file, key, { textures: true });
+  const map = compileSourceMap(file, key, { textures: true, materialNames: key === 'neon' });
   map.name = info.name; map.credit = info.credit;
+  if (key === 'neon') { styleNeon(map); addNeonSignage(map); }
   const navFile = [...map.bsp.pak.keys()].find(k => k.endsWith('.nav'));
   if (!navFile) throw Error(key + ': no navigation mesh');
   const nav = readNav(map.bsp.asset(navFile));
-  approximateProps(map, nav, map.report);
+  approximateProps(map, nav, map.report, key === 'neon' ? NEON_PROPS : []);
   bakeNavigation(map);
   clipToPlay(map);
+  if (key === 'neon') addHoardings(map, NEON_HOARDINGS);
   delete map.navigation; bakeNavigation(map);
   // Spawn points in some BSPs float up to ~1.6 m above the floor (in CS the player drops); put them on the ground.
   { const native = new globalThis.SourceMaps.NativeMap(packMap(map)); for (const p of map.t.concat(map.ct)) { const y = native.ground(p[0], p[1], p[3]); if (p[3] - y > .05 && p[3] - y < 3) p[3] = y; } }

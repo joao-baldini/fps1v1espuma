@@ -193,6 +193,20 @@
       ],
       "fov": 50,
       "source": "BSP rebuild v2"
+    },
+    "neon": {
+      "from": [
+        9,
+        15,
+        -1
+      ],
+      "to": [
+        -5,
+        -1,
+        -21
+      ],
+      "fov": 55,
+      "source": "BSP materials v2 (cores dos VMT/VTF do Akihabara)"
     }
   }
 }
