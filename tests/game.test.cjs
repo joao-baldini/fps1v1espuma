@@ -1489,6 +1489,17 @@ function bombWorld(map = 'sanctum', setup) {
   const step = (from, ms, each) => { let t = from; for (; t < from + ms; t += 1000 / 30) { g.tick(t); vm.runInContext(`teamTick(1/30,${t});nadesTick(1/30,${t})`, cx); if (each && each(t)) break; } return t; };
   return { g, cx, A, BM, step };
 }
+test('Bombsites get a paved floor only on their own ground, with the painted target inside the plantable area',()=>{
+  for(const key of WINGMAN){
+    const g=game({mode:'bomb'}),cx=g.context;cx.buildMap(key);const W=cx.sourceWorld;
+    for(const s of W.meta.sites){
+      const info=cx.siteFloorCells(W,s);
+      assert.ok(info.cells.length*info.dx*info.dz>(s.x1-s.x0)*(s.z1-s.z0)*.25,key+' '+s.name+': piso cobre boa parte do site');
+      for(const c of info.cells){assert.ok(c.x>=s.x0&&c.x<=s.x1&&c.z>=s.z0&&c.z<=s.z1);assert.ok(c.y>=s.y0-.5&&c.y<=s.y1,key+' piso dentro da altura do site');}
+      assert.ok(info.mark);assert.equal(cx.bombInSite(info.mark.x,info.mark.z,W.ground(info.mark.x,info.mark.z,s.y0+1)),true,key+' '+s.name+': alvo pintado em área plantável');
+    }
+  }
+});
 test('Wingman maps keep the BSP spawns, connected floors and bombsites, credit their authors and use light textures',()=>{
   const expected={sanctum:{sites:1,author:'alicate madeira 4'},neon:{sites:1,author:'zelzstorm'},forge:{sites:2,author:'Blind'},sable:{sites:1,author:'dorg'}};
   for(const [key,want]of Object.entries(expected)){

@@ -59,6 +59,10 @@ Objetos com textura própria usam coordenadas por face (de 0 a 1), para a moldur
 
 **Assentamento.** Os modelos do CS costumam ficar alguns centímetros acima do chão, ou apoiados em algo que não existe aqui. De baixo para cima, cada caixote, barril, saco, palete ou bloco desce até o chão visível ou até o topo do objeto já assentado embaixo (ou sobe, se estiver afundado até 45 cm). A conta usa os 8 cantos da caixa já girada. Só superfícies que aparecem servem de apoio: as colisões invisíveis do mapa original (*clips*) não contam. Caixas de luz e de ar-condicionado (presas na parede ou no telhado) e os prédios do skybox não se mexem. O Sanctum, que tem conversor próprio, recebe o mesmo assentamento. Resultado: Neon 111, Forge 87, Sable 62 e Sanctum 63 objetos assentados, com todos os spawns ligados.
 
+## Piso dos bombsites
+
+O volume de cada bombsite vem do BSP (`func_bomb_target`) e não tem desenho próprio no chão. Em `index.html`, `siteFloorCells` amostra o chão do retângulo do site numa grade de 25 cm e preenche a partir do nível mais baixo, por degraus de até 40 cm. Embaixo de caixote ou barril, consulta o chão logo abaixo, então o calçamento passa por baixo do objeto sem recorte. Topos de caixote, sacadas e o que estiver fora da altura do site ficam de fora. `siteFloorTexture` desenha a textura de cada site num canvas: lajes irregulares (Voronoi) com argamassa fina meio transparente e sombreado na borda de cada pedra, um meio-fio de blocos claros ao longo do retângulo e o alvo a spray laranja (círculo e cruz com respingos) no ponto livre mais perto do centro. A malha é decalcada 1,2 cm acima do chão, recebe sombra e não tem colisão. As cores das pedras seguem o tema do mapa (`SITE_STONE`).
+
 ## Sable · Wingman
 
 O Sable é o mapa de **dorg**, usado com a permissão do autor (Steam Workshop 1369768878). O arquivo enviado, `de_sable.bsp`, é um zip com o BSP Source 21 dentro e é extraído antes da conversão. Ele passa pelo mesmo importador do Wingman.

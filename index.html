@@ -1305,6 +1305,105 @@ function statue(B, x, z, y = 0, size = 1) {
   dR(B, x - .02 * s, y + 1.98 * s, z - .25 * s, x + .02 * s, y + 2.2 * s, z + .25 * s, 0xd9a93a);
 }
 
+// Piso do bombsite, como o B da Dust 2: dentro da área plantável o chão vira lajes de pedra assentadas, com um meio-fio
+// de blocos na borda e o alvo pintado a spray laranja. Só cobre o chão do próprio site: um preenchimento a partir do
+// piso, por degraus de até 40 cm, não sobe em caixotes nem em sacadas que caiam dentro do volume. Sem colisão.
+const SITE_CELL = .25;
+function siteFloorCells(W, s) {
+  const nx = Math.max(1, Math.min(160, Math.ceil((s.x1 - s.x0) / SITE_CELL))), nz = Math.max(1, Math.min(160, Math.ceil((s.z1 - s.z0) / SITE_CELL)));
+  const dx = (s.x1 - s.x0) / nx, dz = (s.z1 - s.z0) / nz, y0 = fin(s.y0) ? s.y0 : -Infinity, y1 = fin(s.y1) ? s.y1 : Infinity;
+  const ref = fin(s.y1) ? Math.min(s.y1, y0 + 4) + .3 : undefined, V = (nx + 1) * (nz + 1), h = new Float32Array(V), ok = new Uint8Array(V), X = new Float32Array(V), Z = new Float32Array(V);
+  for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
+    const k = j * (nx + 1) + i, x = X[k] = s.x0 + Math.min(i * dx, s.x1 - s.x0 - .01) + (i ? 0 : .01), z = Z[k] = s.z0 + Math.min(j * dz, s.z1 - s.z0 - .01) + (j ? 0 : .01);
+    const g = W.ground(x, z, ref); h[k] = fin(g) && g >= y0 - .5 && g <= y1 ? g : NaN;
+  }
+  // Semente: os pontos no nível mais baixo do site; o resto entra por vizinhos com degrau pequeno.
+  let low = Infinity; for (const v of h) if (v < low) low = v;
+  const q = []; for (let k = 0; k < V; k++) if (h[k] <= low + .3) { ok[k] = 1; q.push(k); }
+  while (q.length) {
+    const k = q.pop(), i = k % (nx + 1), j = (k - i) / (nx + 1);
+    for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ii = i + a, jj = j + b; if (ii < 0 || jj < 0 || ii > nx || jj > nz) continue;
+      const n = jj * (nx + 1) + ii; if (ok[n]) continue;
+      // Embaixo de caixote ou barril: o chão continua, então o calçamento passa por baixo (sem recorte em degraus).
+      if (!(Math.abs(h[n] - h[k]) < .4)) { const g = W.ground(X[n], Z[n], h[k]); if (fin(g) && Math.abs(g - h[k]) < .4) h[n] = g; else continue; }
+      ok[n] = 1; q.push(n);
+    }
+  }
+  const cells = [];
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+    const c = [j * (nx + 1) + i, j * (nx + 1) + i + 1, (j + 1) * (nx + 1) + i + 1, (j + 1) * (nx + 1) + i];
+    if (c.every(k => ok[k])) { const hs = c.map(k => h[k]); if (Math.max(...hs) - Math.min(...hs) < .45) cells.push({ i, j, x: s.x0 + (i + .5) * dx, z: s.z0 + (j + .5) * dz, y: (hs[0] + hs[1] + hs[2] + hs[3]) / 4, hs }); }
+  }
+  // Alvo pintado: o ponto livre mais perto do centro, com chão em volta para o desenho inteiro.
+  const cx = (s.x0 + s.x1) / 2, cz = (s.z0 + s.z1) / 2, has = new Set(cells.map(c => c.j * nx + c.i)), R = Math.round(1.1 / Math.max(dx, dz));
+  let mark = null, best = -Infinity;
+  for (const c of cells) {
+    let n = 0; for (let b = -R; b <= R; b += 2) for (let a = -R; a <= R; a += 2) if (a * a + b * b <= R * R && has.has((c.j + b) * nx + c.i + a)) n++;
+    const score = n - Math.hypot(c.x - cx, c.z - cz) * .8; if (score > best) { best = score; mark = { x: c.x, z: c.z }; }
+  }
+  return { nx, nz, dx, dz, cells, mark };
+}
+const SITE_STONE = { terracota: [0xcda983, 0xbf9b73, 0xd8b990, 0xb38c66], praga: [0xb3a690, 0xa49681, 0xbfb29c, 0x978a75], elysion: [0xb4afa4, 0xa5a095, 0xc0bbb0, 0x99948a] };
+function siteFloorTexture(s, info, theme) {
+  const w = s.x1 - s.x0, d = s.z1 - s.z0, ppm = Math.min(56, 1024 / Math.max(w, d)), W2 = Math.max(32, Math.round(w * ppm)), H2 = Math.max(32, Math.round(d * ppm));
+  const cv = document.createElement('canvas'); cv.width = W2; cv.height = H2; const g = cv.getContext('2d'), img = g.createImageData(W2, H2), px = img.data;
+  const pal = (SITE_STONE[theme] || SITE_STONE.praga).map(c => [(c >> 16 & 255) * .86, (c >> 8 & 255) * .86, (c & 255) * .86]);
+  const hash = (a, b) => { let t = Math.imul(a * 374761393 + b * 668265263 + 1013904223 | 0, 1274126177); t ^= t >>> 13; return (Math.imul(t, 1103515245) >>> 0) / 4294967296; };
+  // Lajes irregulares (Voronoi com sementes em grade tremida de ~55 cm) e argamassa entre elas.
+  const sp = .55, seeds = (a, b) => [(a + .15 + .7 * hash(a, b)) * sp, (b + .15 + .7 * hash(b + 91, a + 17)) * sp];
+  const curb = .32, block = .62;
+  for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) {
+    const mx = x / ppm, mz = y / ppm, o = (y * W2 + x) * 4, edge = Math.min(mx, mz, w - mx, d - mz);
+    let r, gg, b, a;
+    if (edge < curb) { // meio-fio: blocos retangulares claros ao longo da borda
+      const along = (mx < curb || w - mx < curb) ? mz : mx, k = Math.floor(along / block), joint = along - k * block < .02 || Math.abs(edge - curb) < .015;
+      const tone = .9 + hash(k, 7 + (edge === mx ? 1 : edge === mz ? 2 : 3)) * .1, base = pal[2];
+      r = base[0] * tone; gg = base[1] * tone; b = base[2] * tone; a = 1; if (joint) { r *= .8; gg *= .8; b *= .8; }
+    } else {
+      const ca = Math.floor(mx / sp), cb = Math.floor(mz / sp); let d1 = 9, d2 = 9, id = 0;
+      for (let bb = cb - 1; bb <= cb + 1; bb++) for (let aa = ca - 1; aa <= ca + 1; aa++) {
+        const [sx, sz] = seeds(aa, bb), dd = Math.hypot(mx - sx, mz - sz); if (dd < d1) { d2 = d1; d1 = dd; id = aa * 7919 + bb; } else if (dd < d2) d2 = dd;
+      }
+      const c = pal[Math.floor(hash(id, 3) * pal.length)], gap = d2 - d1, n = .93 + .07 * hash(x, y) + .04 * Math.sin(mx * 9 + id) * Math.cos(mz * 7) + .05 * (hash(id, 11) - .5);
+      if (gap < .022) { r = c[0] * .78; gg = c[1] * .76; b = c[2] * .74; a = .5; }
+      else { const ao = .84 + .16 * Math.min(1, (gap - .022) / .12); r = c[0] * n * ao; gg = c[1] * n * ao; b = c[2] * n * ao; a = .93; }
+    }
+    px[o] = Math.min(255, r); px[o + 1] = Math.min(255, gg); px[o + 2] = Math.min(255, b); px[o + 3] = a * 255;
+  }
+  g.putImageData(img, 0, 0);
+  // Alvo a spray: círculo e cruz laranja, bordas difusas e respingos.
+  if (info.mark) {
+    const X = (info.mark.x - s.x0) * ppm, Y = (info.mark.z - s.z0) * ppm, R = .95 * ppm, lw = .15 * ppm;
+    g.save(); g.strokeStyle = 'rgba(226,96,42,.78)'; g.lineWidth = lw; g.lineCap = 'round'; g.shadowColor = 'rgba(232,98,44,.6)'; g.shadowBlur = lw * .9;
+    g.beginPath(); g.arc(X, Y, R, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.moveTo(X - R * 1.12, Y + R * .1); g.lineTo(X + R * 1.12, Y - R * .1); g.moveTo(X + R * .05, Y - R * 1.1); g.quadraticCurveTo(X - R * .1, Y, X + R * .15, Y + R * 1.12); g.stroke();
+    g.shadowBlur = 0; for (let k = 0; k < 220; k++) { const an = hash(k, 5) * Math.PI * 2, rr = R * (.6 + hash(k, 9) * .7); g.fillStyle = 'rgba(232,98,44,' + (.15 + hash(k, 2) * .35).toFixed(2) + ')'; g.fillRect(X + Math.cos(an) * rr, Y + Math.sin(an) * rr, 1 + hash(k, 4) * 2.2, 1 + hash(k, 6) * 2.2); }
+    g.restore();
+  }
+  const tex = new THREE.CanvasTexture(cv); if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8; return tex;
+}
+let SITE_FLOORS = [];
+function buildSiteFloors(parent) {
+  for (const m of SITE_FLOORS) { m.geometry.dispose(); m.material.map && m.material.map.dispose(); m.material.dispose(); if (m.parent) m.parent.remove(m); }
+  SITE_FLOORS = [];
+  const sites = MAP && MAP.bomb && MAP.plant ? (MAP.plant.sites || [MAP.plant.site]).filter(Boolean) : [];
+  if (!sourceWorld || !sites.length || !parent || !parent.add || !THREE.CanvasTexture || !THREE.BufferGeometry || typeof document === 'undefined') return;
+  for (const s of sites) {
+    const info = siteFloorCells(sourceWorld, s); if (!info.cells.length) continue;
+    const pos = [], uv = [], idx = [], w = s.x1 - s.x0, d = s.z1 - s.z0;
+    for (const c of info.cells) {
+      const x0 = s.x0 + c.i * info.dx, z0 = s.z0 + c.j * info.dz, v = pos.length / 3;
+      [[x0, z0, c.hs[0]], [x0 + info.dx, z0, c.hs[1]], [x0 + info.dx, z0 + info.dz, c.hs[2]], [x0, z0 + info.dz, c.hs[3]]].forEach(([x, z, y]) => { pos.push(x, y + .012, z); uv.push((x - s.x0) / w, 1 - (z - s.z0) / d); });
+      idx.push(v, v + 2, v + 1, v, v + 3, v + 2);
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+    const tex = siteFloorTexture(s, info, MAP.theme); tex.flipY = true;
+    const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: .92, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+    const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; mesh.renderOrder = 1; parent.add(mesh); SITE_FLOORS.push(mesh);
+  }
+}
+
 // Mapas do Wingman: geometria, rotas, alturas, spawns e bombsites vêm dos BSPs enviados (uso autorizado pelos autores);
 // o crédito de cada autor aparece no menu e na miniatura.
 const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', sable: 'terracota' };
@@ -1389,12 +1488,13 @@ function buildMap(id) {
   MAP = Object.assign({ id: mapId }, def);
   AX = def.ax; AZ = def.az; boxes = []; ramps = [];
   sourceWorld=def.source?SourceMaps.get(def.source):null;
+  buildSiteFloors(null);
   if (exteriorMesh) { scene.remove(exteriorMesh); exteriorMesh.geometry.dispose(); exteriorMesh = null; }
   if(def.source){
     if(!sourceWorld)throw new Error('Source map must be loaded before starting');
     if(worldMesh){scene.remove(worldMesh);worldMesh.geometry.dispose();}
     const geo=sourceWorld.geometry(THREE),textured=!!(geo.attributes&&geo.attributes.pattern);
-    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);worldMesh.castShadow=worldMesh.receiveShadow=true;scene.add(worldMesh);applySourceFixes(def.source,worldMesh);
+    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);worldMesh.castShadow=worldMesh.receiveShadow=true;scene.add(worldMesh);applySourceFixes(def.source,worldMesh);if(def.bomb)try{buildSiteFloors(scene);}catch(e){console.warn('site floor',e);}
     if (globalThis.V2World && typeof worldLights !== 'undefined') { V2World.applyMood(THREE, worldLights, sky, scene, def.theme, AX, AZ); worldLights.sun.shadow.bias = -.0015; worldLights.sun.shadow.normalBias = .06; }
     try{clearDecals();BOT.wp=null;BOT.knowsUntil=0;}catch(e){}
     return;
