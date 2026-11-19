@@ -35,6 +35,10 @@ const OVERRIDES = [
   [/metallic_panelling|plastic_wall|marble_wall/, { pat: P.tile }],
   [/ads\/|signs_blank|signage/, { pat: P.plain }],
   [/rollup_door|shutters/, { pat: P.metal }],
+  // Sable (Itália): ruas de laje e calçamento, painéis de madeira nos corredores.
+  [/flagstone/, { pat: P.tile }],
+  [/cobblestone|cobble/, { pat: P.cobble }],
+  [/wainscot|wood_int_0[28]|woodm$/, { pat: P.panel }],
 ];
 
 export function neonStyler(bsp) {
@@ -193,7 +197,31 @@ export function addNeonSignage(map) {
 }
 
 // Sable (dorg): objetos padrão do CS usados no mapa que as regras gerais não cobrem.
+// Varal de lanternas de papel acesas (corredor coberto do Sable): três cordões com lanternas penduradas e curvatura.
+function lanternStrings(box) {
+  const out = [], cord = 0x2a2420;
+  const strand = (alongX, off) => {
+    for (let t = -60; t <= 60; t += 20) {
+      const sag = 10 * (1 - (t / 66) ** 2), zc = -8 - sag, x = alongX ? t : off, y = alongX ? off : t;
+      out.push({ faces: box(x - 5.5, x + 5.5, y - 5.5, y + 5.5, zc - 12, zc, true), mask: 0, color: 0xffb35c, pat: P.lantern, faceUv: true });
+      out.push({ faces: box(x - .6, x + .6, y - .6, y + .6, zc, zc + 4 + sag * .2, false), mask: 0, color: cord, pat: P.plain });
+    }
+    for (let t = -70; t < 70; t += 10) {
+      const m = t + 5, sag = 10 * (1 - (m / 66) ** 2), z = -4 - sag, x = alongX ? m : off, y = alongX ? off : m;
+      out.push({ faces: alongX ? box(x - 5.2, x + 5.2, y - .5, y + .5, z - .5, z + .5) : box(x - .5, x + .5, y - 5.2, y + 5.2, z - .5, z + .5), mask: 0, color: cord, pat: P.plain });
+    }
+  };
+  strand(true, -22); strand(true, 22); strand(false, 0);
+  return out;
+}
+
 export const SABLE_PROPS = [
+  [/street_lanterns0[12]/, () => ({ custom: lanternStrings })],
+  [/ornate_lamp|it_lantern|light02_32/, () => ({ custom: box => [{ faces: box(-5, 5, -5, 5, -14, -2, true), mask: 0, color: 0xffd08a, pat: P.lantern, faceUv: true }] })],
+  [/dust_crate_style_\d+_(\d+)x(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)x(\d+)/); return { size: [+d[1], +d[2], +d[3]], color: 0xb08850, pat: P.crate, faceUv: true }; }],
+  [/wooden_crate_(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)/); return { size: [+d[1], +d[2], +d[2]], color: 0xb08850, pat: P.crate, faceUv: true }; }],
+  [/wine_crate/, () => ({ size: [48, 40, 40], color: 0xb08850, pat: P.crate, faceUv: true })],
+  [/barrel_a_full|barrel_a\//, () => ({ size: [30, 30, 44], cyl: true, color: 0x8a5a34, pat: P.barrel, faceUv: true })],
   [/inferno_vespa/, () => ({ size: [72, 28, 44], color: 0x6fa7a0, pat: P.metal })],
   [/furniture_couch0[12]a/, () => ({ size: [80, 36, 34], color: 0x3e5f86, pat: P.plain })],
   [/inferno_chair|dust_patio_chair/, () => ({ size: [20, 20, 36], color: 0x7a5a3a, pat: P.wood })],

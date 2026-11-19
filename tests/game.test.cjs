@@ -1514,7 +1514,7 @@ test('Wingman maps keep the BSP spawns, connected floors and bombsites, credit t
       }
     }else{
       const uv=Buffer.from(packed.mesh.uv,'base64'),pat=Buffer.from(packed.mesh.pattern,'base64');
-      assert.equal(uv.length/8,pos.length/12);assert.equal(pat.length,pos.length/12);assert.ok([...pat].every(v=>v<=10));
+      assert.equal(uv.length/8,pos.length/12);assert.equal(pat.length,pos.length/12);assert.ok([...pat].every(v=>v<=15));
       assert.ok(new Set(pat).size>=5,key+' usa vários padrões');
     }
     for(let p=0;p<pos.length;p+=12)for(let axis=0;axis<3;axis++){const v=pos.readFloatLE(p+axis*4);assert.ok(v>=meta.bounds[axis]-.001&&v<=meta.bounds[axis+3]+.001,key+' recortado na área jogável');}

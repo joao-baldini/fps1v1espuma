@@ -127,7 +127,7 @@ const colorFor = (name,n,key) => {
 };
 
 // Textura leve: em vez de imagens, um padrão procedural escolhido pelo nome do material (0 = grade lisa de sempre).
-export const PATTERNS={plain:0,brick:1,tile:2,wood:3,concrete:4,metal:5,ground:6,stone:7,asphalt:8,roof:9,foliage:10};
+export const PATTERNS={plain:0,brick:1,tile:2,wood:3,concrete:4,metal:5,ground:6,stone:7,asphalt:8,roof:9,foliage:10,crate:11,barrel:12,lantern:13,panel:14,cobble:15};
 export function patternFor(name){
   if(/glass|window/.test(name))return 0;
   if(/brick/.test(name))return 1;

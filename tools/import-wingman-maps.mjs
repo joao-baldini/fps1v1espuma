@@ -83,11 +83,14 @@ function shape(x0, x1, y0, y1, z0, z1, xf, rot, cyl = false) {
     : [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   const lo = ring.map(([x, y]) => xf([x, y, z0])), hi = ring.map(([x, y]) => xf([x, y, z1])), faces = [], n = ring.length;
   const up = rot([0, 0, 1]);
-  faces.push({ p: hi.slice(), n: up }, { p: lo.slice().reverse(), n: mul(up, -1) });
+  // uv por face (0..1), usado por objetos com textura própria (caixote, barril, lanterna).
+  const top = ring.map(([x, y]) => [(x - x0) / (x1 - x0 || 1), (y - y0) / (y1 - y0 || 1)]);
+  faces.push({ p: hi.slice(), n: up, uv: top }, { p: lo.slice().reverse(), n: mul(up, -1), uv: top.slice().reverse() });
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n, [ax, ay] = ring[i], [bx, by] = ring[j];
     const local = [by - ay, -(bx - ax), 0], len = Math.hypot(local[0], local[1]) || 1, nn = rot([local[0] / len, local[1] / len, 0]);
-    faces.push({ p: [lo[i], lo[j], hi[j], hi[i]], n: nn });
+    const u0 = cyl ? i / n * 2 : 0, u1 = cyl ? (i + 1) / n * 2 : 1;
+    faces.push({ p: [lo[i], lo[j], hi[j], hi[i]], n: nn, uv: [[u0, 0], [u1, 0], [u1, 1], [u0, 1]] });
   }
   return faces.map(f => ({ ...f, d: dot(f.n, f.p[0]) }));
 }
@@ -113,7 +116,8 @@ function approximateProps(map, nav, report, extraRules = []) {
     const xf = p => add(rot(mul(p, s)), prop.origin);
     const out = [];
     let mask = prop.solid && !tilted ? (spec.mask ?? 3) : 0;
-    if (spec.tree) {
+    if (spec.custom) out.push(...spec.custom((x0, x1, y0, y1, z0, z1, cyl) => shape(x0, x1, y0, y1, z0, z1, xf, rot, cyl)));
+    else if (spec.tree) {
       const t = spec.tree, r = t.trunk / 2;
       out.push({ faces: shape(-r, r, -r, r, 0, t.height, xf, rot, true), mask: prop.solid ? 3 : 0, color: C.trunk, pat: P.wood });
       const [cx, cy, cz] = t.crown;
@@ -136,13 +140,13 @@ function approximateProps(map, nav, report, extraRules = []) {
           stats.shrunk++;
         }
       }
-      out.push({ faces: shape(x0, x1, y0, y1, 0, H, xf, rot, !!spec.cyl), mask, color: spec.color, pat: spec.pat, glass: !!spec.glass });
+      out.push({ faces: shape(x0, x1, y0, y1, 0, H, xf, rot, !!spec.cyl), mask, color: spec.color, pat: spec.pat, glass: !!spec.glass, faceUv: !!spec.faceUv });
     }
     stats.approximated++;
     for (const piece of out) {
       for (const f of piece.faces) {
         const pts = f.p, ax = Math.abs(f.n[0]) > Math.abs(f.n[1]) && Math.abs(f.n[0]) > Math.abs(f.n[2]) ? [1, 2] : Math.abs(f.n[1]) > Math.abs(f.n[2]) ? [0, 2] : [0, 1];
-        map.polygons.push({ p: pts.map(convert), n: [f.n[0], f.n[2], -f.n[1]], c: piece.color, glass: !!piece.glass, tag: 'prop', uv: pts.map(p => [p[ax[0]] / 64, p[ax[1]] / 64]), pat: piece.pat });
+        map.polygons.push({ p: pts.map(convert), n: [f.n[0], f.n[2], -f.n[1]], c: piece.color, glass: !!piece.glass, tag: 'prop', uv: piece.faceUv && f.uv ? f.uv : pts.map(p => [p[ax[0]] / 64, p[ax[1]] / 64]), pat: piece.pat });
       }
       if (piece.mask) {
         const pts = piece.faces.flatMap(f => f.p).map(convert), lo = [0, 1, 2].map(i => Math.min(...pts.map(p => p[i]))), hi = [0, 1, 2].map(i => Math.max(...pts.map(p => p[i])));

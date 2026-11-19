@@ -30,6 +30,16 @@ O Neon é o Akihabara de **zelzstorm** (Adroon na arte). A geometria, as colisõ
 
 A área jogável alcançável foi comparada com o radar oficial do Akihabara e coincide com ele. Spawns, bombsite e navegação continuam conectados, e o tamanho do payload quase não mudou (cerca de 2,9 MB compactado). A imagem do menu (`menu/play/neon.webp` e a miniatura) é um render novo desse acabamento; a câmera está em `cameras.json`.
 
+## Texturas pintadas dos mapas convertidos
+
+`tools/gen-textures.py` desenha 16 texturas próprias (não são imagens de terceiros) num estilo cartunesco perto do realismo: tijolo, piso de lajotas, tábuas, reboco, metal, terra, cantaria, asfalto, telhas de barro, folhagem, caixote, barril, papel de lanterna, painel de madeira e calçamento. Cada uma tem formas limpas, relevo pintado (luz do alto à esquerda, sombra embaixo) e oclusão nas juntas.
+
+O resultado vai para `assets/maps/textures.js`: um atlas WebP 4×4 (~350 KiB), com borda repetida de 16 px em volta de cada textura para não aparecer costura no mipmap, e a cor média de cada textura. O shader dos mapas convertidos amostra o atlas pela coordenada de textura real do BSP, usando `textureGrad`.
+
+A textura é tingida pelo brilho para chegar à cor real do material (cor do vértice × brilho da textura ÷ brilho médio), com só um pouco da variação de cor da própria textura. Caixote, barril, lanterna, telhado e folhagem mantêm mais da própria cor. A lanterna é desenhada acesa, sem sombra.
+
+Objetos com textura própria usam coordenadas por face (de 0 a 1), para a moldura do caixote e os aros do barril caírem no lugar.
+
 ## Sable · Wingman
 
 O Sable é o mapa de **dorg**, usado com a permissão do autor (Steam Workshop 1369768878). O arquivo enviado, `de_sable.bsp`, é um zip com o BSP Source 21 dentro e é extraído antes da conversão. Ele passa pelo mesmo importador do Wingman.
@@ -38,7 +48,7 @@ A estrutura é a do original, sem mudanças: a geometria, as alturas, as colisõ
 
 O acabamento usa as cores reais de cada material, pelo mesmo método do Neon (`styleNeon` em `tools/neon-style.mjs`): o VMT e o VTF embutidos quando existem; senão, a refletividade que o BSP guarda de cada textura, convertida para sRGB. O desenho fica com os padrões procedurais do jogo: tijolo, reboco, madeira, pedra, telhado e paralelepípedo, conforme o nome do material. As texturas originais do CS (`de_inferno/hr_i` e outras) não vêm dentro do BSP, então não há imagens.
 
-O mapa não traz nenhum modelo próprio: os 627 objetos são modelos padrão do CS. Eles são aproximados pelas regras do importador (barris, fardos de feno, caixotes, ciprestes, pilares, grades...). Regras extras (`SABLE_PROPS`) cobrem a Vespa, os sofás, as cadeiras, os sacos e as floreiras. Enfeites finos (molduras, calhas, janelas, portas na parede) ficam de fora, como nos outros mapas. O tema de luz é o `terracota`.
+O mapa não traz nenhum modelo próprio: os 627 objetos são modelos padrão do CS. Eles são aproximados pelas regras do importador (barris, fardos de feno, caixotes, ciprestes, pilares, grades...). Os caixotes têm moldura, tábuas e travessa; os barris são de madeira com aros. O corredor coberto ganhou varais de lanternas de papel acesas no lugar dos modelos `street_lanterns`, e os lampiões viraram luzes pequenas. Ruas de laje usam lajotas; calçamento usa paralelepípedos; os corredores têm painéis de madeira. Regras extras (`SABLE_PROPS`) também cobrem a Vespa, os sofás, as cadeiras, os sacos e as floreiras. Enfeites finos (molduras, calhas, janelas, portas na parede) ficam de fora, como nos outros mapas. O tema de luz é o `terracota`.
 
 ## Conversões anteriores e ferramentas compartilhadas
 
