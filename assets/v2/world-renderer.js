@@ -11,9 +11,9 @@
     roxo:      { top: 0x284b7a, mid: 0x6f8fb8, hor: 0xcad6e3, sun: 0xffebd6, fog: 0xbcc8d8, sunDir: [0.48, 0.76, -0.44], light: 0xffe8d2, hemiSky: 0x8eaad0, hemiGnd: 0x434857 },
     laranja:   { top: 0x385e8c, mid: 0x8ca8c4, hor: 0xebd7c3, sun: 0xffdfad, fog: 0xdecbb8, sunDir: [0.64, 0.58, 0.50], light: 0xffe1b8, hemiSky: 0xa0bcdb, hemiGnd: 0x5c4f44 },
     industria: { top: 0x35587a, mid: 0x7e9bb3, hor: 0xc8d4db, sun: 0xfff2dc, fog: 0xbcc8d0, sunDir: [0.50, 0.75, 0.43], light: 0xfff0da, hemiSky: 0x9ab5cc, hemiGnd: 0x4a4f52 },
-    terracota: { top: 0x2b6eb0, mid: 0x85b9e3, hor: 0xf2e4cc, sun: 0xffe6ba, fog: 0xe4d7c2, sunDir: [0.58, 0.66, 0.48], light: 0xffe9c7, hemiSky: 0xa6cff2, hemiGnd: 0x695948 },
-    praga:     { top: 0x326296, mid: 0x82abcc, hor: 0xdde3e0, sun: 0xfff0d4, fog: 0xcfd6d4, sunDir: [0.52, 0.72, 0.46], light: 0xfff0d8, hemiSky: 0x9ec2e0, hemiGnd: 0x57554e },
-    elysion:   { top: 0x2665a6, mid: 0x7cb4e0, hor: 0xdfebf5, sun: 0xfff6e5, fog: 0xd1e0ed, sunDir: [0.45, 0.80, 0.38], light: 0xfff6e6, hemiSky: 0xa3cff5, hemiGnd: 0x545d66 },
+    terracota: { top: 0x1c64c8, mid: 0x6aaef0, hor: 0xd9ecfb, sun: 0xffe2a8, fog: 0xd7e6f2, sunDir: [0.58, 0.70, 0.42], light: 0xffe4b5, hemiSky: 0x8fc3f5, hemiGnd: 0x8a6a4a },
+    praga:     { top: 0x1f61c2, mid: 0x6dabea, hor: 0xd8eaf8, sun: 0xffe8bf, fog: 0xd3e3ef, sunDir: [0.52, 0.72, 0.46], light: 0xffeac8, hemiSky: 0x8fc0f0, hemiGnd: 0x76664f },
+    elysion:   { top: 0x1a5fc9, mid: 0x68aaf0, hor: 0xd8eafa, sun: 0xfff0d2, fog: 0xd1e3f2, sunDir: [0.45, 0.80, 0.38], light: 0xfff0d8, hemiSky: 0x92c6f7, hemiGnd: 0x6a6660 },
     areia:     { top: 0x2e72b5, mid: 0x8bc0e8, hor: 0xf4e8d1, sun: 0xffe8ba, fog: 0xe8dcc6, sunDir: [0.60, 0.64, 0.48], light: 0xffebd0, hemiSky: 0xadd4f5, hemiGnd: 0x6e5e49 },
   };
 
@@ -211,6 +211,10 @@ void main() {
       scene.fog.color.setHex(mood.fog);
     }
     if (lights) {
+      // Dia ensolarado: sol forte e quente, céu azul mais intenso preenchendo as sombras.
+      lights.sun.intensity = mood.sunI ?? 2.15;
+      lights.hemi.intensity = mood.hemiI ?? 0.82;
+      if (lights.fill) lights.fill.intensity = 0.22;
       lights.hemi.color.setHex(mood.hemiSky);
       lights.hemi.groundColor.setHex(mood.hemiGnd);
       lights.sun.color.setHex(mood.light);

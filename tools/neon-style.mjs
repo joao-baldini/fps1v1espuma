@@ -218,9 +218,14 @@ function lanternStrings(box) {
 export const SABLE_PROPS = [
   [/street_lanterns0[12]/, () => ({ custom: lanternStrings })],
   [/ornate_lamp|it_lantern|light02_32/, () => ({ custom: box => [{ faces: box(-5, 5, -5, 5, -14, -2, true), mask: 0, color: 0xffd08a, pat: P.lantern, faceUv: true }] })],
+  // Medidas reais tiradas das pilhas do próprio mapa (o nome do modelo não é a medida): a lona é só um pano por cima
+  // do caixote que já existe no mesmo lugar, então fica de fora para não criar um caixote flutuando.
+  [/_tarp/, () => null],
+  [/dust_crate_style_01_32x64x64/, () => ({ size: [32, 64, 53], color: 0xb08850, pat: P.crate, faceUv: true })],
+  [/inferno_wine_crate/, () => ({ size: [22, 14, 8], color: 0xb08850, pat: P.crate, faceUv: true })],
+  [/wine_crate_[ab]/, () => ({ size: [62, 62, 62], color: 0xb08850, pat: P.crate, faceUv: true })],
   [/dust_crate_style_\d+_(\d+)x(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)x(\d+)/); return { size: [+d[1], +d[2], +d[3]], color: 0xb08850, pat: P.crate, faceUv: true }; }],
   [/wooden_crate_(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)/); return { size: [+d[1], +d[2], +d[2]], color: 0xb08850, pat: P.crate, faceUv: true }; }],
-  [/wine_crate/, () => ({ size: [48, 40, 40], color: 0xb08850, pat: P.crate, faceUv: true })],
   [/barrel_a_full|barrel_a\//, () => ({ size: [30, 30, 44], cyl: true, color: 0x8a5a34, pat: P.barrel, faceUv: true })],
   [/inferno_vespa/, () => ({ size: [72, 28, 44], color: 0x6fa7a0, pat: P.metal })],
   [/furniture_couch0[12]a/, () => ({ size: [80, 36, 34], color: 0x3e5f86, pat: P.plain })],

@@ -38,6 +38,13 @@ O resultado vai para `assets/maps/textures.js`: um atlas WebP 4×4 (~350 KiB), c
 
 A textura é tingida pelo brilho para chegar à cor real do material (cor do vértice × brilho da textura ÷ brilho médio), com só um pouco da variação de cor da própria textura. Caixote, barril, lanterna, telhado e folhagem mantêm mais da própria cor. A lanterna é desenhada acesa, sem sombra.
 
+**Luz do sol.** Os mapas convertidos usam um material com luz de verdade (MeshStandardMaterial com o atlas injetado):
+- **Sol:** forte e quente, com sombras em tempo real conforme a opção de sombras dos gráficos.
+- **Ambiente:** céu azul e reflexo quente do chão preenchendo as sombras; tone mapping ACES do jogo e saturação um pouco maior.
+- **Lanternas:** brilham.
+- **Céus:** os temas de céu ficaram mais azuis e o sol mais forte, para os mapas serem sempre ensolarados e de cores vivas.
+- **Sombras:** só a face de trás projeta sombra e o viés é maior nesses mapas, para não aparecerem listras.
+
 Objetos com textura própria usam coordenadas por face (de 0 a 1), para a moldura do caixote e os aros do barril caírem no lugar.
 
 ## Sable · Wingman
@@ -48,7 +55,7 @@ A estrutura é a do original, sem mudanças: a geometria, as alturas, as colisõ
 
 O acabamento usa as cores reais de cada material, pelo mesmo método do Neon (`styleNeon` em `tools/neon-style.mjs`): o VMT e o VTF embutidos quando existem; senão, a refletividade que o BSP guarda de cada textura, convertida para sRGB. O desenho fica com os padrões procedurais do jogo: tijolo, reboco, madeira, pedra, telhado e paralelepípedo, conforme o nome do material. As texturas originais do CS (`de_inferno/hr_i` e outras) não vêm dentro do BSP, então não há imagens.
 
-O mapa não traz nenhum modelo próprio: os 627 objetos são modelos padrão do CS. Eles são aproximados pelas regras do importador (barris, fardos de feno, caixotes, ciprestes, pilares, grades...). Os caixotes têm moldura, tábuas e travessa; os barris são de madeira com aros. O corredor coberto ganhou varais de lanternas de papel acesas no lugar dos modelos `street_lanterns`, e os lampiões viraram luzes pequenas. Ruas de laje usam lajotas; calçamento usa paralelepípedos; os corredores têm painéis de madeira. Regras extras (`SABLE_PROPS`) também cobrem a Vespa, os sofás, as cadeiras, os sacos e as floreiras. Enfeites finos (molduras, calhas, janelas, portas na parede) ficam de fora, como nos outros mapas. O tema de luz é o `terracota`.
+O mapa não traz nenhum modelo próprio: os 627 objetos são modelos padrão do CS. Eles são aproximados pelas regras do importador (barris, fardos de feno, caixotes, ciprestes, pilares, grades...). Os caixotes usam as medidas reais tiradas das pilhas do mapa (o nome do modelo não é a medida: o caixote de vinho tem 62 unidades), e as lonas (`_tarp`), que são só um pano sobre um caixote que já existe, ficam de fora. Os caixotes têm moldura, tábuas e travessa; os barris são de madeira com aros. O corredor coberto ganhou varais de lanternas de papel acesas no lugar dos modelos `street_lanterns`, e os lampiões viraram luzes pequenas. Ruas de laje usam lajotas; calçamento usa paralelepípedos; os corredores têm painéis de madeira. Regras extras (`SABLE_PROPS`) também cobrem a Vespa, os sofás, as cadeiras, os sacos e as floreiras. Enfeites finos (molduras, calhas, janelas, portas na parede) ficam de fora, como nos outros mapas. O tema de luz é o `terracota`.
 
 ## Conversões anteriores e ferramentas compartilhadas
 

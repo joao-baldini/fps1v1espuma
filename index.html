@@ -1394,8 +1394,8 @@ function buildMap(id) {
     if(!sourceWorld)throw new Error('Source map must be loaded before starting');
     if(worldMesh){scene.remove(worldMesh);worldMesh.geometry.dispose();}
     const geo=sourceWorld.geometry(THREE),textured=!!(geo.attributes&&geo.attributes.pattern);
-    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);scene.add(worldMesh);applySourceFixes(def.source,worldMesh);
-    if (globalThis.V2World && typeof worldLights !== 'undefined') V2World.applyMood(THREE, worldLights, sky, scene, def.theme, AX, AZ);
+    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);worldMesh.castShadow=worldMesh.receiveShadow=true;scene.add(worldMesh);applySourceFixes(def.source,worldMesh);
+    if (globalThis.V2World && typeof worldLights !== 'undefined') { V2World.applyMood(THREE, worldLights, sky, scene, def.theme, AX, AZ); worldLights.sun.shadow.bias = -.0015; worldLights.sun.shadow.normalBias = .06; }
     try{clearDecals();BOT.wp=null;BOT.knowsUntil=0;}catch(e){}
     return;
   }
@@ -1468,7 +1468,7 @@ function buildMap(id) {
     exteriorMesh = V2World.buildExterior(THREE, def.theme, AX, AZ, addBoxTo, geoFrom, worldMat);
     scene.add(exteriorMesh);
   }
-  if (globalThis.V2World && typeof worldLights !== 'undefined') V2World.applyMood(THREE, worldLights, sky, scene, def.theme, AX, AZ);
+  if (globalThis.V2World && typeof worldLights !== 'undefined') { V2World.applyMood(THREE, worldLights, sky, scene, def.theme, AX, AZ); worldLights.sun.shadow.bias = -.0006; worldLights.sun.shadow.normalBias = .035; }
   try { clearDecals(); BOT.wp = null; BOT.knowsUntil = 0; } catch (e) { /* primeira montagem, antes de existirem */ }
 }
 // Rotação: fila com todos os mapas em ordem aleatória; quando a fila acaba, embaralha de novo
@@ -1530,35 +1530,50 @@ const MAP_ATLAS = (() => {
   for (let i = 0; i < 16; i++) { const m = info && info.means[i] || [1, 1, 1]; means.push(new THREE.Vector3(m[0], m[1], m[2])); own.push(OWN[i] || 0); }
   return { tex, ready, means, own, cell: info ? info.cell : 544, size: info ? info.size : 512, pad: info ? info.pad : 16 };
 })();
-const texWorldMat = new THREE.ShaderMaterial({
-  vertexColors: true, side: THREE.DoubleSide, extensions: { derivatives: true, shaderTextureLOD: true },
-  uniforms: { uFog: { value: new THREE.Color(SKY) }, uAlpha: { value: 1 }, uAtlas: { value: MAP_ATLAS.tex }, uReady: MAP_ATLAS.ready, uMeans: { value: MAP_ATLAS.means }, uOwn: { value: MAP_ATLAS.own } },
-  vertexShader: 'attribute float pattern;varying vec3 vC;varying vec3 vN;varying vec3 vW;varying vec2 vUv;varying float vP;void main(){vC=color;vN=normal;vUv=uv;vP=pattern;vec4 w=modelMatrix*vec4(position,1.0);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
-  fragmentShader: `uniform vec3 uFog;uniform float uAlpha;uniform sampler2D uAtlas;uniform float uReady;uniform vec3 uMeans[16];uniform float uOwn[16];
-varying vec3 vC;varying vec3 vN;varying vec3 vW;varying vec2 vUv;varying float vP;
+// Material dos mapas convertidos com luz de verdade (sol com sombras, céu e reflexo do chão, tone mapping do jogo):
+// a cor sai do atlas tingido pela cor real do material, e a lanterna acende (emissiva). Um leve ganho de saturação
+// deixa o dia ensolarado e com cores vivas.
+function makeMapMaterial(opacity) {
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .86, metalness: 0, side: THREE.DoubleSide, envMapIntensity: .35,
+    transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
+  const uniforms = { uAtlas: { value: MAP_ATLAS.tex }, uReady: MAP_ATLAS.ready, uMeans: { value: MAP_ATLAS.means }, uOwn: { value: MAP_ATLAS.own }, uVivid: { value: 1.18 } };
+  mat.userData.mapUniforms = uniforms;
+  mat.onBeforeCompile = shader => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float pattern;\nvarying float vP;\nvarying vec2 vAUv;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvP = pattern; vAUv = uv;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+uniform sampler2D uAtlas;uniform float uReady;uniform vec3 uMeans[16];uniform float uOwn[16];uniform float uVivid;
+varying float vP;varying vec2 vAUv;
 const float CELL=${MAP_ATLAS.cell.toFixed(1)},SIZE=${MAP_ATLAS.size.toFixed(1)},PAD=${MAP_ATLAS.pad.toFixed(1)},ATLAS=${(MAP_ATLAS.cell * 4).toFixed(1)};
 vec3 meanOf(int id){vec3 m=vec3(1.0);for(int i=0;i<16;i++)if(i==id)m=uMeans[i];return m;}
-float ownOf(int id){float o=0.0;for(int i=0;i<16;i++)if(i==id)o=uOwn[i];return o;}
-void main(){vec3 n=normalize(vN);int id=int(vP+0.5);
-float sun=max(dot(n,${SUN}),0.0);float l=0.66+0.42*sun;
-if(abs(n.y)<0.5) l*=0.78+0.22*smoothstep(0.0,1.0,vW.y);
-vec3 base=vC;
+float ownOf(int id){float o=0.0;for(int i=0;i<16;i++)if(i==id)o=uOwn[i];return o;}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+int mId=int(vP+0.5);
+vec3 mBase=diffuseColor.rgb;
 if(uReady>0.5){
-  float col=mod(float(id),4.0),row=floor(float(id)/4.0);
-  vec2 f=fract(vUv),o=vec2(col,3.0-row)*CELL+PAD;
-  vec2 dx=dFdx(vUv)*SIZE/ATLAS,dy=dFdy(vUv)*SIZE/ATLAS;
-  vec3 t=texture2DGradEXT(uAtlas,(o+f*SIZE)/ATLAS,dx,dy).rgb;
-  vec3 m=max(meanOf(id),vec3(0.05));float own=ownOf(id);
-  float lt=dot(t,vec3(.299,.587,.114)),lm=max(dot(m,vec3(.299,.587,.114)),.05);
-  vec3 hue=(t/max(lt,.04))/(m/lm);
-  base=mix(vC*(lt/lm)*mix(vec3(1.0),hue,.3),t,own);
-  if(id==13){gl_FragColor=vec4(min(t*1.25,vec3(1.0)),uAlpha);return;}
+  float mc=mod(float(mId),4.0),mr=floor(float(mId)/4.0);
+  vec2 mf=fract(vAUv),mo=vec2(mc,3.0-mr)*CELL+PAD;
+  vec3 mt=texture2DGradEXT(uAtlas,(mo+mf*SIZE)/ATLAS,dFdx(vAUv)*SIZE/ATLAS,dFdy(vAUv)*SIZE/ATLAS).rgb;
+  vec3 mm=max(meanOf(mId),vec3(0.05));
+  float lt=dot(mt,vec3(.299,.587,.114)),lm=max(dot(mm,vec3(.299,.587,.114)),.05);
+  vec3 hue=clamp((mt/max(lt,.04))/(mm/lm),vec3(.7),vec3(1.4));
+  mBase=mix(diffuseColor.rgb*(lt/lm)*mix(vec3(1.0),hue,.18),mt,ownOf(mId));
 }
-vec3 col=min(base*l,vec3(1.0));
-float d=length(vW-cameraPosition);col=mix(col,uFog,clamp((d-38.0)/85.0,0.0,0.34));
-gl_FragColor=vec4(col,uAlpha);}`,
-});
-const texGlassMat=texWorldMat.clone();texGlassMat.uniforms.uAlpha.value=.32;texGlassMat.uniforms.uAtlas=texWorldMat.uniforms.uAtlas;texGlassMat.uniforms.uReady=MAP_ATLAS.ready;texGlassMat.transparent=true;texGlassMat.depthWrite=false;
+// Cores do mapa em sRGB → luz linear; um pouco mais de saturação para o visual ensolarado.
+float mL=dot(mBase,vec3(.299,.587,.114));mBase=clamp(mix(vec3(mL),mBase,uVivid),0.0,1.0);
+diffuseColor.rgb=pow(mBase,vec3(2.2));`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+if(mId==13)totalEmissiveRadiance=diffuseColor.rgb*.85;`);
+  };
+  mat.shadowSide = THREE.BackSide; // as paredes dos BSPs são volumes fechados: a face de trás evita listras de sombra
+  mat.customProgramCacheKey = () => 'map-atlas-lit-' + (opacity < 1 ? 'glass' : 'solid');
+  return mat;
+}
+const texWorldMat = makeMapMaterial(1);
+const texGlassMat = makeMapMaterial(.32);
 const worldLights = globalThis.V2World ? V2World.setupLights(THREE, scene) : null;
 const sky = globalThis.V2World
   ? V2World.createSkyMesh(THREE)

@@ -132,7 +132,7 @@ def t_planks(vertical=False):
 
 
 def t_plaster():
-    v = fbm(5, (90, 30, 8), (.5, .35, .15))
+    v = fbm(5, (120, 40), (.7, .3))
     patches = smooth(.55, .62, noise(70, 51))
     base = col('#d9c9a8')
     a = base[None, None] * (0.9 + 0.14 * v)[..., None]
