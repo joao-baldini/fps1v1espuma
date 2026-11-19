@@ -32,6 +32,14 @@ A área jogável alcançável foi comparada com o radar oficial do Akihabara e c
 
 ## Texturas pintadas dos mapas convertidos
 
+**Estilo VALORANT (engenharia reversa do artigo da Riot "The Art of VALORANT Map Environments" e das imagens dele):**
+- **Superfícies:** grandes e quase lisas, com variação de tom suave e larga; nada de ruído miúdo.
+- **Materiais:** de valor parecido e claros, com juntas discretas, quase do mesmo tom da peça (nunca linhas pretas).
+- **Detalhe na forma:** cada bloco, tábua ou painel tem um filete claro na borda de cima e da esquerda (chanfro pegando luz) e uma sombra leve embaixo e à direita.
+- **Desgaste:** só em lascas claras e poucas, nas quinas.
+- **Distância:** o detalhe some com a distância e fica a cor limpa do material, para a leitura do mapa ficar clara.
+- **Árvores:** copas em tufos sobrepostos.
+
 `tools/gen-textures.py` desenha 16 texturas próprias (não são imagens de terceiros) num estilo cartunesco perto do realismo: tijolo, piso de lajotas, tábuas, reboco, metal, terra, cantaria, asfalto, telhas de barro, folhagem, caixote, barril, papel de lanterna, painel de madeira e calçamento. Cada uma tem formas limpas, relevo pintado (luz do alto à esquerda, sombra embaixo) e oclusão nas juntas.
 
 O resultado vai para `assets/maps/textures.js`: um atlas WebP 4×4 (~350 KiB), com borda repetida de 16 px em volta de cada textura para não aparecer costura no mipmap, e a cor média de cada textura. O shader dos mapas convertidos amostra o atlas pela coordenada de textura real do BSP, usando `textureGrad`.

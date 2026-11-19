@@ -1541,12 +1541,12 @@ function makeMapMaterial(opacity) {
   mat.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float pattern;\nvarying float vP;\nvarying vec2 vAUv;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvP = pattern; vAUv = uv;');
+      .replace('#include <common>', '#include <common>\nattribute float pattern;\nvarying float vP;\nvarying vec2 vAUv;\nvarying vec3 vMWP;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvP = pattern; vAUv = uv; vMWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform sampler2D uAtlas;uniform float uReady;uniform vec3 uMeans[16];uniform float uOwn[16];uniform float uVivid;
-varying float vP;varying vec2 vAUv;
+varying float vP;varying vec2 vAUv;varying vec3 vMWP;
 const float CELL=${MAP_ATLAS.cell.toFixed(1)},SIZE=${MAP_ATLAS.size.toFixed(1)},PAD=${MAP_ATLAS.pad.toFixed(1)},ATLAS=${(MAP_ATLAS.cell * 4).toFixed(1)};
 vec3 meanOf(int id){vec3 m=vec3(1.0);for(int i=0;i<16;i++)if(i==id)m=uMeans[i];return m;}
 float ownOf(int id){float o=0.0;for(int i=0;i<16;i++)if(i==id)o=uOwn[i];return o;}`)
@@ -1561,6 +1561,9 @@ if(uReady>0.5){
   float lt=dot(mt,vec3(.299,.587,.114)),lm=max(dot(mm,vec3(.299,.587,.114)),.05);
   vec3 hue=clamp((mt/max(lt,.04))/(mm/lm),vec3(.7),vec3(1.4));
   mBase=mix(diffuseColor.rgb*(lt/lm)*mix(vec3(1.0),hue,.18),mt,ownOf(mId));
+  // Como no VALORANT: de longe o detalhe some e fica a cor limpa do material (leitura clara do mapa).
+  float mFar=clamp((length(vMWP-cameraPosition)-22.0)/55.0,0.0,0.6);
+  mBase=mix(mBase,mix(diffuseColor.rgb,mt,ownOf(mId)),mFar);
 }
 // Cores do mapa em sRGB → luz linear; um pouco mais de saturação para o visual ensolarado.
 float mL=dot(mBase,vec3(.299,.587,.114));mBase=clamp(mix(vec3(mL),mBase,uVivid),0.0,1.0);

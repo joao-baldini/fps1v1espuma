@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Texturas pintadas dos mapas convertidos (estilo cartunesco perto do realismo).
+"""Texturas pintadas dos mapas convertidos (estilo VALORANT: estilizado, limpo e legível).
 
 Gera 16 texturas próprias, sem imagens de terceiros: cada uma é desenhada aqui com formas limpas (tijolos,
 tábuas, pedras, telhas...), relevo pintado (luz do alto à esquerda, sombra embaixo), oclusão nas juntas e pouco
@@ -72,98 +72,13 @@ def per_id(ids, values):
     return values[ids % len(values)]
 
 
-# ---------- texturas ----------
-
-def t_plain():
-    a = np.ones((N, N, 3)) * col('#d8d4cc')[None, None]
-    v = fbm(1, (128, 40), (.7, .3))
-    a *= (0.95 + 0.07 * v)[..., None]
-    return shade(a, v * .15, 1)
-
-
-def t_brick():
-    ids, edge, fx, fy = rows_bond(16, 4)
-    tone = rng.uniform(.82, 1.12, 4096)
-    hue = rng.uniform(-.04, .04, 4096)
-    base = col('#b4583a')
-    mortar = col('#cfc3ad')
-    brick = base[None, None] * per_id(ids, tone)[..., None]
-    brick[..., 0] += per_id(ids, hue); brick[..., 2] -= per_id(ids, hue) * .5
-    v = fbm(2, (40, 10), (.6, .4))
-    brick *= (0.9 + 0.16 * v)[..., None]
-    m = smooth(3.5, 6.5, edge)  # 1 no tijolo, 0 na argamassa
-    # quinas gastas
-    chip = (noise(14, 21) > .78) & (edge < 12)
-    m = np.where(chip, m * .4, m)
-    a = brick * m[..., None] + mortar[None, None] * (1 - m[..., None]) * (0.9 + 0.1 * v[..., None])
-    h = m * (0.8 + 0.2 * v)
-    return shade(a, h, 2.4, .5)
-
-
-def t_tiles():
-    ids, edge, fx, fy = rows_bond(4, 4, 0)
-    tone = rng.uniform(.9, 1.08, 64)
-    v = fbm(3, (60, 12), (.6, .4))
-    base = col('#c9c3b6') * per_id(ids, tone)[..., None] * (0.92 + 0.12 * v)[..., None]
-    m = smooth(2, 5, edge)
-    a = base * m[..., None] + col('#7d776c')[None, None] * (1 - m[..., None])
-    return shade(a, m * .9 + v * .1, 2.0)
-
-
-def t_planks(vertical=False):
-    rows = 8
-    y = (xx if vertical else yy) * rows; row = np.floor(y).astype(int); fy = y - row
-    along = (yy if vertical else xx)
-    off = per_id(row, rng.uniform(0, 1, 64))
-    seg = (along + off) * 2; segi = np.floor(seg).astype(int); fs = seg - segi
-    ids = row * 7 + segi
-    tone = rng.uniform(.82, 1.1, 1024)
-    grain = noise(6, 31) if not vertical else noise(6, 32)
-    gx = np.sin((along * 40 + grain * 6 + per_id(ids, rng.uniform(0, 6, 1024))) * np.pi) * .5 + .5
-    base = col('#a4744a') * per_id(ids, tone)[..., None]
-    base = base * (0.88 + 0.12 * gx)[..., None]
-    edge = np.minimum(np.minimum(fy, 1 - fy) * (N / rows), np.minimum(fs, 1 - fs) * (N / 2))
-    m = smooth(1.5, 4, edge)
-    a = base * (0.55 + 0.45 * m)[..., None]
-    # pregos
-    nail = ((np.abs(fs - .06) < .012) | (np.abs(fs - .94) < .012)) & (np.abs(fy - .5) < .06)
-    a[nail] = col('#4a4038')
-    return shade(a, m * .8 + gx * .1, 2.0, .4)
-
-
-def t_plaster():
-    v = fbm(5, (120, 40), (.7, .3))
-    patches = smooth(.55, .62, noise(70, 51))
-    base = col('#d9c9a8')
-    a = base[None, None] * (0.9 + 0.14 * v)[..., None]
-    a = a * (1 - 0.08 * patches[..., None])
-    # reboco caído mostrando tijolos em manchas pequenas
-    hole = smooth(.78, .8, noise(160, 52)) * smooth(.3, .6, noise(40, 53))
-    ids, edge, *_ = rows_bond(24, 6)
-    br = col('#a35a3d')[None, None] * (0.85 + 0.15 * smooth(2, 4, edge))[..., None]
-    a = a * (1 - hole[..., None]) + br * hole[..., None]
-    h = v * .08 + (1 - hole) * .7
-    return shade(a, h, 1.2, .3)
-
-
-def t_metal():
-    ribs = (np.sin(xx * 2 * np.pi * 10) * .5 + .5)
-    v = fbm(6, (80, 20), (.6, .4))
-    a = col('#a6adb3')[None, None] * (0.85 + 0.15 * ribs)[..., None] * (0.92 + 0.1 * v)[..., None]
-    rust = smooth(.7, .8, noise(30, 61)) * smooth(.6, 1, yy)
-    a = a * (1 - .5 * rust[..., None]) + col('#8a5434')[None, None] * .5 * rust[..., None]
-    return shade(a, ribs * .6 + v * .1, 2.2, .3)
-
-
-def t_ground():
-    v = fbm(7, (60, 20, 6), (.5, .3, .2))
-    a = col('#8a7458')[None, None] * (0.8 + 0.3 * v)[..., None]
-    pts = rng.uniform(0, 1, (220, 2))
-    d, _ = cKDTree(pts * N, boxsize=N).query(np.stack([yy.ravel() * N, xx.ravel() * N], -1))
-    peb = (d.reshape(N, N) < rng.uniform(3, 6)) * 1.0
-    a = a * (1 - peb[..., None] * .2) + col('#b8a58a')[None, None] * peb[..., None] * .2
-    return shade(a, v * .5 + peb * .3, 1.8, .4)
-
+# ---------- texturas (estilo VALORANT: formas grandes, pouco contraste, bordas chanfradas claras) ----------
+# Regras tiradas do artigo "The Art of VALORANT Map Environments" (Riot) e das imagens dele:
+# - superfícies grandes quase lisas, com variação de tom suave e larga (sem ruído miúdo);
+# - materiais de valor parecido, claros, sem juntas escuras: a junta é só um pouco mais clara/acinzentada;
+# - o detalhe está na forma: cada bloco/tábua/painel tem um filete claro na borda de cima/esquerda (chanfro pegando
+#   luz) e uma sombra leve embaixo/direita; desgaste só nas quinas, em lascas claras e poucas;
+# - cor por blocos (color blocking), sem textura fotográfica.
 
 def voronoi(npts, seed, jitter=1.0):
     r = np.random.default_rng(seed)
@@ -172,126 +87,168 @@ def voronoi(npts, seed, jitter=1.0):
         for j in range(g):
             pts.append(((i + .5 + (r.random() - .5) * jitter) / g, (j + .5 + (r.random() - .5) * jitter) / g))
     pts = np.array(pts) % 1
-    tree = cKDTree(pts * N, boxsize=N)
-    d, idx = tree.query(np.stack([yy.ravel() * N, xx.ravel() * N], -1), k=2)
+    d, idx = cKDTree(pts * N, boxsize=N).query(np.stack([yy.ravel() * N, xx.ravel() * N], -1), k=2)
     return (d[:, 1] - d[:, 0]).reshape(N, N), idx[:, 0].reshape(N, N)
 
 
+def painted_blocks(rows, cols, base, offset=.5, joint=3.0, bevel=5.0, tone=.05, grad=.05, seed=1, joint_mix=.35,
+                   chips=.0, ids_out=False):
+    r = np.random.default_rng(seed)
+    y = yy * rows; row = np.floor(y).astype(int)
+    x = xx * cols + (row % 2) * offset; cx = np.floor(x).astype(int); fx = x - cx; fy = y - row
+    ids = (row % rows) * cols + (cx % cols)
+    bw, bh = N / cols, N / rows
+    dl, dr, dt, db = fx * bw, (1 - fx) * bw, fy * bh, (1 - fy) * bh
+    edge = np.minimum.reduce([dl, dr, dt, db])
+    nb = rows * cols + cols
+    t = r.uniform(1 - tone, 1 + tone, nb)
+    ang = r.uniform(0, 2 * np.pi, nb)
+    g = (np.cos(per_id(ids, ang)) * (fx - .5) + np.sin(per_id(ids, ang)) * (fy - .5)) * 2 * grad
+    a = base[None, None] * (per_id(ids, t) + g)[..., None]
+    lo = noise(140, seed + 50); a *= (0.97 + 0.06 * lo)[..., None]
+    # chanfro: filete claro em cima/esquerda, sombra suave embaixo/direita
+    hi = smooth(bevel, 0, np.minimum(dt, dl)) * (edge > joint * .5)
+    sh = smooth(bevel, 0, np.minimum(db, dr)) * (edge > joint * .5)
+    a = a * (1 + .13 * hi - .10 * sh)[..., None]
+    if chips:
+        ch = (noise(10, seed + 9) > 1 - chips) & (edge < bevel * 2.2) & (edge > joint)
+        a[ch] = a[ch] * 1.12 + .03
+    jc = base * 0.97 * (1 - joint_mix * .6) + np.array([.74, .72, .68]) * joint_mix * .6
+    jm = smooth(joint * .55, joint, edge)
+    a = a * jm[..., None] + jc[None, None] * (1 - jm[..., None])
+    a = np.clip(a, 0, 1)
+    return (a, ids, fx, fy, edge) if ids_out else a
+
+
+def soft_surface(base, var=.06, seed=1, scale=160):
+    v = noise(scale, seed) * .7 + noise(scale / 3, seed + 1) * .3
+    return np.clip(base[None, None] * (1 - var + 2 * var * v)[..., None], 0, 1)
+
+
+def t_plain():
+    return soft_surface(col('#dcd8d0'), .03, 1)
+
+
+def t_brick():
+    return painted_blocks(10, 4, col('#c06a48'), joint=3.5, bevel=6, tone=.06, grad=.05, seed=2, chips=.05)
+
+
+def t_tiles():
+    return painted_blocks(4, 4, col('#cfc9bd'), offset=0, joint=3, bevel=6, tone=.035, grad=.04, seed=3, joint_mix=.25)
+
+
+def t_planks(vertical=False):
+    a, ids, fx, fy, edge = painted_blocks(6, 2, col('#b07d52'), offset=.37, joint=3, bevel=5, tone=.07, grad=.04, seed=4,
+                                          joint_mix=.15, ids_out=True)
+    # veio: faixas longas e suaves ao longo da tábua, sem linhas finas
+    # veio: faixas longas e suaves ao longo da tábua (horizontais), sem linhas finas
+    grain = np.sin((fy * 3.2 + noise(90, 41) * 2.2 + per_id(ids, rng.uniform(0, 6, 256))) * np.pi * 2) * .5 + .5
+    knots = smooth(.86, .9, noise(30, 43)) * .5
+    a = a * (0.92 + 0.11 * grain - .08 * knots)[..., None]
+    if vertical:
+        a = np.transpose(a, (1, 0, 2))
+    return np.clip(a, 0, 1)
+
+
+def t_plaster():
+    # reboco: quase liso, manchas largas e uma leve marca de desgaste; sem pontos
+    a = soft_surface(col('#e2d2b2'), .05, 5, 180)
+    patch = smooth(.62, .7, noise(200, 52))
+    return np.clip(a * (1 - .05 * patch)[..., None], 0, 1)
+
+
+def t_metal():
+    # painel metálico com nervuras largas e chanfradas
+    a = painted_blocks(1, 6, col('#aeb6bc'), offset=0, joint=2, bevel=10, tone=.02, grad=.06, seed=6, joint_mix=.4)
+    return a
+
+
+def t_ground():
+    return soft_surface(col('#9c8466'), .08, 7, 120)
+
+
 def t_stone():
-    # Cantaria: blocos de tamanhos diferentes, chanfrados.
-    ids, edge, fx, fy = rows_bond(6, 3, .37)
-    tone = rng.uniform(.84, 1.1, 256)
-    v = fbm(8, (40, 12, 5), (.5, .3, .2))
-    a = col('#b8ae9c')[None, None] * per_id(ids, tone)[..., None] * (0.88 + 0.16 * v)[..., None]
-    bevel = smooth(3, 14, edge)
-    m = smooth(2.5, 4.5, edge)
-    a = a * m[..., None] + col('#6e675c')[None, None] * (1 - m[..., None])
-    return shade(a, bevel * .9 + v * .15, 2.4, .5)
+    return painted_blocks(5, 3, col('#c4baa7'), offset=.37, joint=4, bevel=9, tone=.05, grad=.06, seed=8)
 
 
 def t_asphalt():
-    v = fbm(9, (50, 10, 3), (.4, .35, .25))
-    a = col('#5e5e60')[None, None] * (0.86 + 0.24 * v)[..., None]
-    crack = smooth(.0, .02, np.abs(noise(40, 91) - .5)) < .5
-    a[crack] *= .7
-    return shade(a, v * .3, 1.2, .2)
+    return soft_surface(col('#6a6b6e'), .05, 9, 140)
 
 
 def t_roof():
-    # Telhas de barro em fileiras: cada telha arredondada embaixo.
-    rows, cols = 8, 6
+    # telhas: fileiras com a curva da telha em degradê suave e borda inferior clara
+    rows, cols = 6, 5
     y = yy * rows; row = np.floor(y).astype(int); fy = y - row
     x = xx * cols + (row % 2) * .5; fx = x - np.floor(x); ids = row * cols + (np.floor(x).astype(int) % cols)
-    curve = np.sin(fx * np.pi)
-    tone = rng.uniform(.82, 1.12, 512)
-    base = col('#b5532f') * per_id(ids, tone)[..., None]
-    lip = fy > 0.72 + 0.18 * (1 - curve)
-    h = curve * .6 + fy * .35
-    a = base * (0.75 + 0.35 * curve)[..., None]
-    a[lip] *= 0.6
-    v = fbm(10, (30, 8), (.6, .4))
-    a *= (0.92 + 0.12 * v)[..., None]
-    return shade(a, h, 2.2, .45)
+    curve = np.sin(fx * np.pi) ** .6
+    tone = rng.uniform(.95, 1.05, 256)
+    a = col('#c4613a')[None, None] * per_id(ids, tone)[..., None] * (0.86 + 0.18 * curve)[..., None]
+    a *= (0.92 + 0.1 * fy)[..., None]
+    lip = smooth(.9, .97, fy); a = a * (1 + .14 * lip)[..., None]
+    gap = smooth(.0, .06, np.minimum(fx, 1 - fx)); a = a * (0.88 + .12 * gap)[..., None]
+    return np.clip(a, 0, 1)
 
 
 def t_foliage():
-    v = fbm(11, (24, 8), (.6, .4))
-    d, idx = voronoi(144, 111)
-    blob = smooth(0, 18, d)
-    tone = per_id(idx, rng.uniform(.75, 1.15, 512))
-    a = col('#5f8a3a')[None, None] * tone[..., None] * (0.75 + 0.35 * blob)[..., None] * (0.9 + 0.15 * v)[..., None]
-    return shade(a, blob * .8 + v * .2, 2.0, .5)
+    # folhagem em massas grandes com luz no alto de cada massa
+    d, idx = voronoi(36, 111)
+    blob = smooth(0, 40, d)
+    a = col('#6f9a42')[None, None] * per_id(idx, rng.uniform(.9, 1.1, 128))[..., None] * (0.82 + 0.25 * blob)[..., None]
+    return np.clip(a * (0.96 + .08 * noise(90, 12))[..., None], 0, 1)
 
 
 def t_crate():
-    # Face de caixote: moldura clara e grossa, tábuas internas mais escuras, travessa diagonal e estêncil.
-    planks = t_planks()
-    base = planks * np.array([.86, .78, .66])
-    fr = 0.13
-    frame = (xx < fr) | (xx > 1 - fr) | (yy < fr) | (yy > 1 - fr)
-    diag = np.abs((xx - yy)) < 0.075
-    board = frame | diag
-    h = np.where(board, 1.0, 0.35)
+    base = t_planks() * np.array([.92, .88, .82])
+    fr = .12
+    frame = (xx < fr) | (xx > 1 - fr) | (yy < fr) | (yy > 1 - fr) | (np.abs(xx - yy) < .07)
     a = base.copy()
-    grain = noise(5, 77)
-    light = col('#d2b07a')[None, None] * (0.88 + 0.12 * grain)[..., None]
-    a[board] = light[board]
-    # estêncil: duas setas e um retângulo
-    st = (np.abs(xx - .5) < .18) & (np.abs(yy - .3) < .05) & ~board
-    a[st] = a[st] * .55
-    edge = np.minimum.reduce([np.abs(xx - fr), np.abs(1 - fr - xx), np.abs(yy - fr), np.abs(1 - fr - yy)])
-    a *= (1 - .25 * (edge < .01))[..., None]
-    return shade(a, gaussian_filter(h, 2, mode='wrap'), 2.6, .5)
+    light = soft_surface(col('#d9b67e'), .04, 77)
+    a[frame] = light[frame]
+    e = np.minimum.reduce([np.abs(xx - fr), np.abs(1 - fr - xx), np.abs(yy - fr), np.abs(1 - fr - yy)]) * N
+    a *= (1 - .18 * smooth(3, 0, e) * ~frame)[..., None]
+    outer = np.minimum.reduce([xx, 1 - xx, yy, 1 - yy]) * N
+    a *= (1 + .12 * smooth(5, 0, outer))[..., None]
+    st = (np.abs(xx - .5) < .2) & (np.abs(yy - .32) < .04) & ~frame
+    a[st] = a[st] * .62
+    return np.clip(a, 0, 1)
 
 
 def t_barrel():
-    staves = 10
+    staves = 8
     fx = (xx * staves) % 1
-    curve = np.sin(fx * np.pi)
-    tone = per_id(np.floor(xx * staves).astype(int), rng.uniform(.85, 1.08, 16))
-    a = col('#8a5a34')[None, None] * tone[..., None] * (0.8 + 0.25 * curve)[..., None]
-    grain = noise(5, 121)
-    a *= (0.92 + 0.1 * np.sin((yy * 30 + grain * 4) * np.pi) * .5 + .05)[..., None]
-    hoop = (np.abs(yy - .2) < .035) | (np.abs(yy - .8) < .035)
-    a[hoop] = col('#3c3c40') * (0.8 + 0.3 * curve[hoop])[:, None]
-    h = curve * .6 + hoop * .4
-    return shade(a, h, 2.0, .4)
+    curve = np.sin(fx * np.pi) ** .5
+    a = col('#9a6640')[None, None] * per_id(np.floor(xx * staves).astype(int), rng.uniform(.94, 1.06, 16))[..., None]
+    a = a * (0.85 + 0.18 * curve)[..., None]
+    hoop = (np.abs(yy - .2) < .04) | (np.abs(yy - .8) < .04)
+    a[hoop] = col('#55575c') * (0.85 + .2 * curve[hoop])[:, None]
+    return np.clip(a, 0, 1)
 
 
 def t_lantern():
-    # Papel da lanterna aceso: laranja quente, nervuras verticais e faixas escuras no alto e embaixo.
     ribs = np.abs(((xx * 8) % 1) - .5) * 2
-    glow = 0.75 + 0.25 * np.sin(yy * np.pi)
-    a = col('#ffb35c')[None, None] * glow[..., None]
-    a *= (0.85 + 0.15 * ribs)[..., None]
-    band = (yy < .1) | (yy > .9)
-    a[band] = col('#5a1d14')
-    mark = (np.abs(xx - .5) < .08) & (np.abs(yy - .5) < .14)
-    a[mark] = col('#c4462a')
+    a = col('#ffbf6e')[None, None] * (0.8 + .2 * np.sin(yy * np.pi))[..., None] * (0.9 + 0.1 * ribs)[..., None]
+    band = (yy < .1) | (yy > .9); a[band] = col('#7a2a1c')
+    mark = (np.abs(xx - .5) < .08) & (np.abs(yy - .5) < .14); a[mark] = col('#d0543a')
     return np.clip(a, 0, 1)
 
 
 def t_wainscot():
-    # Parede de madeira com painéis em relevo (corredor das lanternas).
-    pw, ph = 2, 2
-    fx = (xx * pw) % 1; fy = (yy * ph) % 1
-    edge = np.minimum(np.minimum(fx, 1 - fx), np.minimum(fy, 1 - fy))
-    raised = smooth(.08, .14, edge)
-    planks = t_planks(vertical=True) * np.array([1.1, .9, .85])
-    a = planks * (0.8 + 0.25 * raised)[..., None]
-    groove = (edge > .06) & (edge < .08)
-    a[groove] *= .6
-    return shade(a, raised * .8, 2.2, .45)
+    a, ids, fx, fy, edge = painted_blocks(2, 2, col('#a8724c'), offset=0, joint=4, bevel=14, tone=.03, grad=.05, seed=15,
+                                          joint_mix=.1, ids_out=True)
+    inner = smooth(40, 46, edge)
+    a = a * (0.94 + 0.06 * inner)[..., None]
+    return np.clip(a, 0, 1)
 
 
 def t_cobble():
-    d, idx = voronoi(196, 141, .8)
-    stone = smooth(1.5, 9, d)
-    tone = per_id(idx, rng.uniform(.8, 1.12, 512))
-    v = fbm(14, (30, 8), (.6, .4))
-    a = col('#a39a8c')[None, None] * tone[..., None] * (0.88 + 0.16 * v)[..., None]
-    a = a * (0.45 + 0.55 * stone)[..., None]
-    return shade(a, stone * .9 + v * .1, 2.4, .55)
+    d, idx = voronoi(100, 141, .8)
+    stone = smooth(2, 7, d)
+    a = col('#b3aa9c')[None, None] * per_id(idx, rng.uniform(.93, 1.07, 256))[..., None]
+    rim = smooth(14, 4, d) * stone
+    a = a * (1 + .1 * rim)[..., None]
+    jc = col('#a49b8c')
+    a = a * stone[..., None] + jc[None, None] * (1 - stone[..., None])
+    return np.clip(a, 0, 1)
 
 
 TILES = [t_plain, t_brick, t_tiles, t_planks, t_plaster, t_metal, t_ground, t_stone, t_asphalt, t_roof, t_foliage,

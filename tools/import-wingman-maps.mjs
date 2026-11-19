@@ -121,7 +121,12 @@ function approximateProps(map, nav, report, extraRules = []) {
       const t = spec.tree, r = t.trunk / 2;
       out.push({ faces: shape(-r, r, -r, r, 0, t.height, xf, rot, true), mask: prop.solid ? 3 : 0, color: C.trunk, pat: P.wood });
       const [cx, cy, cz] = t.crown;
-      out.push({ faces: shape(-cx / 2, cx / 2, -cy / 2, cy / 2, t.crownAt, t.crownAt + cz, xf, rot, true), mask: 0, color: C.foliage, pat: P.foliage });
+      // Copa em tufos sobrepostos (forma estilizada, como as árvores do VALORANT), não um cilindro só.
+      const puffs = [[0, 0, 0, 1], [.28, .1, .32, .72], [-.26, -.14, .42, .66], [.04, .22, .62, .55], [-.08, -.2, .14, .7]];
+      for (const [ox, oy, oz, k] of puffs) {
+        const px = ox * cx, py = oy * cy, pz = t.crownAt + oz * cz, w = cx * k / 2, d = cy * k / 2, h = cz * k * .75;
+        out.push({ faces: shape(px - w, px + w, py - d, py + d, pz, pz + h, xf, rot, true), mask: 0, color: C.foliage, pat: P.foliage });
+      }
     } else {
       let [L, W, H] = spec.size, x0 = -L / 2, x1 = L / 2, y0 = -W / 2, y1 = W / 2;
       const baseZ = prop.origin[2];
