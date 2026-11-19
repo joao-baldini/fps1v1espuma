@@ -1,6 +1,6 @@
 # aim_duelo
 
-FPS que roda no navegador, com tiro e movimento como no Valorant (a AWP segue o CS2), com **Elimination** (1 a 8 por time), **Plant the Bomb** (5v5), **Wingman** (2v2), **TDM**, **DM** e treino de mira no **Practice**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, dois mapas de Wingman e dois mapas de Plant the Bomb. O menu usa prévias dos mapas em WebP.
+FPS que roda no navegador, com tiro e movimento como no Valorant (a AWP segue o CS2), com **Elimination** (1 a 8 por time), **Plant the Bomb** (5v5), **Wingman** (2v2), **TDM**, **DM** e treino de mira no **Practice**. O jogo roda em `index.html`, com geometria leve, áudio sintetizado, cinco arenas de duelo, quatro mapas de DM, cinco mapas de Wingman e dois mapas de Plant the Bomb. O menu usa prévias dos mapas em WebP.
 
 ## Modos de jogo
 
@@ -98,7 +98,7 @@ Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os 
 
 ### Mapas de bomba
 
-No **Wingman 2v2**, escolha **Sanctum**, **Neon**, **Forge** ou **Overgrowth**. Os créditos dos mapas são, respectivamente, **alicate madeira 4**, **zelzstorm**, **Blind** e **jd40**.
+No **Wingman 2v2**, escolha **Sanctum**, **Neon**, **Forge**, **Overgrowth** ou **Sable**. Os créditos dos mapas são, respectivamente, **alicate madeira 4**, **zelzstorm**, **Blind**, **jd40** e **dorg** (mapas usados com a permissão dos autores).
 
 O **Sanctum** foi reconstruído por um conversor próprio a partir do BSP enviado: arquitetura completa, dez nascimentos originais e bombsite A, cores chapadas e grade padrão do jogo. As coberturas externas ausentes no BSP recebem modelagem própria e leve: pallets baixos, caixas com alturas corrigidas, barris e cercas vazadas. Não carrega texturas do CS. A malha anterior e as duas prévias do menu foram substituídas. O relatório e as instruções de regeneração estão em [assets/maps/README.md](assets/maps/README.md).
 
@@ -162,6 +162,16 @@ Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e 
 Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e em todos os mapas próprios os spawns iniciais são escolhidos sem que nenhum par de participantes se enxergue. Os bots navegam pelas plataformas, rampas, escadas e pelos dois níveis da travessia do CT na Dust II. O relógio continua no menu e ao trocar de aba; a simulação gráfica fica suspensa em abas ocultas.
 
 ## Practice (antigo Aimbotz)
+
+### Treino livre nos mapas do Wingman
+
+Na faixa **Treino livre** do Practice, escolha **Sanctum**, **Neon**, **Forge**, **Overgrowth** ou **Sable** em vez da arena de mira. Você entra sozinho no mapa e pode treinar sem limites:
+
+- **Tempo:** não acaba; o placar mostra **∞**.
+- **Dinheiro e área de compra:** **B** abre a loja grátis em qualquer lugar e a qualquer hora. Escolher uma arma já a equipa.
+- **Invulnerável:** nada tira vida.
+- **Granadas:** **4** alterna HE, flash e smoke, sem acabar.
+- **Voo intangível:** **N** liga e desliga o voo, que atravessa paredes e não tem gravidade. Use **W/A/S/D** para a direção da mira, **Espaço** para subir, **C/Ctrl** para descer e **Shift** para acelerar.
 
 Escolha **Practice** no menu e clique em **Jogar Practice**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos.
 

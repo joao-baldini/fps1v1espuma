@@ -191,3 +191,12 @@ export function addNeonSignage(map) {
   }
   map.report.signage = added;
 }
+
+// Sable (dorg): objetos padrão do CS usados no mapa que as regras gerais não cobrem.
+export const SABLE_PROPS = [
+  [/inferno_vespa/, () => ({ size: [72, 28, 44], color: 0x6fa7a0, pat: P.metal })],
+  [/furniture_couch0[12]a/, () => ({ size: [80, 36, 34], color: 0x3e5f86, pat: P.plain })],
+  [/inferno_chair|dust_patio_chair/, () => ({ size: [20, 20, 36], color: 0x7a5a3a, pat: P.wood })],
+  [/dust_detruis_sack|dust_flour_sack/, () => ({ size: [36, 24, 14], color: 0xc8b796, pat: P.concrete })],
+  [/inferno_planter\.mdl$|inferno_planter$/, () => ({ size: [64, 24, 28], color: 0x9a6a48, pat: P.brick })],
+];

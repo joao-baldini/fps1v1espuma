@@ -207,6 +207,20 @@
       ],
       "fov": 55,
       "source": "BSP materials v2 (cores dos VMT/VTF do Akihabara)"
+    },
+    "sable": {
+      "from": [
+        -14,
+        14,
+        12
+      ],
+      "to": [
+        3,
+        0,
+        -6
+      ],
+      "fov": 55,
+      "source": "de_sable.bsp (cores reais dos materiais)"
     }
   }
 }

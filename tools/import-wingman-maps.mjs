@@ -1,5 +1,5 @@
 // Converts the four Wingman BSPs supplied by the user (used with the authors' permission) into the game's map format.
-// Usage: node tools/import-wingman-maps.mjs <wg_sanctum.bsp> <wg_neon.bsp> <wg_forge.bsp> <wg_overgrowth.bsp>
+// Usage: node tools/import-wingman-maps.mjs <wg_sanctum.bsp> <wg_neon.bsp> <wg_forge.bsp> <wg_overgrowth.bsp> <de_sable.bsp>
 // Geometry, collision, spawns and bombsites come from each BSP. Stock CS:GO props are not inside the files, so the
 // common cover props (crates, barrels, hedges, cars, barriers, rocks, fences, railings, trees...) are approximated by
 // boxes and prisms from rules on the model name, and checked against the map's own navigation mesh (.nav): a prop that
@@ -11,7 +11,7 @@ import { compileSourceMap, rotation, PATTERNS } from './source-bsp.mjs';
 import { readNav, navHeightsAt } from './source-nav.mjs';
 import { packMap, bakeNavigation } from './import-source-maps.mjs';
 import { rebuildSanctum } from './import-sanctum.mjs';
-import { styleNeon, addNeonSignage, NEON_PROPS, NEON_HOARDINGS } from './neon-style.mjs';
+import { styleNeon, addNeonSignage, NEON_PROPS, NEON_HOARDINGS, SABLE_PROPS } from './neon-style.mjs';
 import '../assets/maps/runtime.js';
 
 export const WINGMAN_MAPS = {
@@ -19,6 +19,7 @@ export const WINGMAN_MAPS = {
   neon: { name: 'Neon', credit: 'zelzstorm', file: 'wg_neon.bsp' },
   forge: { name: 'Forge', credit: 'Blind', file: 'wg_forge.bsp' },
   overgrowth: { name: 'Overgrowth', credit: 'jd40', file: 'wg_overgrowth.bsp' },
+  sable: { name: 'Sable', credit: 'dorg', file: 'de_sable.bsp' },
 };
 
 const add = (a, b) => a.map((v, i) => v + b[i]), mul = (a, s) => a.map(v => v * s), dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -286,13 +287,14 @@ const P_METAL = PATTERNS.metal, clampT = (v, a, b) => Math.max(a, Math.min(b, v)
 export function importWingmanMap(file, key) {
   if(key==='sanctum')return rebuildSanctum(file);
   const info = WINGMAN_MAPS[key];
-  const map = compileSourceMap(file, key, { textures: true, materialNames: key === 'neon' });
+  const map = compileSourceMap(file, key, { textures: true, materialNames: key === 'neon' || key === 'sable' });
   map.name = info.name; map.credit = info.credit;
   if (key === 'neon') { styleNeon(map); addNeonSignage(map); }
+  if (key === 'sable') styleNeon(map); // mesmas cores reais dos materiais (VMT/VTF/refletividade do BSP)
   const navFile = [...map.bsp.pak.keys()].find(k => k.endsWith('.nav'));
   if (!navFile) throw Error(key + ': no navigation mesh');
   const nav = readNav(map.bsp.asset(navFile));
-  approximateProps(map, nav, map.report, key === 'neon' ? NEON_PROPS : []);
+  approximateProps(map, nav, map.report, key === 'neon' ? NEON_PROPS : key === 'sable' ? SABLE_PROPS : []);
   bakeNavigation(map);
   clipToPlay(map);
   if (key === 'neon') addHoardings(map, NEON_HOARDINGS);

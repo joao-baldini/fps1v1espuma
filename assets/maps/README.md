@@ -30,6 +30,16 @@ O Neon é o Akihabara de **zelzstorm** (Adroon na arte). A geometria, as colisõ
 
 A área jogável alcançável foi comparada com o radar oficial do Akihabara e coincide com ele. Spawns, bombsite e navegação continuam conectados, e o tamanho do payload quase não mudou (cerca de 2,9 MB compactado). A imagem do menu (`menu/play/neon.webp` e a miniatura) é um render novo desse acabamento; a câmera está em `cameras.json`.
 
+## Sable · Wingman
+
+O Sable é o mapa de **dorg**, usado com a permissão do autor (Steam Workshop 1369768878). O arquivo enviado, `de_sable.bsp`, é um zip com o BSP Source 21 dentro e é extraído antes da conversão. Ele passa pelo mesmo importador do Wingman.
+
+A estrutura é a do original, sem mudanças: a geometria, as alturas, as colisões e os *player clips* vêm do BSP; os 7 spawns de cada lado, o bombsite A e a navegação também. Não há tapumes nem bloqueios novos.
+
+O acabamento usa as cores reais de cada material, pelo mesmo método do Neon (`styleNeon` em `tools/neon-style.mjs`): o VMT e o VTF embutidos quando existem; senão, a refletividade que o BSP guarda de cada textura, convertida para sRGB. O desenho fica com os padrões procedurais do jogo: tijolo, reboco, madeira, pedra, telhado e paralelepípedo, conforme o nome do material. As texturas originais do CS (`de_inferno/hr_i` e outras) não vêm dentro do BSP, então não há imagens.
+
+O mapa não traz nenhum modelo próprio: os 627 objetos são modelos padrão do CS. Eles são aproximados pelas regras do importador (barris, fardos de feno, caixotes, ciprestes, pilares, grades...). Regras extras (`SABLE_PROPS`) cobrem a Vespa, os sofás, as cadeiras, os sacos e as floreiras. Enfeites finos (molduras, calhas, janelas, portas na parede) ficam de fora, como nos outros mapas. O tema de luz é o `terracota`.
+
 ## Conversões anteriores e ferramentas compartilhadas
 
 Conversão offline dos BSPs fornecidos pelo usuário: `de_guard_csgo.bsp` e `de_elysion.bsp`, extraídos de `guard_feito_por_mim.zip` e `de_elysion_9e838.rar`. Guard é de **poLemin**; Elysion é de **Big_SG21**. Os arquivos fornecidos são ports de **Alex Road**. Os relatórios `*-source.json` registram o SHA-256 de cada BSP, posições, escala, navegação e contagens.

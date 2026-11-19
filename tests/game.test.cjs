@@ -10,9 +10,9 @@ const sourceCatalog={};vm.runInNewContext(readFileSync(resolve(__dirname,'../ass
 vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/prefire-catalog.js'),'utf8'),sourceCatalog);
 vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/warface-catalog.js'),'utf8'),sourceCatalog);
 const sourcePacked={};
-const WINGMAN=['sanctum','neon','forge','overgrowth'];
+const WINGMAN=['sanctum','neon','forge','overgrowth','sable'];
 for(const id of [...WINGMAN,'inferno','palace','factory']){
-  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:sanctum|neon|forge|overgrowth|inferno|palace|factory)=("[A-Za-z0-9+/=]+");/);
+  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:sanctum|neon|forge|overgrowth|sable|inferno|palace|factory)=("[A-Za-z0-9+/=]+");/);
   assert.ok(encoded,'Missing generated BSP payload: '+id);sourcePacked[id]=JSON.parse(gunzipSync(Buffer.from(JSON.parse(encoded[1]),'base64')));
 }
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8');
@@ -1490,7 +1490,7 @@ function bombWorld(map = 'sanctum', setup) {
   return { g, cx, A, BM, step };
 }
 test('Wingman maps keep the BSP spawns, connected floors and bombsites, credit their authors and use light textures',()=>{
-  const expected={sanctum:{sites:1,author:'alicate madeira 4'},neon:{sites:1,author:'zelzstorm'},forge:{sites:2,author:'Blind'},overgrowth:{sites:2,author:'jd40'}};
+  const expected={sanctum:{sites:1,author:'alicate madeira 4'},neon:{sites:1,author:'zelzstorm'},forge:{sites:2,author:'Blind'},overgrowth:{sites:2,author:'jd40'},sable:{sites:1,author:'dorg'}};
   for(const [key,want]of Object.entries(expected)){
     const g=game({mode:'bomb'}),cx=g.context;cx.buildMap(key);g.dmBuildNav([]);const source=cx.sourceWorld,meta=source.meta,map=g.MAPS[key];
     assert.equal(g.DM.nav.audit.spawnsConnected,g.DM.nav.audit.spawnsTotal,key+': todos os spawns ligados');assert.ok(meta.t.length>=2&&meta.ct.length>=2);
@@ -2760,4 +2760,15 @@ test('Elimination patrol: teammate avoidance keeps a full movement input instead
   b.elimMove=true;
   for(let i=0;i<8;i++)g.physics(b,input[0],input[1],g.W.rifle.speed,false,1/128);
   assert.ok(b.vel.z<-.5,'separation must not strand both bots in the doorway');
+});
+
+test('Practice on the Wingman maps: free shop anywhere, no damage, endless grenades and noclip flight with N',()=>{
+  const g=game({mode:'aimbotz'}),cx=g.context;
+  assert.equal(vm.runInContext('JSON.stringify(PRACTICE_MAPS)',cx),JSON.stringify(['aimbotz','sanctum','neon','forge','overgrowth','sable']));
+  cx.buildMap('sable');vm.runInContext("G.mode='aimbotz';MAPPRACTICE.id='sable';P.alive=true;P.hp=100;P.nades={};",cx);
+  assert.equal(vm.runInContext('mapPracticeOn()',cx),true);assert.equal(vm.runInContext('freeShopOn()',cx),true);
+  vm.runInContext("takeDamage(80,'head',0,0,'rifle','B');mapPracticeTick();",cx);
+  assert.equal(vm.runInContext('P.hp',cx),100);assert.equal(vm.runInContext('P.nades.he',cx),9);
+  cx.toast=()=>{};vm.runInContext('togglePracticeFly()',cx);assert.equal(vm.runInContext('P.fly',cx),true);
+  vm.runInContext('MAPPRACTICE.id=null;P.fly=false;',cx);assert.equal(vm.runInContext('freeShopOn()',cx),false);
 });
