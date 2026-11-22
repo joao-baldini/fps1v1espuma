@@ -93,6 +93,11 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="aimbotz"><span class="mode-copy"><b>Practice</b><small>Encontre sua mira</small></span></button>
     </div>
+    <form class="join-room" id="joinRoom" autocomplete="off" novalidate>
+      <label for="inJoin">Entrar na sala de um amigo</label>
+      <div class="room-code"><input id="inJoin" type="text" maxlength="20" placeholder="Código da sala" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="joinInfo"><button id="btnJoinCode" class="primary" type="submit">Entrar</button></div>
+      <small id="joinInfo" aria-live="polite">Só o código: o modo, o mapa e as regras são os de quem criou a sala.</small>
+    </form>
 
         <details class="lobby-equipment" id="equipmentField"><summary>Seu equipamento</summary><div class="equipment-head"><button id="btnLoadout" type="button">Editar no arsenal</button></div><span class="sr-only" id="loadoutSummary"></span><div class="loadout-mini" id="loadoutMini" aria-hidden="true"></div></details>
       </aside>
@@ -125,7 +130,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
         <label class="fld" id="teamField"><span>Times na sala</span><select data-k="teamSetup" aria-label="Times na sala"><option value="versus">Pessoas em lados opostos</option><option value="coop">Pessoas no mesmo time</option></select></label>
         <label class="fld" id="duelBotControls"><span>Dificuldade do bot</span><select id="inBot" data-k="botLevel" aria-label="Dificuldade do bot"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
         <div class="fld" id="roomField" hidden>
-          <span id="roomLabel">Código da sala</span>
+          <span id="roomLabel">Código da sua sala</span>
           <div class="room-code"><input id="inRoom" aria-labelledby="roomLabel" type="text" maxlength="20" data-k="room" autocomplete="off" spellcheck="false"><button id="btnGen" type="button">Novo</button><button id="btnCopy" type="button">Copiar</button></div>
           <small id="roomInfo"></small>
         </div>
@@ -133,7 +138,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
 
           </div><div class="launch-action-area">
         <div class="lobby-actions">
-          <button id="btnJoin" class="primary" type="button" hidden>Entrar na sala 1v1</button>
+          <button id="btnJoin" class="primary" type="button" hidden>Criar sala</button>
           <button id="btnBot" class="primary" type="button">Treinar contra bot</button>
           <button id="btnDm" class="primary" type="button" hidden>Jogar DM com bots</button>
           <button id="btnAimbotz" class="primary" type="button" hidden>Jogar Practice</button>
@@ -7296,19 +7301,41 @@ function arenaLeft(id) {
   if (ARENA.kind === 'dm') { dmRosterChanged(now()); toast((ARENA.names[id] || 'Um jogador') + ' saiu. Um bot assume a vaga.'); }
   else { ARENA.m = ''; ARENA.startAt = now() + 1500; toast((ARENA.names[id] || 'Um jogador') + ' saiu da sala. Um bot assume a vaga.'); }
 }
-function arenaNetStart(code) {
-  arenaNetStop(); ARENA.code = code; ARENA.order = []; ARENA.names = {};
+// Uma sala por código, em qualquer modo. Quem cria escolhe modo, mapa e regras; quem entra só digita o código e recebe
+// essa configuração do anfitrião (mensagem 'cfg') antes de abrir a partida.
+const ROOM_PREFIX = 'aimduelo-sala-v2-';
+const ROOM_MODES = ['elim', 'bomb', 'wingman', 'tdm', 'dm'];
+const ROOM_KEYS = ['mode', 'map', 'bombMap', 'warfaceMap', 'dmMap', 'xvx', 'tdmSize', 'teamSetup', 'dmWeapons', 'dmLevel', 'botLevel'];
+function roomConfig() { const d = { v: 2, kind: ARENA.kind === 'dm' ? 'dm' : 'team', mp: MAP ? MAP.id : null }; for (const k of ROOM_KEYS) d[k] = S[k] == null ? null : JSON.parse(JSON.stringify(S[k])); return d; }
+function applyRoomConfig(d) {
+  if (!d || typeof d !== 'object' || !['team', 'dm'].includes(d.kind) || !ROOM_MODES.includes(d.mode)) return false;
+  const str = (k, ok) => { if (typeof d[k] === 'string' && ok(d[k])) S[k] = d[k]; };
+  S.mode = d.mode;
+  str('map', v => v === 'rotacao' || MAP_IDS.includes(v)); str('bombMap', v => v === 'rotacao' || BOMB_MAPS.includes(v)); str('warfaceMap', v => WARFACE_MAPS.includes(v));
+  str('dmMap', v => !!(MAPS[v] && MAPS[v].dm)); str('teamSetup', v => ['versus', 'coop'].includes(v)); str('dmWeapons', v => ['pistol', 'sniper', 'rifle', 'all'].includes(v));
+  str('dmLevel', v => !!LEVELS[v]); str('botLevel', v => !!LEVELS[v]);
+  if (d.xvx && typeof d.xvx === 'object') S.xvx = { mine: clamp(d.xvx.mine | 0, 1, TEAM_MAX), foes: clamp(d.xvx.foes | 0, 1, TEAM_MAX) };
+  if (fin(d.tdmSize)) S.tdmSize = clamp(d.tdmSize | 0, 2, TEAM_MAX);
+  // Na rotação, o convidado começa no mapa em que o anfitrião está; as próximas trocas chegam com as rodadas.
+  if (typeof d.mp === 'string' && MAPS[d.mp]) { if (d.mode === 'wingman' && BOMB_MAPS.includes(d.mp)) S.bombMap = d.mp; else if (d.kind === 'team' && d.mode !== 'bomb' && MAP_IDS.includes(d.mp)) S.map = d.mp; }
+  return true;
+}
+function arenaNetStart(code, retry = false) {
+  arenaNetStop(); ARENA.code = code; ARENA.order = []; ARENA.names = {}; ARENA.role = 'host';
+  if (!retry) { ARENA.hostOpened = false; ARENA.cfg = roomConfig(); }
   if (typeof Peer === 'undefined') { ARENA.netText = 'sem rede'; toast('A biblioteca de rede não carregou. Verifique a internet e recarregue a página.'); return; }
   ARENA.netText = 'conectando…';
-  const hostId = (ARENA.kind === 'dm' ? 'aimduelo-dm-v1-' : ARENA.bomb ? 'aimduelo-wingman-v1-' : 'aimduelo-times-v1-') + code, peer = new Peer(hostId, { debug: 0, config: ICE, ...PEER_OPTS }); ARENA.peer = peer;
-  peer.on('open', () => { if (ARENA.peer === peer) arenaHostReady(); });
+  const hostId = ROOM_PREFIX + code, peer = new Peer(hostId, { debug: 0, config: ICE, ...PEER_OPTS }); ARENA.peer = peer;
+  peer.on('open', () => { if (ARENA.peer !== peer) return; ARENA.hostOpened = true; arenaHostReady(); });
   peer.on('connection', c => {
     if (ARENA.peer !== peer) return;
+    // Consulta de quem digitou o código: só recebe a configuração da sala, sem ocupar vaga.
+    if (c.metadata && c.metadata.probe) { c.on('open', () => { try { c.send({ t: 'cfg', d: ARENA.cfg }); } catch (e) {} setTimeout(() => { try { c.close(); } catch (e) {} }, 800); }); c.on('error', () => {}); return; }
     c.on('open', () => {
       const id = HUMAN_SLOTS.slice(1).find(s => !ARENA.conns.has(s));
       if (!id || arenaHumans().length >= arenaCapacity()) { try { c.send({ t: 'full' }); } catch (e) {} setTimeout(() => { try { c.close(); } catch (e) {} }, 400); return; }
       ARENA.conns.set(id, c); ARENA.order = ARENA.order.filter(x => x !== id).concat(id); ARENA.names[id] = ARENA.names[id] || 'Jogador ' + id;
-      try { c.send({ t: 'welcome', id }); } catch (e) {}
+      try { c.send({ t: 'cfg', d: ARENA.cfg }); c.send({ t: 'welcome', id }); } catch (e) {}
       c.on('data', m => { if (ARENA.conns.get(id) === c) { try { arenaOnData(id, m); } catch (err) { console.error('sala:', err); } } });
       c.on('close', () => { if (ARENA.conns.get(id) !== c) return; ARENA.conns.delete(id); ARENA.order = ARENA.order.filter(x => x !== id); arenaLeft(id); });
       arenaJoined(id);
@@ -7317,10 +7344,23 @@ function arenaNetStart(code) {
   });
   peer.on('error', err => {
     if (ARENA.peer !== peer) return;
-    if (err.type === 'unavailable-id') { try { peer.destroy(); } catch (e) {} arenaJoin(hostId); }
+    if (err.type === 'unavailable-id') {
+      try { peer.destroy(); } catch (e) {}
+      // Depois de uma queda, o próprio código ainda pode estar preso no servidor por alguns segundos: tenta de novo.
+      if (ARENA.hostOpened) { arenaRetry('reabrindo a sala…'); return; }
+      // Código de outra sala aberta: a sua fica com um código novo, em vez de cair na sala dos outros.
+      const fresh = genCode(); S.room = fresh; saveS(); try { syncInputs($('inName')); } catch (e) {}
+      toast('O código ' + code + ' já é de outra sala aberta. Sua sala ficou com o código ' + fresh + '.');
+      arenaNetStart(fresh, true);
+    }
     else arenaRetry('erro de rede (' + (err.type || 'desconhecido') + '), tentando de novo…');
   });
   peer.on('disconnected', () => { if (ARENA.peer === peer) { try { peer.reconnect(); } catch (e) {} } });
+}
+function arenaJoinCode(code) {
+  arenaNetStop(); ARENA.code = code; ARENA.order = []; ARENA.names = {}; ARENA.role = 'guest';
+  if (typeof Peer === 'undefined') { ARENA.netText = 'sem rede'; toast('A biblioteca de rede não carregou. Verifique a internet e recarregue a página.'); return; }
+  arenaJoin(ROOM_PREFIX + code);
 }
 function arenaJoin(hostId) {
   const peer = new Peer({ debug: 0, config: ICE, ...PEER_OPTS }); ARENA.peer = peer; ARENA.host = false; G.me = '?'; P.id = '?';
@@ -7339,7 +7379,11 @@ function arenaJoin(hostId) {
 }
 function arenaRetry(msg) {
   ARENA.netText = msg; clearTimeout(ARENA.retryT);
-  ARENA.retryT = setTimeout(() => { if ((G.mode === 'team' || G.mode === 'dm') && ARENA.net) { ARENA.host = true; arenaNetStart(ARENA.code); } }, 1800);
+  ARENA.retryT = setTimeout(() => {
+    if (!((G.mode === 'team' || G.mode === 'dm') && ARENA.net)) return;
+    if (ARENA.role === 'guest') { const code = ARENA.code; arenaNetStop(); ARENA.code = code; arenaJoin(ROOM_PREFIX + code); }
+    else { ARENA.host = true; arenaNetStart(ARENA.code, true); }
+  }, 1800);
 }
 function arenaNetStop() {
   clearTimeout(ARENA.retryT);
@@ -8044,7 +8088,7 @@ $('opCards').addEventListener('keydown',e=>{
   const next=e.key==='Home'?ids[0]:e.key==='End'?ids.at(-1):step?ids[(at+step+ids.length)%ids.length]:null;
   if(next){e.preventDefault();previewOperator(next,true);}
 });
-$('opBack').addEventListener('click',closeOpPick);
+$('opBack').addEventListener('click',()=>{OP_PICK.online=false;OP_PICK.join=null;closeOpPick();});
 $('opPick').addEventListener('keydown',e=>{
   if(e.key!=='Tab')return;
   const buttons=[...$('opPick').querySelectorAll('button:not([tabindex="-1"])')],first=buttons[0],last=buttons.at(-1);
@@ -8053,7 +8097,7 @@ $('opPick').addEventListener('keydown',e=>{
 });
 $('opConfirm').addEventListener('click',()=>{
   if($('opPick').hidden||!OPS[OP_PICK.id])return;
-  S.operator=OP_PICK.id;saveS();closeOpPick();startSession('team',{online:!!OP_PICK.online});OP_PICK.online=false;
+  S.operator=OP_PICK.id;saveS();closeOpPick();startSession('team',{online:!!OP_PICK.online,join:OP_PICK.join||null});OP_PICK.online=false;OP_PICK.join=null;
 });
 addEventListener('resize',()=>{sizeOperatorPreview();if(!$('opPick').hidden)renderOperatorPreview(now());});
 
@@ -8247,6 +8291,9 @@ function resetSession(spawn = null) {
   spawnSelf(0, spawn);
 }
 let sessionLoadId=0;
+// Online: quem criou abre a sala com o próprio código; quem entrou por código só se conecta a ela.
+const roomCodeOf = opts => opts.join || cleanCode(S.room);
+const roomGo = opts => opts.join ? arenaJoinCode(opts.join) : arenaNetStart(cleanCode(S.room));
 async function startSession(mode, opts = {}) {
   const loadId=++sessionLoadId;
   $('tacticalRadar').hidden=true;
@@ -8287,17 +8334,17 @@ async function startSession(mode, opts = {}) {
     if(opts.online){
       // Até a sala abrir (ou descobrir que já existe), fica parado esperando.
       DM.mode='dm';DM.active=true;DM.phase='freeze';DM.startsAt=DM.endsAt=Infinity;DM.actors.length=0;DM.actors.push(P);DM.bots=[];DM.byId.clear();DM.byId.set(P.id,P);
-      G.view={m:'',r:1,ph:'wait',endsAt:0,sc:{},tg:0,rt:300,win:null,why:'',mp:MAP.id};arenaNetStart(cleanCode(S.room));
+      G.view={m:'',r:1,ph:'wait',endsAt:0,sc:{},tg:0,rt:300,win:null,why:'',mp:MAP.id};roomGo(opts);
     }else dmSetup(now());
     dmEnsureRender();dmRender(now());showMenu(false);lock();
-    banner(opts.online?'Sala DM '+cleanCode(S.room):MAP.name+' · Deathmatch',opts.online?'Até 10 pessoas · bots completam as vagas · 5 minutos':'Prepare-se · você + 9 bots · 5 minutos','',2800);return;
+    banner(opts.online?'Sala DM '+roomCodeOf(opts):MAP.name+' · Deathmatch',opts.online?'Até 10 pessoas · bots completam as vagas · 5 minutos':'Prepare-se · você + 9 bots · 5 minutos','',2800);return;
   }else if(mode==='team'){
     G.me='A';P.id='A';G.opp=null;G.host=false;G.hostPeer='A';oppGroup.visible=false;
     ARENA.kind='team';ARENA.host=true;ARENA.order=[];ARENA.names={};ARENA.roster=[];
     teamSetup(now(),!!opts.online);dmEnsureRender();
-    if(opts.online)arenaNetStart(cleanCode(S.room));
+    if(opts.online)roomGo(opts);
     const label=teamLabel();
-    showMenu(false);lock();banner(opts.online?'Sala '+label+' '+cleanCode(S.room):label+' com bots',opts.online?'Até '+arenaCapacity()+' pessoas · bots completam os times · B abre o arsenal':'Você'+(ARENA.sizes[0]>1?' + '+(ARENA.sizes[0]-1)+' bot'+(ARENA.sizes[0]>2?'s':''):'')+' contra '+ARENA.sizes[1]+' bot'+(ARENA.sizes[1]>1?'s':'')+' · B abre o arsenal','',3200);return;
+    showMenu(false);lock();banner(opts.online?'Sala '+label+' '+roomCodeOf(opts):label+' com bots',opts.online?'Até '+arenaCapacity()+' pessoas · bots completam os times · B abre o arsenal':'Você'+(ARENA.sizes[0]>1?' + '+(ARENA.sizes[0]-1)+' bot'+(ARENA.sizes[0]>2?'s':''):'')+' contra '+ARENA.sizes[1]+' bot'+(ARENA.sizes[1]>1?'s':'')+' · B abre o arsenal','',3200);return;
   }else if (mode === 'bot') {
     G.me = 'A'; G.opp = 'B'; G.host = true; G.hostPeer = 'A'; G.names.B = 'Bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label;
     botSpawn(1, null); setOppColor('vermelho'); H.startAt = now() + 800;
@@ -8447,7 +8494,7 @@ function syncInputs(except) {
   selectRadio($('practiceMaps'), 'map', S.practiceMap); $('practiceMaps').hidden = !practice;
   $('mapTitle').textContent = practice ? 'Treino livre' : 'Mapas';
   $('mapInfo').hidden = practice;
-  $('mapInfo').textContent=online?'Vale o mapa de quem criar a sala.':five?'2 mapas':dm?Object.values(MAPS).filter(m=>m.dm).length+' mapas':(bomb?BOMB_MAPS.length+1:MAP_IDS.length+1)+' opções';
+  $('mapInfo').textContent=online?'Sua sala usa o mapa que você escolher aqui.':five?'2 mapas':dm?Object.values(MAPS).filter(m=>m.dm).length+' mapas':(bomb?BOMB_MAPS.length+1:MAP_IDS.length+1)+' opções';
   $('dmOptions').hidden=!dm;
   $('duelBotControls').hidden = dm || practice || online&&!duo&&!bomb;
   $('equipmentField').hidden=practice;
@@ -8465,11 +8512,11 @@ function syncInputs(except) {
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
   const [title] = MODE_MENU[mode];
   $('lobbyMode').textContent = xvx ? 'Elimination ' + label : title;
-  $('modeInfo').textContent=practice?'Treine contra alvos parados e ajuste a arena nos quadros.':online?'Bots completam as vagas enquanto seus amigos entram.':tdm?'Renascimento contínuo e pontuação por equipe.':dm?'Todos contra todos, com renascimento contínuo.':bomb?'Plante ou desarme a bomba. Uma vida por rodada.':duo?'Uma vida por rodada, sem fogo amigo.':'A primeira eliminação decide a rodada.';
-  $('btnJoin').textContent='Entrar na sala';$('btnJoin').setAttribute('aria-label','Entrar na sala de '+title);
+  $('modeInfo').textContent=practice?'Treine contra alvos parados e ajuste a arena nos quadros.':online?'Você cria a sala; bots completam as vagas enquanto seus amigos entram.':tdm?'Renascimento contínuo e pontuação por equipe.':dm?'Todos contra todos, com renascimento contínuo.':bomb?'Plante ou desarme a bomba. Uma vida por rodada.':duo?'Uma vida por rodada, sem fogo amigo.':'A primeira eliminação decide a rodada.';
+  $('btnJoin').textContent='Criar sala';$('btnJoin').setAttribute('aria-label','Criar sala de '+(xvx?'Elimination '+label:title));
   for(const id of ['btnBot','btnDm','btnAimbotz']){$(id).textContent='Jogar';$(id).setAttribute('aria-label','Jogar '+(xvx?label:title));}
 
-  $('roomInfo').textContent = 'Quem entrar primeiro cria a sala. Use o mesmo código para jogar junto.';
+  $('roomInfo').textContent = 'Passe este código aos amigos. Eles digitam em "Entrar na sala de um amigo" e caem direto na sua sala, com este modo, mapa e regras.';
   syncLobbyPreview();revealMapChoice();updateMapNav();
 }
 let effectiveScale = clamp(S.scale, .3, 1), perfTime = 0, perfFrames = 0, perfChange = 0;
@@ -8588,22 +8635,52 @@ $('btnCopy').addEventListener('click', () => {
   try { navigator.clipboard.writeText(S.room).then(done, () => { inp.select(); toast('Selecionei o código. Copie com Ctrl+C.'); }); }
   catch (e) { inp.select(); }
 });
+// Criar sala: o código da sua sala vai para os amigos, que entram pelo campo único "Entrar na sala de um amigo".
 $('btnJoin').addEventListener('click', () => {
-  const code = cleanCode(S.room);
-  if (!code) { toast('Digite um código de sala com letras ou números.'); return; }
-  S.room = code; syncInputs($('inName'));
-  if (S.mode === 'wingman') { OP_PICK.online = true; startBomb(); return; }
+  let code = cleanCode(S.room);
+  if (!code) code = genCode();
+  S.room = code; saveS(); syncInputs($('inName'));
+  if (isBombMode()) { OP_PICK.online = true; OP_PICK.join = null; startBomb(); return; }
   if (S.mode === 'dm') startSession('dm', { online: true }); else startSession('team', { online: true });
 });
+// Entrar por código: pergunta a configuração à sala e abre a partida do jeito que o anfitrião montou.
+let JOIN = null;
+function joinCancel() { if (!JOIN) return; clearTimeout(JOIN.timer); try { JOIN.peer.destroy(); } catch (e) {} JOIN = null; $('btnJoinCode').disabled = false; }
+function joinRoomByCode(raw, attempt = 1) {
+  const code = cleanCode(raw), info = $('joinInfo');
+  if (!code) { info.textContent = 'Digite o código que seu amigo passou.'; $('inJoin').focus(); return; }
+  if (typeof Peer === 'undefined') { info.textContent = 'O online está indisponível. Recarregue a página para tentar de novo.'; return; }
+  joinCancel(); $('inJoin').value = code; info.textContent = attempt > 1 ? 'Procurando a sala ' + code + '… (tentativa ' + attempt + ' de 3)' : 'Procurando a sala ' + code + '…'; $('btnJoinCode').disabled = true;
+  const peer = new Peer({ debug: 0, config: ICE, ...PEER_OPTS }), state = JOIN = { peer };
+  const fail = msg => { if (JOIN !== state) return; joinCancel(); info.textContent = msg; };
+  // Rede lenta: a consulta tenta de novo sozinha antes de desistir.
+  const again = msg => { if (JOIN !== state) return; if (attempt < 3) { joinCancel(); joinRoomByCode(code, attempt + 1); } else fail(msg); };
+  state.timer = setTimeout(() => again('A sala ' + code + ' não respondeu. Confira o código e se seu amigo já criou a sala.'), 12000);
+  peer.on('open', () => {
+    if (JOIN !== state) return;
+    const c = peer.connect(ROOM_PREFIX + code, { reliable: true, serialization: 'json', metadata: { probe: 1 } });
+    c.on('data', m => {
+      if (JOIN !== state || !m || m.t !== 'cfg') return;
+      if (!applyRoomConfig(m.d)) { fail('Essa sala é de uma versão diferente do jogo. Recarreguem a página.'); return; }
+      joinCancel(); info.textContent = 'Só o código: o modo, o mapa e as regras são os de quem criou a sala.';
+      saveS(); lobbyRoute = 'online'; syncInputs($('inName')); applySettings();
+      if (isBombMode()) { OP_PICK.online = true; OP_PICK.join = code; startBomb(); }
+      else startSession(m.d.kind, { online: true, join: code });
+    });
+    c.on('error', () => {});
+  });
+  peer.on('error', err => err && err.type === 'peer-unavailable' ? fail('Nenhuma sala aberta com o código ' + code + '. Confira com seu amigo.') : again('Não deu para procurar a sala agora. Tente de novo.'));
+}
+$('joinRoom').addEventListener('submit', e => { e.preventDefault(); joinRoomByCode($('inJoin').value); });
 // Plant the Bomb (5v5) e Wingman (2v2) passam pela escolha de operador; Elimination começa direto.
-$('btnBot').addEventListener('click', () => { OP_PICK.online = false; if (isBombMode()) startBomb(); else startSession('team', { online: false }); });
+$('btnBot').addEventListener('click', () => { OP_PICK.online = false; OP_PICK.join = null; if (isBombMode()) startBomb(); else startSession('team', { online: false }); });
 function startBomb() { openOpPick(); }
 function selectLobbyOption(key, value) {
   if (S[key] === value) return;
   S[key] = value; saveS(); syncInputs($('inName')); applySettings();
 }
 bindChoices($('modeSel'), button => selectLobbyOption('mode', button.dataset.mode));
-bindChoices($('sessionRoute'), button => { lobbyRoute=button.dataset.route; syncInputs($('inName')); });
+bindChoices($('sessionRoute'), button => { lobbyRoute=button.dataset.route; if(lobbyRoute==='online'&&!cleanCode(S.room)){S.room=genCode();saveS();} syncInputs($('inName')); });
 bindChoices($('duelMaps'), button => selectLobbyOption('map', button.dataset.map));
 bindChoices($('dmMaps'), button => selectLobbyOption('dmMap', button.dataset.map));
 bindChoices($('bombMaps'), button => selectLobbyOption('bombMap', button.dataset.map));

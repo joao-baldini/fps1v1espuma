@@ -24,8 +24,10 @@ Os dois modelos enviados foram convertidos offline, com cores chapadas inspirada
 ## Como jogar com seu parceiro
 
 1. Abra o jogo pelo GitHub Pages (ou abra o `index.html` direto no Chrome).
-2. Escolha **Elimination** com o tamanho dos times e **Com amigos**. Todos digitam o **mesmo código de sala** e clicam em **Entrar na sala**.
-3. Quem entrar primeiro cria a sala e vira o juiz das rodadas. Quando o segundo conecta, a partida começa sozinha.
+2. **Quem cria a sala** escolhe o modo (Elimination, Plant the Bomb, Wingman ou Deathmatch), o mapa e as regras, marca **Com amigos** e clica em **Criar sala**. O código da sala aparece logo acima, com o botão **Copiar**. Quem cria vira o juiz da partida.
+3. **Quem entra** não precisa escolher nada: digita o código no campo **Entrar na sala de um amigo**, embaixo da lista de modos, e aperta **Entrar**. O jogo pergunta à sala qual é a configuração e abre a partida já no modo, no mapa e com as regras de quem criou (no Wingman e no Plant the Bomb, passando antes pela escolha de operador).
+
+Um código vale para uma sala só, em qualquer modo. Se o código escolhido já estiver em uso por outra sala, quem está criando ganha um código novo automaticamente. Se a sala não for encontrada, o campo avisa; em rede lenta a busca tenta de novo sozinha até três vezes.
 
 A conexão é direta entre os dois navegadores (WebRTC via PeerJS). O servidor público do PeerJS só faz o pareamento; o jogo em si não passa por servidor. Algumas redes corporativas bloqueiam conexão direta. Se não conectar em 15 segundos, testem fora da VPN ou em outra rede.
 
@@ -102,7 +104,7 @@ No **Wingman 2v2**, escolha **Sanctum**, **Neon**, **Forge** ou **Sable**. Os cr
 
 **Bombsites demarcados no chão:** como no B da Dust 2, a área onde a bomba pode ser plantada tem um piso próprio: lajes de pedra irregulares assentadas, um meio-fio de blocos na borda e o alvo pintado a spray laranja perto do centro. O piso segue só o chão do site (passa por baixo de caixotes e barris, mas não sobe neles nem em sacadas) e as cores acompanham o tema do mapa. Vale para os mapas do Wingman e do 5v5.
 
-**Wingman com amigos:** em Wingman, escolha **Com amigos**, combine um código de sala e clique em **Entrar na sala**. Depois de escolher o operador, quem entrar primeiro cria a sala e é o juiz da partida (rodadas, bomba e bots); o mapa vale o de quem criou. Em **Times na sala**, **lados opostos** coloca cada pessoa num time e **mesmo time** junta vocês contra bots; bots completam as vagas do 2v2. A bomba (pegar, plantar, desarmar e explodir), o placar, a economia (prêmios de rodada, abate, plantio e desarme), as compras e os operadores ficam sincronizados.
+**Wingman com amigos:** quem cria escolhe Wingman, o mapa e **Com amigos**, clica em **Criar sala** e passa o código. O amigo só digita o código em **Entrar na sala de um amigo** e cai direto nessa sala, com o mapa e as regras de quem criou. Quem cria é o juiz da partida (rodadas, bomba e bots). Em **Times na sala**, **lados opostos** coloca cada pessoa num time e **mesmo time** junta vocês contra bots; bots completam as vagas do 2v2. A bomba (pegar, plantar, desarmar e explodir), o placar, a economia (prêmios de rodada, abate, plantio e desarme), as compras e os operadores ficam sincronizados.
 
 O **Sanctum** foi reconstruído por um conversor próprio a partir do BSP enviado: arquitetura completa, dez nascimentos originais e bombsite A, cores chapadas e grade padrão do jogo. As coberturas externas ausentes no BSP recebem modelagem própria e leve: pallets baixos, caixas com alturas corrigidas, barris e cercas vazadas. Caixotes, barris e paletes são assentados no chão ou na pilha de baixo, sem flutuar. Não carrega texturas do CS. A malha anterior e as duas prévias do menu foram substituídas. O relatório e as instruções de regeneração estão em [assets/maps/README.md](assets/maps/README.md).
 
@@ -150,7 +152,7 @@ Mãos e boca do cano continuam nos mesmos pontos. As skins recolorem os modelos 
 
 ## Deathmatch
 
-Em **Modo de jogo**, escolha **DM**. Selecione **Medina**, **Dust II**, **Depósito** ou **Borgo**, a categoria de armas e a dificuldade. Para jogar sozinho, use **Jogar DM com bots**. Para jogar com amigos, todos digitam o mesmo código e clicam em **Entrar na sala de DM**. Quem chega primeiro cria a sala e define o mapa. Cada pessoa que entra assume a vaga de um bot durante a partida, e um bot volta se alguém sai. A categoria limita as armas de todos, e a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento, e a opção de capacete vale para todos eles.
+Em **Modo de jogo**, escolha **DM**. Selecione **Medina**, **Dust II**, **Depósito** ou **Borgo**, a categoria de armas e a dificuldade. Para jogar sozinho, use **Jogar DM com bots**. Para jogar com amigos, marque **Com amigos**, clique em **Criar sala** e passe o código; os amigos entram pelo campo **Entrar na sala de um amigo**, sem escolher modo nem mapa. Quem cria define o mapa, as armas e a dificuldade. Cada pessoa que entra assume a vaga de um bot durante a partida, e um bot volta se alguém sai. A categoria limita as armas de todos, e a faca continua disponível. Suas armas vêm do equipamento escolhido na aba **Armas**. Os bots sorteiam uma arma permitida a cada nascimento, e a opção de capacete vale para todos eles.
 
 Você enfrenta **donk, ZywOo, m0NESY, NiKo, KSCERATO, ropz, YEKINDAR, molodoy e coldzera**. Os bots enxergam, perseguem e acertam uns aos outros com os mesmos raios de tiro, colisões e cálculo de dano usados contra o jogador. Os nomes não alteram a dificuldade.
 

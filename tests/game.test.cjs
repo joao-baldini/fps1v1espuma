@@ -1295,11 +1295,40 @@ function fakeNet(g) {
 }
 function connect(host, guest, code) {
   vm.runInContext(`arenaNetStart('${code}')`, host.context); host.peers.at(-1).handlers.open();
-  vm.runInContext(`arenaNetStart('${code}')`, guest.context); guest.peers.at(-1).handlers.error({ type: 'unavailable-id' });
+  vm.runInContext(`arenaJoinCode('${code}')`, guest.context);
   const gp = guest.peers.at(-1); gp.handlers.open(); const toHost = gp.conn, toGuest = new host.FakeConn();
   host.peers[0].handlers.connection(toGuest); toGuest.open = toHost.open = true; toGuest.handlers.open(); toHost.handlers.open();
   return () => { for (let i = 0; i < 4; i++) { const a = toGuest.sent.splice(0), b = toHost.sent.splice(0); a.forEach(m => toHost.handlers.data(m)); b.forEach(m => toGuest.handlers.data(m)); } };
 }
+
+test('Rooms: one code field for every mode; the friend gets the host mode, map and rules and never opens a second room',()=>{
+  // O mesmo código vira o mesmo ID de sala em qualquer modo.
+  const ids=[];
+  for(const kind of ['dm','team']){const g=fakeNet(game());vm.runInContext(`ARENA.kind='${kind}';arenaNetStart('amigos')`,g.context);ids.push(g.peers.at(-1).id);}
+  assert.equal(ids[0],ids[1]);assert.equal(ids[0],'aimduelo-sala-v2-amigos');
+  // O anfitrião do Wingman responde à consulta com a configuração, sem dar vaga a quem só perguntou.
+  const host=fakeNet(game());host.context.buildMap('sable');
+  Object.assign(host.S,{mode:'wingman',bombMap:'sable',teamSetup:'coop',botLevel:'dificil'});
+  vm.runInContext("ARENA.kind='team';ARENA.bomb=true;arenaNetStart('amigos')",host.context);host.peers.at(-1).handlers.open();
+  const probe=new host.FakeConn();probe.metadata={probe:1};host.peers.at(-1).handlers.connection(probe);probe.handlers.open();
+  assert.equal(probe.sent.length,1);assert.equal(probe.sent[0].t,'cfg');assert.equal(vm.runInContext('ARENA.conns.size',host.context),0);
+  const cfg=probe.sent[0].d;assert.equal(cfg.kind,'team');assert.equal(cfg.mode,'wingman');assert.equal(cfg.mp,'sable');
+  // Quem entra copia modo, mapa e regras, mesmo vindo de outro modo no menu.
+  const guest=fakeNet(game());Object.assign(guest.S,{mode:'dm',bombMap:'neon',teamSetup:'versus',botLevel:'facil'});
+  assert.equal(guest.context.applyRoomConfig(cfg),true);
+  assert.equal(guest.S.mode,'wingman');assert.equal(guest.S.bombMap,'sable');assert.equal(guest.S.teamSetup,'coop');assert.equal(guest.S.botLevel,'dificil');
+  assert.equal(guest.context.applyRoomConfig({kind:'team',mode:'aimbotz'}),false,'Practice não é sala');
+  assert.equal(guest.context.applyRoomConfig({kind:'x',mode:'dm'}),false);
+  // O convidado só se conecta: se a sala cair, volta a procurar a mesma sala em vez de virar anfitrião.
+  vm.runInContext("G.mode='team';ARENA.net=true;arenaJoinCode('amigos')",guest.context);
+  assert.notEqual(typeof guest.peers.at(-1).id,'string','convidado usa um ID anônimo');
+  guest.peers.at(-1).handlers.error({type:'peer-unavailable'});
+  assert.equal(vm.runInContext("ARENA.role",guest.context),'guest');
+  // Código já usado por outra sala: o anfitrião ganha um código novo, não entra na sala dos outros.
+  const other=fakeNet(game());other.context.genCode=()=>'novo1';other.context.saveS=()=>{};
+  vm.runInContext("ARENA.kind='dm';arenaNetStart('amigos')",other.context);other.peers.at(-1).handlers.error({type:'unavailable-id'});
+  assert.equal(other.peers.at(-1).id,'aimduelo-sala-v2-novo1');assert.equal(other.S.room,'novo1');assert.equal(vm.runInContext('ARENA.role',other.context),'host');
+});
 
 test('DM room: a friend joins the host map, takes a bot slot, and shares respawns, kills, rewards and scores', () => {
   const host = fakeNet(dmWorld(game(), 'dust2')), guest = fakeNet(dmWorld(game()));
