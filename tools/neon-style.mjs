@@ -234,6 +234,44 @@ function ironBars(width, z0, height, step, gate) {
   };
 }
 
+// Móveis com forma (em vez de blocos maciços que pareciam caixotes). A frente é o +X do modelo; o comprimento do sofá
+// fica no eixo Y e a origem dele está na altura do assento (22 unidades acima do chão). Uma colisão invisível cobre o volume.
+const WOOD_DARK = 0x6e4a2c;
+function couch(color) {
+  return box => [
+    { faces: box(-18, 14, -40, 40, -22, -7), mask: 0, color, pat: P.plain },
+    { faces: box(-18, -9, -40, 40, -7, 13), mask: 0, color, pat: P.plain },
+    { faces: box(-18, 14, -40, -33, -7, 1), mask: 0, color, pat: P.plain },
+    { faces: box(-18, 14, 33, 40, -7, 1), mask: 0, color, pat: P.plain },
+    { faces: box(-15, 12, -32, 32, -7, -4), mask: 0, color: 0xd9cbb0, pat: P.plain },
+    { faces: box(-18, 14, -40, 40, -22, 13), mask: 3, noDraw: true, color, pat: P.plain },
+  ];
+}
+function chair(box) {
+  const out = [{ faces: box(-9, 9, -9, 9, 16, 18), mask: 0, color: 0x7a5a3a, pat: P.wood }, { faces: box(-9, -7, -9, 9, 18, 36), mask: 0, color: 0x7a5a3a, pat: P.wood }];
+  for (const [x, y] of [[-8, -8], [8, -8], [-8, 8], [8, 8]]) out.push({ faces: box(x - 1, x + 1, y - 1, y + 1, 0, 16), mask: 0, color: WOOD_DARK, pat: P.wood });
+  out.push({ faces: box(-9, 9, -9, 9, 0, 36), mask: 3, noDraw: true, color: WOOD_DARK, pat: P.wood });
+  return out;
+}
+// Mesa da TV: tampo a 28 unidades (onde a TV se apoia), prateleira baixa e quatro pernas.
+function tvTable(box) {
+  const out = [{ faces: box(-24, 24, -12, 12, 25, 28), mask: 0, color: 0x8a6440, pat: P.wood }, { faces: box(-22, 22, -10, 10, 6, 8), mask: 0, color: 0x8a6440, pat: P.wood }];
+  for (const [x, y] of [[-22, -10], [22, -10], [-22, 10], [22, 10]]) out.push({ faces: box(x - 1.5, x + 1.5, y - 1.5, y + 1.5, 0, 25), mask: 0, color: WOOD_DARK, pat: P.wood });
+  out.push({ faces: box(-24, 24, -12, 12, 0, 28), mask: 3, noDraw: true, color: WOOD_DARK, pat: P.wood });
+  return out;
+}
+// Caixinha de vinho aberta, com seis garrafas: a origem fica no topo da caixa (ela se apoia 8 unidades abaixo).
+function wineCase(box) {
+  const wood = 0x9a6a3e, out = [{ faces: box(-11, 11, -7, 7, -8, -7), mask: 0, color: wood, pat: P.wood }];
+  for (const [a, b, c, d] of [[-11, 11, -7, -6], [-11, 11, 6, 7], [-11, -10, -6, 6], [10, 11, -6, 6]]) out.push({ faces: box(a, b, c, d, -8, 0), mask: 0, color: wood, pat: P.wood });
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) {
+    const x = -6.5 + 6.5 * i, y = -3 + 6 * j;
+    out.push({ faces: box(x - 2.2, x + 2.2, y - 2.2, y + 2.2, -7, 1.5, true), mask: 0, color: 0x2f5a3a, pat: P.plain });
+    out.push({ faces: box(x - .8, x + .8, y - .8, y + .8, 1.5, 5.5, true), mask: 0, color: 0x2a4a32, pat: P.plain });
+  }
+  return out;
+}
+
 export const SABLE_PROPS = [
   [/gate_a\/gate_a/, () => ({ custom: ironBars(128, -68, 132, 8, true) })],
   [/railingspikedgate/, () => ({ custom: ironBars(64, 0, 46, 6, false) })],
@@ -243,14 +281,18 @@ export const SABLE_PROPS = [
   // do caixote que já existe no mesmo lugar, então fica de fora para não criar um caixote flutuando.
   [/_tarp/, () => null],
   [/dust_crate_style_01_32x64x64/, () => ({ size: [32, 64, 53], color: 0xb08850, pat: P.crate, faceUv: true })],
-  [/inferno_wine_crate/, () => ({ size: [22, 14, 8], color: 0xb08850, pat: P.crate, faceUv: true })],
-  [/wine_crate_[ab]/, () => ({ size: [62, 62, 62], color: 0xb08850, pat: P.crate, faceUv: true })],
+  // Medidas tiradas das posições no próprio Sable: o caixote de vinho tem 62 de altura e 76 de comprimento, com a origem
+  // 34 unidades depois da ponta (os dois em pé na saída do spawn atacante chegam a 76, onde as caixinhas se apoiam).
+  [/inferno_wine_crate/, () => ({ custom: wineCase })],
+  [/wine_crate_[ab]/, () => ({ custom: box => [{ faces: box(-34, 42, -31, 31, 0, 62), mask: 3, color: 0xb08850, pat: P.crate, faceUv: true }] })],
   [/dust_crate_style_\d+_(\d+)x(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)x(\d+)/); return { size: [+d[1], +d[2], +d[3]], color: 0xb08850, pat: P.crate, faceUv: true }; }],
   [/wooden_crate_(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)/); return { size: [+d[1], +d[2], +d[2]], color: 0xb08850, pat: P.crate, faceUv: true }; }],
   [/barrel_a_full|barrel_a\//, () => ({ size: [30, 30, 44], cyl: true, color: 0x8a5a34, pat: P.barrel, faceUv: true })],
   [/inferno_vespa/, () => ({ size: [72, 28, 44], color: 0x6fa7a0, pat: P.metal })],
-  [/furniture_couch0[12]a/, () => ({ size: [80, 36, 34], color: 0x3e5f86, pat: P.plain })],
-  [/inferno_chair|dust_patio_chair/, () => ({ size: [20, 20, 36], color: 0x7a5a3a, pat: P.wood })],
+  [/furniture_couch01a/, () => ({ custom: couch(0x3e5f86) })],
+  [/furniture_couch02a/, () => ({ custom: couch(0x8a4b3c) })],
+  [/inferno_chair|dust_patio_chair/, () => ({ custom: chair })],
+  [/tablecoffee/, () => ({ custom: tvTable })],
   [/dust_detruis_sack|dust_flour_sack/, () => ({ size: [36, 24, 14], color: 0xc8b796, pat: P.concrete })],
   [/inferno_planter\.mdl$|inferno_planter$/, () => ({ size: [64, 24, 28], color: 0x9a6a48, pat: P.brick })],
 ];

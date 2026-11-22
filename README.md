@@ -171,7 +171,7 @@ Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e
 
 ### Treino livre nos mapas do Wingman
 
-Na faixa **Treino livre** do Practice, escolha **Sanctum**, **Neon**, **Forge** ou **Sable** em vez da arena de mira. Você entra sozinho no mapa e pode treinar sem limites:
+Na faixa **Treino livre** do Practice, escolha **Sanctum**, **Neon**, **Forge** ou **Sable** em vez da arena de mira. Você entra sozinho no mapa, nascendo no spawn dos atacantes, e pode treinar sem limites:
 
 - **Tempo:** não acaba; o placar mostra **∞**.
 - **Dinheiro e área de compra:** **B** abre a loja grátis em qualquer lugar e a qualquer hora. Escolher uma arma já a equipa.

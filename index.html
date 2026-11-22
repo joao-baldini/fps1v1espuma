@@ -8309,7 +8309,7 @@ async function startSession(mode, opts = {}) {
   S.name = $('inName').value;
   saveS();
   AU.init();dmStop();arenaNetStop();ARENA.net=false;setSleeveColor(S.pcol);G.mode=null;$('dmResult').hidden=true;el.hud.classList.remove('dm-over');el.hud.classList.toggle('dm',mode==='dm');el.hud.classList.toggle('bomb',mode==='team'&&isBombMode());
-  buildMap(map);resetSession(mode === 'aimbotz' ? AIMBOTZ_SPAWN : null);G.mode=mode;
+  buildMap(map);resetSession(mode === 'aimbotz' ? (MAPS[map].source && MAPS[map].plant ? MAPS[map].plant.t[0] : AIMBOTZ_SPAWN) : null);G.mode=mode;
   el.hud.hidden = false;
   if (xrayEnabled()) toast('Raio-X ativo');
   if (mode === 'aimbotz') {
