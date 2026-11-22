@@ -66,7 +66,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
   <header class="op-header"><div class="op-heading"><button type="button" id="opBack" aria-label="Voltar ao menu">←</button><div><span class="op-game-mode" id="opGameMode">Plant the Bomb · 2v2</span><h2 id="opTitle">Escolha seu agente</h2></div></div><div class="op-map"><img id="opMapImage" src="assets/menu/guard.webp" alt=""><span><small>Próxima arena</small><b id="opMapName">Guard</b></span></div></header>
   <div class="op-content"><div class="op-scene" id="opScene" role="img" aria-label="Prévia do agente com AK-47"></div>
     <aside class="op-dossier" aria-live="polite" aria-atomic="true"><span class="op-role" id="opRole"></span><h3 id="opName"></h3><p id="opLine"></p><section class="op-ability"><div class="op-ability-title"><span class="op-ability-icon" id="opAbilityIcon" aria-hidden="true"></span><div><small>Habilidade</small><h3 id="opAbility"></h3></div></div><p id="opDesc"></p><div class="op-ability-facts"><kbd>X</kbd><span>Ativar</span><span>Recarga de 45 s</span></div></section></aside></div>
-  <footer class="op-footer"><div class="op-roster"><div class="op-cards" id="opCards" role="radiogroup" aria-label="Agentes disponíveis"></div></div><div class="op-confirm-wrap"><p class="op-selection-note">Confirme para entrar na partida.</p><button type="button" id="opConfirm"><span>Selecionar<small id="opConfirmName">Finder</small></span></button></div></footer>
+  <footer class="op-footer"><div class="op-roster"><div class="op-cards" id="opCards" role="radiogroup" aria-label="Agentes disponíveis"></div></div><div class="op-confirm-wrap"><div class="op-side" id="opSide" role="radiogroup" aria-label="Lado em que você começa" hidden><span>Seu lado</span><button type="button" role="radio" data-side="t">Ataque</button><button type="button" role="radio" data-side="ct">Defesa</button><button type="button" role="radio" data-side="rand">Aleatório</button></div><p class="op-selection-note">Confirme para entrar na partida.</p><button type="button" id="opConfirm"><span>Selecionar<small id="opConfirmName">Finder</small></span></button></div></footer>
 </div></section>
 
 <div id="menu">
@@ -128,6 +128,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
         </div>
         <div class="grid2" id="xvxField"><label class="fld"><span>Seu time</span><select data-k="xvx.mine" data-num="1" aria-label="Tamanho do seu time"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label><label class="fld"><span>Time inimigo</span><select data-k="xvx.foes" data-num="1" aria-label="Tamanho do time inimigo"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label></div>
         <label class="fld" id="teamField"><span>Times na sala</span><select data-k="teamSetup" aria-label="Times na sala"><option value="versus">Pessoas em lados opostos</option><option value="coop">Pessoas no mesmo time</option></select></label>
+        <label class="fld" id="sideField" hidden><span>Seu lado</span><select data-k="wingSide" aria-label="Lado em que você começa"><option value="t">Ataque · planta a bomba</option><option value="ct">Defesa · protege o bombsite</option><option value="rand">Aleatório</option></select></label>
         <label class="fld" id="duelBotControls"><span>Dificuldade do bot</span><select id="inBot" data-k="botLevel" aria-label="Dificuldade do bot"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></label>
         <div class="fld" id="roomField" hidden>
           <span id="roomLabel">Código da sua sala</span>
@@ -348,7 +349,7 @@ function normalizeViewmodel(value) {
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
   gfxPreset: 'high', gfxShadows: 'medium', gfxTextures: 'high', gfxParticles: 'high', gfxEffects: 'high',
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', practiceMap: 'aimbotz', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', wingSide: 't', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', practiceMap: 'aimbotz', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right', viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -364,6 +365,7 @@ function loadS() {
     s.mode = { '1v1': 'elim', '2v2': 'elim', xvx: 'elim', bomb: 'wingman', '5v5': 'bomb' }[s.mode] || s.mode; s.modeV = 2;
   }
   if (!['elim', 'dm', 'tdm', 'aimbotz', 'bomb', 'wingman'].includes(s.mode)) s.mode = 'elim';
+  if (!['t', 'ct', 'rand'].includes(s.wingSide)) s.wingSide = 't';
   s.xvx = { mine: clamp(+s.xvx?.mine || 1, 1, 8), foes: clamp(+s.xvx?.foes || 1, 1, 8) };
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
   if (!['sanctum', 'neon', 'forge', 'sable', 'rotacao'].includes(s.bombMap)) s.bombMap = 'sanctum';
@@ -5724,7 +5726,12 @@ function arenaMakeProxy(id, index) {
 // Elenco dos times: pessoas na ordem de entrada (lados opostos alternando, ou todas no primeiro time) e bots completando.
 function teamRoster() {
   const sizes = ARENA.sizes, teams = [[], []];
-  arenaHumans().forEach((id, i) => { let t = ARENA.setup === 'coop' ? 0 : i % 2; if (teams[t].length >= sizes[t]) t = 1 - t; if (teams[t].length < sizes[t]) teams[t].push(id); });
+  const want = id => { const p = id === G.me ? S.wingSide : (ARENA.prefs || {})[id]; return p === 't' ? 0 : p === 'ct' ? 1 : null; };
+  arenaHumans().forEach((id, i) => {
+    let t = ARENA.setup === 'coop' ? 0 : i % 2;
+    if (ARENA.sidePick) { t = want(id); if (t === null) t = teams[0].length === teams[1].length ? (Math.random() < .5 ? 0 : 1) : teams[0].length < teams[1].length ? 0 : 1; }
+    if (teams[t].length >= sizes[t]) t = 1 - t; if (teams[t].length < sizes[t]) teams[t].push(id);
+  });
   const pros = TEAM_BOT_NAMES.slice().sort(() => Math.random() - .5).filter(n => !ARENA.roster.some(r => r[2] === n)), rows = []; let bot = 0;
   for (const team of [0, 1]) {
     for (const id of teams[team]) rows.push([id, team, id === G.me ? cleanName(S.name) : (ARENA.names[id] || 'Jogador ' + id), 'human']);
@@ -5755,6 +5762,8 @@ function teamSetup(t, online) {
   DM.startsAt = 0; DM.endsAt = Infinity; DM.scoreVersion = 0; DM.nextSoundAt = DM.nextStepAt = 0; DM.spawnPoints = []; DM.spawnVis = []; DM.lastSpawnTimes = [];
   ARENA.kind = 'team'; ARENA.net = online; ARENA.m = ''; ARENA.r = 0; ARENA.sc = [0, 0]; ARENA.spawnKey = ''; ARENA.shownPhase = ''; ARENA.killSeen.clear(); ARENA.mp = MAP.id; ARENA.win = null;
   ARENA.setup = S.teamSetup === 'coop' ? 'coop' : 'versus'; ARENA.startAt = online ? Infinity : t + 800; ARENA.rosterKey = '';
+  // Wingman: cada pessoa escolhe o lado em que começa (o time 0 começa no ataque); no meio da partida os lados trocam.
+  ARENA.sidePick = S.mode === 'wingman'; ARENA.prefs = {};
   // Wingman também vale online (com amigos): o juiz é quem criou a sala; o Plant the Bomb 5v5 segue só contra bots.
   ARENA.bomb = isBombMode() && (!online || S.mode === 'wingman'); if (ARENA.bomb && !online) ARENA.setup = 'coop';
   ARENA.ops = {}; BOMB.planted = BOMB.dropped = null; BOMB.carrier = null; ARENA.bombMatch = '';
@@ -6329,7 +6338,7 @@ function bombBotBuy(e, t) {
 function bombAddMoney(e, v) { e.money = clamp((e.money || 0) + v, 0, BOMB.max); }
 function bombNewMatch(t) {
   ARENA.m = Math.random().toString(36).slice(2, 8); ARENA.r = 0; ARENA.sc = [0, 0]; ARENA.tg = BOMB.target; ARENA.rt = BOMB.roundMs / 1000; G.stats = {}; DM.scoreVersion++;
-  arenaBuildActors(teamRoster()); BOMB.tTeam = Math.random() < .5 ? 0 : 1; BOMB.streak = [0, 0];
+  arenaBuildActors(teamRoster()); BOMB.tTeam = ARENA.sidePick ? 0 : Math.random() < .5 ? 0 : 1; BOMB.streak = [0, 0];
   for (const e of DM.actors) { e.money = BOMB.start; bombResetGear(e); e.aliveEnd = false; }
   opsAssign(); bombNextRound(t);
 }
@@ -7247,9 +7256,11 @@ function arenaOnData(from, m) {
   else if (m.t === 'd' && !ARENA.host && ARENA.kind === 'dm') dmApplyState(m.d);
   else if (m.t === 'welcome' && !ARENA.host && HUMAN_SLOTS.includes(m.id)) {
     // O juiz repete a identidade a cada batida; só age quando muda (ou na primeira vez).
-    if (G.me !== m.id) { G.me = m.id; P.id = m.id; ARENA.rosterKey = ''; ARENA.netText = 'conectado como ' + m.id; arenaSend({ t: 'hi', n: cleanName(S.name), sk: mySkins(), op: S.operator }); }
+    if (G.me !== m.id) { G.me = m.id; P.id = m.id; ARENA.rosterKey = ''; ARENA.netText = 'conectado como ' + m.id; arenaSend({ t: 'hi', n: cleanName(S.name), sk: mySkins(), op: S.operator, sd: S.wingSide }); }
   }
-  else if (m.t === 'hi' && ARENA.host) { if (OPS[m.op]) { (ARENA.ops || (ARENA.ops = {}))[from] = m.op; const pe = DM.byId.get(from); if (pe) pe.op = m.op; } ARENA.names[from] = cleanName(m.n); G.names[from] = ARENA.names[from]; const row = ARENA.roster.find(r => r[0] === from); if (row) row[2] = ARENA.names[from]; ARENA.lastBeat = 0; }
+  else if (m.t === 'hi' && ARENA.host) {
+    // Lado pedido por quem entrou: se mudar a divisão dos times, a partida recomeça já com cada um no seu lado.
+    if (['t', 'ct', 'rand'].includes(m.sd)) { const prefs = ARENA.prefs || (ARENA.prefs = {}), before = prefs[from]; prefs[from] = m.sd; if (ARENA.sidePick && ARENA.kind === 'team' && before !== m.sd) { ARENA.m = ''; ARENA.startAt = now() + 1500; } } if (OPS[m.op]) { (ARENA.ops || (ARENA.ops = {}))[from] = m.op; const pe = DM.byId.get(from); if (pe) pe.op = m.op; } ARENA.names[from] = cleanName(m.n); G.names[from] = ARENA.names[from]; const row = ARENA.roster.find(r => r[0] === from); if (row) row[2] = ARENA.names[from]; ARENA.lastBeat = 0; }
   else if (m.t === 'full') { toast('Essa sala já está cheia. Use outro código.'); leaveSession(); }
   else if (m.t === 'e' && typeof m.k === 'string') {
     const d = m.d || {};
@@ -8071,6 +8082,7 @@ function openOpPick(){
   OP_PICK.returnFocus=document.activeElement;$('menu').inert=true;$('opPick').hidden=false;
   const five=S.mode==='bomb',map=five?S.warfaceMap:BOMB_MAPS.includes(S.bombMap)?S.bombMap:BOMB_MAPS[0];
   $('opGameMode').textContent=five?'Plant the Bomb · 5v5':'Plant the Bomb · 2v2';
+  $('opSide').hidden=five;selectRadio($('opSide'),'side',S.wingSide);
   $('opPick').style.setProperty('--op-map-image','url('+JSON.stringify(new URL('assets/menu/play/'+map+'.webp',document.baseURI).href)+')');
   $('opMapImage').src='assets/menu/play/thumb/'+map+'.webp';$('opMapName').textContent=!five&&S.bombMap==='rotacao'?'Rotação · '+BOMB_MAPS.map(id=>MAPS[id].name).join(' / '):MAPS[map].name;
   initOperatorPreview();
@@ -8088,6 +8100,7 @@ $('opCards').addEventListener('keydown',e=>{
   const next=e.key==='Home'?ids[0]:e.key==='End'?ids.at(-1):step?ids[(at+step+ids.length)%ids.length]:null;
   if(next){e.preventDefault();previewOperator(next,true);}
 });
+bindChoices($('opSide'),button=>{S.wingSide=button.dataset.side;saveS();selectRadio($('opSide'),'side',S.wingSide);syncInputs($('inName'));});
 $('opBack').addEventListener('click',()=>{OP_PICK.online=false;OP_PICK.join=null;closeOpPick();});
 $('opPick').addEventListener('keydown',e=>{
   if(e.key!=='Tab')return;
@@ -8508,7 +8521,7 @@ function syncInputs(except) {
   $('sessionRoute').hidden = practice || five || tdm; $('tdmSizeField').hidden = !tdm;
   $('btnDm').hidden = !dm || online;
   $('btnAimbotz').hidden=!practice;
-  $('teamField').hidden=!(duo||bomb)||!online;$('xvxField').hidden=!xvx;$('colorField').hidden=true;
+  $('teamField').hidden=!(duo||bomb)||!online||S.mode==='wingman';$('sideField').hidden=S.mode!=='wingman'||practice;$('xvxField').hidden=!xvx;$('colorField').hidden=true;
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
   const [title] = MODE_MENU[mode];
   $('lobbyMode').textContent = xvx ? 'Elimination ' + label : title;

@@ -1301,6 +1301,27 @@ function connect(host, guest, code) {
   return () => { for (let i = 0; i < 4; i++) { const a = toGuest.sent.splice(0), b = toHost.sent.splice(0); a.forEach(m => toHost.handlers.data(m)); b.forEach(m => toGuest.handlers.data(m)); } };
 }
 
+test('Wingman: each person picks the starting side (attack or defense) and the attackers are team 0',()=>{
+  const g=fakeNet(game()),cx=g.context;cx.buildMap('sable');
+  const roster=(mine,friend)=>{
+    Object.assign(g.S,{mode:'wingman',wingSide:mine});
+    vm.runInContext("ARENA.kind='team';ARENA.host=true;teamSetup(now(),true);ARENA.order=['B'];ARENA.conns=new Map([['B',{}]])",cx);
+    vm.runInContext(`ARENA.prefs={B:'${friend}'}`,cx);
+    const r=vm.runInContext('teamRoster()',cx),team=id=>r.find(x=>x[0]===id)[1];
+    assert.equal(r.filter(x=>x[1]===0).length,2);assert.equal(r.filter(x=>x[1]===1).length,2);
+    return [team('A'),team('B')];
+  };
+  assert.deepEqual(roster('ct','t'),[1,0],'anfitrião na defesa, amigo no ataque');
+  assert.deepEqual(roster('t','t'),[0,0],'os dois no ataque, bots na defesa');
+  assert.deepEqual(roster('ct','ct'),[1,1],'os dois na defesa');
+  for(let i=0;i<6;i++){const [a,b]=roster('t','rand');assert.equal(a,0);assert.ok(b===0||b===1);}
+  // O time 0 começa no ataque; o sorteio só vale fora do Wingman.
+  vm.runInContext("ARENA.sidePick=true;bombNewMatch(now())",cx);assert.equal(vm.runInContext('BOMB.tTeam',cx),0);
+  // O pedido de lado chega na mensagem 'hi' e reinicia a partida com a nova divisão.
+  vm.runInContext("ARENA.m='abc';ARENA.prefs={};arenaOnData('B',{t:'hi',n:'Beto',sd:'ct'})",cx);
+  assert.equal(vm.runInContext('ARENA.prefs.B',cx),'ct');assert.equal(vm.runInContext('ARENA.m',cx),'');
+});
+
 test('Rooms: one code field for every mode; the friend gets the host mode, map and rules and never opens a second room',()=>{
   // O mesmo código vira o mesmo ID de sala em qualquer modo.
   const ids=[];

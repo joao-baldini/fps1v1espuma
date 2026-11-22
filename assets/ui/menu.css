@@ -170,3 +170,9 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ui-accent);flex:n
 .join-room .room-code input{flex:1 1 0;width:auto;min-width:0}
 .join-room .room-code button{flex:0 0 auto;padding:8px 14px}
 .join-room small{font-size:12px;line-height:1.35;opacity:.78}
+
+/* Lado inicial no Wingman, na tela do operador. */
+.op-side{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.op-side span{font:700 11px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-right:4px}
+.op-side button{padding:7px 12px;font-size:12px;border-radius:4px;border:1px solid rgba(255,255,255,.22);background:rgba(10,16,24,.55);color:inherit;cursor:pointer}
+.op-side button[aria-checked="true"]{background:#f1f5f9;color:#0d141c;border-color:#f1f5f9}
