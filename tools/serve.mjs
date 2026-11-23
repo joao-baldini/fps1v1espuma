@@ -9,14 +9,13 @@ http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   const menuImage = /^\/assets\/menu\/(?:large\/|play\/(?:thumb\/)?)?[a-z0-9-]+\.webp$/.test(pathname);
   const audio = /^\/assets\/audio\/[a-z0-9-]+\.mp3$/.test(pathname);
-  const mapScript = /^\/assets\/maps\/(?:runtime|catalog|textures|sanctum|neon|forge|sable|inferno|prefire-catalog|warface-catalog|palace|factory)\.js$/.test(pathname);
-  const minimapImage=/^\/assets\/maps\/(?:palace|factory)-minimap\.svg$/.test(pathname);
+  const mapScript = /^\/assets\/maps\/(?:runtime|catalog|textures|sanctum|neon|forge|sable|lily|inferno|prefire-catalog)\.js$/.test(pathname);
   const agentScript = /^\/assets\/agents\/(?:models|operators-v2)\.js$/.test(pathname);
   const v2Script = /^\/assets\/v2\/[a-z0-9-]+\.js$/.test(pathname);
   const menuStyle = /^\/assets\/ui\/(?:menu|hud)\.css$/.test(pathname);
   const hudScript = pathname === '/assets/ui/hud-radar.js';
   const menuFont = /^\/assets\/ui\/fonts\/plex-sans-(?:regular|medium|semibold)\.woff2$/.test(pathname);
-  const file = menuImage || audio || mapScript || agentScript || v2Script || minimapImage || menuStyle || menuFont || hudScript ? resolve(root, pathname.slice(1))
+  const file = menuImage || audio || mapScript || agentScript || v2Script || menuStyle || menuFont || hudScript ? resolve(root, pathname.slice(1))
     : pathname === '/reference.mp4' && reference ? resolve(reference)
     : /^\/tools\/(?:knife|bot)-preview\.html$/.test(pathname) ? resolve(root, pathname.slice(1))
     : pathname === '/' || pathname === '/index.html' ? resolve(root, 'index.html') : null;
@@ -26,7 +25,7 @@ http.createServer((req, res) => {
     const range = req.headers.range?.match(/^bytes=(\d+)-(\d*)$/);
     const start = range ? Number(range[1]) : 0, end = range?.[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
     if (start > end || start >= size) { res.writeHead(416); res.end(); return; }
-    const contentType = menuFont ? 'font/woff2' : menuStyle ? 'text/css; charset=utf-8' : menuImage ? 'image/webp' : minimapImage?'image/svg+xml':audio ? 'audio/mpeg' : mapScript||agentScript||v2Script||hudScript?'text/javascript; charset=utf-8':video ? 'video/mp4' : 'text/html; charset=utf-8';
+    const contentType = menuFont ? 'font/woff2' : menuStyle ? 'text/css; charset=utf-8' : menuImage ? 'image/webp' : audio ? 'audio/mpeg' : mapScript||agentScript||v2Script||hudScript?'text/javascript; charset=utf-8':video ? 'video/mp4' : 'text/html; charset=utf-8';
     res.writeHead(range ? 206 : 200, { 'Content-Type': contentType, 'Content-Length': end - start + 1, 'Accept-Ranges': 'bytes', ...(range ? { 'Content-Range': `bytes ${start}-${end}/${size}` } : {}), 'Cache-Control': 'no-store' });
     createReadStream(file, { start, end }).pipe(res);
   } catch { res.writeHead(404); res.end(); }

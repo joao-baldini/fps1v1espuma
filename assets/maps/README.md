@@ -113,8 +113,10 @@ Os scripts locais e `DecompressionStream` permitem jogar via `file://` no Chrome
 
 Com Node.js 24 e os BSPs já extraídos:
 
+Mapas do Wingman e o Lily (5v5), um ou mais por vez; o catálogo é atualizado só nos mapas convertidos:
+
 ```powershell
-node tools/import-source-maps.mjs "caminho/de_guard_csgo.bsp" "caminho/de_elysion.bsp"
+node tools/import-wingman-maps.mjs sanctum="caminho/wg_sanctum.bsp" neon="caminho/wg_neon.bsp" forge="caminho/wg_forge.bsp" sable="caminho/de_sable.bsp" lily="caminho/de_lily.bsp"
 node --test tests/game.test.cjs
 ```
 
@@ -144,35 +146,21 @@ O início protegido fica atrás da curva perto da T Ramp; a malha inclui essa pe
 
 O VPK, a ferramenta de extração e os arquivos intermediários ficam fora do repositório.
 
-## Palace e Factory · 5v5
+## Lily · Plant the Bomb 5v5
 
-Os ZIPs fornecidos contêm `source/DVORETS.glb` e o Factory, sem imagens ou texturas incorporadas.
+O Lily é o mapa de **gi**, usado com a permissão do autor (Steam Workshop 2430950151; o autor agradece a **reoMeTpuR** pela ajuda e pelo retorno). O arquivo enviado, `mymaps_de_lily.bsp`, é um zip com o BSP Source 21 `de_lily.bsp`, que é extraído antes da conversão. Ele passa pelo mesmo importador do Wingman (`tools/import-wingman-maps.mjs`, em `FIVE_MAPS`): geometria, colisões e *player clips*, os 10 spawns de cada lado, os bombsites A e B (`func_bomb_target`) e a navegação (`maps/de_lily.nav`, embutida) vêm do BSP. Os caixotes, caminhões, o táxi e as caçambas são modelos padrão do CS, aproximados pelas regras do importador e assentados no chão.
 
-**Factory 5v5 — autoria:** mapa próprio de **guilhxrme e João**, conforme a declaração do usuário e os metadados do arquivo `source/Factory_5v5_guilhxrme_Joao.glb` (ZIP `Factory_5v5_guilhxrme_Joao.zip`). Os campos `asset.copyright` e `asset.extras` (`title`, `authors`, `creator`, `project`) e os `extras` da cena trazem esses nomes; o jogo não altera esses metadados. O mapa foi recriado a partir desse arquivo (hash de origem `31da400e…` em `factory-source.json`). O crédito "Factory 5v5 · guilhxrme e João" aparece no menu e no início da partida.
+**Texturas a partir das estruturas.** O BSP é uma versão de desenvolvimento: só tem oito materiais de cor lisa (`custom/lightergray`, `custom/gray`, `custom/lightred`, `custom/lightgray`, `custom/darkgray`, `custom/whitegray`, `custom/lighterbrown` e `laranja`), e o mesmo material aparece em estruturas diferentes. `tools/lily-style.mjs` classifica cada face pelo material, pela orientação, pela altura e pelo contexto:
 
-`tools/gltf.mjs` lê os buffers GLB e aplica as transformações dos nós, inclusive as escalas não uniformes dos modelos. `tools/import-warface-maps.mjs` converte os triângulos diretamente, sem redesenhar as rotas. Depois das transformações do GLB, cada mapa recebe uma escala própria, horizontal e vertical. Factory também é girado para corresponder à vista original.
+- **Viaduto quebrado:** tudo acima de ~12,5 m na faixa do tabuleiro (células de 2 m onde há piso ou teto acima dessa altura), mais os pilares `darkgray` embaixo dela. Vira concreto; o tabuleiro vira asfalto, com faixas de pista pintadas: a direção vem do eixo principal das faces do tabuleiro, e em cada trecho há bordas contínuas a 0,5 m da beirada e faixa central tracejada (3 m pintados, 3 m vazios), recortadas dentro de cada face, 2 cm acima do asfalto.
+- **Telhados:** faces `lightred` voltadas para cima com inclinação de telhado (~32°) viram telha cerâmica. Telhados ligados (vértices em comum) formam uma casa e ganham um dos seis tons de terracota. A parte de baixo do beiral vira madeira e as testeiras, terracota escura.
+- **Paredes:** reboco de cimento com uma cor por casa. A casa de uma parede é o telhado logo acima de um ponto 45 cm para dentro dela; sem telhado em cima, vale o telhado mais próximo até 3,5 m; longe de casas, cimento claro. Como o BSP divide uma parede em várias faces, faces no mesmo plano que se tocam ficam com a cor da maioria. A paleta é mediterrânea e viva: amarelo, ocre, pêssego, terracota clara, rosa, azul-claro, menta, lavanda, creme, água e salmão.
+- **Interiores:** as paredes `lighterbrown` (laranja no original) viram pintura ocre; pisos com telhado em cima viram piso cerâmico; tetos, reboco claro.
+- **Chão:** `gray` vira calçamento de pedra nas ruas, `whitegray` vira lajotas nas calçadas e plataformas, `lightgray` vira concreto nos pátios. As faixas `lightred` no chão (borda dos bombsites) continuam pintadas de vermelho.
 
-- **Palace:** usa 1,25 em tudo.
-- **Factory:** usa **1,5 na horizontal e a altura original do modelo (1,0)**. Com 1,25 em tudo, as paredes chegavam a ~5,7 m (mais de três vezes a altura do jogador), as caixas a 2,5 m e o mapa ficava com 36 × 58 m, pequeno para 5 contra 5. Agora:
-  - as paredes têm ~4,5 m, e caixas e contêineres, 2 m;
-  - os tanques têm 5,3 e 7,5 m de altura, com seção redonda;
-  - o mapa tem 69 × 43 m;
-  - as passagens mais estreitas passaram de ~3,4 m para ~4,0 m;
-  - os trechos cobertos têm teto de 2,1 a 2,7 m;
-  - as escadas ficaram mais suaves.
+O resultado tem 64 telhados de casa, cerca de 3.700 faces de parede coloridas por casa e 44 trechos de faixa na pista. O tema de luz é o `terracota` (ensolarado). A imagem do menu é um render do próprio mapa no jogo (`assets/menu/play/lily.webp`, pose em `cameras.json`).
 
-Palace tem cerca de **2.480 triângulos** e Factory, **2.556**. Geometria, colisões e navegação são carregadas somente ao entrar na partida.
-
-Conforme a preferência do usuário, as cores seguem a aparência original do Warface, adaptada ao acabamento chapado do jogo: pedra clara e detalhes azuis no Palace; tijolo, concreto, metal e contêineres no Factory. Referências visuais: [Palace — publicação oficial](https://ps.wfclutch.com/en/news/111.html), [Factory 2.0 — publicação oficial no Steam](https://store.steampowered.com/news/posts/?appids=291480&enddate=1532340210). Os materiais de depuração azul, verde e vermelho dos GLBs não são usados como paleta final.
-
-Os relatórios `palace-source.json` e `factory-source.json` registram os hashes dos GLBs, a escala usada, dimensões originais, pontos de nascimento, bombsites, contagens e navegação. `warface-catalog.js` contém apenas os metadados do menu. Cada lado recebe cinco spawns sem sobreposição; as direções iniciais favorecem passagens abertas. Os sites e todos os spawns pertencem à mesma região navegável. O código de partida reutiliza a lógica de bomba existente com cinco jogadores por time, mantendo a IA disponível para evolução separada.
-
-Os SVGs `palace-minimap.svg` e `factory-minimap.svg` são gerados da navegação, com spawns e sites. O HUD sobrepõe apenas jogador e aliados, atualizando no máximo a cada 80 ms. As cores dos spawns identificam o lado: azul é defesa e vermelho é ataque. As prévias WebP do menu são renderizadas da geometria final, em vez de usar imagens promocionais externas.
-
-```powershell
-node tools/import-warface-maps.mjs palace="caminho/DVORETS.glb" factory="caminho/Factory_5v5_guilhxrme_Joao.glb"
-node --test tests/game.test.cjs
-```
+Palace e Factory, os mapas anteriores do 5v5, saíram do jogo junto com o conversor de GLB deles.
 
 ## Movimento em pisos, escadas e rampas
 
@@ -180,4 +168,4 @@ A colisão nativa agora separa o movimento horizontal do apoio dos pés. O corpo
 
 A escada vertical de Guard também procura uma saída livre para o patamar próximo à altura útil do trigger. A transferência só ocorre com espaço para o corpo e varreduras livres na subida e na passagem, evitando o bloqueio na borda superior. Pular continua soltando a escada.
 
-Os testes percorrem as rotas entre as bases e os bombsites dos dois mapas novos, mais de 500 aproximações deslocadas de rampas/degraus em Guard, Elysion, Prefire e Palace, a escada vertical de Guard do piso ao patamar, e uma escadaria a 30/60/144 FPS que termina numa parede alta. As verificações usam a física do jogador, sem teleporte nem salto para transpor os degraus.
+Os testes percorrem as rotas entre as bases e os bombsites do Lily, mais de 500 aproximações deslocadas de rampas/degraus nos mapas do Wingman, no Prefire e no Lily, a escada vertical de Guard do piso ao patamar, e uma escadaria a 30/60/144 FPS que termina numa parede alta. As verificações usam a física do jogador, sem teleporte nem salto para transpor os degraus.

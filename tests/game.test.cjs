@@ -8,11 +8,10 @@ require('../assets/maps/runtime.js');
 require('../assets/agents/models.js');
 const sourceCatalog={};vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/catalog.js'),'utf8'),sourceCatalog);
 vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/prefire-catalog.js'),'utf8'),sourceCatalog);
-vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/warface-catalog.js'),'utf8'),sourceCatalog);
 const sourcePacked={};
 const WINGMAN=['sanctum','neon','forge','sable'];
-for(const id of [...WINGMAN,'inferno','palace','factory']){
-  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:sanctum|neon|forge|sable|inferno|palace|factory)=("[A-Za-z0-9+/=]+");/);
+for(const id of [...WINGMAN,'lily','inferno']){
+  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:sanctum|neon|forge|sable|lily|inferno)=("[A-Za-z0-9+/=]+");/);
   assert.ok(encoded,'Missing generated BSP payload: '+id);sourcePacked[id]=JSON.parse(gunzipSync(Buffer.from(JSON.parse(encoded[1]),'base64')));
 }
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8');
@@ -38,7 +37,7 @@ function game(saved) {
   const floor = { min: [-1000, -1, -1000], max: [1000, 0, 1000] };
   const sourceInstances=new Map(),SourceMaps={get:id=>{if(!sourceInstances.has(id)){const map=new globalThis.SourceMaps.NativeMap(sourcePacked[id]);map.geometry=()=>({dispose(){}});sourceInstances.set(id,map);}return sourceInstances.get(id);}};
   const context = vm.createContext({
-    SOURCE_MAP_CATALOG:sourceCatalog.SOURCE_MAP_CATALOG,INFERNO_PREFIRE:sourceCatalog.INFERNO_PREFIRE,WARFACE_MAP_CATALOG:sourceCatalog.WARFACE_MAP_CATALOG,SourceMaps,sourceWorld:null,sourceGlassMat:null,
+    SOURCE_MAP_CATALOG:sourceCatalog.SOURCE_MAP_CATALOG,INFERNO_PREFIRE:sourceCatalog.INFERNO_PREFIRE,SourceMaps,sourceWorld:null,sourceGlassMat:null,
     performance: { now: () => clock }, localStorage: { getItem: () => saved ? JSON.stringify(saved) : null }, V3: Vec,
     boxes: [floor], ramps: [], STEP_UP: .5, AX: 30, AZ: 30, C: 1.2, WALL_H: 7,
     THREE: { Color: class {}, Mesh: class { constructor(geometry) { this.geometry = geometry; } } },
@@ -2299,52 +2298,48 @@ test('Prefire: the first approach opens one holding angle instead of several sim
 });
 
 
-test('Factory 5v5 credits guilhxrme e João and keeps the registered source of their GLB', () => {
-  const g = game(); assert.equal(g.MAPS.factory.credit, 'Factory 5v5 · guilhxrme e João');
-  const report = JSON.parse(readFileSync(resolve(__dirname, '..', 'assets/maps/factory-source.json'), 'utf8'));
-  assert.equal(report.sourceSha256, '31da400e3b909d5a18af65f60f888a91c1777f7100748cffde53483213d3930b'); assert.equal(report.triangles, 2556);
+test('Lily 5v5 credits gi (thanks reoMeTpuR), keeps the Wingman list apart and has safe spawns and two bombsites',()=>{
+  const g=game({mode:'5v5'}),cx=g.context;cx.buildMap('lily');g.dmBuildNav();const map=g.MAPS.lily;
+  assert.equal(g.S.mode,'bomb');assert.equal(g.S.fiveMap,'lily');assert.equal(map.five,true);assert.equal(map.author,'gi');assert.ok(map.credit.includes('gi'));
+  assert.equal(sourceCatalog.SOURCE_MAP_CATALOG.lily.thanks,'reoMeTpuR');assert.equal(sourcePacked.lily.meta.credit,'gi');
+  assert.deepEqual(Array.from(vm.runInContext('FIVE_MAPS',cx)),['lily']);assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',cx)),WINGMAN);
+  assert.equal(g.MAPS.palace,undefined);assert.equal(g.MAPS.factory,undefined);
+  assert.equal(g.DM.nav.audit.spawnsConnected,g.DM.nav.audit.spawnsTotal);
+  for(const side of ['t','ct']){assert.ok(cx.MAP.plant[side].length>=5);for(const p of cx.MAP.plant[side]){const y=cx.sourceWorld.ground(p[0],p[1],p[3]);assert.ok(Math.abs(y-p[3])<1);assert.equal(cx.sourceWorld.overlap(p[0],y+.03,p[1],1.8,.3),false,side+' spawn livre');}}
+  assert.equal(cx.MAP.plant.sites.length,2);
+  for(const site of cx.MAP.plant.sites){const x=(site.x0+site.x1)/2,z=(site.z0+site.z1)/2;assert.equal(cx.bombInSite(x,z,site.y0),true,site.name);}
 });
-test('Warface 5v5: two maps, separate Wingman choices, ten distinct safe spawns and connected bombsites',()=>{
-  for(const key of ['palace','factory']){
-    const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();
-    assert.equal(g.S.mode,'bomb');assert.equal(g.S.warfaceMap,key);assert.equal(g.MAPS[key].warface,true);
-    assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',cx)),WINGMAN);
-    assert.equal(cx.MAP.plant.t.length,5);assert.equal(cx.MAP.plant.ct.length,5);
-    for(const side of ['t','ct'])for(let i=0;i<5;i++){const p=cx.MAP.plant[side][i];assert.equal(cx.sourceWorld.overlap(p[0],p[3]+.005,p[1],1.8,.3),false);for(let j=0;j<i;j++){const q=cx.MAP.plant[side][j];assert.ok(Math.hypot(p[0]-q[0],p[1]-q[1])>=1.35);}}
-    if(key==='palace')assert.ok(cx.MAP.plant.ct.every(p=>p[1]<0)&&cx.MAP.plant.t.every(p=>p[1]>0),'Palace defenders at top, attackers at bottom');
-    else assert.ok(cx.MAP.plant.ct.every(p=>p[0]<0)&&cx.MAP.plant.t.every(p=>p[0]>0),'Factory follows the original blue-left/red-right bases');
-    assert.equal(cx.MAP.plant.sites.length,2);assert.ok(cx.sourceWorld.mesh.opaque/3<3000);
-    const report=JSON.parse(readFileSync(resolve(__dirname,'../assets/maps/'+key+'-source.json'),'utf8'));assert.ok(report.sourceSha256.length===64);
-  }
+test('Lily is textured from its structures: tile roofs, cement walls in many colors, asphalt bridge with lane lines, paved streets',()=>{
+  const pk=sourcePacked.lily,pat=new Uint8Array(Buffer.from(pk.mesh.pattern,'base64')),col=new Uint8Array(Buffer.from(pk.mesh.color,'base64'));
+  assert.ok(pk.mesh.uv,'mapa texturizado');const count=id=>pat.filter(v=>v===id).length;
+  const P={plain:0,tile:2,concrete:4,asphalt:8,roof:9,cobble:15};
+  for(const [k,min] of [['roof',400],['concrete',3000],['asphalt',200],['cobble',300],['tile',200]])assert.ok(count(P[k])>min,k+': '+count(P[k]));
+  const walls=new Set();for(let i=0;i<pat.length;i++)if(pat[i]===P.concrete)walls.add([0,1,2].map(k=>col[i*3+k]>>3).join(','));
+  assert.ok(walls.size>=8,'paredes em várias cores: '+walls.size);
 });
-
-test('Warface: actual walking reaches both bombsites and the opposite base from both teams without jumping',()=>{
-  for(const key of ['palace','factory']){
-    const g=game({mode:'5v5',warfaceMap:key}),cx=g.context;cx.buildMap(key);g.dmBuildNav();const nav=g.DM.nav,map=cx.MAP;
-    for(const side of ['t','ct'])for(const goal of [...map.plant.sites.map(s=>[s.lx,s.lz,0,s.y0+.1]),map.plant[side==='t'?'ct':'t'][0]]){
-      const start=map.plant[side][0],actor={pos:new Vec(start[0],start[3]+.002,start[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
-      assert.equal(g.dmFindPath(actor,goal[0],goal[1],goal[3]),true);
-      for(const id of actor.path){const x=nav.x[id],z=nav.z[id];let frames=0;
-        while(Math.hypot(x-actor.pos.x,z-actor.pos.z)>.16&&frames++<400){const dx=x-actor.pos.x,dz=z-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,Math.min(4.5,d*10),false,1/128);}
-        assert.ok(frames<400,key+' '+side+' blocked at '+id+' '+JSON.stringify(actor.pos));assert.ok(Number.isFinite(actor.pos.y)&&actor.pos.y>-5);
-      }
-      assert.ok(Math.hypot(actor.pos.x-goal[0],actor.pos.z-goal[1])<1,key+' missed destination');
+test('Lily: actual walking reaches both bombsites and the opposite base from both teams without jumping',()=>{
+  const g=game({mode:'5v5'}),cx=g.context;cx.buildMap('lily');g.dmBuildNav();const nav=g.DM.nav,map=cx.MAP;
+  for(const side of ['t','ct'])for(const goal of [...map.plant.sites.map(s=>[s.lx,s.lz,0,s.y0+.1]),map.plant[side==='t'?'ct':'t'][0]]){
+    const start=map.plant[side][0],actor={pos:new Vec(start[0],start[3]+.002,start[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
+    assert.equal(g.dmFindPath(actor,goal[0],goal[1],goal[3]),true,side+' path');
+    for(const id of actor.path){const x=nav.x[id],z=nav.z[id];let frames=0;
+      while(Math.hypot(x-actor.pos.x,z-actor.pos.z)>.16&&frames++<400){const dx=x-actor.pos.x,dz=z-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,Math.min(4.5,d*10),false,1/128);}
+      assert.ok(frames<400,'lily '+side+' blocked at '+id+' '+JSON.stringify(actor.pos));assert.ok(Number.isFinite(actor.pos.y)&&actor.pos.y>-8);
     }
+    assert.ok(Math.hypot(actor.pos.x-goal[0],actor.pos.z-goal[1])<1,'lily missed destination');
   }
 });
-
 
 test('5v5 starts ten actors on the authored attacking and defending bases using the existing bomb rules',()=>{
-  for(const key of ['palace','factory']){const {g,cx,A,BM,step}=bombWorld(key,"S.mode='bomb'");step(10000,1100);
-    assert.deepEqual(Array.from(A.sizes),[5,5]);assert.equal(A.bomb,true);assert.equal(g.DM.bots.length,9);assert.equal(g.DM.actors.length,10);
-    assert.equal(g.DM.phase,'freeze');assert.ok(g.DM.actors.every(e=>e.alive&&e.hp===100));
-    for(const e of g.DM.actors){const side=e.team===BM.tTeam?'t':'ct';assert.ok(cx.MAP.plant[side].some(p=>Math.hypot(e.pos.x-p[0],e.pos.z-p[1])<.1));}
-    assert.equal(g.DM.byId.get(BM.carrier).team,BM.tTeam);
-  }
+  const {g,cx,A,BM,step}=bombWorld('lily',"S.mode='bomb'");step(10000,1100);
+  assert.deepEqual(Array.from(A.sizes),[5,5]);assert.equal(A.bomb,true);assert.equal(g.DM.bots.length,9);assert.equal(g.DM.actors.length,10);
+  assert.equal(g.DM.phase,'freeze');assert.ok(g.DM.actors.every(e=>e.alive&&e.hp===100));
+  for(const e of g.DM.actors){const side=e.team===BM.tTeam?'t':'ct';assert.ok(cx.MAP.plant[side].some(p=>Math.hypot(e.pos.x-p[0],e.pos.z-p[1])<.1));}
+  assert.equal(g.DM.byId.get(BM.carrier).team,BM.tTeam);
 });
 
-test('native stairs and slopes stay walkable with varied approach offsets in the Wingman maps, Prefire and Palace',()=>{
-  for(const key of [...WINGMAN,'infernoprefire','palace']){
+test('native stairs and slopes stay walkable with varied approach offsets in the Wingman maps, Prefire and Lily',()=>{
+  for(const key of [...WINGMAN,'infernoprefire','lily']){
     const g=game(),cx=g.context;cx.buildMap(key);g.dmBuildNav();const n=g.DM.nav,map=cx.sourceWorld,edges=[];
     for(const a of n.walk)for(let d=0;d<4;d++){const b=n.links[a*4+d];if(b<0)continue;const rise=n.height[b]-n.height[a];if(rise<.08||rise>.505)continue;if(map.overlap(n.x[a],n.height[a]+.005,n.z[a],1.8,.3)||map.overlap(n.x[b],n.height[b]+.005,n.z[b],1.8,.3))continue;edges.push([a,b]);}
     assert.ok(edges.length>20,key);let attempts=0;
@@ -2823,9 +2818,11 @@ test('Elimination patrol: teammate avoidance keeps a full movement input instead
   assert.ok(b.vel.z<-.5,'separation must not strand both bots in the doorway');
 });
 
-test('Practice on the Wingman maps: free shop anywhere, no damage, endless grenades and noclip flight with N',()=>{
-  const g=game({mode:'aimbotz'}),cx=g.context;
-  assert.equal(vm.runInContext('JSON.stringify(PRACTICE_MAPS)',cx),JSON.stringify(['aimbotz','sanctum','neon','forge','sable']));
+test('Practice opens every map of the game: free shop anywhere, no damage, endless grenades and noclip flight with N',()=>{
+  const g=game({mode:'aimbotz'}),cx=g.context,list=JSON.parse(vm.runInContext('JSON.stringify(PRACTICE_MAPS)',cx));
+  assert.equal(list[0],'aimbotz');
+  for(const id of [...WINGMAN,'lily',...JSON.parse(vm.runInContext('JSON.stringify(MAP_IDS)',cx)),...JSON.parse(vm.runInContext('JSON.stringify(DM_MAPS)',cx))])assert.ok(list.includes(id),'Practice sem '+id);
+  assert.equal(new Set(list).size,list.length);
   cx.buildMap('sable');vm.runInContext("G.mode='aimbotz';MAPPRACTICE.id='sable';P.alive=true;P.hp=100;P.nades={};",cx);
   assert.equal(vm.runInContext('mapPracticeOn()',cx),true);assert.equal(vm.runInContext('freeShopOn()',cx),true);
   vm.runInContext("takeDamage(80,'head',0,0,'rifle','B');mapPracticeTick();",cx);

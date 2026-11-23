@@ -92,31 +92,6 @@
       ],
       "fov": 65
     },
-    "palace": {
-      "from": [
-        36,
-        28,
-        30
-      ],
-      "at": [
-        0,
-        1,
-        0
-      ],
-      "fov": 52
-    },
-    "factory": {
-      "from": [
-        18,
-        7,
-        10
-      ],
-      "at": [
-        -2,
-        2,
-        -5
-      ]
-    },
     "deathmatch": {
       "from": [
         18,
@@ -221,6 +196,20 @@
       ],
       "fov": 55,
       "source": "de_sable.bsp (cores reais dos materiais)"
+    },
+    "lily": {
+      "from": [
+        30,
+        18,
+        20
+      ],
+      "to": [
+        5,
+        4,
+        0
+      ],
+      "fov": 55,
+      "source": "de_lily.bsp (estruturas identificadas e texturizadas)"
     }
   }
 }

@@ -87,7 +87,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
       <aside class="mode-navigation"><h1 id="lobbyTitle">Jogar</h1>
     <div class="modes" id="modeSel" role="radiogroup" aria-label="Modo de jogo">
       <button class="mode-card" type="button" role="radio" data-mode="elim"><span class="mode-copy"><b>Elimination</b><small>Monte o confronto · 1 a 8 por time</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Palace e Factory</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Lily</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Sanctum, Neon, Forge e Sable</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
@@ -111,7 +111,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
         <div class="map-grid" id="duelMaps" role="radiogroup" aria-labelledby="mapTitle"></div>
         <div class="map-grid dm-maps" id="dmMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
         <div class="map-grid" id="bombMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
-        <div class="map-grid" id="warfaceMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
+        <div class="map-grid" id="fiveMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
         <div class="map-grid" id="practiceMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
 
           <p class="practice-map" id="practiceMap" hidden>Alvos parados e respawn imediato. Os quadros da arena ajustam bots, armas, munição e viewmodel.</p>
@@ -316,7 +316,6 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="assets/maps/catalog.js"></script>
 <script src="assets/maps/prefire-catalog.js"></script>
-<script src="assets/maps/warface-catalog.js"></script>
 <script src="assets/maps/runtime.js"></script>
 <script src="assets/maps/textures.js"></script>
 <script src="assets/agents/models.js"></script>
@@ -349,7 +348,7 @@ function normalizeViewmodel(value) {
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
   gfxPreset: 'high', gfxShadows: 'medium', gfxTextures: 'high', gfxParticles: 'high', gfxEffects: 'high',
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', wingSide: 't', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', practiceMap: 'aimbotz', warfaceMap:'palace', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', wingSide: 't', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', practiceMap: 'aimbotz', fiveMap:'lily', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right', viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -369,8 +368,9 @@ function loadS() {
   s.xvx = { mine: clamp(+s.xvx?.mine || 1, 1, 8), foes: clamp(+s.xvx?.foes || 1, 1, 8) };
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
   if (!['sanctum', 'neon', 'forge', 'sable', 'rotacao'].includes(s.bombMap)) s.bombMap = 'sanctum';
-  if (!['aimbotz', 'sanctum', 'neon', 'forge', 'sable'].includes(s.practiceMap)) s.practiceMap = 'aimbotz';
-  if(!['palace','factory'].includes(s.warfaceMap))s.warfaceMap='palace';
+  if (typeof s.practiceMap !== 'string') s.practiceMap = 'aimbotz'; // o Practice aceita qualquer mapa do jogo (validado ao abrir)
+  // Plant the Bomb 5v5: Palace e Factory saíram; o Lily é o mapa do modo.
+  if(!['lily'].includes(s.fiveMap))s.fiveMap='lily'; delete s.warfaceMap;
   if (!['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(s.operator)) s.operator = 'finder';
   if (!['vermelho', 'amarelo', 'roxo'].includes(s.enemyOutline)) s.enemyOutline = 'vermelho';
   if (!['low', 'medium', 'high', 'ultra'].includes(s.gfxPreset)) s.gfxPreset = 'high';
@@ -1413,10 +1413,11 @@ function buildSiteFloors(parent) {
 
 // Mapas do Wingman: geometria, rotas, alturas, spawns e bombsites vêm dos BSPs enviados (uso autorizado pelos autores);
 // o crédito de cada autor aparece no menu e na miniatura.
-const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', sable: 'terracota' };
+const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', sable: 'terracota', lily: 'terracota' };
 for (const id of Object.keys(SOURCE_MAP_CATALOG)) {
   const data=SOURCE_MAP_CATALOG[id];
-  MAPS[id]={name:data.name,theme:WINGMAN_THEMES[id]||'praga',bomb:true,source:id,ax:data.ax,az:data.az,author:data.credit,
+  // five: mapa do Plant the Bomb 5v5 (Lily); os outros são do Wingman.
+  MAPS[id]={name:data.name,theme:WINGMAN_THEMES[id]||'praga',bomb:true,five:!!data.five,source:id,ax:data.ax,az:data.az,author:data.credit,
     credit:data.name+' · mapa de '+data.credit,
     spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
 }
@@ -1428,18 +1429,15 @@ MAPS.aimbotz = {
     B.solid([-18, 0, 7], [18, .28, 14], K.plat);
   },
 };
-for(const [id,data]of Object.entries(WARFACE_MAP_CATALOG))MAPS[id]={name:data.name,theme:id==='palace'?'elysion':'praga',source:id,bomb:true,warface:true,ax:data.ax,az:data.az,
-  spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
-// Factory 5v5: mapa próprio de guilhxrme e João (autoria declarada nos metadados do GLB enviado).
-if(MAPS.factory)MAPS.factory.credit='Factory 5v5 · guilhxrme e João';
 MAPS.infernoprefire={name:'Inferno · Prefire',theme:'terracota',source:'inferno',practice:true,
   ax:INFERNO_PREFIRE.ax,az:INFERNO_PREFIRE.az,
   plant:{t:[INFERNO_PREFIRE.spawn],ct:INFERNO_PREFIRE.spots.map(p=>[p.x,p.z,p.yaw,p.y])}};
 const MAP_IDS = Object.keys(MAPS).filter(id => !MAPS[id].dm && !MAPS[id].practice && !MAPS[id].bomb);
-const BOMB_MAPS = Object.keys(MAPS).filter(id => MAPS[id].bomb&&!MAPS[id].warface);
-// Practice: a arena de mira e os mapas do Wingman (sozinho, sem tempo, compra livre, invulnerável, N voa sem colisão).
-const PRACTICE_MAPS=['aimbotz',...BOMB_MAPS];
-const WARFACE_MAPS=Object.keys(MAPS).filter(id=>MAPS[id].warface);
+const BOMB_MAPS = Object.keys(MAPS).filter(id => MAPS[id].bomb&&!MAPS[id].five);
+const FIVE_MAPS=Object.keys(MAPS).filter(id=>MAPS[id].five);
+const DM_MAPS=Object.keys(MAPS).filter(id=>MAPS[id].dm);
+// Practice: a arena de mira e todos os mapas do jogo (sozinho, sem tempo, compra livre, invulnerável, N voa sem colisão).
+const PRACTICE_MAPS=['aimbotz',...BOMB_MAPS,...FIVE_MAPS,...MAP_IDS,...DM_MAPS];
 const isBombMode=()=>S.mode==='bomb'||S.mode==='wingman';
 const RAMP_FLIP = { '+z': '-z', '-z': '+z', '+x': '-x', '-x': '+x' };
 function rampHeightAt(r, x, z) {
@@ -7316,13 +7314,13 @@ function arenaLeft(id) {
 // essa configuração do anfitrião (mensagem 'cfg') antes de abrir a partida.
 const ROOM_PREFIX = 'aimduelo-sala-v2-';
 const ROOM_MODES = ['elim', 'bomb', 'wingman', 'tdm', 'dm'];
-const ROOM_KEYS = ['mode', 'map', 'bombMap', 'warfaceMap', 'dmMap', 'xvx', 'tdmSize', 'teamSetup', 'dmWeapons', 'dmLevel', 'botLevel'];
+const ROOM_KEYS = ['mode', 'map', 'bombMap', 'fiveMap', 'dmMap', 'xvx', 'tdmSize', 'teamSetup', 'dmWeapons', 'dmLevel', 'botLevel'];
 function roomConfig() { const d = { v: 2, kind: ARENA.kind === 'dm' ? 'dm' : 'team', mp: MAP ? MAP.id : null }; for (const k of ROOM_KEYS) d[k] = S[k] == null ? null : JSON.parse(JSON.stringify(S[k])); return d; }
 function applyRoomConfig(d) {
   if (!d || typeof d !== 'object' || !['team', 'dm'].includes(d.kind) || !ROOM_MODES.includes(d.mode)) return false;
   const str = (k, ok) => { if (typeof d[k] === 'string' && ok(d[k])) S[k] = d[k]; };
   S.mode = d.mode;
-  str('map', v => v === 'rotacao' || MAP_IDS.includes(v)); str('bombMap', v => v === 'rotacao' || BOMB_MAPS.includes(v)); str('warfaceMap', v => WARFACE_MAPS.includes(v));
+  str('map', v => v === 'rotacao' || MAP_IDS.includes(v)); str('bombMap', v => v === 'rotacao' || BOMB_MAPS.includes(v)); str('fiveMap', v => FIVE_MAPS.includes(v));
   str('dmMap', v => !!(MAPS[v] && MAPS[v].dm)); str('teamSetup', v => ['versus', 'coop'].includes(v)); str('dmWeapons', v => ['pistol', 'sniper', 'rifle', 'all'].includes(v));
   str('dmLevel', v => !!LEVELS[v]); str('botLevel', v => !!LEVELS[v]);
   if (d.xvx && typeof d.xvx === 'object') S.xvx = { mine: clamp(d.xvx.mine | 0, 1, TEAM_MAX), foes: clamp(d.xvx.foes | 0, 1, TEAM_MAX) };
@@ -8080,7 +8078,7 @@ function closeOpPick(){
 }
 function openOpPick(){
   OP_PICK.returnFocus=document.activeElement;$('menu').inert=true;$('opPick').hidden=false;
-  const five=S.mode==='bomb',map=five?S.warfaceMap:BOMB_MAPS.includes(S.bombMap)?S.bombMap:BOMB_MAPS[0];
+  const five=S.mode==='bomb',map=five?S.fiveMap:BOMB_MAPS.includes(S.bombMap)?S.bombMap:BOMB_MAPS[0];
   $('opGameMode').textContent=five?'Plant the Bomb · 5v5':'Plant the Bomb · 2v2';
   $('opSide').hidden=five;selectRadio($('opSide'),'side',S.wingSide);
   $('opPick').style.setProperty('--op-map-image','url('+JSON.stringify(new URL('assets/menu/play/'+map+'.webp',document.baseURI).href)+')');
@@ -8311,9 +8309,9 @@ async function startSession(mode, opts = {}) {
   const loadId=++sessionLoadId;
   $('tacticalRadar').hidden=true;
   prefireStop();MAPPRACTICE.id=null;P.fly=false;
-  const map = mode === 'aimbotz' ? (PRACTICE_MAPS.includes(S.practiceMap) ? S.practiceMap : 'aimbotz') : mode==='team'&&S.mode==='bomb'?S.warfaceMap:mode === 'team' && S.mode === 'wingman' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
+  const map = mode === 'aimbotz' ? (PRACTICE_MAPS.includes(S.practiceMap) ? S.practiceMap : 'aimbotz') : mode==='team'&&S.mode==='bomb'?S.fiveMap:mode === 'team' && S.mode === 'wingman' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
   if(MAPS[map].source){
-    const required=S.mode==='bomb'?[map]:opts.online||S.bombMap==='rotacao'?BOMB_MAPS:[map];
+    const required=mode==='aimbotz'||S.mode==='bomb'?[map]:opts.online||S.bombMap==='rotacao'?BOMB_MAPS:[map];
     if(required.some(id=>!SourceMaps.get(id)))toast('Preparando '+MAPS[map].name+'…');
     try{await Promise.all(required.map(id=>SourceMaps.load(id)));}catch(error){toast('Não foi possível abrir o mapa. Recarregue e tente novamente.');return;}
     if(loadId!==sessionLoadId)return;
@@ -8322,7 +8320,7 @@ async function startSession(mode, opts = {}) {
   S.name = $('inName').value;
   saveS();
   AU.init();dmStop();arenaNetStop();ARENA.net=false;setSleeveColor(S.pcol);G.mode=null;$('dmResult').hidden=true;el.hud.classList.remove('dm-over');el.hud.classList.toggle('dm',mode==='dm');el.hud.classList.toggle('bomb',mode==='team'&&isBombMode());
-  buildMap(map);resetSession(mode === 'aimbotz' ? (MAPS[map].source && MAPS[map].plant ? MAPS[map].plant.t[0] : AIMBOTZ_SPAWN) : null);G.mode=mode;
+  buildMap(map);resetSession(mode === 'aimbotz' ? (map === 'aimbotz' ? AIMBOTZ_SPAWN : MAPS[map].source && MAPS[map].plant ? MAPS[map].plant.t[0] : null) : null);G.mode=mode;
   el.hud.hidden = false;
   if (xrayEnabled()) toast('Raio-X ativo');
   if (mode === 'aimbotz') {
@@ -8385,7 +8383,7 @@ let lobbyRoute = 'bots';
 const MODE_MENU = {
   elim: ['Elimination', 'Escolha de 1 a 8 jogadores em cada time. Uma vida por rodada; bots completam as vagas.'],
   tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
-  bomb: ['Plant the Bomb', '5 contra 5 em Palace e Factory. Atacantes plantam, Defensores defendem.'],
+  bomb: ['Plant the Bomb', '5 contra 5 no Lily, mapa de gi. Atacantes plantam, Defensores defendem.'],
   wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge e Sable, com as regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
   aimbotz: ['Practice', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
@@ -8401,12 +8399,11 @@ const MAP_CARD_DETAILS = {
   dust2: 'Long, Meio e Túneis B',
   dmdeposito: 'Contêineres, passarelas e mirante',
   dmborgo: 'Ruelas, igreja e sacadas',
-  palace:'Pedra clara, pátios e passagens do palácio',
-  factory:'Galpões, contêineres e rotas industriais',
   sanctum: 'Mapa de alicate madeira 4',
   neon: 'Mapa de zelzstorm',
   forge: 'Mapa de Blind',
   sable: 'Mapa de dorg',
+  lily: 'Mapa de gi',
 };
 function mountMapCards(group, ids) {
   for (const id of ids) {
@@ -8450,7 +8447,7 @@ function bindChoices(group, activate) {
 mountMapCards($('duelMaps'), [...MAP_IDS, 'rotacao']);
 mountMapCards($('dmMaps'), Object.keys(MAPS).filter(id => MAPS[id].dm));
 mountMapCards($('bombMaps'), [...BOMB_MAPS, 'rotacao']);
-mountMapCards($('warfaceMaps'),WARFACE_MAPS);
+mountMapCards($('fiveMaps'),FIVE_MAPS);
 mountMapCards($('practiceMaps'),PRACTICE_MAPS);
 function visibleMapRail(){return [...document.querySelectorAll('.map-grid')].find(group=>!group.hidden);}
 function updateMapNav(){
@@ -8474,7 +8471,7 @@ function getK(k) { return k.split('.').reduce((o, p) => o[p], S); }
 function setK(k, v) { const ps = k.split('.'); let o = S; for (let i = 0; i < ps.length - 1; i++) o = o[ps[i]]; o[ps[ps.length - 1]] = v; }
 const OUTFMT = { 'ch.alpha': v => Math.round(v * 100) + '%', scale: v => Math.round(v * 100) + '%', volume: v => Math.round(v * 100) + '%', fov: v => v + '°', zoomRatio: v => (+v).toFixed(2) };
 function syncLobbyPreview() {
-  const mode=S.mode,practice=mode==='aimbotz',tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='bomb',bomb=isBombMode(),duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?(PRACTICE_MAPS.includes(S.practiceMap)?S.practiceMap:'aimbotz'):dm?S.dmMap:five?S.warfaceMap:bomb?bombMap:duelMap;
+  const mode=S.mode,practice=mode==='aimbotz',tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='bomb',bomb=isBombMode(),duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?(PRACTICE_MAPS.includes(S.practiceMap)?S.practiceMap:'aimbotz'):dm?S.dmMap:five?S.fiveMap:bomb?bombMap:duelMap;
   const title=bomb&&!five&&S.bombMap==='rotacao'?'Rotação':MAPS[id]?.name||'Rotação',image=$('stageImage'),source='assets/menu/play/'+id+'.webp';
   if(image.getAttribute('src')!==source){image.srcset='assets/menu/play/thumb/'+id+'.webp 320w, '+source+' 1280w';image.src=source;}
   $('stageTitle').textContent=title;
@@ -8502,7 +8499,7 @@ function syncInputs(except) {
   selectRadio($('dmMaps'), 'map', S.dmMap);
   $('duelMaps').hidden = dm || practice || bomb;
   $('dmMaps').hidden = !dm;
-  selectRadio($('bombMaps'), 'map', S.bombMap); $('bombMaps').hidden = !bomb||five;selectRadio($('warfaceMaps'),'map',S.warfaceMap);$('warfaceMaps').hidden=!five;
+  selectRadio($('bombMaps'), 'map', S.bombMap); $('bombMaps').hidden = !bomb||five;selectRadio($('fiveMaps'),'map',S.fiveMap);$('fiveMaps').hidden=!five;
   $('practiceMap').hidden = !practice || S.practiceMap !== 'aimbotz';
   selectRadio($('practiceMaps'), 'map', S.practiceMap); $('practiceMaps').hidden = !practice;
   $('mapTitle').textContent = practice ? 'Treino livre' : 'Mapas';
@@ -8698,7 +8695,7 @@ bindChoices($('duelMaps'), button => selectLobbyOption('map', button.dataset.map
 bindChoices($('dmMaps'), button => selectLobbyOption('dmMap', button.dataset.map));
 bindChoices($('bombMaps'), button => selectLobbyOption('bombMap', button.dataset.map));
 bindChoices($('practiceMaps'),button=>selectLobbyOption('practiceMap',button.dataset.map));
-bindChoices($('warfaceMaps'),button=>selectLobbyOption('warfaceMap',button.dataset.map));
+bindChoices($('fiveMaps'),button=>selectLobbyOption('fiveMap',button.dataset.map));
 $('btnDm').addEventListener('click',()=>startSession('dm',{online:false}));
 $('btnAimbotz').addEventListener('click', () => startSession('aimbotz'));
 $('btnDmAgain').addEventListener('click',()=>{

@@ -1,16 +1,17 @@
 // Converts the Wingman BSPs supplied by the user (used with the authors' permission) into the game's map format.
-// Usage: node tools/import-wingman-maps.mjs <wg_sanctum.bsp> <wg_neon.bsp> <wg_forge.bsp> <de_sable.bsp>
+// Usage: node tools/import-wingman-maps.mjs sanctum=wg_sanctum.bsp neon=wg_neon.bsp forge=wg_forge.bsp sable=de_sable.bsp lily=de_lily.bsp
 // Geometry, collision, spawns and bombsites come from each BSP. Stock CS:GO props are not inside the files, so the
 // common cover props (crates, barrels, hedges, cars, barriers, rocks, fences, railings, trees...) are approximated by
 // boxes and prisms from rules on the model name, and checked against the map's own navigation mesh (.nav): a prop that
 // would cover walkable floor is shrunk or left out. Surfaces get light procedural textures (no images).
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { compileSourceMap, rotation, PATTERNS } from './source-bsp.mjs';
 import { readNav, navHeightsAt } from './source-nav.mjs';
 import { packMap, bakeNavigation } from './import-source-maps.mjs';
 import { rebuildSanctum } from './import-sanctum.mjs';
+import { styleLily } from './lily-style.mjs';
 import { styleNeon, addNeonSignage, NEON_PROPS, NEON_HOARDINGS, SABLE_PROPS } from './neon-style.mjs';
 import '../assets/maps/runtime.js';
 
@@ -19,6 +20,10 @@ export const WINGMAN_MAPS = {
   neon: { name: 'Neon', credit: 'zelzstorm', file: 'wg_neon.bsp' },
   forge: { name: 'Forge', credit: 'Blind', file: 'wg_forge.bsp' },
   sable: { name: 'Sable', credit: 'dorg', file: 'de_sable.bsp' },
+};
+// Plant the Bomb 5v5: mesmos passos de conversão, com dois bombsites.
+export const FIVE_MAPS = {
+  lily: { name: 'Lily', credit: 'gi', file: 'de_lily.bsp', thanks: 'reoMeTpuR' },
 };
 
 const add = (a, b) => a.map((v, i) => v + b[i]), mul = (a, s) => a.map(v => v * s), dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -320,11 +325,12 @@ const P_METAL = PATTERNS.metal, clampT = (v, a, b) => Math.max(a, Math.min(b, v)
 
 export function importWingmanMap(file, key) {
   if(key==='sanctum')return rebuildSanctum(file);
-  const info = WINGMAN_MAPS[key];
-  const map = compileSourceMap(file, key, { textures: true, materialNames: key === 'neon' || key === 'sable' });
+  const info = WINGMAN_MAPS[key] || FIVE_MAPS[key];
+  const map = compileSourceMap(file, key, { textures: true, materialNames: key === 'neon' || key === 'sable' || key === 'lily' });
   map.name = info.name; map.credit = info.credit;
   if (key === 'neon') { styleNeon(map); addNeonSignage(map); }
   if (key === 'sable') styleNeon(map); // mesmas cores reais dos materiais (VMT/VTF/refletividade do BSP)
+  if (key === 'lily') styleLily(map); // mapa sem texturas: estruturas identificadas e texturizadas (tools/lily-style.mjs)
   const navFile = [...map.bsp.pak.keys()].find(k => k.endsWith('.nav'));
   if (!navFile) throw Error(key + ': no navigation mesh');
   const nav = readNav(map.bsp.asset(navFile));
@@ -340,17 +346,20 @@ export function importWingmanMap(file, key) {
   return map;
 }
 
+// Uso: node tools/import-wingman-maps.mjs sable=de_sable.bsp lily=de_lily.bsp ... (um ou mais mapas, em qualquer ordem).
+// O catálogo existente é atualizado só nos mapas convertidos.
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
-  const args = process.argv.slice(2), keys = Object.keys(WINGMAN_MAPS);
-  if (args.length !== keys.length) throw Error('Usage: node tools/import-wingman-maps.mjs ' + keys.map(k => '<' + WINGMAN_MAPS[k].file + '>').join(' '));
+  const all = { ...WINGMAN_MAPS, ...FIVE_MAPS }, jobs = process.argv.slice(2).map(a => a.split('='));
+  if (!jobs.length || jobs.some(([k, f]) => !all[k] || !f)) throw Error('Usage: node tools/import-wingman-maps.mjs ' + Object.keys(all).map(k => k + '=<' + all[k].file + '>').join(' '));
   const out = resolve(import.meta.dirname, '../assets/maps'); mkdirSync(out, { recursive: true });
-  const catalog = {};
-  for (const [i, key] of keys.entries()) {
-    const map = importWingmanMap(resolve(args[i]), key), packed = packMap(map), bytes = gzipSync(Buffer.from(JSON.stringify(packed)), { level: 9 });
-    catalog[key] = { name: map.name, credit: map.credit, ax: map.ax, az: map.az, t: map.t, ct: map.ct, sites: map.sites };
-    writeFileSync(resolve(out, key + '.js'), '// Generated from a user-supplied BSP (used with the author\'s permission). Light procedural textures, no images.\n(globalThis.SOURCE_MAP_PAYLOADS??={}).' + key + '=' + JSON.stringify(bytes.toString('base64')) + ';\n');
+  const catalogFile = resolve(out, 'catalog.js'), src = existsSync(catalogFile) ? readFileSync(catalogFile, 'utf8') : '', m = src.match(/SOURCE_MAP_CATALOG=(.*);/);
+  const catalog = m ? JSON.parse(m[1]) : {};
+  for (const [key, file] of jobs) {
+    const map = importWingmanMap(resolve(file), key), packed = packMap(map), bytes = gzipSync(Buffer.from(JSON.stringify(packed)), { level: 9 }), info = all[key];
+    catalog[key] = { name: map.name, credit: map.credit, ax: map.ax, az: map.az, t: map.t, ct: map.ct, sites: map.sites, ...(FIVE_MAPS[key] ? { five: true } : {}), ...(info.thanks ? { thanks: info.thanks } : {}) };
+    writeFileSync(resolve(out, key + '.js'), '// Generated from a user-supplied BSP (' + info.file + ' by ' + info.credit + ', used with the author\'s permission). Painted textures from assets/maps/textures.js.\n(globalThis.SOURCE_MAP_PAYLOADS??={}).' + key + '=' + JSON.stringify(bytes.toString('base64')) + ';\n');
     const tris = Buffer.from(packed.mesh.index, 'base64').length / 12;
     console.log(key, bytes.length + ' bytes gzipped', tris + ' triangles', map.hulls.length + ' hulls', 'nav links cut ' + map.report.navigationPruned, JSON.stringify(map.report.props), 'nav', JSON.stringify(map.report.navigation && { nodes: map.report.navigation.nodes, spawns: map.report.navigation.spawnsConnected + '/' + map.report.navigation.spawnsTotal }));
   }
-  writeFileSync(resolve(out, 'catalog.js'), '// Metadata only: the geometry is loaded when a map is played.\nglobalThis.SOURCE_MAP_CATALOG=' + JSON.stringify(catalog) + ';\n');
+  writeFileSync(catalogFile, '// Metadata only: the geometry is loaded when a map is played.\nglobalThis.SOURCE_MAP_CATALOG=' + JSON.stringify(catalog) + ';\n');
 }
