@@ -210,6 +210,48 @@
       ],
       "fov": 55,
       "source": "de_lily.bsp (estruturas identificadas e texturizadas)"
+    },
+    "calamari": {
+      "from": [
+        40,
+        22,
+        35
+      ],
+      "to": [
+        5,
+        2,
+        0
+      ],
+      "fov": 55,
+      "source": "de_calamari.bsp (cores reais dos materiais, paleta VALORANT)"
+    },
+    "coldwater": {
+      "from": [
+        35,
+        22,
+        55
+      ],
+      "to": [
+        0,
+        2,
+        10
+      ],
+      "fov": 55,
+      "source": "de_coldwater.bsp (cores reais dos materiais, paleta VALORANT)"
+    },
+    "crown": {
+      "from": [
+        -20,
+        25,
+        -70
+      ],
+      "to": [
+        -5,
+        3,
+        -35
+      ],
+      "fov": 55,
+      "source": "de_crown.bsp (cores reais dos materiais, paleta VALORANT)"
     }
   }
 }

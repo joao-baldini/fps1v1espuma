@@ -26,7 +26,10 @@ export function packMap(map) {
 
 export function bakeNavigation(map){
   const native=new globalThis.SourceMaps.NativeMap(packMap(map)),b=map.bounds,nav=native.buildNav(Math.ceil(Math.max(Math.abs(b[0]),Math.abs(b[3])))+.5,Math.ceil(Math.max(Math.abs(b[2]),Math.abs(b[5])))+.5);
-  if(nav.audit.spawnsConnected!==nav.audit.spawnsTotal)throw Error(map.key+': some source spawns are disconnected');
+  if(nav.audit.spawnsConnected!==nav.audit.spawnsTotal){
+    const walk=new Set(nav.walk),lost=[...map.t.map(p=>['t',p]),...map.ct.map(p=>['ct',p])].filter(([,p])=>!walk.has(native.cell(nav,p[0],p[1],native.ground(p[0],p[1],p[3]),true)));
+    throw Error(map.key+': some source spawns are disconnected: '+lost.map(([s,p])=>s+'('+p[0].toFixed(2)+','+p[1].toFixed(2)+','+p[3].toFixed(2)+')').join(' '));
+  }
   const X=id=>nav.minX+(id%nav.w)*nav.step,Z=id=>nav.minZ+Math.floor((id%nav.plane)/nav.w)*nav.step,oldToNew=new Int32Array(nav.open.length).fill(-1),x=nav.walk.map(X),z=nav.walk.map(Z),dx=(Math.min(...x)+Math.max(...x))/2,dz=(Math.min(...z)+Math.max(...z))/2;
   nav.walk.forEach((id,i)=>oldToNew[id]=i);
   const links=[];for(const id of nav.walk)for(let d=0;d<4;d++){const next=nav.links[id*4+d];links.push(next<0?-1:oldToNew[next]);}

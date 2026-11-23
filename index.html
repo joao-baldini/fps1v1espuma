@@ -87,7 +87,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
       <aside class="mode-navigation"><h1 id="lobbyTitle">Jogar</h1>
     <div class="modes" id="modeSel" role="radiogroup" aria-label="Modo de jogo">
       <button class="mode-card" type="button" role="radio" data-mode="elim"><span class="mode-copy"><b>Elimination</b><small>Monte o confronto · 1 a 8 por time</small></span></button>
-      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Lily</small></span></button>
+      <button class="mode-card" type="button" role="radio" data-mode="bomb"><span class="mode-copy"><b>Plant the Bomb</b><small>Ataque x defesa · 5v5 · Lily, Calamari, Coldwater e Crown</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="wingman"><span class="mode-copy"><b>Wingman</b><small>Plant the Bomb 2v2 · Sanctum, Neon, Forge e Sable</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="tdm"><span class="mode-copy"><b>TDM</b><small>Mata-mata em equipe</small></span></button>
       <button class="mode-card" type="button" role="radio" data-mode="dm"><span class="mode-copy"><b>Deathmatch</b><small>Sem parar de jogar</small></span></button>
@@ -369,8 +369,8 @@ function loadS() {
   s.tdmSize = clamp(+s.tdmSize || 5, 2, 8);
   if (!['sanctum', 'neon', 'forge', 'sable', 'rotacao'].includes(s.bombMap)) s.bombMap = 'sanctum';
   if (typeof s.practiceMap !== 'string') s.practiceMap = 'aimbotz'; // o Practice aceita qualquer mapa do jogo (validado ao abrir)
-  // Plant the Bomb 5v5: Palace e Factory saíram; o Lily é o mapa do modo.
-  if(!['lily'].includes(s.fiveMap))s.fiveMap='lily'; delete s.warfaceMap;
+  // Plant the Bomb 5v5: Lily, Calamari, Coldwater e Crown.
+  if(!['lily','calamari','coldwater','crown'].includes(s.fiveMap))s.fiveMap='lily'; delete s.warfaceMap;
   if (!['finder', 'detector', 'doctor', 'ghost', 'brutus'].includes(s.operator)) s.operator = 'finder';
   if (!['vermelho', 'amarelo', 'roxo'].includes(s.enemyOutline)) s.enemyOutline = 'vermelho';
   if (!['low', 'medium', 'high', 'ultra'].includes(s.gfxPreset)) s.gfxPreset = 'high';
@@ -1413,10 +1413,10 @@ function buildSiteFloors(parent) {
 
 // Mapas do Wingman: geometria, rotas, alturas, spawns e bombsites vêm dos BSPs enviados (uso autorizado pelos autores);
 // o crédito de cada autor aparece no menu e na miniatura.
-const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', sable: 'terracota', lily: 'terracota' };
+const WINGMAN_THEMES = { sanctum: 'praga', neon: 'elysion', forge: 'praga', sable: 'terracota', lily: 'terracota', calamari: 'terracota', coldwater: 'praga', crown: 'terracota' };
 for (const id of Object.keys(SOURCE_MAP_CATALOG)) {
   const data=SOURCE_MAP_CATALOG[id];
-  // five: mapa do Plant the Bomb 5v5 (Lily); os outros são do Wingman.
+  // five: mapas do Plant the Bomb 5v5 (Lily, Calamari, Coldwater, Crown); os outros são do Wingman.
   MAPS[id]={name:data.name,theme:WINGMAN_THEMES[id]||'praga',bomb:true,five:!!data.five,source:id,ax:data.ax,az:data.az,author:data.credit,
     credit:data.name+' · mapa de '+data.credit,
     spawn:{hx:3,z0:data.az-4,z1:data.az-2},plant:{site:data.sites[0],sites:data.sites,t:data.t,ct:data.ct}};
@@ -8409,7 +8409,7 @@ let lobbyRoute = 'bots';
 const MODE_MENU = {
   elim: ['Elimination', 'Escolha de 1 a 8 jogadores em cada time. Uma vida por rodada; bots completam as vagas.'],
   tdm: ['Team Deathmatch', 'Dois times, renascimento contínuo. Ganha quem chegar primeiro à meta de abates.'],
-  bomb: ['Plant the Bomb', '5 contra 5 no Lily, mapa de gi. Atacantes plantam, Defensores defendem.'],
+  bomb: ['Plant the Bomb', '5 contra 5 no Lily, Calamari, Coldwater e Crown. Atacantes plantam, Defensores defendem.'],
   wingman: ['Wingman', 'Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge e Sable, com as regras do Wingman.'],
   dm: ['Deathmatch', '10 participantes, 5 minutos e respawn automático.'],
   aimbotz: ['Practice', 'Treino livre. Ajuste a quantidade de bots e a arma no quadro da arena.'],
@@ -8430,6 +8430,9 @@ const MAP_CARD_DETAILS = {
   forge: 'Mapa de Blind',
   sable: 'Mapa de dorg',
   lily: 'Mapa de gi',
+  calamari: 'Mapa de Mac, Geno e Reydifox',
+  coldwater: 'Mapa de Mendaxyz e Praelium',
+  crown: 'Mapa de Volcano e FMPONE',
 };
 function mountMapCards(group, ids) {
   for (const id of ids) {

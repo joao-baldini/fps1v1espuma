@@ -10,8 +10,9 @@ const sourceCatalog={};vm.runInNewContext(readFileSync(resolve(__dirname,'../ass
 vm.runInNewContext(readFileSync(resolve(__dirname,'../assets/maps/prefire-catalog.js'),'utf8'),sourceCatalog);
 const sourcePacked={};
 const WINGMAN=['sanctum','neon','forge','sable'];
-for(const id of [...WINGMAN,'lily','inferno']){
-  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(/\.(?:sanctum|neon|forge|sable|lily|inferno)=("[A-Za-z0-9+/=]+");/);
+const FIVE=['lily','calamari','coldwater','crown'],NEW_FIVE=FIVE.slice(1);
+for(const id of [...WINGMAN,...FIVE,'inferno']){
+  const text=readFileSync(resolve(__dirname,'../assets/maps/'+id+'.js'),'utf8'),encoded=text.match(new RegExp('\\.'+id+'=("[A-Za-z0-9+/=]+");'));
   assert.ok(encoded,'Missing generated BSP payload: '+id);sourcePacked[id]=JSON.parse(gunzipSync(Buffer.from(JSON.parse(encoded[1]),'base64')));
 }
 const html = readFileSync(resolve(__dirname, '../index.html'), 'utf8');
@@ -2302,7 +2303,7 @@ test('Lily 5v5 credits gi (thanks reoMeTpuR), keeps the Wingman list apart and h
   const g=game({mode:'5v5'}),cx=g.context;cx.buildMap('lily');g.dmBuildNav();const map=g.MAPS.lily;
   assert.equal(g.S.mode,'bomb');assert.equal(g.S.fiveMap,'lily');assert.equal(map.five,true);assert.equal(map.author,'gi');assert.ok(map.credit.includes('gi'));
   assert.equal(sourceCatalog.SOURCE_MAP_CATALOG.lily.thanks,'reoMeTpuR');assert.equal(sourcePacked.lily.meta.credit,'gi');
-  assert.deepEqual(Array.from(vm.runInContext('FIVE_MAPS',cx)),['lily']);assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',cx)),WINGMAN);
+  assert.deepEqual(Array.from(vm.runInContext('FIVE_MAPS',cx)),FIVE);assert.deepEqual(Array.from(vm.runInContext('BOMB_MAPS',cx)),WINGMAN);
   assert.equal(g.MAPS.palace,undefined);assert.equal(g.MAPS.factory,undefined);
   assert.equal(g.DM.nav.audit.spawnsConnected,g.DM.nav.audit.spawnsTotal);
   for(const side of ['t','ct']){assert.ok(cx.MAP.plant[side].length>=5);for(const p of cx.MAP.plant[side]){const y=cx.sourceWorld.ground(p[0],p[1],p[3]);assert.ok(Math.abs(y-p[3])<1);assert.equal(cx.sourceWorld.overlap(p[0],y+.03,p[1],1.8,.3),false,side+' spawn livre');}}
@@ -2334,16 +2335,51 @@ test('Lily: actual walking reaches both bombsites and the opposite base from bot
   }
 });
 
+const NEW_FIVE_CREDITS={calamari:['Mac, Geno e Reydifox',707503558],coldwater:['Mendaxyz e Praelium',215971897],crown:['Volcano e FMPONE',239672577]};
+for(const key of NEW_FIVE){
+  test(key+' 5v5 credits its authors, has safe spawns for five per side and two plantable bombsites',()=>{
+    const g=game({mode:'5v5'}),cx=g.context;cx.buildMap(key);g.dmBuildNav();const map=g.MAPS[key],[credit,workshop]=NEW_FIVE_CREDITS[key];
+    assert.equal(map.five,true);assert.equal(map.author,credit);assert.ok(map.credit.includes(credit));assert.equal(sourcePacked[key].meta.credit,credit);
+    assert.equal(sourceCatalog.SOURCE_MAP_CATALOG[key].five,true);assert.ok(html.includes(key+": 'Mapa de "+credit+"'"),'crédito no menu');
+    assert.ok(readFileSync(resolve(__dirname,'../tools/import-wingman-maps.mjs'),'utf8').includes('workshop: '+workshop));
+    assert.equal(g.DM.nav.audit.spawnsConnected,g.DM.nav.audit.spawnsTotal);
+    for(const side of ['t','ct']){assert.ok(cx.MAP.plant[side].length>=5);for(const p of cx.MAP.plant[side]){const y=cx.sourceWorld.ground(p[0],p[1],p[3]);assert.ok(Math.abs(y-p[3])<1,key+' '+side+' no chão');assert.equal(cx.sourceWorld.overlap(p[0],y+.03,p[1],1.8,.3),false,key+' '+side+' spawn livre');}}
+    assert.deepEqual(Array.from(cx.MAP.plant.sites,s=>s.name),['A','B']);
+    for(const site of cx.MAP.plant.sites){const x=(site.x0+site.x1)/2,z=(site.z0+site.z1)/2;assert.equal(cx.bombInSite(x,z,site.y0),true,key+' '+site.name);}
+  });
+  test(key+' follows the color policy: real material hues, light and vivid, no dark tones, turquoise water',()=>{
+    const pk=sourcePacked[key],col=new Uint8Array(Buffer.from(pk.mesh.color,'base64')),hues=new Set();let darkest=1,water=0;
+    for(let i=0;i<col.length;i+=3){const r=col[i]/255,g=col[i+1]/255,b=col[i+2]/255,l=(Math.max(r,g,b)+Math.min(r,g,b))/2;darkest=Math.min(darkest,l);hues.add(col[i]+','+col[i+1]+','+col[i+2]);if(col[i]===0x7f&&col[i+1]===0xd3&&col[i+2]===0xd8)water++;}
+    assert.ok(darkest>=.35,key+' tom escuro: '+darkest.toFixed(2));assert.ok(hues.size>40,key+' cores reais dos materiais: '+hues.size);
+    assert.ok(water>0,key+' água turquesa');
+  });
+  test(key+': actual walking reaches both bombsites from both teams without jumping or snagging on terrain',()=>{
+    const g=game({mode:'5v5'}),cx=g.context;cx.buildMap(key);g.dmBuildNav();const nav=g.DM.nav,map=cx.MAP;
+    for(const side of ['t','ct'])for(const site of map.plant.sites){const goal=[site.lx,site.lz,0,site.y0+.1];
+      const start=map.plant[side][0],actor={pos:new Vec(start[0],start[3]+.002,start[1]),vel:new Vec(),h:1.8,onGround:true,crouch:false,path:[],pathAt:0,landSpread:0};
+      assert.equal(g.dmFindPath(actor,goal[0],goal[1],goal[3]),true,key+' '+side+' path');
+      for(const id of actor.path){const x=nav.x[id],z=nav.z[id];let frames=0;
+        while(Math.hypot(x-actor.pos.x,z-actor.pos.z)>.16&&frames++<400){const dx=x-actor.pos.x,dz=z-actor.pos.z,d=Math.hypot(dx,dz);g.physics(actor,dx/d,dz/d,Math.min(4.5,d*10),false,1/128);}
+        assert.ok(frames<400,key+' '+side+' blocked at '+id+' '+JSON.stringify(actor.pos));assert.ok(Number.isFinite(actor.pos.y)&&actor.pos.y>-8);
+      }
+      // O centro do bombsite costuma ter caixas; o que vale é chegar dentro da área de plantar.
+      assert.equal(cx.bombInSite(actor.pos.x,actor.pos.z,actor.pos.y),true,key+' '+side+' fora do bombsite '+site.name);
+    }
+  });
+}
+
 test('5v5 starts ten actors on the authored attacking and defending bases using the existing bomb rules',()=>{
-  const {g,cx,A,BM,step}=bombWorld('lily',"S.mode='bomb'");step(10000,1100);
+  for(const key of FIVE){
+  const {g,cx,A,BM,step}=bombWorld(key,"S.mode='bomb'");step(10000,1100);
   assert.deepEqual(Array.from(A.sizes),[5,5]);assert.equal(A.bomb,true);assert.equal(g.DM.bots.length,9);assert.equal(g.DM.actors.length,10);
   assert.equal(g.DM.phase,'freeze');assert.ok(g.DM.actors.every(e=>e.alive&&e.hp===100));
   for(const e of g.DM.actors){const side=e.team===BM.tTeam?'t':'ct';assert.ok(cx.MAP.plant[side].some(p=>Math.hypot(e.pos.x-p[0],e.pos.z-p[1])<.1));}
   assert.equal(g.DM.byId.get(BM.carrier).team,BM.tTeam);
+  }
 });
 
-test('native stairs and slopes stay walkable with varied approach offsets in the Wingman maps, Prefire and Lily',()=>{
-  for(const key of [...WINGMAN,'infernoprefire','lily']){
+test('native stairs and slopes stay walkable with varied approach offsets in the Wingman maps, Prefire and the 5v5 maps',()=>{
+  for(const key of [...WINGMAN,'infernoprefire',...FIVE]){
     const g=game(),cx=g.context;cx.buildMap(key);g.dmBuildNav();const n=g.DM.nav,map=cx.sourceWorld,edges=[];
     for(const a of n.walk)for(let d=0;d<4;d++){const b=n.links[a*4+d];if(b<0)continue;const rise=n.height[b]-n.height[a];if(rise<.08||rise>.505)continue;if(map.overlap(n.x[a],n.height[a]+.005,n.z[a],1.8,.3)||map.overlap(n.x[b],n.height[b]+.005,n.z[b],1.8,.3))continue;edges.push([a,b]);}
     assert.ok(edges.length>20,key);let attempts=0;
@@ -2825,7 +2861,7 @@ test('Elimination patrol: teammate avoidance keeps a full movement input instead
 test('Practice opens every map of the game: free shop anywhere, no damage, endless grenades and noclip flight with N',()=>{
   const g=game({mode:'aimbotz'}),cx=g.context,list=JSON.parse(vm.runInContext('JSON.stringify(PRACTICE_MAPS)',cx));
   assert.equal(list[0],'aimbotz');
-  for(const id of [...WINGMAN,'lily',...JSON.parse(vm.runInContext('JSON.stringify(MAP_IDS)',cx)),...JSON.parse(vm.runInContext('JSON.stringify(DM_MAPS)',cx))])assert.ok(list.includes(id),'Practice sem '+id);
+  for(const id of [...WINGMAN,...FIVE,...JSON.parse(vm.runInContext('JSON.stringify(MAP_IDS)',cx)),...JSON.parse(vm.runInContext('JSON.stringify(DM_MAPS)',cx))])assert.ok(list.includes(id),'Practice sem '+id);
   assert.equal(new Set(list).size,list.length);
   cx.buildMap('sable');vm.runInContext("G.mode='aimbotz';MAPPRACTICE.id='sable';P.alive=true;P.hp=100;P.nades={};",cx);
   assert.equal(vm.runInContext('mapPracticeOn()',cx),true);assert.equal(vm.runInContext('freeShopOn()',cx),true);

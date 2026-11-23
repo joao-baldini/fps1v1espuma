@@ -194,25 +194,37 @@ export function compileSourceMap(file,key,options={}){
       const f=bsp.faces[i],material=bsp.material(f);if(hiddenMaterial(material)||!f.count)continue;
       const ps=bsp.faceVertices(f),pn=bsp.planes[f.plane],n=rot(mul(pn.slice(0,3),f.side?-1:1));
       if(f.disp>=0){
-        const d=bsp.lump(26),v=bsp.lump(33),q=f.disp*176,power=d.readInt32LE(q+20),start=vec(d,q),first=d.readInt32LE(q+12),size=(1<<power)+1;
+        const d=bsp.lump(26),v=bsp.lump(33),q=f.disp*176,power=d.readInt32LE(q+20),start=vec(d,q),first=d.readInt32LE(q+12);let size=(1<<power)+1;
+        // options.dispStep: usa 1 a cada N pontos da grade (terreno mais leve, mesmas bordas e cantos).
         if(ps.length!==4||power<2||power>4)throw Error('Unsupported displacement');
         let corner=0;for(let j=1;j<4;j++)if(Math.hypot(...sub(ps[j],start))<Math.hypot(...sub(ps[corner],start)))corner=j;
-        const p=[0,1,2,3].map(j=>ps[(corner+j)%4]),grid=[];
+        const p=[0,1,2,3].map(j=>ps[(corner+j)%4]),full=[],step=Math.min(options.dispStep||1,(size-1)/2);
         for(let y=0;y<size;y++)for(let x=0;x<size;x++){
           const u=x/(size-1),t=y/(size-1),a=add(mul(p[0],1-t),mul(p[1],t)),b=add(mul(p[3],1-t),mul(p[2],t)),off=(first+y*size+x)*20;
-          grid.push(transform(add(add(mul(a,1-u),mul(b,u)),mul(vec(v,off),v.readFloatLE(off+12)))));
+          full.push(transform(add(add(mul(a,1-u),mul(b,u)),mul(vec(v,off),v.readFloatLE(off+12)))));
         }
+        const grid=[];for(let y=0;y<size;y+=step)for(let x=0;x<size;x+=step)grid.push(full[y*size+x]);
+        const size0=size;size=(size0-1)/step+1;
         const quad=[grid[0],grid[(size-1)*size],grid[size*size-1],grid[size-1]],qn=unit(cross(sub(quad[1],quad[0]),sub(quad[2],quad[0])));
-        if(grid.every(v=>Math.abs(dot(qn,sub(v,quad[0])))<.0001)){
+        if(full.every(v=>Math.abs(dot(qn,sub(v,quad[0])))<.0001)){
           const normal=dot(qn,n)<0?mul(qn,-1):qn;if(dot(qn,n)<0)quad.reverse();
           emit(quad,normal,material,'displacement',f.tex);report.displacementTriangles+=2;if(solid)surfaceCollider(quad,normal);continue;
         }
-        for(let y=0;y<size-1;y++)for(let x=0;x<size-1;x++){
-          const a=y*size+x,b=a+1,c=a+size+1,d=a+size,ts=(x+y)%2?[[a,b,d],[b,c,d]]:[[a,b,c],[a,c,d]];
-          for(const ids of ts){let points=ids.map(i=>grid[i]),tn=unit(cross(sub(points[1],points[0]),sub(points[2],points[0])));if(dot(tn,n)<0){points.reverse();tn=mul(tn,-1);}if(!keep(points))continue;
-            emit(points,tn,material,'displacement',f.tex);report.displacementTriangles++;
-            if(solid)surfaceCollider(points,tn);
-          }
+        // Triângulos na ordem do Source (diagonal alternada). O desenho usa a grade reduzida; a colisão usa sempre a grade
+        // completa, para o chão de terreno encostar no chão vizinho sem degraus (com a grade reduzida sobravam quinas de
+        // poucos centímetros onde os bots e o jogador enroscavam).
+        const triangles=(points,s,visit)=>{for(let y=0;y<s-1;y++)for(let x=0;x<s-1;x++){
+          const a=y*s+x,b=a+1,c=a+s+1,d=a+s,ts=(x+y)%2?[[a,b,d],[b,c,d]]:[[a,b,c],[a,c,d]];
+          for(const ids of ts){const t=ids.map(i=>points[i]);let tn=unit(cross(sub(t[1],t[0]),sub(t[2],t[0])));if(dot(tn,n)<0){t.reverse();tn=mul(tn,-1);}if(keep(t))visit(t,tn);}
+        }};
+        triangles(grid,size,(t,tn)=>{emit(t,tn,material,'displacement',f.tex);report.displacementTriangles++;});
+        // Colisão: célula plana (os quatro cantos no mesmo plano, até 5 mm) vira uma peça só em vez de dois triângulos.
+        if(solid)for(let y=0;y<size0-1;y++)for(let x=0;x<size0-1;x++){
+          const a=y*size0+x,cell=[full[a],full[a+1],full[a+size0+1],full[a+size0]];
+          let cn=unit(cross(sub(cell[1],cell[0]),sub(cell[3],cell[0])));
+          if(cn.every(Number.isFinite)&&Math.abs(dot(cn,sub(cell[2],cell[0])))<.005&&keep(cell)){if(dot(cn,n)<0){cell.reverse();cn=mul(cn,-1);}surfaceCollider(cell,cn);continue;}
+          const ts=(x+y)%2?[[0,1,3],[1,2,3]]:[[0,1,2],[0,2,3]];
+          for(const ids of ts){const t=ids.map(i=>cell[i]);let tn=unit(cross(sub(t[1],t[0]),sub(t[2],t[0])));if(dot(tn,n)<0){t.reverse();tn=mul(tn,-1);}if(keep(t))surfaceCollider(t,tn);}
         }
       }else{emit(ps.map(transform),n,material,'world',f.tex);report.worldFaces++;}
     }
@@ -225,8 +237,10 @@ export function compileSourceMap(file,key,options={}){
     }
   };
   drawModel(0);
-  const brushEntities=bsp.entities.filter(e=>/^\*\d+$/.test(e.model||'')&&!/^(func_bomb_target|func_buyzone|func_areaportal|trigger_|func_dust)/.test(e.classname)&&e.StartDisabled!=='1');
-  for(const e of brushEntities)drawModel(Number(e.model.slice(1)),numbers(e.origin),numbers(e.angles),e.Solidity!=='1');
+  // Entidades de brush que no CS não são paredes: volumes invisíveis (neve/chuva, oclusores, bloqueio de navegação,
+  // clipe só de física) ficam de fora; func_illusionary e func_lod aparecem, mas não colidem.
+  const brushEntities=bsp.entities.filter(e=>/^\*\d+$/.test(e.model||'')&&!/^(func_bomb_target|func_buyzone|func_areaportal|trigger_|func_dust|func_precipitation|func_occluder|func_nav_blocker|func_clip_vphysics|func_smokevolume|func_hostage_rescue)/.test(e.classname)&&e.StartDisabled!=='1');
+  for(const e of brushEntities)drawModel(Number(e.model.slice(1)),numbers(e.origin),numbers(e.angles),e.Solidity!=='1'&&!/^(func_illusionary|func_lod)$/.test(e.classname));
   const modelCache=new Map();
   const props=bsp.staticProps().concat(bsp.entities.filter(e=>/^(prop_dynamic|prop_physics)/.test(e.classname)).map(e=>({model:(e.model||'').toLowerCase(),origin:numbers(e.origin),angles:numbers(e.angles),solid:Number(e.solid??6),scale:Number(e.modelscale)||1})));
   for(const prop of props){

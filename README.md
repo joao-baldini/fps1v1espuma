@@ -9,7 +9,7 @@ Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de min
 | Modo | Sozinho | Online |
 |---|---|---|
 | Elimination | Times de 1 a 8 de cada lado (1v1, 2v2, 1v5, 5v5, 8v8…), completados por bots | Sala para até 16 pessoas, no tamanho escolhido por quem cria |
-| Plant the Bomb | 5 contra 5 no Lily (mapa de gi), dois bombsites; você + 4 aliados contra 5 bots | — |
+| Plant the Bomb | 5 contra 5 no Lily, Calamari, Coldwater ou Crown, dois bombsites; você + 4 aliados contra 5 bots | — |
 | Wingman | Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge ou Sable, regras do Wingman; você e um bot contra dois bots | Sala com código; cada pessoa escolhe o lado |
 | TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
@@ -17,7 +17,16 @@ Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de min
 
 **Modos antigos:** 1v1, 2v2 e XvX viraram um modo só, o **Elimination**: ao clicar nele você já escolhe quantos jogadores tem em cada time, e um duelo é só o 1 contra 1. O antigo Plant the Bomb 2v2 virou o **Wingman**, e o antigo 5v5 virou o **Plant the Bomb**. Configurações salvas migram sozinhas (quem estava no 1v1 cai no Elimination 1v1, no 2v2 cai no 2v2).
 
-**Plant the Bomb (5v5):** escolha o modo na lista; o mapa é o **Lily**, de **gi** (Steam Workshop 2430950151, usado com a permissão do autor; agradecimento a **reoMeTpuR**, citado pelo autor). O crédito aparece no menu e no início da partida. São dois bombsites, A e B, e dez pontos de nascimento por lado; você e mais quatro bots contra cinco bots, com as mesmas regras de bomba, economia e operadores do Wingman.
+**Plant the Bomb (5v5):** escolha o modo na lista e um dos quatro mapas. Os créditos aparecem no menu e no início da partida:
+
+| Mapa | Autores | Steam Workshop |
+|---|---|---|
+| **Lily** | **gi** (usado com a permissão do autor; agradecimento a **reoMeTpuR**, citado pelo autor) | 2430950151 |
+| **Calamari** | **Mac**, **Geno** e **Reydifox** | 707503558 |
+| **Coldwater** | **Mendaxyz** e **Praelium** | 215971897 |
+| **Crown** | **Volcano** e **FMPONE** | 239672577 |
+
+Todos têm dois bombsites, A e B, e de 16 a 20 pontos de nascimento por lado; você e mais quatro bots contra cinco bots, com as mesmas regras de bomba, economia e operadores do Wingman. Calamari, Coldwater e Crown são portes 1:1 dos BSPs (geometria, colisão, spawns, bombsites, navegação e objetos), com as cores reais de cada material puxadas para a paleta clara e viva do VALORANT: o matiz é o do material (madeira continua madeira, telha continua telha), mas nenhum tom fica escuro, a saturação ganha um pouco de vida e a água vira turquesa claro.
 
 O Lily original é uma versão de desenvolvimento, sem texturas: só cores lisas. Aqui as estruturas foram identificadas e texturizadas com a mesma identidade dos outros mapas (estilo VALORANT, como o Ascent), com um padrão que se repete em todo o mapa: casas em só três acabamentos (reboco pêssego, reboco creme ou tijolo), todas com rodapé de pedra; arcadas sempre de tijolo; colunas e sacadas em pedra clara; telha cerâmica num tom só; beirais de madeira; ruas em lajes de pedra e calçadas em lajotas; interiores em reboco creme com piso de madeira; e o viaduto quebrado de concreto, com asfalto e faixas de pista no tabuleiro. As faixas vermelhas que marcam os bombsites no chão continuam pintadas. Em todos os mapas, a luz segue o VALORANT (Gradient Lambert, sombras claras, nada de tons escuros), para cores vivas e claras e personagens sempre visíveis. Detalhes em [assets/maps/README.md](assets/maps/README.md).
 
@@ -46,7 +55,7 @@ A IA roda localmente. O controle independente da visão e da navegação, a aten
 
 ## Wingman e Plant the Bomb
 
-Atacantes contra Defensores. O **Wingman** é o Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge e Sable, com as regras do modo Wingman do CS; o **Plant the Bomb** é o 5 contra 5 no Lily, com as mesmas regras de bomba, economia e operadores. Antes da partida você escolhe um **operador**.
+Atacantes contra Defensores. O **Wingman** é o Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge e Sable, com as regras do modo Wingman do CS; o **Plant the Bomb** é o 5 contra 5 no Lily, Calamari, Coldwater e Crown, com as mesmas regras de bomba, economia e operadores. Antes da partida você escolhe um **operador**.
 
 Não existe uniforme de lado: cada pessoa veste a roupa do operador que escolheu, igual nos dois times. Quem é quem fica pelos contornos, como no Valorant. Os aliados aparecem através das paredes com o corpo inteiro preenchido em azul-água e uma borda mais forte. Os inimigos têm um contorno fino só na borda de fora da silhueta (sem linhas entre cabeça, tronco e pernas), que não atravessa paredes. Por padrão ele é vermelho, e em **Configurações → Vídeo → Contorno dos inimigos** dá para trocar para amarelo ou roxo. A mesma cor vale para as silhuetas e os pontos no minimapa do Finder e do Detector. Os contornos também valem no 1v1, 2v2, XvX, TDM e DM: o aliado azul-água só existe onde há time.
 
@@ -171,7 +180,7 @@ Depósito e Borgo também têm partes elevadas por escadas, ligadas em voltas, e
 
 ### Treino livre em qualquer mapa
 
-Na faixa **Treino livre** do Practice, escolha qualquer mapa do jogo em vez da arena de mira: os do Wingman (**Sanctum**, **Neon**, **Forge**, **Sable**), o **Lily** do Plant the Bomb, os do Elimination e os do Deathmatch. Você entra sozinho no mapa, nascendo no spawn dos atacantes (ou num ponto de nascimento do mapa, nos que não têm bomba), e pode treinar sem limites:
+Na faixa **Treino livre** do Practice, escolha qualquer mapa do jogo em vez da arena de mira: os do Wingman (**Sanctum**, **Neon**, **Forge**, **Sable**), os do Plant the Bomb (**Lily**, **Calamari**, **Coldwater**, **Crown**), os do Elimination e os do Deathmatch. Você entra sozinho no mapa, nascendo no spawn dos atacantes (ou num ponto de nascimento do mapa, nos que não têm bomba), e pode treinar sem limites:
 
 - **Tempo:** não acaba; o placar mostra **∞**.
 - **Dinheiro e área de compra:** **B** abre a loja grátis em qualquer lugar e a qualquer hora. Escolher uma arma já a equipa.

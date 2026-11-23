@@ -12,6 +12,7 @@ import { readNav, navHeightsAt } from './source-nav.mjs';
 import { packMap, bakeNavigation } from './import-source-maps.mjs';
 import { rebuildSanctum } from './import-sanctum.mjs';
 import { styleLily } from './lily-style.mjs';
+import { valorantPalette } from './valorant-palette.mjs';
 import { styleNeon, addNeonSignage, NEON_PROPS, NEON_HOARDINGS, SABLE_PROPS } from './neon-style.mjs';
 import '../assets/maps/runtime.js';
 
@@ -24,6 +25,11 @@ export const WINGMAN_MAPS = {
 // Plant the Bomb 5v5: mesmos passos de conversão, com dois bombsites.
 export const FIVE_MAPS = {
   lily: { name: 'Lily', credit: 'gi', file: 'de_lily.bsp', thanks: 'reoMeTpuR' },
+  // Mapas 5v5 completos e texturizados: cores reais dos materiais (real), terreno de displacement com metade da
+  // resolução (dispStep) e modelos embutidos simplificados por agrupamento de vértices (propCell, em metros).
+  calamari: { name: 'Calamari', credit: 'Mac, Geno e Reydifox', file: 'de_calamari.bsp', workshop: 707503558, real: true, dispStep: 2, propCell: .1 },
+  coldwater: { name: 'Coldwater', credit: 'Mendaxyz e Praelium', file: 'de_coldwater.bsp', workshop: 215971897, real: true, dispStep: 2, propCell: .1 },
+  crown: { name: 'Crown', credit: 'Volcano e FMPONE', file: 'de_crown.bsp', workshop: 239672577, real: true, dispStep: 2, propCell: .2 },
 };
 
 const add = (a, b) => a.map((v, i) => v + b[i]), mul = (a, s) => a.map(v => v * s), dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -323,18 +329,42 @@ function addHoardings(map, lines) {
 }
 const P_METAL = PATTERNS.metal, clampT = (v, a, b) => Math.max(a, Math.min(b, v));
 
+// Simplifica a malha dos modelos embutidos no BSP (desenhados a partir das peças convexas do .phy): cada vértice vai para
+// o centro da sua célula de uma grade de `cell` metros e os triângulos que somem são descartados. Vértices iguais caem
+// no mesmo ponto, então a malha continua fechada; a colisão não muda.
+function clusterModelFaces(map, cell) {
+  const snap = q => q.map(v => Math.round(v / cell) * cell);
+  let before = 0, after = 0;
+  map.polygons = map.polygons.filter(f => {
+    if (f.tag !== 'prop') return true;
+    before++;
+    const p = f.p.map(snap), keep = [], uv = [];
+    p.forEach((q, i) => { if (!keep.length || q.some((v, k) => v !== keep[keep.length - 1][k])) { keep.push(q); if (f.uv) uv.push(f.uv[i]); } });
+    while (keep.length > 2 && keep[0].every((v, k) => v === keep[keep.length - 1][k])) { keep.pop(); if (f.uv) uv.pop(); }
+    if (keep.length < 3) return false;
+    const a = keep[0], c = [0, 0, 0];
+    for (let i = 1; i < keep.length - 1; i++) { const u = keep[i].map((v, k) => v - a[k]), w = keep[i + 1].map((v, k) => v - a[k]); c[0] += u[1] * w[2] - u[2] * w[1]; c[1] += u[2] * w[0] - u[0] * w[2]; c[2] += u[0] * w[1] - u[1] * w[0]; }
+    if (Math.hypot(...c) < 1e-5) return false;
+    f.p = keep; if (f.uv) f.uv = uv; after++; return true;
+  });
+  map.report.modelFacesSimplified = { before, after, cell };
+}
+
 export function importWingmanMap(file, key) {
   if(key==='sanctum')return rebuildSanctum(file);
   const info = WINGMAN_MAPS[key] || FIVE_MAPS[key];
-  const map = compileSourceMap(file, key, { textures: true, materialNames: key === 'neon' || key === 'sable' || key === 'lily' });
+  const map = compileSourceMap(file, key, { textures: true, materialNames: key === 'neon' || key === 'sable' || key === 'lily' || !!info.real, ...(info.dispStep ? { dispStep: info.dispStep } : {}) });
+  if (info.propCell) clusterModelFaces(map, info.propCell);
   map.name = info.name; map.credit = info.credit;
   if (key === 'neon') { styleNeon(map); addNeonSignage(map); }
-  if (key === 'sable') styleNeon(map); // mesmas cores reais dos materiais (VMT/VTF/refletividade do BSP)
+  if (info.real) for (const f of map.polygons) if (/liquids\/|seawater|waterbeneath/.test(f.material || '')) f.water = /beneath/.test(f.material) ? 'beneath' : 'surface';
+  if (key === 'sable' || info.real) styleNeon(map); // mesmas cores reais dos materiais (VMT/VTF/refletividade do BSP)
   if (key === 'lily') styleLily(map); // mapa sem texturas: estruturas identificadas e texturizadas (tools/lily-style.mjs)
   const navFile = [...map.bsp.pak.keys()].find(k => k.endsWith('.nav'));
   if (!navFile) throw Error(key + ': no navigation mesh');
   const nav = readNav(map.bsp.asset(navFile));
   approximateProps(map, nav, map.report, key === 'neon' ? NEON_PROPS : key === 'sable' ? SABLE_PROPS : []);
+  if (info.real) valorantPalette(map); // paleta clara e viva do Valorant sobre as cores reais (tools/valorant-palette.mjs)
   bakeNavigation(map);
   clipToPlay(map);
   if (key === 'neon') addHoardings(map, NEON_HOARDINGS);

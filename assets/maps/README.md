@@ -122,10 +122,10 @@ Os scripts locais e `DecompressionStream` permitem jogar via `file://` no Chrome
 
 Com Node.js 24 e os BSPs já extraídos:
 
-Mapas do Wingman e o Lily (5v5), um ou mais por vez; o catálogo é atualizado só nos mapas convertidos:
+Mapas do Wingman e os do 5v5 (Lily, Calamari, Coldwater, Crown), um ou mais por vez; o catálogo é atualizado só nos mapas convertidos:
 
 ```powershell
-node tools/import-wingman-maps.mjs sanctum="caminho/wg_sanctum.bsp" neon="caminho/wg_neon.bsp" forge="caminho/wg_forge.bsp" sable="caminho/de_sable.bsp" lily="caminho/de_lily.bsp"
+node tools/import-wingman-maps.mjs sanctum="caminho/wg_sanctum.bsp" neon="caminho/wg_neon.bsp" forge="caminho/wg_forge.bsp" sable="caminho/de_sable.bsp" lily="caminho/de_lily.bsp" calamari="caminho/de_calamari.bsp" coldwater="caminho/de_coldwater.bsp" crown="caminho/de_crown.bsp"
 node --test tests/game.test.cjs
 ```
 
@@ -177,10 +177,29 @@ O resultado tem 67 casas reconhecidas e 44 trechos de faixa na pista.
 
 Palace e Factory, os mapas anteriores do 5v5, saíram do jogo junto com o conversor de GLB deles.
 
+## Calamari, Coldwater e Crown · Plant the Bomb 5v5
+
+Portes 1:1 dos mapas da Steam Workshop: **Calamari** (Mac, Geno e Reydifox, 707503558), **Coldwater** (Mendaxyz e Praelium, 215971897) e **Crown** (Volcano e FMPONE, 239672577). Os BSPs (Source 21) vieram do release do repositório e passam pelo mesmo importador, em `FIVE_MAPS` com `real: true`: geometria, colisões e *player clips*, spawns, bombsites (`func_bomb_target`), navegação (`.nav` embutido) e os modelos com colisão própria (`.phy`).
+
+| Mapa | Triângulos | Peças de colisão | Spawns (atac./def.) | Nós de navegação |
+|---|---|---|---|---|
+| Calamari | 65.894 | 18.196 | 20 / 19 | 8.050 |
+| Coldwater | 46.731 | 25.107 | 20 / 16 | 7.020 |
+| Crown | 108.967 | 27.434 | 16 / 16 | 14.113 |
+
+**Entidades que não são sólidas.** Na primeira conversão o Coldwater tinha os 36 spawns desconectados e o Calamari 8: volumes como `func_precipitation`, `func_nav_blocker`, `func_clip_vphysics`, `func_smokevolume` e `func_hostage_rescue` viravam paredes. Agora ficam de fora, e `func_illusionary`/`func_lod` são desenhados sem colisão. A mensagem de erro da navegação também lista os spawns desconectados.
+
+**Peso.** Os três são bem maiores que os outros mapas, então:
+
+- `dispStep: 2` desenha os *displacements* (terreno) com 1 a cada 2 pontos da grade, com as mesmas bordas e cantos. A colisão usa sempre a grade completa: com a grade reduzida, o terreno não encostava no chão vizinho e sobravam quinas de poucos centímetros em que os bots enroscavam. Células planas da grade viram uma peça de colisão só, em vez de dois triângulos.
+- `propCell` (`clusterModelFaces`) simplifica a malha dos modelos desenhados a partir das peças do `.phy`: cada vértice vai para o centro da sua célula de grade (10 cm no Calamari e no Coldwater, 20 cm no Crown) e os triângulos que somem saem. A colisão não muda.
+
+**Cores (`tools/valorant-palette.mjs`).** As cores vêm dos materiais reais (VMT, refletividade do VTF e `$color`, como no Sable) e depois passam pela paleta do VALORANT: luminosidade com piso (`L' = max(L, 0,36 + 0,3·L)`, teto 0,86), saturação ×1,15 até 0,7, e o matiz mantido. A água (`liquids/…`, `cal_seawater`, `dev_waterbeneath`) vira turquesa claro na superfície e um turquesa mais fundo embaixo, em vez do cinza ou roxo do CS. Os pisos de madeira escura dos interiores ficam cor de mel, o chão de terra do Crown fica oliva claro.
+
 ## Movimento em pisos, escadas e rampas
 
 A colisão nativa agora separa o movimento horizontal do apoio dos pés. O corpo é varrido acima da janela normal de degrau; o apoio procura as superfícies sob a mesma largura usada na colisão, inclusive as bordas. Assim, as costuras dos triângulos e espelhos dos degraus não funcionam como paredes laterais. A altura máxima de degrau continua em 0,5 m; paredes maiores e tetos baixos continuam sólidos. A queda e o salto mantêm a resolução de colisão vertical.
 
 A escada vertical de Guard também procura uma saída livre para o patamar próximo à altura útil do trigger. A transferência só ocorre com espaço para o corpo e varreduras livres na subida e na passagem, evitando o bloqueio na borda superior. Pular continua soltando a escada.
 
-Os testes percorrem as rotas entre as bases e os bombsites do Lily, mais de 500 aproximações deslocadas de rampas/degraus nos mapas do Wingman, no Prefire e no Lily, a escada vertical de Guard do piso ao patamar, e uma escadaria a 30/60/144 FPS que termina numa parede alta. As verificações usam a física do jogador, sem teleporte nem salto para transpor os degraus.
+Os testes percorrem as rotas entre as bases e os bombsites dos quatro mapas do 5v5, mais de 500 aproximações deslocadas de rampas/degraus nos mapas do Wingman, no Prefire e no 5v5, a escada vertical de Guard do piso ao patamar, e uma escadaria a 30/60/144 FPS que termina numa parede alta. As verificações usam a física do jogador, sem teleporte nem salto para transpor os degraus.
