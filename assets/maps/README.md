@@ -59,6 +59,15 @@ Objetos com textura própria usam coordenadas por face (de 0 a 1), para a moldur
 
 **Assentamento.** Os modelos do CS costumam ficar alguns centímetros acima do chão, ou apoiados em algo que não existe aqui. De baixo para cima, cada caixote, barril, saco, palete ou bloco desce até o chão visível ou até o topo do objeto já assentado embaixo (ou sobe, se estiver afundado até 45 cm). A conta usa os 8 cantos da caixa já girada. Só superfícies que aparecem servem de apoio: as colisões invisíveis do mapa original (*clips*) não contam. Caixas de luz e de ar-condicionado (presas na parede ou no telhado) e os prédios do skybox não se mexem. O Sanctum, que tem conversor próprio, recebe o mesmo assentamento. Resultado: Neon 111, Forge 87, Sable 62 e Sanctum 63 objetos assentados, com todos os spawns ligados.
 
+## Luz e cor no estilo VALORANT
+
+Seguindo os artigos da Riot ["VALORANT Shaders and Gameplay Clarity"](https://www.riotgames.com/en/news/valorant-shaders-and-gameplay-clarity) e ["A arte dos cenários de mapas em VALORANT"](https://playvalorant.com/pt-br/news/dev/a-arte-dos-cenarios-de-mapas-em-valorant/), o material dos mapas convertidos e o dos mapas próprios (`valorantLighting` em `index.html`) usam:
+
+- **Gradient Lambert:** a extensão do Half-Lambert do VALORANT. A luz do sol na parte difusa passa por `n·l*0.5+0.5`, remapeado com transições controladas (`VAL_LIGHT`: sombra central 0,30, transição de 0,24 a 0,86): a face voltada para o sol fica igual, e a de lado e a de costas não caem no escuro. O brilho especular continua com o ângulo físico, porque o termo do three.js divide por `n·l` e estouraria nas faces rasantes.
+- **Sombras projetadas mais claras:** a sombra do sol fica com 46% da luz (`uValShadow`), em vez de apagar a luz direta.
+- **Sem tons escuros no cenário:** cores muito escuras sobem até uma luminosidade mínima (0,22), mantendo o tom, para valores parecidos e pouco contraste. Os personagens sempre se destacam e os interiores nunca ficam escuros.
+- **Cores vivas e claras:** saturação 1,24 sobre a cor do material.
+
 ## Piso dos bombsites
 
 O volume de cada bombsite vem do BSP (`func_bomb_target`) e não tem desenho próprio no chão. Em `index.html`, `siteFloorCells` amostra o chão do retângulo do site numa grade de 25 cm e preenche a partir do nível mais baixo, por degraus de até 40 cm. Embaixo de caixote ou barril, consulta o chão logo abaixo, então o calçamento passa por baixo do objeto sem recorte. Topos de caixote, sacadas e o que estiver fora da altura do site ficam de fora. `siteFloorTexture` desenha a textura de cada site num canvas: lajes irregulares (Voronoi) com argamassa fina meio transparente e sombreado na borda de cada pedra, um meio-fio de blocos claros ao longo do retângulo e o alvo a spray laranja (círculo e cruz com respingos) no ponto livre mais perto do centro. A malha é decalcada 1,2 cm acima do chão, recebe sombra e não tem colisão. As cores das pedras seguem o tema do mapa (`SITE_STONE`).
@@ -158,7 +167,8 @@ A identidade é a mesma dos outros mapas (estilo VALORANT, como o Ascent, refer�
 - **Telhados:** faces `lightred` voltadas para cima com inclinação de telhado (~32°) viram telha cerâmica, num tom só (dois tons de terracota muito próximos). Telhados ligados (vértices em comum) formam uma casa. A parte de baixo do beiral e as testeiras são madeira escura.
 - **Paredes das casas:** três acabamentos, um por casa: reboco pêssego, reboco creme ou tijolo terracota. A casa de uma parede é o telhado logo acima de um ponto 45 cm para dentro dela; sem telhado em cima, vale o telhado mais próximo até 3,5 m; longe de casas, reboco creme. Faces no mesmo plano que se tocam ficam com o acabamento da maioria.
 - **Rodapé de pedra:** toda parede vertical cuja base está no chão em frente a ela é cortada a 85 cm, e a faixa de baixo vira pedra (1.059 rodapés). Os vértices dos dois pedaços são cópias, porque o importador ainda desloca os vértices no lugar depois.
-- **Pedra clara:** arcadas, colunas, sacadas, muretas e bases (`whitegray` e `lightgray` nas paredes).
+- **Arcadas sempre de tijolo:** a parte de baixo dos arcos (faces inclinadas para baixo entre 1 e 8 m) marca as arcadas. As casas que têm arcos ficam inteiras de tijolo, e tudo a até 2,5 m de um arco (pilares, frente dos arcos, fundo da arcada) também, para cada arcada ter um acabamento só.
+- **Pedra clara:** colunas, sacadas, muretas e bases fora das arcadas (`whitegray` e `lightgray` nas paredes).
 - **Interiores:** reboco creme (as paredes `lighterbrown`, laranja no original) e piso de madeira; tetos de reboco claro.
 - **Chão:** `gray` vira lajes de pedra quente nas ruas; `whitegray` e `lightgray`, lajotas nas calçadas, plataformas e pátios. As faixas `lightred` no chão (borda dos bombsites) continuam pintadas de vermelho.
 - **Escala única de textura:** as coordenadas de textura de todas as faces são recalculadas no plano da face, com um padrão a cada 64 unidades (o mesmo dos objetos), para o rodapé e as faces vizinhas casarem.

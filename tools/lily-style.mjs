@@ -4,7 +4,7 @@
 // Identidade visual: a mesma dos outros mapas (estilo VALORANT, como o Ascent): paleta quente e restrita, com um padrão
 // que se repete em todas as estruturas:
 // - casas em só três acabamentos (reboco pêssego, reboco creme e tijolo), um por casa, sempre com rodapé de pedra;
-// - arcadas, colunas, sacadas e muretas em pedra clara; telhado de telha cerâmica num tom só; beirais de madeira;
+// - arcadas sempre de tijolo (as casas com arcos inteiras); colunas, sacadas e muretas em pedra clara; telhado de telha cerâmica num tom só; beirais de madeira;
 // - ruas em lajes de pedra quente, calçadas e plataformas em lajotas, interiores em reboco creme com piso de madeira;
 // - o viaduto quebrado (acima de ~12,5 m, na faixa do tabuleiro) é o elemento industrial: concreto, com asfalto e
 //   faixas de pista no tabuleiro; as faixas vermelhas no chão (borda dos bombsites) continuam pintadas.
@@ -12,7 +12,8 @@ import { PATTERNS as P } from './source-bsp.mjs';
 
 const ROOF = [0x9c5a40, 0x93533b];
 // Acabamentos das casas (cor, padrão): reboco pêssego, reboco creme e tijolo terracota.
-const FINISH = [[0xe7a873, 'plain'], [0xead3aa, 'plain'], [0xa8644f, 'brick'], [0xe7a873, 'plain'], [0xead3aa, 'plain']];
+const BRICK = 0xa8644f;
+const FINISH = [[0xe7a873, 'plain'], [0xead3aa, 'plain'], [BRICK, 'brick'], [0xe7a873, 'plain'], [0xead3aa, 'plain']];
 const C = {
   plaster: 0xe2cba3, stoneBase: 0xb4a28a, stoneTrim: 0xe3d5bb, fascia: 0x6a4a34, soffit: 0x7a5639, interior: 0xe6d2b0, ceiling: 0xeadfc9,
   interiorFloor: 0x9a7150, street: 0xcdc0aa, sidewalk: 0xddd0b8, yard: 0xc6b9a3, outer: 0xccbfa9, paint: 0xcf4a2e,
@@ -66,6 +67,12 @@ export function styleLily(map) {
   const roofColor = id => ROOF[hash(id * 7 + 3) % ROOF.length], finish = id => FINISH[hash(id * 13 + 5) % FINISH.length];
   const set = (f, c, pat) => { f.c = c; f.pat = pat; }, roofIndex = new Map(roofs.map((f, i) => [f, i]));
   const walls = [], deck = [];
+  // 2b. Arcadas: a parte de baixo dos arcos (faces inclinadas para baixo entre 1 e 8 m, fora o telhado e o viaduto).
+  // As casas com arcos e tudo que fica a até 2,5 m de um arco (pilares, frente dos arcos, fundo da arcada) é tijolo.
+  const arches = faces.filter(f => { const c = centroid(f.p); return mat(f) !== 'lightred' && f.n[1] < -.15 && f.n[1] > -.97 && c[1] > 1 && c[1] < 8 && !inBridge(c[0], c[2]); });
+  const archSet = new Set(arches), archPts = arches.map(f => centroid(f.p)), archHouses = new Set();
+  for (const c of archPts) { const id = roofAbove(c[0], c[1], c[2]); if (id !== null) archHouses.add(id); }
+  const nearArch = (x, y, z) => { for (const c of archPts) if (Math.abs(c[0] - x) < 2.5 && Math.abs(c[2] - z) < 2.5 && Math.abs(c[1] - y) < 4 && Math.hypot(c[0] - x, c[1] - y, c[2] - z) < 2.5) return true; return false; };
   let houses = new Set(), stats = { roof: 0, wallHouse: 0, wall: 0, trim: 0, plinth: 0, bridge: 0, asphalt: 0, street: 0, interior: 0 };
   const floorGrid = new Map(), fcell = 1.5, fkey = (x, z) => Math.floor(x / fcell) + ',' + Math.floor(z / fcell);
   for (const f of faces) {
@@ -87,6 +94,7 @@ export function styleLily(map) {
     }
     if (m === 'lighterbrown' || m === 'laranja') { set(f, C.interior, P.plain); stats.interior++; continue; }
     if (ny < -.9) { set(f, C.ceiling, P.plain); continue; }
+    if (archSet.has(f)) { set(f, BRICK, P.brick); stats.arch = (stats.arch || 0) + 1; continue; }
     if (ny <= -.15) { set(f, C.soffit, P.wood); continue; }          // parte de baixo de beirais e marquises
     if (ny >= .6) {
       // Chão (e rampas): dentro de casa (com telhado em cima) é piso cerâmico; fora depende do material.
@@ -103,7 +111,10 @@ export function styleLily(map) {
     if (wallish) {
       if (m === 'darkgray') { set(f, C.pillarDark, P.concrete); continue; }
       // Arcadas, colunas, sacadas, muretas e bases (whitegray/lightgray): pedra clara, em todo o mapa.
-      if (m === 'whitegray' || m === 'lightgray') { set(f, C.stoneTrim, P.stone); stats.trim++; continue; }
+      if (m === 'whitegray' || m === 'lightgray') {
+        if (nearArch(cx, cy, cz) || archHouses.has(roofAbove(cx - f.n[0] * .45, cy, cz - f.n[2] * .45))) { set(f, BRICK, P.brick); stats.arch = (stats.arch || 0) + 1; continue; }
+        set(f, C.stoneTrim, P.stone); stats.trim++; continue;
+      }
       // Ponto logo atrás da parede (dentro do volume) para achar a casa pelo telhado de cima.
       walls.push({ f, id: roofAbove(cx - f.n[0] * .45, cy, cz - f.n[2] * .45) });
     }
@@ -127,7 +138,8 @@ export function styleLily(map) {
   const floorAt = (x, z, y) => { let best = -Infinity; for (const h of floorGrid.get(fkey(x, z)) || []) if (h <= y + .3 && h > best) best = h; return best; };
   walls.forEach((w, i) => {
     const top = [...votes.get(wf(i))].sort((a, b) => b[1] - a[1])[0][0], id = top === 'none' ? null : top;
-    const [c, pat] = id !== null ? finish(id) : [C.plaster, 'plain'];
+    const [wx, wy, wz] = centroid(w.f.p), arcade = archHouses.has(id) || nearArch(wx, wy, wz);
+    const [c, pat] = arcade ? [BRICK, 'brick'] : id !== null ? finish(id) : [C.plaster, 'plain'];
     if (id !== null) { houses.add(id); stats.wallHouse++; } else stats.wall++;
     set(w.f, c, P[pat]);
     // Rodapé de pedra: só em parede vertical cuja base está no chão em frente a ela.

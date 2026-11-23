@@ -1598,8 +1598,31 @@ function spawnPoint(side, spec) {
   return { x, z, y: groundAt(x, z,fin(s[3])?s[3]:false), yaw: s[2] };
 }
 const SUN = 'normalize(vec3(0.5,1.0,0.35))';
+// Iluminação no estilo VALORANT (artigos da Riot "VALORANT Shaders and Gameplay Clarity" e "A arte dos cenários de
+// mapas em VALORANT"): uma luz direcional só, com "Gradient Lambert", a extensão do Half-Lambert em que a sombra
+// central é levantada e as transições entre destaque, meio-tom e sombra são controladas; sombras projetadas mais
+// claras; e nada de tons escuros no cenário, para os personagens sempre se destacarem.
+const VAL_LIGHT = { core: { value: .3 }, edge0: { value: .24 }, edge1: { value: .86 }, shadow: { value: .46 } };
+function valorantLighting(shader) {
+  Object.assign(shader.uniforms, { uValCore: VAL_LIGHT.core, uValEdge0: VAL_LIGHT.edge0, uValEdge1: VAL_LIGHT.edge1, uValShadow: VAL_LIGHT.shadow });
+  // Só a luz difusa usa a curva: o brilho especular continua com o ângulo físico (ele divide por n·l e estouraria).
+  const direct = 'reflectedLight.directDiffuse += ( 1.0 - clearcoatDHR ) * irradiance * BRDF_Diffuse_Lambert( material.diffuseColor );';
+  const shadowed = 'directLight.color *= all( bvec2( directLight.visible, receiveShadow ) ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
+  const pars = THREE.ShaderChunk.lights_physical_pars_fragment, begin = THREE.ShaderChunk.lights_fragment_begin;
+  if (!pars.includes(direct) || !begin.includes(shadowed)) return; // outra versão do three: fica a luz padrão
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <lights_physical_pars_fragment>', `uniform float uValCore;uniform float uValEdge0;uniform float uValEdge1;uniform float uValShadow;
+// Gradient Lambert: meia-volta (n·l*0.5+0.5) remapeada; a face contra o sol nunca fica abaixo de uValCore.
+float valGradient(float ndl){float h=ndl*.5+.5;return mix(uValCore,1.0,smoothstep(uValEdge0,uValEdge1,h));}
+` + pars.replace(direct, `vec3 valIrradiance = valGradient( dot( geometry.normal, directLight.direction ) ) * directLight.color;
+	#ifndef PHYSICALLY_CORRECT_LIGHTS
+		valIrradiance *= PI;
+	#endif
+	reflectedLight.directDiffuse += ( 1.0 - clearcoatDHR ) * valIrradiance * BRDF_Diffuse_Lambert( material.diffuseColor );`))
+    .replace('#include <lights_fragment_begin>', begin.replace(shadowed, shadowed.replace('directLight.color *= ', 'directLight.color *= mix( uValShadow, 1.0, ').replace(' : 1.0;', ' : 1.0 );')));
+}
 const worldMat = (globalThis.V2World && v2Mats)
-  ? V2World.createWorldMaterial(THREE, v2Mats, { doubleSide: true })
+  ? (m => { const base = m.onBeforeCompile; m.onBeforeCompile = shader => { base(shader); valorantLighting(shader); }; return m; })(V2World.createWorldMaterial(THREE, v2Mats, { doubleSide: true }))
   : new THREE.ShaderMaterial({
       vertexColors: true, side: THREE.DoubleSide, extensions: { derivatives: true },
       uniforms: { uFog: { value: new THREE.Color(SKY) },uAlpha:{value:1} },
@@ -1641,7 +1664,7 @@ const MAP_ATLAS = (() => {
 function makeMapMaterial(opacity) {
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .86, metalness: 0, side: THREE.DoubleSide, envMapIntensity: .35,
     transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
-  const uniforms = { uAtlas: { value: MAP_ATLAS.tex }, uReady: MAP_ATLAS.ready, uMeans: { value: MAP_ATLAS.means }, uOwn: { value: MAP_ATLAS.own }, uVivid: { value: 1.18 } };
+  const uniforms = { uAtlas: { value: MAP_ATLAS.tex }, uReady: MAP_ATLAS.ready, uMeans: { value: MAP_ATLAS.means }, uOwn: { value: MAP_ATLAS.own }, uVivid: { value: 1.24 } };
   mat.userData.mapUniforms = uniforms;
   mat.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, uniforms);
@@ -1672,12 +1695,15 @@ if(uReady>0.5){
 }
 // Cores do mapa em sRGB → luz linear; um pouco mais de saturação para o visual ensolarado.
 float mL=dot(mBase,vec3(.299,.587,.114));mBase=clamp(mix(vec3(mL),mBase,uVivid),0.0,1.0);
+// Sem tons escuros no cenário (valores parecidos, pouco contraste): o que é escuro sobe até um piso, mantendo o tom.
+mL=dot(mBase,vec3(.299,.587,.114));mBase=clamp(mBase*max(mL,.22)/max(mL,.001),0.0,1.0);
 diffuseColor.rgb=pow(mBase,vec3(2.2));`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 if(mId==13)totalEmissiveRadiance=diffuseColor.rgb*.85;`);
+    valorantLighting(shader);
   };
   mat.shadowSide = THREE.BackSide; // as paredes dos BSPs são volumes fechados: a face de trás evita listras de sombra
-  mat.customProgramCacheKey = () => 'map-atlas-lit-' + (opacity < 1 ? 'glass' : 'solid');
+  mat.customProgramCacheKey = () => 'map-atlas-val-' + (opacity < 1 ? 'glass' : 'solid');
   return mat;
 }
 const texWorldMat = makeMapMaterial(1);
