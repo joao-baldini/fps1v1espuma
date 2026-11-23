@@ -153,12 +153,17 @@ O Lily é o mapa de **gi**, usado com a permissão do autor (Steam Workshop 2430
 **Texturas a partir das estruturas.** O BSP é uma versão de desenvolvimento: só tem oito materiais de cor lisa (`custom/lightergray`, `custom/gray`, `custom/lightred`, `custom/lightgray`, `custom/darkgray`, `custom/whitegray`, `custom/lighterbrown` e `laranja`), e o mesmo material aparece em estruturas diferentes. `tools/lily-style.mjs` classifica cada face pelo material, pela orientação, pela altura e pelo contexto:
 
 - **Viaduto quebrado:** tudo acima de ~12,5 m na faixa do tabuleiro (células de 2 m onde há piso ou teto acima dessa altura), mais os pilares `darkgray` embaixo dela. Vira concreto; o tabuleiro vira asfalto, com faixas de pista pintadas: a direção vem do eixo principal das faces do tabuleiro, e em cada trecho há bordas contínuas a 0,5 m da beirada e faixa central tracejada (3 m pintados, 3 m vazios), recortadas dentro de cada face, 2 cm acima do asfalto.
-- **Telhados:** faces `lightred` voltadas para cima com inclinação de telhado (~32°) viram telha cerâmica. Telhados ligados (vértices em comum) formam uma casa e ganham um dos seis tons de terracota. A parte de baixo do beiral vira madeira e as testeiras, terracota escura.
-- **Paredes:** reboco de cimento com uma cor por casa. A casa de uma parede é o telhado logo acima de um ponto 45 cm para dentro dela; sem telhado em cima, vale o telhado mais próximo até 3,5 m; longe de casas, cimento claro. Como o BSP divide uma parede em várias faces, faces no mesmo plano que se tocam ficam com a cor da maioria. A paleta é mediterrânea e viva: amarelo, ocre, pêssego, terracota clara, rosa, azul-claro, menta, lavanda, creme, água e salmão.
-- **Interiores:** as paredes `lighterbrown` (laranja no original) viram pintura ocre; pisos com telhado em cima viram piso cerâmico; tetos, reboco claro.
-- **Chão:** `gray` vira calçamento de pedra nas ruas, `whitegray` vira lajotas nas calçadas e plataformas, `lightgray` vira concreto nos pátios. As faixas `lightred` no chão (borda dos bombsites) continuam pintadas de vermelho.
+A identidade é a mesma dos outros mapas (estilo VALORANT, como o Ascent, referência: artigo do 80.lv sobre um cenário VALORANT em Blender/Substance/Unreal): paleta quente e restrita e um padrão que se repete em todas as estruturas, em vez de uma cor por casa.
 
-O resultado tem 64 telhados de casa, cerca de 3.700 faces de parede coloridas por casa e 44 trechos de faixa na pista. O tema de luz é o `terracota` (ensolarado). A imagem do menu é um render do próprio mapa no jogo (`assets/menu/play/lily.webp`, pose em `cameras.json`).
+- **Telhados:** faces `lightred` voltadas para cima com inclinação de telhado (~32°) viram telha cerâmica, num tom só (dois tons de terracota muito próximos). Telhados ligados (vértices em comum) formam uma casa. A parte de baixo do beiral e as testeiras são madeira escura.
+- **Paredes das casas:** três acabamentos, um por casa: reboco pêssego, reboco creme ou tijolo terracota. A casa de uma parede é o telhado logo acima de um ponto 45 cm para dentro dela; sem telhado em cima, vale o telhado mais próximo até 3,5 m; longe de casas, reboco creme. Faces no mesmo plano que se tocam ficam com o acabamento da maioria.
+- **Rodapé de pedra:** toda parede vertical cuja base está no chão em frente a ela é cortada a 85 cm, e a faixa de baixo vira pedra (1.059 rodapés). Os vértices dos dois pedaços são cópias, porque o importador ainda desloca os vértices no lugar depois.
+- **Pedra clara:** arcadas, colunas, sacadas, muretas e bases (`whitegray` e `lightgray` nas paredes).
+- **Interiores:** reboco creme (as paredes `lighterbrown`, laranja no original) e piso de madeira; tetos de reboco claro.
+- **Chão:** `gray` vira lajes de pedra quente nas ruas; `whitegray` e `lightgray`, lajotas nas calçadas, plataformas e pátios. As faixas `lightred` no chão (borda dos bombsites) continuam pintadas de vermelho.
+- **Escala única de textura:** as coordenadas de textura de todas as faces são recalculadas no plano da face, com um padrão a cada 64 unidades (o mesmo dos objetos), para o rodapé e as faces vizinhas casarem.
+
+O resultado tem 67 casas reconhecidas e 44 trechos de faixa na pista.
 
 Palace e Factory, os mapas anteriores do 5v5, saíram do jogo junto com o conversor de GLB deles.
 

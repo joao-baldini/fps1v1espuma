@@ -2309,13 +2309,17 @@ test('Lily 5v5 credits gi (thanks reoMeTpuR), keeps the Wingman list apart and h
   assert.equal(cx.MAP.plant.sites.length,2);
   for(const site of cx.MAP.plant.sites){const x=(site.x0+site.x1)/2,z=(site.z0+site.z1)/2;assert.equal(cx.bombInSite(x,z,site.y0),true,site.name);}
 });
-test('Lily is textured from its structures: tile roofs, cement walls in many colors, asphalt bridge with lane lines, paved streets',()=>{
+test('Lily keeps one identity: brick or plaster houses on stone bases, stone trims, one roof tile, asphalt bridge with lane lines',()=>{
   const pk=sourcePacked.lily,pat=new Uint8Array(Buffer.from(pk.mesh.pattern,'base64')),col=new Uint8Array(Buffer.from(pk.mesh.color,'base64'));
   assert.ok(pk.mesh.uv,'mapa texturizado');const count=id=>pat.filter(v=>v===id).length;
-  const P={plain:0,tile:2,concrete:4,asphalt:8,roof:9,cobble:15};
-  for(const [k,min] of [['roof',400],['concrete',3000],['asphalt',200],['cobble',300],['tile',200]])assert.ok(count(P[k])>min,k+': '+count(P[k]));
-  const walls=new Set();for(let i=0;i<pat.length;i++)if(pat[i]===P.concrete)walls.add([0,1,2].map(k=>col[i*3+k]>>3).join(','));
-  assert.ok(walls.size>=8,'paredes em várias cores: '+walls.size);
+  const P={plain:0,brick:1,tile:2,wood:3,stone:7,asphalt:8,roof:9};
+  for(const [k,min] of [['roof',400],['brick',800],['plain',2000],['stone',2000],['asphalt',200],['tile',200],['wood',100]])assert.ok(count(P[k])>min,k+': '+count(P[k]));
+  // Paleta restrita: três acabamentos de casa (pêssego, creme, tijolo) e o reboco dos muros, que se repetem pelo mapa,
+  // mais as pinturas lisas que não são parede (teto, interiores, testeiras, faixas vermelhas, refletores, faixas da pista).
+  const finishes=new Set();for(let i=0;i<pat.length;i++)if(pat[i]===P.plain||pat[i]===P.brick)finishes.add(pat[i]+':'+[0,1,2].map(k=>col[i*3+k]).join(','));
+  assert.ok(finishes.size<=12,'acabamentos: '+finishes.size);
+  const roofs=new Set();for(let i=0;i<pat.length;i++)if(pat[i]===P.roof)roofs.add([0,1,2].map(k=>col[i*3+k]).join(','));
+  assert.ok(roofs.size<=2,'telha num tom só: '+roofs.size);
 });
 test('Lily: actual walking reaches both bombsites and the opposite base from both teams without jumping',()=>{
   const g=game({mode:'5v5'}),cx=g.context;cx.buildMap('lily');g.dmBuildNav();const nav=g.DM.nav,map=cx.MAP;

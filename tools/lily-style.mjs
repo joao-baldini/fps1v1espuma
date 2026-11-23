@@ -1,25 +1,42 @@
 // Lily (gi): o BSP é um mapa de desenvolvimento sem texturas, só com materiais de cor lisa (custom/lightergray,
 // custom/gray, custom/lightred...). Os mesmos materiais aparecem em estruturas diferentes, então a classificação usa
-// o material, a orientação da face, a altura e o contexto (o que há em cima e embaixo):
-// - telhados (lightred inclinado ~32°) viram telha cerâmica, com o tom variando de casa em casa; a parte de baixo do
-//   beiral é madeira e as testeiras são terracota escura;
-// - paredes viram reboco de cimento com uma cor por casa (a casa é reconhecida pelo telhado logo acima); muros e
-//   paredes fora de casas ficam cinza-cimento; os interiores laranja (lighterbrown) viram pintura ocre;
-// - o viaduto quebrado (acima de ~12,5 m, na faixa do tabuleiro) vira concreto, com asfalto no tabuleiro e
-//   pilares de concreto; os refletores vermelhos continuam vermelhos;
-// - o chão vira calçamento nas ruas, lajotas nas calçadas e plataformas, concreto nos pátios e piso cerâmico dentro
-//   das casas; as faixas vermelhas no chão (borda dos bombsites) continuam pintadas.
+// o material, a orientação da face, a altura e o contexto (o que há em cima e embaixo).
+// Identidade visual: a mesma dos outros mapas (estilo VALORANT, como o Ascent): paleta quente e restrita, com um padrão
+// que se repete em todas as estruturas:
+// - casas em só três acabamentos (reboco pêssego, reboco creme e tijolo), um por casa, sempre com rodapé de pedra;
+// - arcadas, colunas, sacadas e muretas em pedra clara; telhado de telha cerâmica num tom só; beirais de madeira;
+// - ruas em lajes de pedra quente, calçadas e plataformas em lajotas, interiores em reboco creme com piso de madeira;
+// - o viaduto quebrado (acima de ~12,5 m, na faixa do tabuleiro) é o elemento industrial: concreto, com asfalto e
+//   faixas de pista no tabuleiro; as faixas vermelhas no chão (borda dos bombsites) continuam pintadas.
 import { PATTERNS as P } from './source-bsp.mjs';
 
-const ROOF = [0xb5553a, 0xa84b33, 0xc0653f, 0x9d4632, 0xb9603f, 0xae5236];
-const WALL = [0xf3d36e, 0xe0a85a, 0xf2b98c, 0xe4956a, 0xeba3a2, 0xa8c9e0, 0xb2d8b4, 0xc9b8e2, 0xf0dfb2, 0x9fd0c8, 0xf6c7c0];
+const ROOF = [0x9c5a40, 0x93533b];
+// Acabamentos das casas (cor, padrão): reboco pêssego, reboco creme e tijolo terracota.
+const FINISH = [[0xe7a873, 'plain'], [0xead3aa, 'plain'], [0xa8644f, 'brick'], [0xe7a873, 'plain'], [0xead3aa, 'plain']];
 const C = {
-  cement: 0xd9d4ca, fascia: 0x8c3e2b, soffit: 0x6e4c34, ochre: 0xdb9c4a, ceiling: 0xe8e2d6, interiorFloor: 0xc79f7b,
-  street: 0xc9cbcd, sidewalk: 0xe0d8ca, yard: 0xb3ada3, outer: 0xcfcdc8, paint: 0xcf4a2e,
-  bridge: 0xa3a4a5, bridgeDark: 0x8c8e91, asphalt: 0x6b6e73, reflector: 0xd8542c, pillarDark: 0x6c6e72,
+  plaster: 0xe2cba3, stoneBase: 0xb4a28a, stoneTrim: 0xe3d5bb, fascia: 0x6a4a34, soffit: 0x7a5639, interior: 0xe6d2b0, ceiling: 0xeadfc9,
+  interiorFloor: 0x9a7150, street: 0xcdc0aa, sidewalk: 0xddd0b8, yard: 0xc6b9a3, outer: 0xccbfa9, paint: 0xcf4a2e,
+  bridge: 0xa9a69f, bridgeDark: 0x8f8d88, asphalt: 0x6b6e73, reflector: 0xd8542c, pillarDark: 0x8a857d,
 };
+const PLINTH = .85;
 const hash = n => { let t = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b); t ^= t >>> 13; t = Math.imul(t, 0xc2b2ae35); return (t ^ (t >>> 16)) >>> 0; };
 const centroid = p => [0, 1, 2].map(i => p.reduce((s, q) => s + q[i], 0) / p.length);
+// Corta um polígono convexo pelo plano horizontal y = h; devolve as partes de baixo e de cima (ou null se não corta).
+function splitY(p, h) {
+  const below = [], above = [];
+  for (let i = 0; i < p.length; i++) {
+    const a = p[i], b = p[(i + 1) % p.length];
+    // Cópias: etapas seguintes do importador mexem nos vértices no lugar, então nada pode ser compartilhado.
+    if (a[1] <= h) below.push(a.slice()); if (a[1] >= h) above.push(a.slice());
+    if ((a[1] - h) * (b[1] - h) < 0) { const t = (h - a[1]) / (b[1] - a[1]), q = [a[0] + (b[0] - a[0]) * t, h, a[2] + (b[2] - a[2]) * t]; below.push(q); above.push(q.slice()); }
+  }
+  return below.length >= 3 && above.length >= 3 ? { below, above } : null;
+}
+// uv planar em metros/2 (o mesmo tamanho de padrão das faces do BSP), pelo eixo dominante da normal.
+function planarUv(p, n) {
+  const a = n.map(Math.abs), ax = a[0] > a[1] && a[0] > a[2] ? [2, 1] : a[1] > a[2] ? [0, 2] : [0, 1];
+  return p.map(q => [q[ax[0]] / 1.6256, q[ax[1]] / 1.6256]);
+}
 
 export function styleLily(map) {
   const faces = map.polygons.filter(f => f.material);
@@ -46,10 +63,11 @@ export function styleLily(map) {
     return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
   };
   const roofAbove = (x, y, z) => { let best = null; for (const t of tris) if (t.top > y - .2 && (!best || t.y < best.y) && inside(x, z, t)) best = t; return best && best.id; };
-  const roofColor = id => ROOF[hash(id * 7 + 3) % ROOF.length], wallColor = id => WALL[hash(id * 13 + 5) % WALL.length];
+  const roofColor = id => ROOF[hash(id * 7 + 3) % ROOF.length], finish = id => FINISH[hash(id * 13 + 5) % FINISH.length];
   const set = (f, c, pat) => { f.c = c; f.pat = pat; }, roofIndex = new Map(roofs.map((f, i) => [f, i]));
   const walls = [], deck = [];
-  let houses = new Set(), stats = { roof: 0, wallHouse: 0, wall: 0, bridge: 0, asphalt: 0, street: 0, interior: 0 };
+  let houses = new Set(), stats = { roof: 0, wallHouse: 0, wall: 0, trim: 0, plinth: 0, bridge: 0, asphalt: 0, street: 0, interior: 0 };
+  const floorGrid = new Map(), fcell = 1.5, fkey = (x, z) => Math.floor(x / fcell) + ',' + Math.floor(z / fcell);
   for (const f of faces) {
     const m = mat(f), [cx, cy, cz] = centroid(f.p), ny = f.n[1], wallish = Math.abs(ny) < .6;
     // Viaduto
@@ -67,22 +85,25 @@ export function styleLily(map) {
       else set(f, C.fascia, P.plain);
       continue;
     }
-    if (m === 'lighterbrown' || m === 'laranja') { set(f, C.ochre, P.plain); stats.interior++; continue; }
+    if (m === 'lighterbrown' || m === 'laranja') { set(f, C.interior, P.plain); stats.interior++; continue; }
     if (ny < -.9) { set(f, C.ceiling, P.plain); continue; }
     if (ny <= -.15) { set(f, C.soffit, P.wood); continue; }          // parte de baixo de beirais e marquises
     if (ny >= .6) {
       // Chão (e rampas): dentro de casa (com telhado em cima) é piso cerâmico; fora depende do material.
+      if (ny > .9) { const xs = f.p.map(q => q[0]), zs = f.p.map(q => q[2]); for (let x = Math.min(...xs); x <= Math.max(...xs) + fcell; x += fcell) for (let z = Math.min(...zs); z <= Math.max(...zs) + fcell; z += fcell) { const k = fkey(x, z); (floorGrid.get(k) || floorGrid.set(k, []).get(k)).push(cy); } }
       const id = roofAbove(cx, cy + 1.5, cz);
-      if (id !== null && ny > .9) { set(f, C.interiorFloor, P.tile); stats.interior++; continue; }
-      if (m === 'gray') { set(f, C.street, P.cobble); stats.street++; }
+      if (id !== null && ny > .9) { set(f, C.interiorFloor, P.wood); stats.interior++; continue; }
+      if (m === 'gray') { set(f, C.street, P.stone); stats.street++; }
       else if (m === 'whitegray') set(f, C.sidewalk, P.tile);
-      else if (m === 'lightgray') set(f, C.yard, P.concrete);
+      else if (m === 'lightgray') set(f, C.yard, P.tile);
       else if (m === 'darkgray') set(f, C.asphalt, P.asphalt);
-      else set(f, C.outer, P.cobble);
+      else set(f, C.outer, P.stone);
       continue;
     }
     if (wallish) {
       if (m === 'darkgray') { set(f, C.pillarDark, P.concrete); continue; }
+      // Arcadas, colunas, sacadas, muretas e bases (whitegray/lightgray): pedra clara, em todo o mapa.
+      if (m === 'whitegray' || m === 'lightgray') { set(f, C.stoneTrim, P.stone); stats.trim++; continue; }
       // Ponto logo atrás da parede (dentro do volume) para achar a casa pelo telhado de cima.
       walls.push({ f, id: roofAbove(cx - f.n[0] * .45, cy, cz - f.n[2] * .45) });
     }
@@ -103,11 +124,25 @@ export function styleLily(map) {
   });
   const votes = new Map();
   walls.forEach((w, i) => { const r = wf(i), v = votes.get(r) || new Map(), k = w.id === null ? 'none' : w.id; v.set(k, (v.get(k) || 0) + w.f.p.length); votes.set(r, v); });
+  const floorAt = (x, z, y) => { let best = -Infinity; for (const h of floorGrid.get(fkey(x, z)) || []) if (h <= y + .3 && h > best) best = h; return best; };
   walls.forEach((w, i) => {
     const top = [...votes.get(wf(i))].sort((a, b) => b[1] - a[1])[0][0], id = top === 'none' ? null : top;
-    if (id !== null) { houses.add(id); set(w.f, wallColor(id), P.concrete); stats.wallHouse++; }
-    else { set(w.f, C.cement, P.concrete); stats.wall++; }
+    const [c, pat] = id !== null ? finish(id) : [C.plaster, 'plain'];
+    if (id !== null) { houses.add(id); stats.wallHouse++; } else stats.wall++;
+    set(w.f, c, P[pat]);
+    // Rodapé de pedra: só em parede vertical cuja base está no chão em frente a ela.
+    if (Math.abs(w.f.n[1]) > .15) return;
+    const ys = w.f.p.map(q => q[1]), y0 = Math.min(...ys), y1 = Math.max(...ys), [cx, , cz] = centroid(w.f.p);
+    const floor = floorAt(cx + w.f.n[0] * .6, cz + w.f.n[2] * .6, y0);
+    if (!(Math.abs(y0 - floor) < .35) || y1 - y0 < 1.6) return;
+    const cut = splitY(w.f.p, floor + PLINTH);
+    if (!cut) return;
+    w.f.p = cut.above;
+    const base = { ...w.f, p: cut.below, c: C.stoneBase, pat: P.stone, uv: planarUv(cut.below, w.f.n) }; delete base.material; map.polygons.push(base);
+    stats.plinth++;
   });
+  // Escala única de textura em todo o mapa (um padrão a cada 64 unidades, como nos objetos).
+  for (const f of faces) f.uv = planarUv(f.p, f.n);
   stats.roadLines = roadMarkings(map, deck);
   for (const f of faces) delete f.material;
   map.report.lilyStyle = { ...stats, houses: houses.size, bridgeCells: bridge.size };
