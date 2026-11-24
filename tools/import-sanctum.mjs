@@ -5,6 +5,8 @@ import {resolve} from 'node:path';
 import {gzipSync} from 'node:zlib';
 import {compileSourceMap,rotation} from './source-bsp.mjs';
 import {packMap,bakeNavigation} from './import-source-maps.mjs';
+import {extractMapObjects,withDoorsOpen} from './map-objects.mjs';
+import {navHeightsAt} from './source-nav.mjs';
 import {readNav} from './source-nav.mjs';
 import {subtractBox} from './convex-cut.mjs';
 import '../assets/maps/runtime.js';
@@ -152,12 +154,15 @@ export function rebuildSanctum(file,{bake=true}={}){
   }
   // Preserve the authored spatial extent instead of cropping the buildings to a coarse navigation component.
   map.bounds=bounds(map.polygons.flatMap(f=>f.p));
+  // Vidraças, portas e grades como nos outros mapas convertidos (tools/map-objects.mjs).
+  extractMapObjects(map,{packMap,nav:authoredNav,navHeightsAt});map.bounds=bounds(map.polygons.flatMap(f=>f.p));
   if(!bake)return map;
-  bakeNavigation(map);
+  withDoorsOpen(map,()=>bakeNavigation(map));
   const native=new globalThis.SourceMaps.NativeMap(packMap(map));
   for(const p of map.t.concat(map.ct)){
     const y=native.ground(p[0],p[1],p[3]);if(!Number.isFinite(y)||native.overlap(p[0],y+.01,p[1],1.8,.3))throw Error('Blocked source spawn');p[3]=y;
   }
+  for(const f of map.polygons)delete f.src;for(const h of map.hulls){delete h.src;delete h.brush;}
   report.rebuild.originalNavAreas=authoredNav.areas.length;
   report.rebuild.preservedWorldFaces=report.worldFaces;
   delete map.bsp;delete map.convert;return map;

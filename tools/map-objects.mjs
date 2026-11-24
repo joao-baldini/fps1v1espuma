@@ -29,7 +29,9 @@ function box(xf, x0, x1, y0, y1, z0, z1) {
   const lo = [0, 1, 2].map(i => Math.min(...c.map(v => v[i]))), hi = [0, 1, 2].map(i => Math.max(...c.map(v => v[i])));
   return { faces, hull: { planes: faces.map(f => [...f.n, dot(f.n, f.p[0])]), min: lo, max: hi } };
 }
-const polygon = (f, c, pat, glass = false) => ({ p: f.p, n: f.n, c, glass, tag: 'prop', pat, uv: f.p.map(v => { const a = Math.abs(f.n[0]) > Math.abs(f.n[2]) ? 2 : 0; return [v[a] / 1.6, v[1] / 1.6]; }) });
+// Mapas sem textura (Sanctum, cores lisas) não ganham coordenadas de textura: o pacote continuaria liso.
+let TEXTURED = true;
+const polygon = (f, c, pat, glass = false) => ({ p: f.p, n: f.n, c, glass, tag: 'prop', ...(TEXTURED ? { pat, uv: f.p.map(v => { const a = Math.abs(f.n[0]) > Math.abs(f.n[2]) ? 2 : 0; return [v[a] / 1.6, v[1] / 1.6]; }) } : {}) });
 
 // Barras dentro de uma caixa local (unidades Source). kind: 'bars' (barras verticais com travessas), 'mesh' (tela de
 // arame em quadrados), 'lattice' (treliça de madeira). Painel vertical no eixo horizontal mais comprido; se a caixa é
@@ -69,6 +71,7 @@ function rotateHull(h, hinge, ang) {
 const boundsOf = list => [[0, 1, 2].map(i => Math.min(...list.map(h => h.min[i]))), [0, 1, 2].map(i => Math.max(...list.map(h => h.max[i])))];
 
 export function extractMapObjects(map, { packMap, nav, navHeightsAt } = {}) {
+  TEXTURED = map.polygons.some(f => f.uv);
   const { bsp, convert } = map, report = { panes: 0, panesStatic: 0, doors: 0, doorsStatic: 0, grateProps: 0, grateBrushes: 0, barsFaces: 0 }, detail = { panesThick: 0, panesClosed: 0, doorList: [], staticDoors: [] };
   const phyCache = new Map(), phyBounds = model => {
     if (!phyCache.has(model)) {
@@ -186,7 +189,9 @@ export function extractMapObjects(map, { packMap, nav, navHeightsAt } = {}) {
     for (const [variant, ang] of [[1, Math.PI / 2], [2, -Math.PI / 2]]) for (const h of closed) map.hulls.push({ ...rotateHull(h, d.hinge, ang), mask: 0, obj: id, variant });
     report.doors++; detail.doorList.push(d.model.split('/').pop() + '@' + mid.map(v => v.toFixed(1)).join(','));
   }
+  if (native) decorateFacades(map, native, frame, report);
   // Colisões de enfeite (máscara 0) não precisam ir para o jogo.
+
   map.hulls = map.hulls.filter(h => h.mask || h.obj != null);
   map.objects = objects;
   map.report.objects = report; map.report.objectDetail = detail;
@@ -198,4 +203,66 @@ export function withDoorsOpen(map, fn) {
   const saved = [];
   for (const h of map.hulls) if (h.obj != null && map.objects?.[h.obj]?.k === 'door' && h.variant === 0) { saved.push([h, h.mask]); h.mask = 0; }
   try { return fn(); } finally { for (const [h, m] of saved) h.mask = m; }
+}
+
+// Janelas, grades de janela e portas de enfeite que no CS são modelos padrão (não vêm dentro do BSP): sem eles a
+// fachada ficava lisa onde havia janela. Cada um vira uma peça simples (moldura, vidro escuro, venezianas, barras ou
+// folha de porta) encostada na parede, que é achada com raios a partir da origem do modelo. Só enfeite: sem colisão.
+const SHUTTER = m => /yel/.test(m) ? 0xd6b04c : /wndg|croatia/.test(m) ? 0x5f8a5c : /wndr/.test(m) ? 0xa9573f : 0x8c6b48;
+export const FACADE_SPECS = [
+  [/window_urban_bars|italy_window_bars|window_bars/, () => ({ w: 44, h: 64, kind: 'bars' })],
+  [/cs_italy\/window\/it_wnd/, m => ({ w: 44, h: 80, kind: 'shutter', color: SHUTTER(m), open: /open/.test(m) })],
+  [/window_croatia/, m => ({ w: 40, h: 62, kind: 'shutter', color: SHUTTER(m), open: false })],
+  [/window_urban_sash_(\d+)_(\d+)/, m => { const d = m.match(/sash_(\d+)_(\d+)/); return { w: +d[1], h: +d[2], kind: 'sash' }; }],
+  [/du_window_(\d+)x(\d+)|dust_window_(\d+)x(\d+)/, m => { const d = m.match(/(\d+)x(\d+)/); let w = +d[1], h = +d[2]; if (w < 20 && h < 20) { w *= 12; h *= 12; } return { w, h, kind: 'sash', bottom: true }; }],
+  [/de_cbble\/window|venice_window|clock_tower_window|campanile_window|st_mark_window|window_interior|de_crown\/(towerwindow|poblewindow|windowinlet)/, () => ({ w: 48, h: 84, kind: 'sash' })],
+  [/dust_large_wood_door/, () => ({ w: 96, h: 128, kind: 'door', bottom: true })],
+  [/it_door|italy_round_door|venice_door|inferno_door_single|door_a\/door_a|door_collection_d|de_crown\/crowndoor\.mdl|overpass_metal_door|gate_door01a/, () => ({ w: 52, h: 104, kind: 'door', bottom: true })],
+];
+function decorateFacades(map, native, frame, report) {
+  const { bsp } = map, U = .0254; let added = 0, skipped = 0;
+  const props = bsp.staticProps();
+  for (const pr of props) {
+    const m = pr.model.replace(/^models\//, '').replace(/\.mdl$/, '');
+    if (bsp.pak.has(pr.model.replace(/\.mdl$/, '.phy')) || /dust_doors\/dust_door_\d+x\d+/.test(m)) continue;
+    const rule = FACADE_SPECS.find(([re]) => re.test(m)); if (!rule) continue;
+    const spec = rule[1](m), o = frame(pr)([0, 0, 0]), r = rotation(pr.angles);
+    // Parede mais perto: raios nos quatro sentidos do modelo (eixos X e Y), saindo de 60 cm antes da origem.
+    let best = null;
+    for (const ax of [[1, 0, 0], [0, 1, 0]]) for (const sg of [1, -1]) {
+      const dS = r(ax).map(v => v * sg), d = unit([dS[0], 0, -dS[1]]);
+      for (const dy of [spec.bottom ? spec.h * U / 2 : 0]) {
+        const start = [o[0] - d[0] * .6, o[1] + dy, o[2] - d[2] * .6], hit = native.ray(start, d, 1.2);
+        if (hit && Math.abs(hit.n[1]) < .3 && (!best || Math.abs(hit.t - .6) < Math.abs(best.t - .6))) best = { t: hit.t, n: hit.n, start, d };
+      }
+    }
+    if (!best) { skipped++; continue; }
+    const N = unit([best.n[0], 0, best.n[2]]), T = [-N[2], 0, N[0]];
+    const wall = add(best.start, mul(best.d, best.t)), base = [wall[0], o[1] + (spec.bottom ? 0 : -spec.h * U / 2), wall[2]];
+    // A peça inteira precisa estar na mesma parede (raios nos quatro cantos batem no mesmo plano).
+    const onWall = [[-.5, .1], [.5, .1], [-.5, .9], [.5, .9]].every(([a, b]) => {
+      const q = add(add(base, mul(T, a * spec.w * U)), [0, b * spec.h * U, 0]), st = add(q, mul(N, .3)), h = native.ray(st, mul(N, -1), .6);
+      return h && Math.abs(h.t - .3) < .06 && dot(h.n, N) > .9;
+    });
+    if (!onWall) { skipped++; continue; }
+    const xf = p => add(add(add(base, mul(T, p[0] * U)), mul(N, p[1] * U)), [0, p[2] * U, 0]);
+    const W = spec.w / 2, H = spec.h, push = (bb, c, pat) => { for (const f of box(xf, ...bb).faces) map.polygons.push(polygon(f, c, pat)); added++; };
+    const trim = spec.kind === 'door' ? 0x6f5236 : 0xe9e1d2;
+    if (spec.kind === 'door') {
+      push([-W, W, 0, 1.6, 0, H], DOOR_WOOD, P.wood);
+      for (const [a, b, c, d] of [[-W - 3, -W, 0, H + 3], [W, W + 3, 0, H + 3], [-W - 3, W + 3, H, H + 3]]) push([a, b, 0, 2.4, c, d], trim, P.wood);
+      continue;
+    }
+    push([-W, W, 0, .6, 2, H - 2], 0x4f6b7c, P.plain); // vidro escuro da janela (há parede atrás)
+    for (const [a, b, c, d] of [[-W - 2, -W + 1, 0, H], [W - 1, W + 2, 0, H], [-W - 2, W + 2, -2, 2], [-W - 2, W + 2, H - 2, H + 2]]) push([a, b, 0, 2.2, c, d], trim, P.plain);
+    if (spec.kind === 'sash' || spec.kind === 'shutter') { push([-.8, .8, 0, 1.4, 2, H - 2], trim, P.plain); push([-W, W, 0, 1.4, H * .55 - .8, H * .55 + .8], trim, P.plain); }
+    if (spec.kind === 'shutter') {
+      const sw = W * .95;
+      if (spec.open) { push([-W - 2 - sw, -W - 2, 0, 1.6, 0, H], spec.color, P.wood); push([W + 2, W + 2 + sw, 0, 1.6, 0, H], spec.color, P.wood); }
+      else { push([-W, 0, .8, 2, 1, H - 1], spec.color, P.wood); push([0, W, .8, 2, 1, H - 1], spec.color, P.wood); }
+      push([-W - 4, W + 4, 0, 4, -4, -1], trim, P.stone); // peitoril
+    }
+    if (spec.kind === 'bars') for (const bb of barBoxes([-W, 1.5, 0], [W, 3.5, H], 'bars')) push(bb, IRON, P.metal);
+  }
+  report.facadePieces = added; report.facadeSkipped = skipped;
 }

@@ -210,6 +210,8 @@ Análise feita nos BSPs de Neon, Forge, Sable, Lily, Calamari, Coldwater e Crown
 | `prop_door_rotating` (portão do A no Crown) | não era convertida (buraco na parede) | porta que abre com E |
 | Portas com `.phy` entre dois lugares andáveis | bloco fixo | porta que abre; só quando a navegação original do CS tem área dos dois lados, para nenhuma porta dar para fora do mapa |
 | Portas do Dust sem `.phy` (`dust_door_WxH`) | invisíveis | folha de madeira; se a navegação do CS passa por ali, sem colisão |
+| Janelas, grades de janela e portas de enfeite que são modelos padrão do CS (82 grades de janela no Crown, as janelas de veneziana do Coldwater e do Calamari, janelas do Dust no Forge, portas italianas e de Veneza) | não vêm no BSP: a fachada ficava lisa onde havia janela | peça simples encostada na parede (moldura, vidro escuro, travessas, venezianas na cor do nome do modelo, barras ou folha de porta); a parede é achada com raios a partir da origem do modelo e a peça só entra se couber inteira na mesma parede (`decorateFacades`) |
+| Vidraça do Sanctum (`func_breakable`) | parede sólida | vidraça como nos outros mapas (`tools/import-sanctum.mjs` também passa por `extractMapObjects`) |
 
 **Como funciona.** `tools/source-bsp.mjs` marca de onde vem cada face e cada peça de colisão (brush do mundo com o conteúdo do BSP, entidade ou modelo). `extractMapObjects` agrupa vidraças e portas em objetos e testa cada um no próprio mapa. A vidraça precisa de espaço livre dos dois lados (senão é janela pintada na parede e fica como está), com espessura de até 45 cm. A porta precisa de chão andável dos dois lados. As grades viram barras (`barBoxes`: barras verticais com travessas, tela de arame ou treliça).
 

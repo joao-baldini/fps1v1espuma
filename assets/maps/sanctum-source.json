@@ -4737,6 +4737,29 @@
     "originalNavAreas": 237,
     "preservedWorldFaces": 1149
   },
+  "objects": {
+    "panes": 1,
+    "panesStatic": 2,
+    "doors": 0,
+    "doorsStatic": 3,
+    "grateProps": 0,
+    "grateBrushes": 1,
+    "barsFaces": 60
+  },
+  "objectDetail": {
+    "panesThick": 2,
+    "panesClosed": 0,
+    "doorList": [],
+    "staticDoors": [
+      "dust_door_80x128_01.mdl",
+      "dust_door_89x106_07.mdl",
+      "dust_door_80x128_01.mdl"
+    ],
+    "thickSizes": [
+      "1.80x0.15x1.73 world f27",
+      "1.60x0.05x1.63 world f40"
+    ]
+  },
   "navigation": {
     "components": 11173,
     "spawnsConnected": 10,
@@ -4879,7 +4902,7 @@
       "lz": -10.621499999999997
     }
   ],
-  "triangles": 13918,
-  "collisionHulls": 617,
-  "assetBytes": 211556
+  "triangles": 14068,
+  "collisionHulls": 620,
+  "assetBytes": 213150
 }

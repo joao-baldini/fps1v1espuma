@@ -254,7 +254,8 @@
     breakGlass(i){const o=this.objects[i];if(!o||o.k!=='glass')return false;let any=false;for(const id of o.h){if(this.masks[id])any=true;this.masks[id]=0;}return any;}
     restoreGlass(i){const o=this.objects[i];if(!o||o.k!=='glass')return;for(const id of o.h)this.masks[id]=this.baseMasks[id];}
     glassIntact(i){const o=this.objects[i];return !!o&&o.h.some(id=>this.masks[id]);}
-    resetObjects(){this.masks.set(this.baseMasks);}
+    // Só as peças dos objetos voltam ao original (ajustes feitos no mapa depois de carregar continuam valendo).
+    resetObjects(){for(const o of this.objects)for(const k of ['h','o1','o2'])for(const id of o[k]||[])this.masks[id]=this.baseMasks[id];}
   }
   async function load(id){
     if(cache.has(id))return cache.get(id);if(pending.has(id))return pending.get(id);

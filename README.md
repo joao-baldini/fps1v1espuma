@@ -315,6 +315,7 @@ Nos mapas vindos de BSPs do CS (Wingman e Plant the Bomb):
 - **Vidro:** as vidraças seguram o corpo, mas a bala atravessa (dá para varar). O tiro ou uma HE por perto quebram o vidro, com estilhaços e som; quebrado, dá para passar pela janela. A cada rodada os vidros voltam; no Deathmatch, voltam 30 segundos depois. Janelas pintadas na parede, sem nada atrás, continuam como estão.
 - **Portas:** **E** perto de uma porta abre ou fecha. Ela gira 90° na dobradiça para o lado de lá de quem abriu (ou para o outro lado, se tiver alguém no caminho) e a colisão acompanha a folha. Os bots abrem as portas que estão no caminho. Viram portas abríveis a `prop_door_rotating` do mapa e as portas que ficam entre dois lugares onde se anda no mapa original; portas de enfeite (fechadas contra a parede) continuam fixas.
 - **Grades, gradis, portões de barras e cercas:** agora são barras e telas de arame de verdade. Antes apareciam como blocos maciços ou nem apareciam. O corpo continua parando nelas e a bala passa entre as barras.
+- **Janelas e portas de enfeite:** as que no CS são modelos padrão (não vêm dentro do mapa) voltaram às fachadas como peças simples: moldura, vidro, venezianas coloridas, grades e portas de madeira.
 - **Salas online:** vidro quebrado e porta aberta aparecem para todos da sala.
 
 ## Regras
