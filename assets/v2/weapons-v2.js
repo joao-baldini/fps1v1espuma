@@ -25,51 +25,7 @@
     return mat;
   }
 
-  // Mão em primeira pessoa, low poly facetada (mesmo estilo dos bonecos): luva em blocos com palma, protetor dos nós,
-  // quatro dedos em duas falanges dobradas em volta do cabo, polegar em dois blocos e tira do punho. Faces planas.
-  // Eixos: frente da mão em -Z, pulso em +Z, dorso em +Y.
-  function flatPart(THREE, geo, hex, tx, ty, tz, rx = 0, ry = 0, rz = 0) {
-    let g = geo.index ? geo.toNonIndexed() : geo;
-    if (rx) g.rotateX(rx); if (ry) g.rotateY(ry); if (rz) g.rotateZ(rz);
-    g.translate(tx, ty, tz); g.computeVertexNormals(); // não indexada: normal por face (facetado)
-    const c = new THREE.Color(hex), n = g.attributes.position.count, cols = new Float32Array(n * 3);
-    for (let k = 0; k < n; k++) { cols[k * 3] = c.r; cols[k * 3 + 1] = c.g; cols[k * 3 + 2] = c.b; }
-    g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-    return g;
-  }
-  function mergeParts(THREE, parts) {
-    let total = 0; for (const g of parts) total += g.attributes.position.count;
-    const pos = new Float32Array(total * 3), nrm = new Float32Array(total * 3), col = new Float32Array(total * 3);
-    let o = 0;
-    for (const g of parts) { const n = g.attributes.position.count; pos.set(g.attributes.position.array, o * 3); nrm.set(g.attributes.normal.array, o * 3); col.set(g.attributes.color.array, o * 3); o += n; g.dispose(); }
-    const m = new THREE.BufferGeometry();
-    m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); m.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    m.computeBoundingSphere(); return m;
-  }
-  function createGloveGeometry(THREE) {
-    const B = (w, h, d) => new THREE.BoxGeometry(w, h, d), P = [];
-    const PALM = 0x2a3038, FING = 0x323943, PLATE = 0x1a1e24, CUFF = 0x1d2127;
-    // Palma: bloco com o dorso chanfrado (um segundo bloco mais estreito em cima dá a quina).
-    P.push(flatPart(THREE, B(0.072, 0.03, 0.086), PALM, 0, -0.002, 0.004));
-    P.push(flatPart(THREE, B(0.06, 0.012, 0.074), PALM, 0, 0.017, 0.006));
-    // Protetor dos nós dos dedos.
-    P.push(flatPart(THREE, B(0.07, 0.016, 0.026), PLATE, 0, 0.02, -0.03, 0.18));
-    // Dedos: falange de baixo saindo da palma e a de cima dobrada para baixo, em volta do cabo.
-    for (let f = 0; f < 4; f++) {
-      const x = -0.025 + f * 0.0167, len = f === 3 ? 0.024 : 0.03;
-      P.push(flatPart(THREE, B(0.0145, 0.016, len), FING, x, -0.004, -0.044 - len / 2 + 0.012, 0.35));
-      P.push(flatPart(THREE, B(0.0135, 0.015, 0.024), FING, x, -0.026, -0.058, 1.25));
-    }
-    // Polegar: dois blocos do lado de dentro, deitado sobre o cabo.
-    P.push(flatPart(THREE, B(0.017, 0.016, 0.032), FING, -0.04, 0.006, -0.006, 0.25, 0.35, 0.3));
-    P.push(flatPart(THREE, B(0.015, 0.014, 0.026), FING, -0.046, 0.012, -0.034, 0.45, 0.55, 0.3));
-    // Tira do punho da luva, em bloco.
-    // (mais fino que a palma: de trás, a mão em blocos aparece em volta dele, em vez de um disco tapando tudo)
-    P.push(flatPart(THREE, B(0.06, 0.03, 0.02), CUFF, 0, 0.002, 0.054));
-    // Dorso da mão subindo até o punho (a parte que se vê de trás).
-    P.push(flatPart(THREE, B(0.064, 0.026, 0.022), PALM, 0, 0.004, 0.042, -0.25));
-    return mergeParts(THREE, P);
-  }
+  // A mão em primeira pessoa é montada em index.html (buildHand): punho articulado que fecha em volta do cabo.
 
   // Manga do antebraço em prisma de 6 lados (eixo Y de -0,5 a 0,5: +Y = pulso, -Y = cotovelo), facetada, afinando até
   // o punho de tecido no pulso.
@@ -310,7 +266,6 @@
 
   globalThis.V2Weapons = {
     createWeaponMaterial,
-    createGloveGeometry,
     createSleeveGeometry,
     createMuzzleFlashGeometry,
     createFXPool,

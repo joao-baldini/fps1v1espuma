@@ -2951,3 +2951,26 @@ test('Practice opens every map of the game: free shop anywhere, no damage, endle
   cx.toast=()=>{};vm.runInContext('togglePracticeFly()',cx);assert.equal(vm.runInContext('P.fly',cx),true);
   vm.runInContext('MAPPRACTICE.id=null;P.fly=false;',cx);assert.equal(vm.runInContext('freeShopOn()',cx),false);
 });
+
+test('first-person hands close around each weapon grip: fitted grip per gun, trigger finger, support hand palm up, measured mag/bolt grabs',()=>{
+  const cx=vm.createContext({});
+  vm.runInContext(section('// braços: mão','vmScene.add(new THREE.HemisphereLight'),cx);
+  const arms=vm.runInContext('ARMS',cx),fit=vm.runInContext('GRIP_FIT',cx);
+  for(const [w,f] of Object.entries(fit)){
+    const a=arms[w];assert.equal(a.length,f.length,w);
+    a.forEach((h,i)=>{
+      assert.equal(JSON.stringify(h.grip),JSON.stringify(f[i][0]),w+' usa a pegada medida');
+      assert.ok(h.ch.hy>=.008&&h.ch.hy<=.04&&h.ch.hz>=.008&&h.ch.hz<=.04,w+' canal do tamanho de um cabo');
+      assert.ok(h.axis.length===3&&(h.back||h.to),w+' orientação definida');
+    });
+  }
+  // armas de duas mãos: mão de apoio esquerda e mão do gatilho direita com o indicador meio estendido (no gatilho)
+  for(const w of ['rifle','galil','m4a4','m4a1s','famas','ump','bucky','sniper','ssg','usps','glock']){
+    assert.equal(arms[w][0].left,true,w);assert.ok(!arms[w][1].left,w);assert.ok(arms[w][1].ch.ci<1,w+' indicador no gatilho');
+  }
+  // apoio por baixo do guarda-mão: dorso para baixo, indicador para a frente
+  assert.equal(JSON.stringify(arms.rifle[0].back),'[0,-1,0]');assert.equal(JSON.stringify(arms.rifle[0].axis),'[0,0,1]');
+  const grab=vm.runInContext(section('const GRAB_FIT =','\n};')+'\n};GRAB_FIT',cx);
+  for(const w of ['rifle','galil','ump'])assert.ok(grab[w].mag&&grab[w].bolt,w+' pega pente e alavanca');
+  for(const [w,g] of Object.entries(grab))for(const k of Object.keys(g))assert.ok(g[k][3]>0&&g[k][3]<=1,w+' '+k+' fecha a mão');
+});

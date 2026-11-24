@@ -2827,20 +2827,54 @@ const DEAGLE_SLIDE = [
   ...[-1,1].map(side=>[[side>0?.038:-.046,.05,.025],[side>0?.046:-.038,.058,.05],0x2a333c]),
   [[-.006,.076,-.15],[.006,.079,-.02],0x8d969f],
 ];
-// braços: mão (centro) e antebraço (do punho até sair da tela), no espaço da arma
+// braços: mão fechada em volta do cabo e antebraço do pulso até o cotovelo, no espaço da arma.
+// Cada mão segura um cabo: grip = meio do cabo, axis = do indicador para o mindinho,
+// back = para onde o dorso aponta (sem back, o pulso aponta para o cotovelo), ch = meias medidas do cabo, to = cotovelo
+// (a manga vai do pulso da luva até ele, saindo da tela).
+// Mão de apoio (esquerda) por baixo do guarda-mão: palma para cima, indicador para a frente, dedos subindo pelo lado
+// direito; mão do gatilho no cabo de pistola, com o dorso para fora e os dedos dando a volta pela frente.
+const supportHand = (grip, to, ch = { hy: .021, hz: .024 }, back = [0, -1, 0]) => ({ left: true, grip, axis: [0, 0, 1], back, ch, to });
+const triggerHand = (grip, to, axis = [0, -1, .3], ch = { hy: .013, hz: .02 }, back = [1, 0, 0]) => ({ grip, axis, back, ch: { ci: .45, ...ch }, to });
+// Pistolas: a esquerda envolve os dedos da direita pelo lado esquerdo (dorso para a esquerda).
+const cupHand = (grip, to, axis = [0, -1, .25]) => ({ left: true, grip, axis, back: [-1, 0, 0], ch: { hy: .03, hz: .034 }, to });
 const ARMS = {
-  rifle:  [{ hand: [0, -.045, -.42], from: [0, -.06, -.40], to: [-.24, -.34, -.02] }, { hand: [0, -.09, 0], from: [.01, -.10, .03], to: [.17, -.32, .32] }],
-  pistol: [{ hand: [-.025, -.09, -.01], from: [-.03, -.10, .01], to: [-.22, -.33, .26] }, { hand: [.012, -.085, .005], from: [.02, -.10, .03], to: [.16, -.33, .32] }],
+  rifle:  [supportHand([0, -.03, -.42], [-.24, -.34, -.02]), triggerHand([0, -.085, .01], [.17, -.32, .32])],
+  pistol: [cupHand([-.022, -.1, .02], [-.22, -.33, .26]), triggerHand([0, -.09, .022], [.16, -.33, .32], [0, -1, .25], { hy: .015, hz: .026 })],
   knife:  [],
-  sniper: [{ hand: [0, -.05, -.45], from: [0, -.065, -.43], to: [-.24, -.34, -.04] }, { hand: [0, -.09, .01], from: [.01, -.10, .04], to: [.17, -.32, .33] }],
+  sniper: [supportHand([0, -.035, -.45], [-.24, -.34, -.04]), triggerHand([0, -.085, .02], [.17, -.32, .33])],
 };
 ARMS.m4a4 = ARMS.m4a1s = ARMS.rifle; ARMS.usps = ARMS.pistol; ARMS.ssg = ARMS.sniper; ARMS.butterfly = [];
 ARMS.medgun = ARMS.pistol; ARMS.glock = ARMS.pistol; ARMS.galil = ARMS.rifle;
-ARMS.famas = [{ hand: [0, -.07, -.31], from: [0, -.085, -.29], to: [-.24, -.34, -.02] }, { hand: [0, -.10, -.14], from: [.01, -.11, -.11], to: [.17, -.32, .30] }];
-ARMS.c4 = [{ hand: [-.07, -.085, -.02], from: [-.08, -.10, .0], to: [-.22, -.33, .26] }, { hand: [.07, -.085, -.02], from: [.08, -.10, .0], to: [.16, -.33, .32] }];
-ARMS.he = ARMS.flash = ARMS.smoke = [{ hand: [.012, -.085, .005], from: [.02, -.10, .03], to: [.16, -.33, .32] }];
-ARMS.ump = [{ hand: [0, -.06, -.27], from: [0, -.075, -.26], to: [-.24, -.34, 0] }, { hand: [0, -.085, .005], from: [.01, -.10, .035], to: [.17, -.32, .32] }];
-ARMS.bucky = [{ hand: [0, -.062, -.47], from: [0, -.077, -.46], to: [-.24, -.34, -.06] }, { hand: [0, -.085, .025], from: [.01, -.10, .055], to: [.17, -.32, .34] }];
+ARMS.famas = [supportHand([0, -.055, -.31], [-.24, -.34, -.02]), triggerHand([0, -.095, -.13], [.17, -.32, .30])];
+// C4: uma mão de cada lado do bloco, segurando as quinas de baixo.
+ARMS.c4 = [{ left: true, grip: [-.055, -.08, -.02], axis: [0, 0, 1], back: [-1, -.4, 0], ch: { hy: .016, hz: .02 }, to: [-.22, -.33, .26] },
+  { grip: [.055, -.08, -.02], axis: [0, 0, 1], back: [1, -.4, 0], ch: { hy: .016, hz: .02 }, to: [.16, -.33, .32] }];
+// Granadas: a mão fecha em volta do corpo da granada, em pé.
+ARMS.he = ARMS.flash = ARMS.smoke = [{ grip: [.012, -.075, .005], axis: [0, -1, .15], back: [1, .2, .4], ch: { hy: .02, hz: .02 }, to: [.16, -.33, .32] }];
+ARMS.ump = [supportHand([0, -.045, -.27], [-.24, -.34, 0]), triggerHand([0, -.08, .015], [.17, -.32, .32])];
+ARMS.bucky = [supportHand([0, -.045, -.47], [-.24, -.34, -.06], { hy: .02, hz: .026 }), triggerHand([0, -.08, .035], [.17, -.32, .34])];
+// Pegada medida em cada modelo: [ponto do cabo, meia altura, meia profundidade, polegar]. Calculada fora do jogo com
+// um teste triângulo × bloco (e "bloco dentro do sólido") entre a arma e cada falange, palma e polegar: o canal é o
+// menor que não deixa nenhuma peça da mão atravessar a arma (nem a outra mão, nas pistolas). Ver o README.
+const GRIP_FIT = {
+  rifle: [[[0, -0.03, -0.42], 0.019, 0.029], [[0, -0.0925, 0.0112], 0.022, 0.02]],
+  galil: [[[0.0005, -0.03, -0.42], 0.019, 0.028], [[0, -0.0953, 0.0121], 0.015, 0.019]],
+  m4a4: [[[0.0005, -0.06, -0.42], 0.025, 0.03], [[0, -0.0905, 0.0283], 0.016, 0.026]],
+  m4a1s: [[[0, -0.03, -0.42], 0.019, 0.028], [[0, -0.0905, 0.0283], 0.016, 0.026]],
+  famas: [[[0.005, -0.055, -0.31], 0.02, 0.034], [[0, -0.1125, -0.131], 0.015, 0.028]],
+  ump: [[[0.012, -0.051, -0.27], 0.024, 0.016, 0.65], [[0, -0.1001, 0.0158], 0.016, 0.026]],
+  bucky: [[[0.0005, -0.045, -0.47], 0.019, 0.026], [[0.03, -0.08, 0.035], 0.02, 0.026, 0.82]],
+  sniper: [[[0.006, -0.053, -0.45], 0.016, 0.024, 0.3], [[0.03, -0.0793, 0.0183], 0.02, 0.019]],
+  ssg: [[[0, -0.035, -0.45], 0.01, 0.01], [[0.018, -0.0949, 0.0235], 0.023, 0.023]],
+  usps: [[[-0.052, -0.0967, 0.0331], 0.034, 0.027], [[0.016, -0.0901, 0.0153], 0.02, 0.028]],
+  glock: [[[-0.052, -0.0971, 0.0316], 0.033, 0.026], [[0.016, -0.0965, -0.0042], 0.02, 0.018]],
+  medgun: [[[-0.052, -0.0942, 0.0433], 0.03, 0.022], [[0, -0.089, 0.0197], 0.018, 0.028]],
+  c4: [[[-0.0648, -0.0581, -0.02], 0.02, 0.034], [[0.0852, -0.0598, -0.02], 0.02, 0.028]],
+  he: [[[0.012, -0.0854, 0.0066], 0.02, 0.024]],
+  flash: [[[0.0132, -0.0754, 0.0023], 0.02, 0.022]],
+  smoke: [[[0.0132, -0.0752, 0.0034], 0.02, 0.026]],
+};
+for (const [w, fits] of Object.entries(GRIP_FIT)) ARMS[w] = ARMS[w].map((a, i) => ({ ...a, grip: fits[i][0], ch: { ...a.ch, hy: fits[i][1], hz: fits[i][2], ct: fits[i][3] ?? 1 } }));
 vmScene.add(new THREE.HemisphereLight(0xaad2f5, 0x38414a, 0.85));
 { const sun = new THREE.DirectionalLight(0xfff4e0, 1.15); sun.position.set(0.6, 1.2, 0.7); vmScene.add(sun);
   const rim = new THREE.DirectionalLight(0x68c4f5, 0.45); rim.position.set(-0.8, 0.5, -0.6); vmScene.add(rim); }
@@ -2857,17 +2891,89 @@ function setSleeveColor(k) {
   }
 }
 setSleeveColor(S.pcol);
-const gloveGeo = globalThis.V2Weapons ? V2Weapons.createGloveGeometry(THREE) : new THREE.BoxGeometry(.075, .075, .095);
-const UPZ = new V3(0, 0, 1);
-function limb(group, from, to, thick, mat) {
-  const a = new V3(...from), b = new V3(...to), len = a.distanceTo(b);
-  // Braço em prisma de 6 lados, facetado (low poly, como a mão e os bonecos).
-  const geo = globalThis.V2Weapons ? (g => { g.rotateX(Math.PI / 2); g.computeVertexNormals(); return g; })(new THREE.CylinderGeometry(thick * 0.48, thick * 0.62, len, 6).toNonIndexed()) : new THREE.BoxGeometry(thick, thick, len);
-  const m = new THREE.Mesh(geo, mat);
-  m.position.copy(a).add(b).multiplyScalar(0.5);
-  m.quaternion.setFromUnitVectors(UPZ, b.clone().sub(a).normalize());
-  group.add(m);
+/* ---- Mão em primeira pessoa: punho low poly articulado ----
+   Palma, quatro dedos com três falanges e polegar com duas, em blocos de faces planas. Eixos da mão direita:
+   +X do indicador para o mindinho, +Y dorso, -Z para onde os dedos saem, +Z pulso. A mão fecha em volta de um canal
+   ao longo de X (o cabo da arma ou da faca): a falange de baixo passa por cima do cabo, a do meio desce na frente e a
+   da ponta volta por baixo; o polegar desce atrás do cabo e deita do outro lado. Assim o cabo fica DENTRO do punho
+   e nada atravessa a palma ou o dorso. A esquerda é a mesma montagem espelhada em X.
+   A mão é orientada pelo cabo (eixo do indicador ao mindinho) e pelo cotovelo (ou pelo lado do dorso), e a manga
+   sai do pulso da luva até o cotovelo: punho, mão e antebraço sempre ligados. */
+const HAND_PALM = -.016, HAND_KNUCKLE = -.036, HAND_T = .016, HAND_REACH = .03, HAND_WRIST = new V3(0, -.001, .068);
+const HAND_COL = { palm: 0x2a3038, finger: 0x323943, plate: 0x1a1e24, cuff: 0x1d2127 };
+function handPiece(w, h, d, hex, x = 0, y = 0, z = 0, rx = 0) {
+  const g = new THREE.BoxGeometry(w, h, d).toNonIndexed(), c = new THREE.Color(hex), col = [];
+  for (let i = 0; i < g.attributes.position.count; i++) col.push(c.r, c.g, c.b);
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const m = new THREE.Mesh(g, skinMat); m.position.set(x, y, z); m.rotation.x = rx; return m;
 }
+// ch: meia altura (hy, no eixo do dorso) e meia profundidade (hz, da palma para a frente) do cabo segurado; ci e ct:
+// quanto o indicador e o polegar fecham em repouso (indicador meio esticado = dedo no gatilho).
+function buildHand(left = false, ch = {}) {
+  const hy = ch.hy ?? .013, hz = ch.hz ?? .02, T = HAND_T, s = left ? -1 : 1, C = new V3(0, HAND_PALM - hy, HAND_KNUCKLE - HAND_REACH + hz);
+  const root = new THREE.Group();
+  root.add(handPiece(.072, .028, .084, HAND_COL.palm, 0, -.002, .004));          // palma
+  root.add(handPiece(.06, .01, .07, HAND_COL.palm, 0, .016, .008));              // dorso chanfrado
+  root.add(handPiece(.07, .012, .02, HAND_COL.plate, 0, .012, -.028, .12));      // protetor dos nós
+  root.add(handPiece(.062, .032, .026, HAND_COL.cuff, 0, -.001, .055));          // punho da luva
+  root.add(handPiece(.02, .016, .036, HAND_COL.palm, s * -.026, -.022, .014));   // base do polegar
+  // Cabo alto ou largo demais para a mão (guarda-mão, corpo da granada): os dedos abraçam só até onde alcançam e a
+  // ponta segue reta pela lateral, em vez de esticar as falanges; o polegar faz o mesmo do outro lado.
+  const L2full = 2 * hy + T, L2 = Math.min(L2full, .046), tipWrap = L2 >= L2full - 1e-6, fingers = [], L1 = HAND_REACH + T / 2;
+  for (let f = 0; f < 4; f++) {
+    const x = s * (-.0255 + f * .017), w = f === 3 ? .0125 : .0145, L3 = Math.min(2 * hz * .75, .026) * (f === 3 ? .85 : 1);
+    // ch.iz: o indicador desce em outro ponto (relativo ao centro do canal), p. ex. pelo anel da karambit
+    const L1f = f === 0 && ch.iz != null ? HAND_KNUCKLE - C.z - ch.iz : L1;
+    const j1 = new THREE.Group(), j2 = new THREE.Group(), j3 = new THREE.Group();
+    j1.position.set(x, HAND_PALM + T / 2, HAND_KNUCKLE);
+    j1.add(handPiece(w, T, L1f + T / 2, HAND_COL.finger, 0, 0, -(L1f + T / 2) / 2));
+    j2.position.z = -L1f; j1.add(j2); j2.add(handPiece(w, T, L2 + T / 2, HAND_COL.finger, 0, 0, -(L2 + T / 2) / 2));
+    j3.position.z = -L2; j2.add(j3); j3.add(handPiece(w * .94, T * .9, L3, HAND_COL.finger, 0, 0, -L3 / 2));
+    [j1, j2, j3].forEach((j, i) => { j.children[0].userData.part = 'f' + f + '.' + i; });
+    root.add(j1); fingers.push([j1, j2, j3]);
+  }
+  const t1 = new THREE.Group(), t2 = new THREE.Group(), ty = HAND_PALM - .002, TL1full = ty - (C.y - hy - T / 2), TL1 = Math.min(TL1full, .042), thumbWrap = TL1 >= TL1full - 1e-6, TL2 = Math.min(2 * hz + T * .5, .034);
+  t1.position.set(s * -.042, ty, C.z + hz + T / 2 + .002);
+  t1.add(handPiece(.017, .017, TL1 + T / 2, HAND_COL.finger, 0, 0, -(TL1 + T / 2) / 2));
+  t2.position.z = -TL1; t1.add(t2); t2.add(handPiece(.016, .015, TL2, HAND_COL.finger, 0, 0, -TL2 / 2));
+  root.add(t1); t1.children[0].userData.part = 'thumb.0'; t2.children[0].userData.part = 'thumb.1';
+  ['palm', 'back', 'plate', 'cuff', 'thenar'].forEach((n, i) => { root.children[i].userData.part = n; });
+  root.userData = { hand: true, s, C, fingers, thumb: [t1, t2], curl: [-1, -1, -1, -1], tip: tipWrap ? Math.PI / 2 : 0, thumbTip: thumbWrap ? Math.PI / 2 : 0, rest: [1, ch.ci ?? 1, ch.ct ?? 1] };
+  setHandCurl(root, 1, ch.ci ?? 1, ch.ct ?? 1);
+  return root;
+}
+// Fecha (1) ou abre (0) a mão: c = médio, anelar e mindinho; ci = indicador; ct = polegar; it = ponta do indicador.
+function setHandCurl(hand, c, ci = c, ct = c, it = ci) {
+  const u = hand.userData, k = u.curl; if (k[0] === c && k[1] === ci && k[2] === ct && k[3] === it) return; k[0] = c; k[1] = ci; k[2] = ct; k[3] = it;
+  const H = Math.PI / 2;
+  u.fingers.forEach((j, f) => { const a = f ? c : ci, t = f ? c : it; j[0].rotation.x = .1 * (1 - a); j[1].rotation.x = -.15 - (H - .15) * a; j[2].rotation.x = -.1 - (u.tip - .1) * t; });
+  // aberto, o polegar sobe e vai para fora (deixa livre o plano embaixo da palma, onde a faca gira)
+  u.thumb[0].rotation.set(1.05 - (H + 1.05) * ct, u.s * .6 * (1 - ct), 0); u.thumb[1].rotation.x = .1 + (u.thumbTip - .1) * ct;
+}
+const _hx = new V3(), _hy = new V3(), _hz = new V3(), _hv = new V3(), _hm = new THREE.Matrix4();
+// spec: grip (ponto no meio do cabo, no espaço do pai), axis (do indicador para o mindinho) e back (para onde o dorso
+// aponta) ou elbow (cotovelo: o pulso aponta para ele). spec.center põe o meio da palma no ponto, sem cabo (mão solta).
+function placeHand(hand, spec) {
+  const u = hand.userData, sc = hand.scale.x;
+  _hx.fromArray(spec.axis).normalize(); if (u.s < 0) _hx.negate();
+  if (spec.back) { _hy.fromArray(spec.back); _hy.addScaledVector(_hx, -_hy.dot(_hx)).normalize(); _hz.crossVectors(_hx, _hy); }
+  else { _hz.fromArray(spec.elbow).sub(_hv.fromArray(spec.grip)); _hz.addScaledVector(_hx, -_hz.dot(_hx)).normalize(); _hy.crossVectors(_hz, _hx); }
+  _hm.makeBasis(_hx, _hy, _hz); hand.quaternion.setFromRotationMatrix(_hm);
+  if (spec.center) hand.position.fromArray(spec.center);
+  else hand.position.fromArray(spec.grip).sub(_hv.copy(u.C).multiplyScalar(sc).applyQuaternion(hand.quaternion));
+  return hand;
+}
+// Pulso da luva no espaço do braço (o grupo marcado com userData.armSpace), subindo pelos pais da mão.
+function handWrist(hand, out) {
+  out.copy(HAND_WRIST);
+  for (let o = hand; o && !o.userData.armSpace; o = o.parent) { o.updateMatrix(); out.applyMatrix4(o.matrix); }
+  return out;
+}
+const sleeveWrist = new V3();
+// Manga: prisma do cotovelo até o pulso da luva (ponta fina no pulso).
+function fitSleeve(sleeve, hand, elbow) { fitKnifeArm(sleeve, elbow, handWrist(hand, sleeveWrist), .036); }
+const handRoll = new THREE.Quaternion(), handEuler = new THREE.Euler(), handTmp = new V3(), handTmp2 = new V3(), AXIS_Z = new V3(0, 0, 1);
+const smooth01 = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
 const MUZZLE = { rifle: [0, .01, -.675], pistol: [0, .043, -.357], sniper: [0,.025,-.945], m4a4: [0,.006,-.79], m4a1s: [0,.006,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.9], ump: [0,.005,-.48], bucky: [0,.014,-.75], glock: [0,.006,-.226], galil: [0,.007,-.68], famas: [0,.005,-.593] };
 const VM_BASE = { rifle: [.15, -.16, -.40], pistol: [.13, -.105, -.38], knife: [.005, -.11, -.38], sniper: [.15, -.16, -.38] };
 VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.galil = VM_BASE.rifle; VM_BASE.famas = [.15, -.165, -.36]; VM_BASE.glock = VM_BASE.pistol; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.he = VM_BASE.flash = VM_BASE.smoke = [.13, -.15, -.38]; VM_BASE.c4 = [.06, -.13, -.36]; VM_BASE.medgun = VM_BASE.pistol; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
@@ -2889,7 +2995,8 @@ const vmGuns = {}, vmFlash = {}, vmKnives = {};
 // Karambit: peças contínuas, curvas Bézier e eixo no centro do anel do indicador.
 // Pegada da karambit como no CS: indicador no anel, cabo atravessando o punho e garra saindo para o centro da tela, curvada para cima.
 const KH_ROT = [-1.2,-.25,-.1], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.18;
-const KARAMBIT_VIEW = { scale: 1.4, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.01,-.025], elbows: [[.50,-.28,.12],[-.42,-.24,.12]], showShift: [.06,.04,.02] };
+const KARAMBIT_DIP = .016;
+const KARAMBIT_VIEW = { scale: 1.4, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.01,-.025], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
 let karambitGeo = null;
 // Karambit no mesmo estilo das armas: cor chapada com sombreamento fixo por face (tons das caixas).
 const KNIFE_FACE_SHADE = [.80,.80,.80,.80,.80,.80,.70,.70,.70,.70,.70,.70,1,1,1,1,1,1,.50,.50,.50,.50,.50,.50,.90,.90,.90,.90,.90,.90,.62,.62,.62,.62,.62,.62];
@@ -2949,7 +3056,7 @@ function buildKarambit() {
 // Butterfly no mesmo estilo das armas e da karambit: curvas contínuas com cor chapada e tom fixo por face.
 // Perfil do CS2: lâmina clip point com swedge e fio claro, tang com kicker, cabos vazados com pinos e trava.
 // Eixo: pino na origem, lâmina para -x, cabos para +x, dorso em +y.
-const BUTTERFLY_SIZE = .90, BUTTERFLY_GAP = .0085;
+const BUTTERFLY_SIZE = .90, BUTTERFLY_GAP = .0085, bfWrist = new THREE.Quaternion(), bfInv = new THREE.Quaternion(), bfEuler = new THREE.Euler(), bfGrip = new V3(), bfTmp = new V3();
 // Mesma mão e mesmo lugar da Deagle (bloco de pele no tamanho das armas, embaixo à direita), faca para a frente e à esquerda.
 const BUTTERFLY_VIEW = { scale: 1, right: [-.01,-.02,.02], rightRot: [0,0,0], holder: [-.035,.01,-.03], holderRot: [-.4,-.8,-.3], left: [-.42,-.09,.02], leftRot: [0,.12,-.08], elbows: [[.16,-.33,.32],[-.84,-.50,.32]] };
 let butterflyGeo = null;
@@ -3073,7 +3180,8 @@ const KARAMBIT_INSPECT = [
   [.90,0,.02,0,.25,0,0,TAU-.05,0,0,0,0,0,0,0],
   [1,0,0,0,0,0,0,TAU,0,0,0,0,0,0,0]
 ];
-const KARAMBIT_SLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.16,.02,.02,.02,.05,-.15,-.20,0,0,0,0,0,0,0,0],[.36,-.24,.04,-.14,-.25,.45,.70,0,0,0,0,0,0,0,0],[.62,-.14,0,-.07,-.13,.22,.36,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
+// No corte para a esquerda, a mão esquerda abaixa e sai do caminho da lâmina.
+const KARAMBIT_SLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.16,.02,.02,.02,.05,-.15,-.20,0,0,0,0,0,0,0,0],[.36,-.24,.04,-.14,-.25,.45,.70,0,0,-.05,-.05,.02,0,0,0],[.62,-.14,0,-.07,-.13,.22,.36,0,0,-.03,-.03,.01,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
 const KARAMBIT_BACKSLASH = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.16,-.05,.025,.02,.04,.18,.26,0,0,0,0,0,0,0,0],[.36,.10,-.06,-.14,-.22,-.45,-.70,0,0,0,0,0,0,0,0],[.62,.05,-.035,-.07,-.11,-.22,-.34,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
 const KARAMBIT_STAB = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[.25,.03,.06,.05,.30,-.10,-.15,0,0,0,0,0,0,0,0],[.44,-.13,.02,-.30,-.32,.22,.42,0,0,0,0,0,0,0,0],[.65,-.09,0,-.19,-.20,.14,.26,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
 const KARAMBIT_CLIPS = {draw:KARAMBIT_DRAW,inspect:KARAMBIT_INSPECT,slash:KARAMBIT_SLASH,backslash:KARAMBIT_BACKSLASH,stab:KARAMBIT_STAB};
@@ -3206,48 +3314,94 @@ function applyKnifePose(rig, pose) {
   rig.left.position.set(V.left[0]+pose[8],V.left[1]+pose[9],V.left[2]+pose[10]); rig.left.rotation.set(V.leftRot[0],V.leftRot[1],V.leftRot[2]+pose[11]);
   const opening=pose[12] || 0,presentation=pose[13] || 0;
   if (butterfly) {
-    // abertura: a faca desliza para a ponta dos dedos; exibição: o punho deita a faca de lado
+    // abertura: a faca desliza para a ponta dos dedos. Exibição (deitar a faca de lado) e faca em pé: quem gira é o
+    // pulso, com a faca fechada na mão, em volta do ponto da pegada (antes a faca girava dentro da mão parada).
     rig.holder.position.set(V.holder[0]-opening*.03,V.holder[1]+opening*.012,V.holder[2]);
-    rig.holder.rotation.set(V.holderRot[0]+presentation*1.2,V.holderRot[1],V.holderRot[2]+(pose[14] || 0));
+    rig.holder.quaternion.copy(rig.holderRest);
+    const stand = pose[14] || 0;
+    if (presentation || stand) {
+      bfWrist.setFromEuler(bfEuler.set(V.holderRot[0]+presentation*1.2,V.holderRot[1],V.holderRot[2]+stand)).multiply(bfInv);
+      bfGrip.copy(rig.gripPt).sub(bfTmp.copy(rig.gripPt).applyQuaternion(bfWrist)).applyQuaternion(rig.right.quaternion);
+      rig.right.quaternion.multiply(bfWrist); rig.right.position.add(bfGrip);
+    }
   } else {
-    // Inspeção: a faca vira no eixo do cabo (garra para o outro lado) e desliza para cima da mão.
-    const V2 = KARAMBIT_VIEW, sh = V2.showShift;
-    rig.holder.position.set(V2.holder[0]+presentation*sh[0],V2.holder[1]+presentation*sh[1],V2.holder[2]+presentation*sh[2]);
+    // A faca nunca sai do indicador: na inspeção ela fica pendurada no anel (o giro do canal 6 tira o cabo do punho) e
+    // o pulso é que gira para mostrar a lâmina, como no CS2. Girando no indicador, o anel desce pelo dedo: a faca gira
+    // abaixo da palma e do polegar, não através deles.
+    const V2 = KARAMBIT_VIEW, dip = smooth01(.05,.4,Math.abs(angDiff(0,pose[6])))*KARAMBIT_DIP, dv = rig.gloveDown;
+    rig.holder.position.set(V2.holder[0]+dv.x*dip,V2.holder[1]+dv.y*dip,V2.holder[2]+dv.z*dip);
     rig.holder.rotation.set(KH_ROT[0],KH_ROT[1],KH_ROT[2]);
   }
   if (!butterfly) rig.pivot.rotation.order = 'ZYX';
-  rig.pivot.rotation.set(butterfly ? 0 : presentation*Math.PI,0,butterfly ? 0 : pose[6]);
+  rig.pivot.rotation.set(0,0,butterfly ? 0 : pose[6]);
   if (butterfly) { rig.blade.rotation.z = pose[6]; rig.free.rotation.z = pose[7]; }
-  for (let i=0;i<2;i++) {
-    const hand = i ? rig.left : rig.right, arm = rig.arms[i]; hand.updateMatrix();
-    // a manga termina na face do bloco da mão voltada para o cotovelo, como o antebraço das armas (espessura .072)
-    knifeArmB.copy(arm.elbow).sub(hand.position).setLength(.04).add(hand.position);
-    fitKnifeArm(arm.sleeve,arm.elbow,knifeArmB,.036);
+  // Dedos: fechados no cabo em repouso; abrem quando a faca sai do punho (giro no anel, exibição, abertura da
+  // butterfly, cabo solto dando a volta), para a lâmina e os cabos passarem por fora da mão em vez de atravessá-la.
+  if (butterfly) {
+    const blade = Math.min(Math.abs(angDiff(0,pose[6])),Math.abs(angDiff(Math.PI,pose[6]))), free = Math.abs(angDiff(0,pose[6]+pose[7]));
+    // faca fechada (lâmina dobrada entre os cabos, mais alta que eles): a mão segura sem fechar de todo
+    const fold = 1-smooth01(.2,.8,Math.abs(angDiff(Math.PI,pose[6])));
+    const move = Math.max(smooth01(.06,.35,blade),smooth01(.04,.3,free),smooth01(.05,.4,Math.abs(opening))), out = Math.max(move,.45*fold);
+    setHandCurl(rig.glove,1-.85*out,1-.6*out,1-move);
+  } else {
+    // Girando: médio, anelar, mindinho e polegar abrem; o indicador fica no anel com a ponta reta (o anel desce por ela).
+    // os dedos só fecham quando o cabo já chegou ao punho (fechar antes faria o cabo passar por dentro deles)
+    const sp = Math.abs(angDiff(0,pose[6])), spin = smooth01(.03,.3,sp), spinT = smooth01(.01,.12,sp);
+    setHandCurl(rig.glove,1-.9*spin,1,1-spinT,1-spinT);
   }
+  for (let i=0;i<2;i++) fitSleeve(rig.arms[i].sleeve,i ? rig.leftGlove : rig.glove,rig.arms[i].elbow);
+}
+// Onde a mão fecha em cada faca, no espaço da faca: centro do cabo (at), meia espessura (hy) e meia altura (hz) do
+// cabo, e escala da luva (as facas são desenhadas maiores que a mão; a luva acompanha para a pegada ficar proporcional).
+// Karambit: o indicador passa no anel (at.x calculado para o indicador ficar no centro do anel) e o cabo atravessa o
+// punho; butterfly: os dois cabos fechados juntos no meio do comprimento.
+// iz: onde o indicador desce (relativo ao centro do canal): na karambit ele passa pelo furo do anel.
+const KNIFE_GRIP = { knife: { at: [null,.001,0], hy: .007, hz: .016, iz: 0, hand: 1.1 }, butterfly: { at: [.1,0,0], hy: .013, hz: .016, hand: 1.1 } };
+function fitKnifeGlove(right, holder, pivot, butterfly, V) {
+  const KG = KNIFE_GRIP[butterfly ? 'butterfly' : 'knife'], ks = butterfly ? 1 : KARAMBIT_SCALE, hs = KG.hand;
+  holder.updateMatrix(); pivot.updateMatrix();
+  const M = holder.matrix.clone().multiply(pivot.matrix), at = new V3(KG.at[0] ?? .0255*hs/ks, KG.at[1], KG.at[2]).applyMatrix4(M);
+  const axis = new V3(1,0,0).transformDirection(M), back = new V3(0,0,1).transformDirection(M);
+  const glove = buildHand(false,{ hy: KG.hy*ks/hs, hz: KG.hz*ks/hs, iz: KG.iz }); glove.scale.setScalar(hs);
+  // o dorso fica do lado em que o pulso aponta para o cotovelo
+  const elbow = new V3(...V.elbows[0]).sub(new V3(...V.right)), spec = { grip: at.toArray(), axis: axis.toArray(), back: back.toArray() };
+  placeHand(glove,spec);
+  if (new V3(0,0,1).applyQuaternion(glove.quaternion).dot(elbow.sub(at)) < 0) placeHand(glove,{ ...spec, back: back.negate().toArray() });
+  right.add(glove); return glove;
 }
 function buildKnifeHands(g, butterfly = false) {
   const V = butterfly ? BUTTERFLY_VIEW : KARAMBIT_VIEW;
-  const right=new THREE.Group(); right.add(new THREE.Mesh(gloveGeo, skinMat));
-  g.add(right); g.scale.setScalar(V.scale);
+  const right=new THREE.Group();
+  g.add(right); g.scale.setScalar(V.scale); g.userData.armSpace = true;
   const holder = new THREE.Group(); holder.position.set(...V.holder); holder.rotation.set(...(butterfly ? V.holderRot : KH_ROT));
   const rig = butterfly ? buildButterfly() : { pivot: buildKarambit() };
   const pivot = rig.pivot; holder.add(pivot); right.add(holder); if (!butterfly) pivot.scale.setScalar(KARAMBIT_SCALE);
-  // Como nas facas do CS2, a mão esquerda fica à vista, baixa e à esquerda, no mesmo padrão em bloco.
-  const lh=new THREE.Group(); lh.add(new THREE.Mesh(gloveGeo, skinMat));
+  const glove = fitKnifeGlove(right, holder, pivot, butterfly, V);
+  // Como nas facas do CS2, a mão esquerda fica à vista, baixa e à esquerda: solta, palma para baixo, dedos meio dobrados.
+  const lh=new THREE.Group(), leftGlove=buildHand(true,{ hy: .008, hz: .012 }); leftGlove.scale.setScalar(KNIFE_GRIP[butterfly ? 'butterfly' : 'knife'].hand);
+  placeHand(leftGlove,{ center: [0,0,0], axis: [-1,0,.15], back: [-.4,1,.1] }); setHandCurl(leftGlove,.55,.45,.4); lh.add(leftGlove);
   g.add(lh);
   const arms = V.elbows.map(elbow=> {
     const sleeve = new THREE.Mesh(knifeArmGeo,sleeveMat); g.add(sleeve);
     return { sleeve, elbow: new V3(...elbow) };
   });
-  const result = { holder, pivot, right, left: lh, arms, ...rig }; applyKnifePose(result,KNIFE_REST); return result;
+  // direção "para baixo da palma" da luva, no espaço da mão (para a faca descer pelo indicador no giro)
+  const gloveDown = new V3(0,-1,0).applyQuaternion(glove.quaternion);
+  // ponto da pegada (centro do canal) no espaço da mão direita: eixo do giro do pulso da butterfly
+  const gripPt = glove.userData.C.clone().multiplyScalar(glove.scale.x).applyQuaternion(glove.quaternion).add(glove.position), holderRest = holder.quaternion.clone();
+  if (butterfly) bfInv.copy(holderRest).invert();
+  const result = { holder, pivot, right, left: lh, glove, leftGlove, gloveDown, gripPt, holderRest, arms, ...rig }; applyKnifePose(result,KNIFE_REST); return result;
 }
 function buildDeagleHands(g,body){
   const right=new THREE.Group(),left=new THREE.Group(),pivot=new THREE.Group(),weapon=new THREE.Group(),rest=new V3(.012,-.085,.005),trigger=new V3(0,-.035,-.025);
-  right.position.copy(rest);right.add(new THREE.Mesh(gloveGeo,skinMat));left.add(new THREE.Mesh(gloveGeo,skinMat));g.add(right,left);
+  // Luvas dentro dos grupos animados: a direita fecha no cabo (inclinado como o da Deagle), a esquerda envolve os dedos da direita.
+  const rg=placeHand(buildHand(false,{hy:.016,hz:.027}),{grip:[-.012,-.005,.022],axis:[0,-1,.24],elbow:[.158,-.235,.315]});
+  const lg=placeHand(buildHand(true,{hy:.03,hz:.034}),{grip:[.013,-.005,.025],axis:[0,-1,.24],back:[-1,-.15,.2]});
+  right.position.copy(rest);right.add(rg);left.add(lg);g.add(right,left);
   pivot.position.copy(trigger);weapon.position.copy(trigger).multiplyScalar(-1);pivot.add(weapon);g.add(pivot);weapon.add(body);
   deagleSlide=boxModel(DEAGLE_SLIDE, weaponPbrMat);weapon.add(deagleSlide);
   const arms=[new V3(.17,-.32,.32),new V3(-.22,-.33,.26)].map(elbow=>{const sleeve=new THREE.Mesh(knifeArmGeo,sleeveMat);g.add(sleeve);return {elbow,sleeve};});
-  const rig={right,left,pivot,weapon,rest,index:trigger.clone().sub(rest),up:new V3(0,1,0),support:new V3(-.037,-.005,-.015),arms};applyDeaglePose(rig,DEAGLE_REST);return rig;
+  const rig={right,left,rg,lg,pivot,weapon,rest,index:trigger.clone().sub(rest),up:new V3(0,1,0),support:new V3(-.037,-.005,-.015),arms};applyDeaglePose(rig,DEAGLE_REST);return rig;
 }
 function applyDeaglePose(rig,pose){
   rig.right.position.set(rig.rest.x+pose[0],rig.rest.y+pose[1],rig.rest.z+pose[2]);rig.right.rotation.set(pose[3],pose[4],pose[5]);
@@ -3256,14 +3410,19 @@ function applyDeaglePose(rig,pose){
   rig.pivot.rotation.copy(rig.right.rotation);rig.pivot.rotateOnWorldAxis(rig.up,pose[7]);rig.pivot.rotateX(pose[6]);rig.pivot.rotateZ(pose[8]);
   rig.left.position.copy(rig.support).applyEuler(rig.right.rotation).add(rig.right.position);rig.left.position.x+=pose[9];rig.left.position.y+=pose[10];rig.left.position.z+=pose[11];
   rig.left.rotation.copy(rig.right.rotation);rig.left.rotation.z+=pose[12];
-  for(let i=0;i<2;i++){const hand=i?rig.left:rig.right,arm=rig.arms[i];knifeArmB.copy(arm.elbow).sub(hand.position).setLength(.04).add(hand.position);fitKnifeArm(arm.sleeve,arm.elbow,knifeArmB,.036);}
+  // A arma gira em volta do indicador no saque: os dedos abrem enquanto ela não está no cabo; a esquerda abre longe da direita.
+  const turn=smooth01(.12,.5,Math.abs(pose[6])+Math.abs(pose[7])+Math.abs(pose[8])),away=smooth01(.012,.05,Math.hypot(pose[9],pose[10],pose[11]));
+  setHandCurl(rig.rg,1-.7*turn,1-.4*turn,1-.7*turn);setHandCurl(rig.lg,1-.6*away);
+  for(let i=0;i<2;i++)fitSleeve(rig.arms[i].sleeve,i?rig.lg:rig.rg,rig.arms[i].elbow);
   deagleSlide.position.z=pose[13];
   if(rig.mag){const m=rig.mag;m.grp.position.set(m.rest[0]+pose[14],m.rest[1]+pose[15],m.rest[2]+pose[16]);m.grp.rotation.x=pose[17];}
 }
 let deagleSlide = null,deagleRig=null;
 // Autoaplicação do Doctor: antebraço esquerdo que entra na tela (no lugar da mão esquerda da pistola) para receber o dardo.
 const vmMedLeft = [], vmInjectArm = new THREE.Group();
-{ const wrist = [.1, .02, -.33], h = new THREE.Mesh(gloveGeo, skinMat); h.position.set(...wrist); vmInjectArm.add(h); limb(vmInjectArm, [-.7, -.3, .05], [.065, .006, -.31], .072, sleeveMat); }
+// Mão aberta, palma para baixo, com a manga saindo do pulso até o cotovelo fora da tela.
+{ vmInjectArm.userData.armSpace = true; const h = placeHand(buildHand(true, { hy: .008, hz: .012 }), { center: [.1, .02, -.33], axis: [.2, 0, -1], back: [0, 1, 0] }), sleeve = new THREE.Mesh(knifeArmGeo, sleeveMat);
+  setHandCurl(h, .3, .2, .3); vmInjectArm.add(h, sleeve); fitSleeve(sleeve, h, new V3(-.7, -.3, .05)); }
 vmInjectArm.scale.setScalar(.5); vmInjectArm.visible = false; vmHands.add(vmInjectArm);
 const vmBody = {}, vmSkin = {};
 /* ---- Saque, recarga, ferrolho e telha (base: animações do CS) ---- */
@@ -3299,14 +3458,41 @@ const meshOf = list => list.length ? boxModel(list, weaponPbrMat) : new THREE.Me
 // Canais da pose: 0-2 posição e 3-5 rotação da arma; 6-8 mão esquerda e 9-11 mão direita (deslocamento do repouso);
 // 12-14 pente, 15 giro do pente (x), 16 ferrolho para trás, 17 ferrolho levantado (giro), 18 telha para trás,
 // 19 cartucho na mão, 20 giro do pente (z), 21 giro da mão esquerda.
-const GUN_CH = 22, GUN_REST = new Float32Array(GUN_CH), gunPose = new Float32Array(GUN_CH);
+// 22-23: mão esquerda virando para pegar o pente (dorso para fora, dedos em volta dele) e a alavanca do ferrolho.
+const GUN_CH = 24, GUN_REST = new Float32Array(GUN_CH), gunPose = new Float32Array(GUN_CH);
 function gk(t, o = {}) {
   const k = new Array(GUN_CH + 1).fill(0); k[0] = t;
   const put = (a, at) => { if (a) for (let i = 0; i < a.length; i++) k[at + 1 + i] = a[i]; };
   put(o.g, 0); put(o.l, 6); put(o.r, 9); put(o.m, 12);
-  k[16] = o.mr || 0; k[17] = o.b || 0; k[18] = o.bl || 0; k[19] = o.p || 0; k[20] = o.sh || 0; k[21] = o.mz || 0; k[22] = o.lr || 0;
+  k[16] = o.mr || 0; k[17] = o.b || 0; k[18] = o.bl || 0; k[19] = o.p || 0; k[20] = o.sh || 0; k[21] = o.mz || 0; k[22] = o.lr || 0; k[23] = o.gm || 0; k[24] = o.gb || 0;
   return k;
 }
+// Centro do canal da mão (o que ela segura) relativo à origem dela, na orientação de repouso: para levar a mão a uma
+// peça (pente, ferrolho), a pose põe o canal em volta da peça, e não o meio da palma em cima dela.
+const handChan = (h, q = h.restQ) => h.hand.userData.C.clone().multiplyScalar(h.hand.scale.x).applyQuaternion(q).toArray();
+// Deslocamento (em relação ao repouso) que põe o canal da mão, virada em q, em volta do ponto p.
+const grabOffset = (h, p, q) => vSub(vSub(p, handChan(h, q)), h.rest.toArray());
+// Orientação da mão (quaternion) a partir do eixo do cabo e do lado do dorso, como em placeHand.
+function handQuat(left, axis, back) {
+  const x = new V3(...axis).normalize(); if (left) x.negate();
+  const y = new V3(...back); y.addScaledVector(x, -y.dot(x)).normalize();
+  return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, new V3().crossVectors(x, y)));
+}
+// Como a mão esquerda pega o pente e a alavanca do ferrolho em cada arma: [eixo do cabo, lado do dorso, ponto do canal
+// relativo à peça, quanto a mão fecha]. Medido como GRIP_FIT: o centro do canal fica dentro da peça segurada e nenhuma
+// falange, palma ou polegar atravessa a peça ou o corpo da arma.
+const GRAB_FIT = {
+  rifle: { mag: [[0, 0, 1], [-1, 0, 0], [-0.016, -0.005, -0.0035], 0.4], bolt: [[0, -1, 0], [1, 0, 0], [0.0095, 0, 0], 0.4] },
+  galil: { mag: [[0, 0, 1], [-1, 0, 0], [-0.0115, -0.008, 0], 0.4], bolt: [[-1, 0, 0], [0, 1, 0], [0, 0.018, 0], 0.4] },
+  m4a4: { mag: [[0, 0, 1], [0, -1, 0], [0, -0.0115, 0], 1] },
+  m4a1s: { mag: [[0, 0, 1], [0, -1, 0], [0, -0.016, -0.0035], 1] },
+  famas: { mag: [[0, 1, 0], [-1, 0, 0], [-0.0005, 0, -0.002], 0.7] },
+  ump: { mag: [[0, 1, 0], [0, 0, 1], [0.0035, -0.0035, 0.0065], 1], bolt: [[0, -1, 0], [-1, 0, 0], [0, 0, 0], 0.4] },
+  sniper: { mag: [[0, 0, 1], [0, -1, 0], [0, -0.002, -0.01], 1] },
+  ssg: { mag: [[0, 0, 1], [0, -1, 0], [0, 0, -0.0035], 0.7] },
+  usps: { mag: [[0, 1, 0], [0, 0, 1], [0, 0, 0], 1] },
+  glock: { mag: [[0, 1, 0], [0, 0, 1], [0, 0, 0], 1] },
+};
 const vAdd = (...v) => [0, 1, 2].map(j => v.reduce((s, a) => s + a[j], 0)), vSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 // Ferrolho do rifle (alavanca de manejo): a mão esquerda vai até ela, puxa e solta; usado no saque e na recarga.
 function boltPull(rig, t0, t1, g, L0) {
@@ -3314,15 +3500,19 @@ function boltPull(rig, t0, t1, g, L0) {
   if (kind === 'tap') { const H = vSub([-.045, -.005, -.16], L0); out.push(gk(t0 + d * .35, { g, l: H }), gk(t0 + d * .5, { g: vAdd(g, [0, 0, 0, .02, -.03, 0]), l: vAdd(H, [.014, 0, 0]) }), gk(t0 + d * .65, { g, l: H })); return out; }
   if (!B) return out;
   // AK/Galil: a mão passa por baixo da arma e puxa a alavanca do lado direito (como no CS); M4: puxa o T de trás; UMP: lado esquerdo.
-  const grip = kind === 'rear' ? [0, .04, .015] : kind === 'left' ? [-.035, .005, 0] : [.018, -.032, .004], pull = kind === 'rear' ? .06 : .085;
-  const H = vSub(vAdd(B, grip), L0), gb = kind === 'side' ? vAdd(g, [0, 0, 0, .02, .06, .18]) : g;
-  out.push(gk(t0 + d * .35, { g: gb, l: H }), gk(t0 + d * .62, { g: gb, l: vAdd(H, [0, 0, pull]), b: pull }), gk(t0 + d * .7, { g: vAdd(gb, [0, 0, .006, .03, 0, 0]), l: vAdd(H, [0, .012, pull]) }), gk(t0 + d * .9, { g: gb, l: vAdd(H, [0, .02, .03]) }));
+  const h0 = rig.hands[0], q = h0.boltQ || h0.restQ, w = h0.boltQ ? 1 : 0, pull = kind === 'rear' ? .06 : .085;
+  const grip = h0.boltOff || (kind === 'rear' ? [0, .02, .01] : kind === 'left' ? [-.012, 0, 0] : [.012, -.004, 0]);
+  const H = grabOffset(h0, vAdd(B, grip), q), gb = kind === 'side' ? vAdd(g, [0, 0, 0, .02, .06, .18]) : g;
+  // Vai e volta por baixo da arma (a mão contorna a caixa da culatra em vez de atravessá-la).
+  const dip = [0, -.075, .02];
+  out.push(gk(t0 + d * .17, { g: gb, l: vAdd(H, dip), gb: w * .6 }), gk(t0 + d * .35, { g: gb, l: H, gb: w }), gk(t0 + d * .62, { g: gb, l: vAdd(H, [0, 0, pull]), b: pull, gb: w }), gk(t0 + d * .7, { g: vAdd(gb, [0, 0, .006, .03, 0, 0]), l: vAdd(H, [0, .012, pull]), gb: w }),
+    gk(t0 + d * .84, { g: gb, l: vAdd(H, [0, -.01, .045]), gb: w }), gk(t0 + d * .97, { g: gb, l: vAdd(H, vAdd(dip, [0, 0, .02])), gb: w * .4 }));
   return out;
 }
 // Ferrolho de sniper: a mão direita sai do cabo, levanta a alavanca, puxa, empurra e abaixa (como a AWP e a Scout do CS).
 function sniperBolt(rig, t0, t1) {
   const sp = VM_PARTS[rig.k], R0 = rig.hands[1].rest.toArray(), d = t1 - t0, ay = sp.axis, A = .9;
-  const knob = rig.knob, H0 = vAdd(knob, [.022, -.02, .012]);
+  const knob = rig.knob, H0 = vSub(vAdd(knob, [.006, 0, 0]), handChan(rig.hands[1]));
   const lift = p => { const x = p[0], y = p[1] - ay; return [x * Math.cos(A) - y * Math.sin(A), ay + x * Math.sin(A) + y * Math.cos(A), p[2]]; };
   const H1 = lift(H0), g = [0, .008, 0, .05, -.04, .16], back = .11;
   return [
@@ -3334,28 +3524,30 @@ function sniperBolt(rig, t0, t1) {
   ];
 }
 // Troca de pente (rifles e snipers): segura o pente, tira, joga fora da tela, traz o novo e encaixa com um tapa.
+// Onde a mão esquerda fecha no pente: na metade de baixo dele.
+const MAG_GRAB = [0, -.025, 0];
 function magSwap(rig, t0, t1, g, L0, rock = 0) {
-  const M = rig.mag.center, G = vSub(vAdd(M, [-.036, -.03, .008]), L0), d = t1 - t0, at = x => t0 + d * x;
+  const h0 = rig.hands[0], M = rig.mag.center, G = grabOffset(h0, vAdd(M, h0.magOff || MAG_GRAB), h0.magQ || h0.restQ), d = t1 - t0, at = x => t0 + d * x;
   const gs = vAdd(g, [0, 0, 0, .04, 0, 0]);
   return [
-    gk(at(.22), { g, l: G }),
-    gk(at(.34), { g: gs, l: vAdd(G, [0, -.065, .016]), m: [0, -.065, .016], mr: rock }),
-    gk(at(.46), { g, l: vAdd(G, [-.1, -.36, .1]), m: [-.13, -.46, .12], mr: rock * 4 + .5 }),
-    gk(at(.47), { g, l: vAdd(G, [-.07, -.36, .09]), m: [-.07, -.36, .09], mr: -.3 }),
-    gk(at(.66), { g, l: vAdd(G, [-.004, -.075, .014]), m: [0, -.075, .014], mr: rock }),
-    gk(at(.78), { g: vAdd(g, [0, .006, 0, .06, 0, 0]), l: vAdd(G, [0, .006, 0]), m: [0, 0, 0] }),
-    gk(at(.86), { g, l: G }),
+    gk(at(.22), { g, l: G, gm: 1 }),
+    gk(at(.34), { g: gs, l: vAdd(G, [0, -.065, .016]), m: [0, -.065, .016], mr: rock, gm: 1 }),
+    gk(at(.46), { g, l: vAdd(G, [-.1, -.36, .1]), m: [-.13, -.46, .12], mr: rock * 4 + .5, gm: 1 }),
+    gk(at(.47), { g, l: vAdd(G, [-.07, -.36, .09]), m: [-.07, -.36, .09], mr: -.3, gm: 1 }),
+    gk(at(.66), { g, l: vAdd(G, [-.004, -.075, .014]), m: [0, -.075, .014], mr: rock, gm: 1 }),
+    gk(at(.78), { g: vAdd(g, [0, .006, 0, .06, 0, 0]), l: vAdd(G, [0, .006, 0]), m: [0, 0, 0], gm: 1 }),
+    gk(at(.86), { g, l: G, gm: 1 }),
   ];
 }
 function buildGunAnims(rig) {
   const k = rig.k, sp = VM_PARTS[k] || {}, kind = sp.kind, L0 = rig.hands[0].rest.toArray(), rest = gk(0), end = gk(1), A = {};
   const sortKeys = keys => keys.sort((a, b) => a[0] - b[0]);
   if (kind === 'pistol') {
-    const M = rig.mag.center, G = vSub(vAdd(M, [0, -.06, 0]), L0), g = [-.02, .07, -.03, .2, -.06, -.32];
+    const h0 = rig.hands[0], M = rig.mag.center, G = grabOffset(h0, vAdd(M, h0.magOff || [0, -.06, 0]), h0.magQ || h0.restQ), gm = h0.magQ ? 1 : 0, g = [-.02, .07, -.03, .2, -.06, -.32];
     A.reload = sortKeys([rest, gk(.1, { g }), gk(.16, { g, l: [-.02, -.08, .02] }),
-      gk(.32, { g, l: [-.05, -.32, .04], m: [0, -.48, .05], mr: .4 }), gk(.33, { g, l: vAdd(G, [-.03, -.28, .03]), m: [-.03, -.34, .03], mr: -.25 }),
-      gk(.52, { g, l: vAdd(G, [0, -.065, 0]), m: [0, -.065, 0] }), gk(.6, { g: vAdd(g, [0, .008, 0, .05, 0, 0]), l: vAdd(G, [0, .012, 0]) }),
-      gk(.68, { g, l: G }), gk(.86, { g: [0, .004, 0, .02, 0, .04] }), end]);
+      gk(.32, { g, l: [-.05, -.32, .04], m: [0, -.48, .05], mr: .4 }), gk(.33, { g, l: vAdd(G, [-.03, -.28, .03]), m: [-.03, -.34, .03], mr: -.25, gm }),
+      gk(.52, { g, l: vAdd(G, [0, -.065, 0]), m: [0, -.065, 0], gm }), gk(.6, { g: vAdd(g, [0, .008, 0, .05, 0, 0]), l: vAdd(G, [0, .012, 0]), gm }),
+      gk(.68, { g, l: G, gm }), gk(.86, { g: [0, .004, 0, .02, 0, .04] }), end]);
     A.reloadCues = [[.16, 'magout'], [.6, 'magin'], [.72, 'slide']];
     A.draw = sortKeys([gk(0, { g: [.0, -.2, .08, -.8, .3, .45], l: [-.03, -.3, .1] }), gk(.45, { g: [0, -.02, .02, .12, .05, .12], l: [-.02, -.12, .05] }), gk(.72, { g: [0, .004, 0, -.02, 0, .02] }), end]);
     A.drawCues = [[.5, 'grab']];
@@ -3390,14 +3582,37 @@ function buildGunAnims(rig) {
 }
 function applyGunPose(rig, pose) {
   rig.g.position.set(pose[0], pose[1], pose[2]); rig.g.rotation.set(pose[3], pose[4], pose[5]);
-  rig.hands.forEach((h, i) => {
-    const o = i ? 9 : 6; h.hand.position.set(h.rest.x + pose[o], h.rest.y + pose[o + 1], h.rest.z + pose[o + 2]); if (!i) h.hand.rotation.z = pose[21];
-    knifeArmB.copy(h.wrist).add(h.hand.position); fitKnifeArm(h.sleeve, knifeArmB, h.elbow, .036);
-  });
   if (rig.mag) { const m = rig.mag; m.grp.position.set(m.rest[0] + pose[12], m.rest[1] + pose[13], m.rest[2] + pose[14]); m.grp.rotation.set(pose[15], 0, pose[20]); }
   if (rig.bolt) { const b = rig.bolt; b.grp.position.set(b.rest[0], b.rest[1], b.rest[2] + pose[16]); b.grp.rotation.z = pose[17]; }
   if (rig.pump) rig.pump.grp.position.z = rig.pump.rest[2] + pose[18];
   if (rig.shell) rig.shell.visible = pose[19] > .5;
+  rig.hands.forEach((h, i) => {
+    const o = i ? 9 : 6; h.hand.position.set(h.rest.x + pose[o], h.rest.y + pose[o + 1], h.rest.z + pose[o + 2]);
+    h.hand.quaternion.copy(h.restQ);
+    if (!i && pose[22] > 0 && h.magQ) h.hand.quaternion.slerp(h.magQ, Math.min(1, pose[22]));
+    if (!i && pose[23] > 0 && h.boltQ) h.hand.quaternion.slerp(h.boltQ, Math.min(1, pose[23]));
+    if (!i && pose[21]) h.hand.quaternion.premultiply(handRoll.setFromAxisAngle(AXIS_Z, pose[21]));
+    // Fora do cabo (pegando pente, ferrolho, telha), a mão abre: não fecha o punho em volta de nada nem atravessa a peça.
+    const away = smooth01(.012, .05, Math.hypot(pose[o], pose[o + 1], pose[o + 2])), r = h.hand.userData.rest;
+    let c = 1 - .6 * away, ci = r[1] * (1 - .6 * away), ct = r[2] * (1 - .7 * away), hold = 0;
+    // Segurando o pente (o canal da mão em volta dele, onde quer que ele esteja) ou a alavanca: a mão fecha o quanto a
+    // pegada medida manda, sem atravessar a peça.
+    if (!i && rig.mag && h.magOff) {
+      const q = handChan(h, h.hand.quaternion), m = rig.mag.grp.position, o2 = h.magOff;
+      hold = 1 - smooth01(.012, .035, Math.hypot(h.hand.position.x + q[0] - m.x - o2[0], h.hand.position.y + q[1] - m.y - o2[1], h.hand.position.z + q[2] - m.z - o2[2]));
+      c += (h.magCurl - c) * hold; ci += (h.magCurl - ci) * hold; ct += (h.magCurl - ct) * hold;
+    }
+    if (!i && h.boltQ && pose[23] > 0) { const b = Math.min(1, pose[23]); c += (h.boltCurl - c) * b; ci += (h.boltCurl - ci) * b; ct += (h.boltCurl - ct) * b; }
+    setHandCurl(h.hand, c, ci, ct);
+    // A mão que segura o pente acompanha o pente: gira junto e fecha exatamente no ponto da pegada (as curvas da mão e
+    // do pente não passam pelos mesmos pontos entre as poses-chave).
+    if (hold > 0) {
+      const m = rig.mag.grp.position; handRoll.setFromEuler(handEuler.set(pose[15] * hold, 0, pose[20] * hold)); h.hand.quaternion.premultiply(handRoll);
+      const grab = handTmp.fromArray(h.magOff).applyEuler(handEuler.set(pose[15], 0, pose[20])).add(m);
+      grab.sub(handTmp2.copy(h.hand.userData.C).multiplyScalar(h.hand.scale.x).applyQuaternion(h.hand.quaternion)); h.hand.position.lerp(grab, hold);
+    }
+    fitSleeve(h.sleeve, h.hand, h.elbow);
+  });
 }
 const VM_RIG = {};
 function rigPart(rig, name, list, pivot) {
@@ -3413,11 +3628,15 @@ function buildGunRig(k, g) {
   if (parts.bolt.length) { const c = partsCenter(parts.bolt); rig.bolt = rigPart(rig, 'bolt', parts.bolt, sp.axis != null ? [0, sp.axis, c[2]] : c); rig.knob = parts.bolt.map(p => partBox(p)[0]).sort((a, b) => b[0] - a[0])[0]; }
   rig.pump = rigPart(rig, 'pump', parts.pump);
   for (const a of ARMS[k]) {
-    const hand = new THREE.Group(); hand.add(new THREE.Mesh(gloveGeo, skinMat)); hand.position.set(...a.hand); g.add(hand);
+    const hand = placeHand(buildHand(a.left, a.ch), { ...a, elbow: a.to }); g.add(hand);
     const sleeve = new THREE.Mesh(knifeArmGeo, sleeveMat); g.add(sleeve);
-    rig.hands.push({ hand, sleeve, rest: new V3(...a.hand), wrist: new V3(a.from[0] - a.hand[0], a.from[1] - a.hand[1], a.from[2] - a.hand[2]), elbow: new V3(...a.to) });
+    const h = { hand, sleeve, rest: hand.position.clone(), restQ: hand.quaternion.clone(), elbow: new V3(...a.to) }; h.chan = handChan(h); rig.hands.push(h);
+    const gf = GRAB_FIT[k] || {};
+    if (a.left && gf.mag) { h.magQ = handQuat(true, gf.mag[0], gf.mag[1]); h.magOff = vAdd(MAG_GRAB, gf.mag[2]); h.magCurl = gf.mag[3]; }
+    if (a.left && gf.bolt) { h.boltQ = handQuat(true, gf.bolt[0], gf.bolt[1]); h.boltOff = gf.bolt[2]; h.boltCurl = gf.bolt[3]; }
   }
-  if (sp.kind === 'pump') { const s = boxModel([[[-.011, -.011, -.03], [.011, .011, .012], 0xb3262a], [[-.0115, -.0115, .012], [.0115, .0115, .026], 0xc9a23e]]); s.position.set(0, .04, -.03); s.visible = false; rig.hands[0].hand.add(s); rig.shell = s; }
+  // Cartucho da escopeta: deitado no canal da mão esquerda (na palma, entre os dedos), não atravessando o dorso.
+  if (sp.kind === 'pump') { const s = boxModel([[[-.011, -.011, -.03], [.011, .011, .012], 0xb3262a], [[-.0115, -.0115, .012], [.0115, .0115, .026], 0xc9a23e]]); const h = rig.hands[0].hand; s.position.copy(h.userData.C); s.rotation.y = Math.PI / 2; s.visible = false; h.add(s); rig.shell = s; }
   rig.anim = buildGunAnims(rig); applyGunPose(rig, GUN_REST); VM_RIG[k] = rig;
   return rig;
 }
@@ -3439,7 +3658,7 @@ function gunCues(anim) {
 }
 
 for (const k of ALL_WEAPONS) {
-  const g = new THREE.Group(), rigged = !!VM_PARTS[k] && k !== 'pistol';
+  const g = new THREE.Group(), rigged = !!VM_PARTS[k] && k !== 'pistol'; g.userData.armSpace = true;
   if (GUNS[k].length) vmSkin[k] = 'padrao';
   if (rigged) buildGunRig(k, g);
   else if (k === 'pistol') {
@@ -3448,7 +3667,8 @@ for (const k of ALL_WEAPONS) {
     const at = partsCenter(parts.mag), grp = new THREE.Group(), mesh = meshOf(parts.mag); grp.position.set(...at); mesh.position.set(-at[0], -at[1], -at[2]); grp.add(mesh); deagleRig.weapon.add(grp); deagleRig.mag = { grp, mesh, rest: at };
   } else if (GUNS[k].length) { vmBody[k] = boxModel(GUNS[k], weaponPbrMat); g.add(vmBody[k]); }
   if (W[k].melee) vmKnives[k] = buildKnifeHands(g, k === 'butterfly');
-  if(k!=='pistol'&&!rigged)ARMS[k].forEach((a, i) => { const before = g.children.length; if (a.hand) { const h = new THREE.Mesh(gloveGeo, skinMat); h.position.set(...a.hand); g.add(h); } limb(g, a.from, a.to, .072, sleeveMat);
+  if(k!=='pistol'&&!rigged)ARMS[k].forEach((a, i) => { const before = g.children.length, h = placeHand(buildHand(a.left, a.ch), { ...a, elbow: a.to }), sleeve = new THREE.Mesh(knifeArmGeo, sleeveMat);
+    g.add(h, sleeve); fitSleeve(sleeve, h, new V3(...a.to));
     if (k === 'medgun' && i === 0) vmMedLeft.push(...g.children.slice(before)); });
   if (MUZZLE[k]) { const f = new THREE.Mesh(k==='pistol'?deagleFlashGeo:flashGeo,k==='pistol'?deagleFlashMat:flashMat); f.position.set(...MUZZLE[k]); f.visible = false; (k==='pistol'?deagleRig.weapon:g).add(f); vmFlash[k] = f; }
   g.visible = false; vmRoot.add(g); vmGuns[k] = g;

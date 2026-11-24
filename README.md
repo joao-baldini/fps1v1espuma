@@ -275,9 +275,29 @@ A arma e o braço aparecem 45% maiores que antes. Eles crescem em torno da mão 
 - **Facas:** ficam um pouco menores, para a mão esquerda não virar um bloco enorme.
 - **Granadas e C4:** sobem um pouco.
 
-As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão em bloco de pele, sem luva, e manga em bloco na cor do boneco (nos times, na cor do time). Com faca, como no CS, aparece só a mão direita.
+As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: luva escura em blocos e manga na cor do boneco (nos times, na cor do time).
 
-**Mãos e braços em primeira pessoa em low poly facetado** (`assets/v2/weapons-v2.js`, mesmo estilo dos bonecos). A luva é feita em blocos de faces planas: palma com dorso chanfrado, protetor dos nós, quatro dedos em duas falanges dobradas em volta do cabo, polegar em dois blocos e tira do punho. O antebraço é um prisma de 6 lados que afina até o pulso, para o fim da manga não tapar a mão. Antes eram cilindros e tubos arredondados.
+**Mãos que seguram de verdade** (`index.html`, `buildHand` e `placeHand`). Cada mão é um punho low poly articulado, em blocos de faces planas: palma com dorso chanfrado, protetor dos nós, punho da luva, quatro dedos com três falanges cada e polegar com duas.
+- **O punho fecha em volta do cabo.** A falange de baixo passa por cima, a do meio desce na frente e a da ponta volta por baixo; o polegar desce atrás do cabo e deita do outro lado. Em cabos altos (guarda-mão, corpo da granada), os dedos abraçam só até onde alcançam.
+- **A mão é orientada pelo cabo e pelo cotovelo.** O eixo vai do indicador ao mindinho; o dorso fica para fora na mão do gatilho e para baixo na mão de apoio. A manga sai do pulso da luva até o cotovelo, então punho, mão e antebraço ficam sempre ligados. A mão esquerda é a mesma montagem espelhada (antes era a direita copiada, virada para baixo).
+- **O indicador fica no gatilho.** Na mão do gatilho ele fica meio estendido, e cada pegada tem o quanto o polegar fecha.
+- **Medido em cada modelo.** `GRIP_FIT` guarda, por arma, o ponto do cabo e as medidas do canal; `GRAB_FIT` guarda como a mão esquerda pega o pente e a alavanca do ferrolho: orientação, ponto e quanto fecha. Os valores saíram de uma busca fora do jogo que testa cada triângulo da arma contra cada bloco da mão, e também bloco inteiro dentro da arma. O canal escolhido é o menor em que nenhuma peça da mão atravessa a arma, nem a outra mão nas pistolas.
+- **Nas animações.** Ao ir ao pente ou à alavanca, a mão gira para a pegada (canais 22 e 23 da pose) e contorna por baixo da caixa da culatra em vez de atravessá-la. Segurando o pente, ela gira e anda junto com ele. Longe do cabo, os dedos abrem.
+
+| Primeira pessoa | Triângulos da arma dentro da mão (todos os quadros de saque, recarga e ferrolho) |
+|---|---|
+| AK-47 | 2.978 → 79 |
+| M4A4 / M4A1-S | 1.593 / 1.586 → 220 / 230 |
+| Galil | 2.892 → 392 |
+| UMP | 3.820 → 410 |
+| AWP / Scout | 5.078 / 3.178 → 638 / 203 |
+| Karambit (saque, inspeção, cortes, estocada) | 15.055 → 160 |
+| Butterfly | 785 → 106 |
+| Granadas, C4, Estimulante (repouso) | 54 / 13 / 25 / 5 / 42 → 0 |
+
+O que sobra são toques de polegar e pontas de dedo de poucos milímetros nos quadros de transição. A Desert Eagle, a USP-S e a Glock ainda acusam contato da palma e do polegar com os frisos finos da empunhadura; nas vistas de perto, a mão fecha certinho no cabo.
+
+**Braços em low poly facetado** (`assets/v2/weapons-v2.js`, mesmo estilo dos bonecos). O antebraço é um prisma de 6 lados que afina até o pulso.
 
 O bot pode usar qualquer uma das armas de fogo, com sua própria cadência, carregador e recarga. O capacete aparece no personagem; com a opção de colete e capacete ligada, todos nascem protegidos. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância.
 
@@ -285,7 +305,15 @@ As duas facas mostram a mão livre do lado oposto à arma, inclusive na preferê
 
 As facas têm animações distintas de puxada, inspeção, corte e estocada. As duas facas usam o mesmo acabamento das armas, cor chapada com tom fixo por face, mas com contornos em curvas contínuas em vez de blocos. A Butterfly segue a do CS2: lâmina clip point com swedge côncavo até a ponta e chanfro claro no fio, tang com kicker e choil, dois cabos vazados com três rasgos cada, ponta redonda no pino, pinos aparentes e trava no cabo seguro. A mão da Butterfly usa o mesmo bloco, tamanho e lugar da mão das armas (como a Deagle, embaixo à direita), com a lâmina saindo para a frente e para a esquerda. A puxada de 0,8 s é a abertura básica de balisong, no tempo do vídeo de referência: a mão sobe com a faca fechada em pé e de frente para a câmera, o cabo solto cai e dá a volta inteira enquanto a lâmina gira meia volta por cima do punho, os dois cabos fecham na palma e o pulso vira a lâmina para a frente. A inspeção, mais simples, dura 3,0 s: o punho vira a faca de frente, a lâmina aponta para cima com os cabos abertos em V por cerca de 1,3 s, a lâmina dá uma volta e a faca volta ao repouso. O corte vai da direita para a esquerda, o corte de volta faz o caminho inverso e a estocada empurra a lâmina para a frente. Os cortes alternam de direção; o botão direito faz uma estocada. Segurar o botão repete o ataque na cadência da faca. Atacar interrompe a inspeção com uma transição curta. A Deagle tem ferrolho móvel, recuo visual mais forte e som mais grave. São recriações estilizadas em geometria do próprio jogo.
 
-A Karambit segue o contorno da karambit do CS, traçado de uma foto: anel no pomo, cabo com três sulcos para os dedos e guarda, jimping no dorso e garra em curva contínua com chanfro claro no fio côncavo. Pegada, puxada e inspeção foram medidas quadro a quadro num vídeo de referência do CS2. Em repouso aparecem as duas mãos, com o punho direito na horizontal, mais à direita e embaixo, o anel à esquerda e a garra à direita, com a concavidade virada para a frente e vista na diagonal de cima. A puxada dura 0,8 s (24 quadros a 30 fps): a mão sobe pela direita, a faca dá uma volta completa no indicador e desce ao repouso enquanto a esquerda entra. A inspeção dura 3,0 s: levanta o punho e vira a faca no indicador. Na exibição, que dura cerca de 1,2 s, a faca vira no eixo do cabo e fica por cima da mão: o anel em cima, o cabo atravessando o punho e a garra saindo por baixo, curvada para a esquerda. Depois volta girando ao repouso. Cortes e golpe forte cruzam a tela.
+A Karambit segue o contorno da karambit do CS, traçado de uma foto: anel no pomo, cabo com três sulcos para os dedos e guarda, jimping no dorso e garra em curva contínua com chanfro claro no fio côncavo. Pegada, puxada e inspeção foram medidas quadro a quadro num vídeo de referência do CS2. Em repouso aparecem as duas mãos, com o punho direito na horizontal, mais à direita e embaixo, o anel à esquerda e a garra à direita, com a concavidade virada para a frente e vista na diagonal de cima. A puxada dura 0,8 s (24 quadros a 30 fps): a mão sobe pela direita, a faca dá uma volta completa no indicador e desce ao repouso enquanto a esquerda entra. A inspeção dura 3,0 s: levanta o punho e vira a faca no indicador. Na exibição, que dura cerca de 1,2 s, a faca fica pendurada no anel e o pulso gira para mostrar a lâmina, com a garra curvada para a esquerda. Depois volta girando ao repouso. Cortes e golpe forte cruzam a tela.
+
+**Pegada da karambit.** O indicador passa pelo furo do anel, e o cabo atravessa o punho fechado com os outros três dedos em volta. Quando a faca gira no indicador (puxada e inspeção):
+- médio, anelar, mindinho e polegar abrem, e o cabo passa por fora deles;
+- a ponta do indicador fica reta e o anel desce pelo dedo, então a faca gira abaixo da palma;
+- os dedos só fecham de novo quando o cabo volta ao punho;
+- no corte para a esquerda, a mão esquerda abaixa e sai do caminho da lâmina.
+
+**Pegada da butterfly.** Os dois cabos ficam fechados juntos na mão. Na exibição e com a faca em pé, quem gira é o pulso, em volta do ponto da pegada; antes a faca girava dentro da mão parada. Os dedos abrem quando a lâmina ou o cabo solto saem do punho.
 
 As duas facas usam interpolação cúbica monotônica: a velocidade passa contínua pelas poses-chave, sem o "para e anda" de antes, e nunca ultrapassa os valores capturados. As duas têm respiração leve em repouso, e toda animação termina entrando nesse movimento.
 
