@@ -93,6 +93,8 @@ Antes do Plant the Bomb, a tela de agentes mostra os cinco retratos. Clique num 
 
 Finder, Doctor, Ghost, Brutus e Detector têm modelos próprios de roupa, rosto e equipamento, usados também nos personagens da partida. Retratos e prévia são renderizados a partir desses mesmos modelos, sem imagens ou texturas de personagens externas. A prévia só é desenhada enquanto essa tela está aberta e respeita a preferência por movimento reduzido.
 
+**Modelos em low poly facetado** (`assets/agents/operators-v2.js`, usados pelos operadores e pelos bonecos dos outros modos): todas as formas têm faces planas e poucos lados, sem tubos e bolas lisas. O braço tem deltoide, braço e antebraço em prismas de 6 lados, cotovelo e punho da manga. A mão é uma luva em blocos: palma, os quatro dedos dobrados em volta do cabo, os nós dos dedos e o polegar por cima. A cabeça tem crânio facetado, mandíbula em bloco chanfrado, maçãs do rosto e nariz em cunha. Os pontos de ombro, cotovelo e empunhadura são os mesmos de antes, então as animações e as armas continuam encaixadas.
+
 A habilidade fica na tecla **X**. Depois de usada, ela recarrega em 45 s e volta pronta no começo de cada rodada. Os operadores de um mesmo time são sempre diferentes; os bots sorteiam entre os que sobram.
 
 O ícone da habilidade fica no centro, embaixo: drone (Finder), cruz de cura (Doctor), mão fazendo "shh" (Ghost), escudo (Brutus) e sirene de alarme (Detector). Disponível, ele fica branco e contornado. Durante o efeito do Ghost ou do Brutus, ganha a cor do operador com os segundos restantes. Depois, fica esmaecido com a contagem do cooldown e dá um aviso sonoro quando volta.

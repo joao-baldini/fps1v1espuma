@@ -1,4 +1,5 @@
-// AIM.DUELO 2.0 — Articulated Humanoid Tactical Operators (High-Detail Procedural Geometry)
+// AIM.DUELO 2.0 — Operadores e bonecos em low poly facetado: toda forma tem faces planas e poucos lados (nada de tubos e
+// bolas lisas), braços com ombro, cotovelo, punho de manga e mão de verdade (palma, dedos fechados na empunhadura e polegar).
 (() => {
   'use strict';
 
@@ -68,6 +69,8 @@
   // Smooth lofted tube/limb between arbitrary cross-section rings
   // rings: array of { pos:[x,y,z], rx, rz, dir?:[x,y,z] }
   function addLoft(out, rings, segs, hex, capStart = true, capEnd = true, smooth = true) {
+    // Low poly: sempre facetado (normal por face) e no máximo 8 lados; tubos finos (antena) com 4.
+    smooth = false; segs = Math.max(4, Math.min(segs, rings[0].rx < .012 ? 4 : 8));
     const [r, g, bl] = hexRGB(hex);
     const ringPts = [];
     const ringNorms = [];
@@ -159,6 +162,7 @@
 
   // Ellipsoid helper for sculpted cranium, shoulders, kneepads, helmet dome
   function addEllipsoid(out, cx, cy, cz, rx, ry, rz, segsW, segsH, hex, hemiY = false) {
+    segsW = Math.min(segsW, 8); segsH = Math.min(segsH, 6);
     const [r, g, bl] = hexRGB(hex);
     const startH = hemiY ? Math.floor(segsH / 2) : 0;
     const pts = [];
@@ -178,8 +182,10 @@
       for (let ix = 0; ix < segsW; ix++) {
         const ixn = (ix + 1) % segsW;
         const a = pts[iy][ix], b = pts[iy][ixn], c = pts[iy + 1][ixn], d = pts[iy + 1][ix];
+        const mid = [(a.p[0] + c.p[0]) / 2 - cx, (a.p[1] + c.p[1]) / 2 - cy, (a.p[2] + c.p[2]) / 2 - cz];
+        const fn = norm(cross(sub(c.p, a.p), sub(b.p, a.p))), flat = dot(fn, mid) < 0 ? fn.map(v => -v) : fn;
         out.p.push(...a.p, ...b.p, ...c.p, ...a.p, ...c.p, ...d.p);
-        out.n.push(...a.n, ...b.n, ...c.n, ...a.n, ...c.n, ...d.n);
+        for (let k = 0; k < 6; k++) out.n.push(...flat);
         out.c.push(r, g, bl, r, g, bl, r, g, bl, r, g, bl, r, g, bl, r, g, bl);
       }
     }
@@ -189,6 +195,47 @@
         pushTri(out, center, base[ix].p, base[(ix + 1) % segsW].p, r, g, bl);
       }
     }
+  }
+
+  // Caixa chanfrada orientada: centro c, eixos (direita, cima, frente) e meias medidas; faces planas.
+  function addOBox(out, c, rt, up, fw, hx, hy, hz, hex, cut = 0.006) {
+    const [r, g, bl] = hexRGB(hex), k = Math.min(cut, hx * .35, hz * .35);
+    const ring = [[-hx + k, -hz], [hx - k, -hz], [hx, -hz + k], [hx, hz - k], [hx - k, hz], [-hx + k, hz], [-hx, hz - k], [-hx, -hz + k]];
+    const at = (x, y, z) => [c[0] + rt[0] * x + up[0] * y + fw[0] * z, c[1] + rt[1] * x + up[1] * y + fw[1] * z, c[2] + rt[2] * x + up[2] * y + fw[2] * z];
+    const bot = ring.map(([x, z]) => at(x, -hy, z)), top = ring.map(([x, z]) => at(x, hy, z)), mid = at(0, 0, 0);
+    const tri = (a, b2, c2) => { let n = norm(cross(sub(b2, a), sub(c2, a))); const m = [(a[0] + b2[0] + c2[0]) / 3 - mid[0], (a[1] + b2[1] + c2[1]) / 3 - mid[1], (a[2] + b2[2] + c2[2]) / 3 - mid[2]]; if (dot(n, m) < 0) n = n.map(v => -v); pushTri(out, a, b2, c2, r, g, bl, n); };
+    for (let i = 0; i < 8; i++) { const j = (i + 1) % 8; tri(bot[i], top[j], bot[j]); tri(bot[i], top[i], top[j]); }
+    for (let i = 1; i < 7; i++) { tri(bot[0], bot[i], bot[i + 1]); tri(top[0], top[i + 1], top[i]); }
+  }
+  // Base ortonormal com a frente em f e o "cima" o mais perto possível de u.
+  function frame(f, u = [0, 1, 0]) { const fw = norm(f); let rt = cross(u, fw); if (Math.hypot(...rt) < 1e-4) rt = cross([0, 0, 1], fw); rt = norm(rt); return { rt, up: norm(cross(fw, rt)), fw }; }
+  // Braço low poly: deltoide facetado, braço e antebraço em prismas de 6 lados, cotovelo, punho da manga e a mão
+  // (luva) fechada na empunhadura: palma, quatro dedos dobrados num bloco e o polegar por cima.
+  function addArm(out, shoulder, elbow, hand, s, side) {
+    addEllipsoid(out, shoulder[0], shoulder[1], shoulder[2], 0.078, 0.07, 0.08, 6, 4, s.cloth);
+    const prism = (a, b, ra, rb, hex) => addLoft(out, [{ pos: a, rx: ra, rz: ra * 1.08 }, { pos: b, rx: rb, rz: rb * 1.08 }], 6, hex, true, true);
+    prism(shoulder, elbow, 0.064, 0.054, s.cloth);
+    addEllipsoid(out, elbow[0], elbow[1], elbow[2], 0.054, 0.052, 0.056, 6, 4, s.cloth);
+    const dir = norm(sub(hand, elbow)), len = Math.hypot(...sub(hand, elbow)), wrist = [hand[0] - dir[0] * 0.05, hand[1] - dir[1] * 0.05, hand[2] - dir[2] * 0.05];
+    prism(elbow, wrist, 0.052, 0.042, s.cloth2);
+    // Punho da manga: anel mais largo antes do pulso.
+    const cuffA = [wrist[0] - dir[0] * 0.05, wrist[1] - dir[1] * 0.05, wrist[2] - dir[2] * 0.05];
+    prism(cuffA, wrist, 0.05, 0.05, s.cloth);
+    void len;
+    // Mão: a frente segue o antebraço; o polegar fica do lado de dentro (para o corpo).
+    const { rt, up, fw } = frame(dir), inward = side > 0 ? -1 : 1, glove = s.gear;
+    const palm = [wrist[0] + fw[0] * 0.035, wrist[1] + fw[1] * 0.035, wrist[2] + fw[2] * 0.035];
+    addOBox(out, palm, rt, up, fw, 0.036, 0.02, 0.04, glove, 0.008);
+    // Dedos dobrados para baixo em volta do cabo: bloco inclinado à frente e abaixo da palma.
+    const fingersC = [palm[0] + fw[0] * 0.045 - up[0] * 0.022, palm[1] + fw[1] * 0.045 - up[1] * 0.022, palm[2] + fw[2] * 0.045 - up[2] * 0.022];
+    const curl = frame([fw[0] - up[0] * .9, fw[1] - up[1] * .9, fw[2] - up[2] * .9], up);
+    addOBox(out, fingersC, curl.rt, curl.up, curl.fw, 0.034, 0.016, 0.026, glove, 0.006);
+    // Nós dos dedos: faixa um pouco mais clara por cima.
+    addOBox(out, [palm[0] + fw[0] * 0.03 + up[0] * 0.012, palm[1] + fw[1] * 0.03 + up[1] * 0.012, palm[2] + fw[2] * 0.03 + up[2] * 0.012], rt, up, fw, 0.034, 0.008, 0.012, s.vest, 0.004);
+    // Polegar por cima do cabo, apontando para frente.
+    const thumbC = [palm[0] + rt[0] * inward * 0.03 + fw[0] * 0.03 + up[0] * 0.01, palm[1] + rt[1] * inward * 0.03 + fw[1] * 0.03 + up[1] * 0.01, palm[2] + rt[2] * inward * 0.03 + fw[2] * 0.03 + up[2] * 0.01];
+    const th = frame([fw[0] + rt[0] * inward * .35, fw[1] + rt[1] * inward * .35, fw[2] + rt[2] * inward * .35], up);
+    addOBox(out, thumbC, th.rt, th.up, th.fw, 0.012, 0.012, 0.028, glove, 0.004);
   }
 
   function toGeometry(THREE, out) {
@@ -341,52 +388,23 @@
       addBevelBox(out, 0, 1.37, 0.21, 0.24, 0.055, 0.12, s.accent, 0.012);
     }
 
-    // Sculpted Articulated Arms + Tactical Gloves gripping the weapon
-    // Right arm (trigger arm): shoulder -> elbow -> trigger grip [.16, 1.21, -.11]
-    addEllipsoid(out, 0.24, 1.39, 0, 0.072, 0.075, 0.078, 8, 6, s.cloth);
-    addLoft(out, [
-      { pos: [0.24, 1.39, 0], rx: 0.065, rz: 0.068 },
-      { pos: [0.31, 1.25, -0.02], rx: 0.058, rz: 0.06 },
-      { pos: [0.315, 1.15, -0.025], rx: 0.054, rz: 0.056 },
-    ], 8, s.cloth, true, true, true);
-    addLoft(out, [
-      { pos: [0.315, 1.15, -0.025], rx: 0.052, rz: 0.054 },
-      { pos: [0.24, 1.185, -0.07], rx: 0.046, rz: 0.048 },
-      { pos: [0.175, 1.21, -0.105], rx: 0.04, rz: 0.042 },
-    ], 8, s.cloth2, true, true, true);
-    // Right tactical glove
-    addEllipsoid(out, 0.165, 1.215, -0.115, 0.045, 0.042, 0.055, 8, 6, s.gear);
-
-    // Left arm (support arm): shoulder -> elbow -> forend grip [.10, 1.25, -.40]
-    addEllipsoid(out, -0.24, 1.39, 0, 0.072, 0.075, 0.078, 8, 6, s.cloth);
-    addLoft(out, [
-      { pos: [-0.24, 1.39, 0], rx: 0.065, rz: 0.068 },
-      { pos: [-0.28, 1.24, -0.11], rx: 0.056, rz: 0.058 },
-      { pos: [-0.275, 1.16, -0.19], rx: 0.052, rz: 0.054 },
-    ], 8, s.cloth, true, true, true);
-    addLoft(out, [
-      { pos: [-0.275, 1.16, -0.19], rx: 0.05, rz: 0.052 },
-      { pos: [-0.09, 1.21, -0.31], rx: 0.044, rz: 0.046 },
-      { pos: [0.09, 1.25, -0.39], rx: 0.038, rz: 0.04 },
-    ], 8, s.cloth2, true, true, true);
-    // Left tactical glove
-    addEllipsoid(out, 0.105, 1.25, -0.405, 0.044, 0.04, 0.055, 8, 6, s.gear);
+    // Braços low poly segurando a arma (mesmos pontos de antes: ombro, cotovelo e empunhadura).
+    addArm(out, [0.24, 1.39, 0], [0.315, 1.15, -0.025], [0.165, 1.215, -0.115], s, 1);   // braço do gatilho
+    addArm(out, [-0.24, 1.39, 0], [-0.275, 1.16, -0.19], [0.105, 1.25, -0.405], s, -1);  // braço de apoio (guarda-mão)
 
     return toGeometry(THREE, out);
   }
 
   function buildHead(THREE, s, opId = null) {
     const out = { p: [], n: [], c: [] };
-    // Sculpted anatomical cranium + jaw
-    addEllipsoid(out, 0, 1.66, 0, 0.118, 0.135, 0.128, 12, 10, s.skin);
-    // Chin / jawline taper
-    addEllipsoid(out, 0, 1.585, -0.035, 0.082, 0.068, 0.092, 10, 8, s.skin);
-    // Nose bridge
-    addBevelBox(out, 0, 1.635, -0.125, 0.026, 0.045, 0.032, s.skin, 0.008);
-    // Ears
-    for (const side of [-1, 1]) {
-      addEllipsoid(out, side * 0.122, 1.645, 0.005, 0.018, 0.035, 0.026, 6, 6, s.skin);
-    }
+    // Cabeça low poly: crânio facetado, mandíbula em bloco chanfrado (queixo reto), maçãs do rosto, nariz em cunha.
+    addEllipsoid(out, 0, 1.675, 0.004, 0.116, 0.12, 0.124, 8, 6, s.skin);
+    addBevelBox(out, 0, 1.6, -0.018, 0.17, 0.1, 0.19, s.skin, 0.045);
+    addBevelBox(out, 0, 1.565, -0.058, 0.1, 0.045, 0.1, s.skin, 0.03);
+    for (const side of [-1, 1]) addBevelBox(out, side * 0.062, 1.63, -0.098, 0.05, 0.04, 0.03, s.skin, 0.01);
+    addOBox(out, [0, 1.632, -0.118], [1, 0, 0], norm([0, 1, 0.35]), norm([0, -0.35, 1]), 0.014, 0.026, 0.018, s.skin, 0.005);
+    // Orelhas
+    for (const side of [-1, 1]) addBevelBox(out, side * 0.118, 1.645, 0.008, 0.02, 0.05, 0.036, s.skin, 0.006);
 
     // Tactical face gear / mask / goggles depending on operator/team
     if (opId === 'finder') {
