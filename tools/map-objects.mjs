@@ -91,6 +91,29 @@ export function extractMapObjects(map, { packMap, nav, navHeightsAt } = {}) {
   const frame = pr => { const r = rotation(pr.angles), s = pr.scale || 1; return p => convert(add(r(mul(p, s)), pr.origin)); };
   const drop = new Set(), extraFaces = [];
 
+  // 0. Brushes que no CS não colidem (func_brush com Solidity 1, func_illusionary, func_lod): dava para atravessar o
+  // bloco desenhado. Agora colidem como o desenho, menos vegetação, água, vidro, decalque fino e onde a navegação do CS
+  // passa por dentro (passagem de verdade no jogo original).
+  {
+    const entFaces = new Map();
+    for (const f of map.polygons) if (f.src?.ent) (entFaces.get(f.src) || entFaces.set(f.src, []).get(f.src)).push(f);
+    const SOFT = /water|foliage|leaf|leaves|bush|ivy|vine|decal|overlay|tree|grass|cloth|curtain|rope|wire|cable|sky|light|beam|glass|window/;
+    const toSource = p => [p[0] / .0254 + map.center[0], -p[2] / .0254 + map.center[1], p[1] / .0254 + map.center[2]];
+    let solidified = 0;
+    for (const h of map.hulls) {
+      if (!h.brush?.nonSolid || h.mask) continue;
+      const faces = entFaces.get(h.src) || []; if (!faces.length) continue;
+      if (faces.some(f => f.glass || f.water || f.pat === P.foliage || SOFT.test(f.material || f.srcMaterial || ''))) continue;
+      const ext = sub(h.max, h.min); if (Math.min(ext[0], ext[2]) < .03 || ext[1] < .05) continue;
+      if (nav && navHeightsAt) {
+        const c = toSource(mul(add(h.min, h.max), .5)), lo = h.min[1] / .0254 + map.center[2], hi = h.max[1] / .0254 + map.center[2];
+        if (navHeightsAt(nav, c[0], c[1]).some(z => z > lo - 8 && z < hi)) continue;
+      }
+      h.mask = 3; solidified++;
+    }
+    report.solidifiedBrushes = solidified;
+  }
+
   // 1. Grades com .phy: o bloco do casco sai do desenho; entram barras. Sólida no CS: o corpo continua barrado, o tiro passa.
   const groups = new Map();
   for (const f of map.polygons) if (f.src?.prop && SEE_THROUGH.test(f.src.prop.model)) { (groups.get(f.src) || groups.set(f.src, { faces: [], hulls: [] }).get(f.src)).faces.push(f); }

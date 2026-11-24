@@ -217,6 +217,28 @@ Análise feita nos BSPs de Neon, Forge, Sable, Lily, Calamari, Coldwater e Crown
 
 **No pacote do jogo.** Cada objeto ganha um trecho próprio de índices no fim da malha (`mesh.world` marca onde termina o mundo fixo) e a lista das suas peças de colisão (`meta.objects`). A porta leva também as duas posições abertas, giradas ±90° na dobradiça, que começam desligadas. A colisão tem um bit novo, 8 = vidro: `ray(o, d, limite, 8)` acha as vidraças no caminho da bala, e o tiro normal (bit 2) passa por elas. No runtime, `setDoor`, `breakGlass`, `restoreGlass` e `resetObjects` só trocam as máscaras. A navegação é feita com as portas abertas (`withDoorsOpen`), e os bots abrem a porta quando encostam nela.
 
+## Blocos que dava para atravessar
+
+Auditoria em todos os mapas convertidos: para cada face lateral visível na altura do corpo, ao lado de onde se anda, o teste verifica se há colisão logo atrás dela e faz um boneco andar até a face. A tabela mostra os lugares que ele atravessava:
+
+| Mapa | Antes | Depois |
+|---|---|---|
+| Neon | 19 | 5 |
+| Forge | 65 | 0 |
+| Sable | 8 | 0 |
+| Calamari | 25 | 17 (formas aproximadas do `.phy`, como sofá e fonte) |
+| Coldwater | 34 | 4 (rampas de terreno muito inclinadas) |
+| Crown | 75 | 5 |
+
+Causas e correções:
+- **Objetos marcados como não sólidos no CS** (pedras, pedregulhos, muros de pedra, contêineres, escombros de concreto, caixas elétricas, mesas): eram desenhados sem colisão. Coisa rígida agora colide sempre. Grade, gradil e o que não é rígido continuam passáveis, como no original.
+- **Objetos tortos:** qualquer giro que não fosse múltiplo de 90° perdia a colisão, inclusive o caixote deitado de lado. Agora só fica sem colisão o que está a mais de 35° de qualquer eixo (deitado de verdade).
+- **Caixotes com a medida no nome:** colidem sempre.
+- **`func_brush`/`func_illusionary` que não colidem no CS:** ganham a colisão do próprio brush (`keepNonSolid` no compilador). Ficam de fora vegetação, água, vidro, cortina, fio, decalque fino e os lugares por onde a navegação do CS passa por dentro.
+- **Fundo preto das janelas** (`cs_italy/black`, as janelas tampadas do Coldwater): virava um painel cinza liso. Agora é vidro escuro de janela e não dá mais para entrar por ele.
+
+**Navegação.** A poda dos caminhos dos bots agora testa cada ligação também chegando já andando (meio passo antes, com velocidade) e com mais deslocamentos de lado. As rotas seguidas pelos bots são verificadas a partir das duas bases.
+
 ## Movimento em pisos, escadas e rampas
 
 A colisão nativa agora separa o movimento horizontal do apoio dos pés. O corpo é varrido acima da janela normal de degrau; o apoio procura as superfícies sob a mesma largura usada na colisão, inclusive as bordas. Assim, as costuras dos triângulos e espelhos dos degraus não funcionam como paredes laterais. A altura máxima de degrau continua em 0,5 m; paredes maiores e tetos baixos continuam sólidos. A queda e o salto mantêm a resolução de colisão vertical.

@@ -2097,7 +2097,8 @@ test('Plant the Bomb bots: the map study finds attacker entrances, hidden gather
     assert.ok(site.tEntries.length >= 1 && site.tEntries.length <= 3, map);
     for (const e of site.tEntries) {
       const toSite = Math.hypot(e.stage.x - site.center.x, e.stage.z - site.center.z);
-      assert.ok(toSite > 8, map + ': reunião longe do site ' + toSite);
+      // A reunião fica a 13–19 m de caminhada do site; em linha reta, com o caminho fazendo curva, pelo menos 7,5 m.
+      assert.ok(toSite > 7.5, map + ': reunião longe do site ' + toSite);
       for (const h of e.holds) assert.ok(Math.hypot(h.x - e.x, h.z - e.z) >= 3.5, map + ': defensor não fica em cima da entrada');
     }
     let t = step(10000, 200); while (ev('DM.phase') !== 'live') t = step(t, 500, () => { g.P.alive = false; });

@@ -234,12 +234,12 @@ export function compileSourceMap(file,key,options={}){
         }
       }else{emit(ps.map(transform),n,material,'world',f.tex);report.worldFaces++;}
     }
-    if(solid)for(const id of bsp.modelBrushes(model)){
+    if(solid||options.keepNonSolid)for(const id of bsp.modelBrushes(model)){
       const b=bsp.brushes[id],sides=bsp.sides.slice(b.side,b.side+b.count),mask=(b.contents&0x10000)?1:(b.contents&(1|2|8|0x4000))?3:0;
       if(!mask)continue;
       const ps=sides.map(s=>bsp.planes[s.plane]),bb=brushBounds(ps);if(bb.some(v=>Math.abs(v)>=32768)||bb[5]<base-512)continue;
       const transformed=ps.map(p=>{const n=rot(p.slice(0,3));return [...n,p[3]+dot(n,origin)];});
-      const rb=bounds(corners(bb).map(transform));BRUSH={id,contents:b.contents};collision(transformed,rb,mask);BRUSH=null;report.brushes++;
+      const rb=bounds(corners(bb).map(transform));BRUSH={id,contents:b.contents,nonSolid:!solid};collision(transformed,rb,solid?mask:0);BRUSH=null;report.brushes++;
     }
   };
   drawModel(0);

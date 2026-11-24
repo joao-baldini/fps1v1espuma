@@ -59,7 +59,7 @@ const RULES = [
   [/palm_tree/, () => ({ tree: { trunk: 16, height: 330, crown: [200, 200, 60], crownAt: 290 } })],
   [/tree/, () => ({ tree: { trunk: 22, height: 320, crown: [240, 240, 200], crownAt: 150 } })],
   [/bush|shrub/, () => ({ size: [72, 72, 56], color: C.foliage, pat: P.foliage, mask: 0 })],
-  [/(rock|stones)_cluster|flat_stones|pebble/, () => ({ size: [96, 96, 10], color: C.rock, pat: P.stone, mask: 0 })],
+  [/(rock|stones)_cluster|flat_stones|pebble/, () => ({ size: [96, 96, 10], color: C.rock, pat: P.stone })],
   [/rock|boulder|cliff/, () => ({ size: [112, 96, 72], color: C.rock, pat: P.stone })],
   [/forklift/, () => ({ size: [110, 48, 84], color: C.car, pat: P.metal })],
   [/truck/, () => ({ size: [300, 100, 120], color: C.car, pat: P.metal })],
@@ -154,7 +154,15 @@ function approximateProps(map, nav, report, extraRules = []) {
     }
     const xf = p => add(rot(mul(p, s)), prop.origin);
     const out = [];
-    let mask = prop.solid && !tilted ? (spec.mask ?? 3) : 0;
+    // Antes, objeto "não sólido" no CS ou um pouco torto ficava sem colisão e dava para atravessar o bloco. Agora só
+    // fica sem colisão o que está deitado de verdade (mais de 35°) ou onde a navegação do CS passa por dentro (abaixo).
+    // "Deitado de verdade" = o eixo de cima do modelo a mais de 35° de qualquer eixo (caixote de lado, girado 90°, é reto).
+    const upAxis = rot([0, 0, 1]), steep = Math.max(...upAxis.map(Math.abs)) < Math.cos(35 * Math.PI / 180);
+    // Coisa rígida (concreto, bloco, pedra, caixote, barril, caixa elétrica, pilar, barreira, saco de areia): colide sempre,
+    // mesmo marcada como não sólida no CS ou com a navegação do CS passando por ela (no CS ela é atravessável, aqui não).
+    const rigid = /concrete|cinder|breeze|block|crate|barrel|drum|box|pallet|rock|stone|boulder|cliff|pillar|column|container|electrical|generator|ac_unit|dumpster|barrier|jersey|sandbag|planter|table|desk|bench|couch|sofa/.test(prop.model);
+    // Grade, gradil e o resto que não é rígido continuam como no CS: não sólido lá, sem colisão aqui.
+    let mask = steep || (!prop.solid && !rigid) ? 0 : (spec.mask ?? 3);
     if (spec.custom) out.push(...spec.custom((x0, x1, y0, y1, z0, z1, cyl) => shape(x0, x1, y0, y1, z0, z1, xf, rot, cyl)));
     else if (spec.tree) {
       const t = spec.tree, r = t.trunk / 2;
@@ -169,7 +177,8 @@ function approximateProps(map, nav, report, extraRules = []) {
     } else {
       let [L, W, H] = spec.size, x0 = -L / 2, x1 = L / 2, y0 = -W / 2, y1 = W / 2;
       const baseZ = prop.origin[2];
-      if ((mask & 1) && !spec.exact) {
+      // Medida exata (caixote, barril com a medida no nome): colide sempre, mesmo marcado como não sólido no CS.
+      if ((mask & 1) && !spec.exact && !rigid) {
         // The navigation mesh is ground truth for where players walk: pick the anchor that covers the least walkable
         // floor, shrink once if needed, and leave the prop out when it still blocks a walkway.
         const options = [[x0, x1]];
@@ -180,7 +189,8 @@ function approximateProps(map, nav, report, extraRules = []) {
         if (best.o > .3) {
           const k = .6, cxm = (x0 + x1) / 2, half = (x1 - x0) * k / 2; x0 = cxm - half; x1 = cxm + half; y0 *= k; y1 *= k;
           const o = overlap(xf, x0, x1, y0, y1, baseZ);
-          if (o > .3) { stats.dropped++; continue; }
+          if (o > .3 && !prop.solid) { mask = 0; [x0, x1, y0, y1] = [cxm - half / k, cxm + half / k, y0 / k, y1 / k]; }
+          else if (o > .3) { stats.dropped++; continue; }
           stats.shrunk++;
         }
       }
@@ -193,7 +203,7 @@ function approximateProps(map, nav, report, extraRules = []) {
     for (const piece of out) {
       if (!piece.noDraw) for (const f of piece.faces) {
         const pts = f.p, ax = Math.abs(f.n[0]) > Math.abs(f.n[1]) && Math.abs(f.n[0]) > Math.abs(f.n[2]) ? [1, 2] : Math.abs(f.n[1]) > Math.abs(f.n[2]) ? [0, 2] : [0, 1];
-        map.polygons.push({ p: pts.map(convert), n: [f.n[0], f.n[2], -f.n[1]], c: piece.color, glass: !!piece.glass, tag: 'prop', uv: piece.faceUv && f.uv ? f.uv : pts.map(p => [p[ax[0]] / 64, p[ax[1]] / 64]), pat: piece.pat });
+        map.polygons.push({ p: pts.map(convert), n: [f.n[0], f.n[2], -f.n[1]], c: piece.color, glass: !!piece.glass, tag: 'prop', uv: piece.faceUv && f.uv ? f.uv : pts.map(p => [p[ax[0]] / 64, p[ax[1]] / 64]), pat: piece.pat , src: { approx: prop.model, tilted, solid: prop.solid, mask: piece.mask } });
       }
       if (piece.mask) {
         const pts = piece.faces.flatMap(f => f.p).map(convert), lo = [0, 1, 2].map(i => Math.min(...pts.map(p => p[i]))), hi = [0, 1, 2].map(i => Math.max(...pts.map(p => p[i])));
@@ -248,10 +258,11 @@ function pruneNavigation(map) {
   };
   const walk = (a, b) => {
     const ux = X[b] - X[a], uz = Z[b] - Z[a], ul = Math.hypot(ux, uz) || 1;
-    for (const off of [-.06, 0, .06]) {
-      const x = X[a] - uz / ul * off, z = Z[a] + ux / ul * off, y = native.ground(x, z, H[a]);
-      if (native.overlap(x, y + .005, z, 1.8, .3)) continue;
-      const e = { pos: new V(x, y + .002, z), vel: new V(), h: 1.8, onGround: true }; let ok = false;
+    // Do centro e de lado (até 12 cm), e também chegando já andando (meio passo antes do nó, com velocidade), como o bot.
+    for (const [off, back] of [[-.12, 0], [-.06, 0], [0, 0], [.06, 0], [.12, 0], [0, .3], [-.08, .3], [.08, .3]]) {
+      const x = X[a] - uz / ul * off - ux / ul * back, z = Z[a] + ux / ul * off - uz / ul * back, y = native.ground(x, z, H[a]);
+      if (Math.abs(y - H[a]) > .6 || native.overlap(x, y + .005, z, 1.8, .3)) continue;
+      const e = { pos: new V(x, y + .002, z), vel: new V(back ? ux / ul * 4 : 0, 0, back ? uz / ul * 4 : 0), h: 1.8, onGround: true }; let ok = false;
       for (let f = 0; f < 250 && !ok; f++) { const dx = X[b] - e.pos.x, dz = Z[b] - e.pos.z, d = Math.hypot(dx, dz); if (d < .12) { ok = Math.abs(e.pos.y - H[b]) < .6; break; } step(e, dx / d, dz / d, Math.min(4.5, d * 10)); }
       if (!ok) return false;
     }
@@ -272,8 +283,10 @@ function pruneNavigation(map) {
 // spawn to the defenders' spawn and to every bombsite, followed continuously with the game's movement. Wherever the
 // body stops (a cell that only just fits beside a slanted clip), that link is removed and the route is searched again.
 function followRoutes(map, stepFn, V) {
-  const native = new globalThis.SourceMaps.NativeMap(packMap(map)), nav = native.buildNav(1, 1), from = map.t[0];
-  const targets = [map.ct[0], ...map.sites.map(s => [(s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2, 0, NaN])];
+  const native = new globalThis.SourceMaps.NativeMap(packMap(map)), nav = native.buildNav(1, 1);
+  const sites = map.sites.map(s => [(s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2, 0, NaN]);
+  // Rotas dos dois lados: atacantes até a base dos defensores e os bombsites, defensores até a base dos atacantes e os bombsites.
+  const routes = [[map.t[0], map.ct[0]], ...sites.map(g => [map.t[0], g]), [map.ct[0], map.t[0]], ...sites.map(g => [map.ct[0], g])];
   const bfs = (start, goal) => {
     const parent = new Int32Array(nav.x.length).fill(-2), queue = [start]; parent[start] = -1;
     for (let head = 0; head < queue.length && parent[goal] === -2; head++) { const id = queue[head]; for (let d = 0; d < 4; d++) { const next = nav.links[id * 4 + d]; if (next >= 0 && parent[next] === -2) { parent[next] = id; queue.push(next); } } }
@@ -282,12 +295,12 @@ function followRoutes(map, stepFn, V) {
   const unlink = (a, b) => { for (let d = 0; d < 4; d++) { if (nav.links[a * 4 + d] === b) nav.links[a * 4 + d] = -1; if (nav.links[b * 4 + d] === a) nav.links[b * 4 + d] = -1; } };
   let cut = 0;
   const step = (e, wx, wz, maxS) => stepFn(e, wx, wz, maxS, native);
-  for (const goal of targets) {
+  for (const [from, goal] of routes) {
     for (let attempt = 0; attempt < 60; attempt++) {
       const y0 = native.ground(from[0], from[1], from[3]), e = { pos: new V(from[0], y0, from[1]), vel: new V(), h: 1.8, onGround: true };
       const gy = Number.isFinite(goal[3]) ? goal[3] : native.ground(goal[0], goal[1]);
       const start = native.cell(nav, e.pos.x, e.pos.z, e.pos.y), end = native.cell(nav, goal[0], goal[1], gy), path = bfs(start, end);
-      if (!path) throw Error(map.key + ': no route from the attackers to a goal after pruning');
+      if (!path) throw Error(map.key + ': no route between the bases and a goal after pruning');
       let stuck = -1, prev = start;
       for (const id of path) {
         let frames = 0;
@@ -360,7 +373,7 @@ function clusterModelFaces(map, cell) {
 export function importWingmanMap(file, key) {
   if(key==='sanctum')return rebuildSanctum(file);
   const info = WINGMAN_MAPS[key] || FIVE_MAPS[key];
-  const map = compileSourceMap(file, key, { textures: true, materialNames: key === 'neon' || key === 'sable' || key === 'lily' || !!info.real, ...(info.dispStep ? { dispStep: info.dispStep } : {}) });
+  const map = compileSourceMap(file, key, { textures: true, keepNonSolid: true, materialNames: key === 'neon' || key === 'sable' || key === 'lily' || !!info.real, ...(info.dispStep ? { dispStep: info.dispStep } : {}) });
   if (info.propCell) clusterModelFaces(map, info.propCell);
   map.name = info.name; map.credit = info.credit;
   if (key === 'neon') { styleNeon(map); addNeonSignage(map); }
@@ -381,7 +394,8 @@ export function importWingmanMap(file, key) {
   // Spawn points in some BSPs float up to ~1.6 m above the floor (in CS the player drops); put them on the ground.
   { const native = new globalThis.SourceMaps.NativeMap(packMap(map)); for (const p of map.t.concat(map.ct)) { const y = native.ground(p[0], p[1], p[3]); if (p[3] - y > .05 && p[3] - y < 3) p[3] = y; } }
   withDoorsOpen(map, () => pruneNavigation(map));
-  for (const f of map.polygons) delete f.src; for (const h of map.hulls) { delete h.src; delete h.brush; }
+  if (process.env.KEEP_SRC) { map.debugPolygons = map.polygons.map(f => f.src || null); map.debugHulls = map.hulls.map(h => h.src ? { ...h.src, brush: h.brush } : h.brush ? { brush: h.brush } : null); }
+  for (const f of map.polygons) { delete f.src; delete f.srcMaterial; } for (const h of map.hulls) { delete h.src; delete h.brush; }
   delete map.bsp; delete map.convert;
   return map;
 }

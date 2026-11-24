@@ -30,6 +30,8 @@ const OVERRIDES = [
   [/exterior_glass_opaque/, { c: 0x6f93bf, pat: P.tile }],
   [/exterior_glass_translucent|glass\/urban_window/, { c: 0xa9c8e4, pat: P.plain }],
   [/liquids\/akiba_water|dev_waterbeneath/, { c: 0x3c5a5a, pat: P.plain, glass: true }],
+  // Fundo preto das janelas (cs_italy/black): no jogo virava um painel cinza liso. Vira vidro escuro de janela.
+  [/(^|\/)black$/, { c: 0x3e5464, pat: P.plain }],
   [/tactile_paving/, { pat: P.tile }],
   [/metallic_panelling_stripe/, { pat: P.metal }],
   [/metallic_panelling|plastic_wall|marble_wall/, { pat: P.tile }],
@@ -70,9 +72,10 @@ export function styleNeon(map) {
     if (s.c != null) face.c = s.c;
     if (s.pat != null) face.pat = s.pat;
     if (s.glass) face.glass = true;
-    delete face.material;
+    face.srcMaterial = face.material; delete face.material;
   }
-  for (const face of map.polygons) delete face.material;
+  // O nome do material continua disponível para a extração de objetos (vegetação, água etc.); sai antes do pacote.
+  for (const face of map.polygons) { if (face.material) face.srcMaterial = face.material; delete face.material; }
 }
 
 // Objetos de obra do CS que não vêm dentro do BSP (medidas em unidades Source, base no chão).
