@@ -13,7 +13,7 @@ Na tela **Jogar**, escolha o modo na lista à esquerda e a arena na faixa de min
 | Wingman | Plant the Bomb 2 contra 2 em Sanctum, Neon, Forge ou Sable, regras do Wingman; você e um bot contra dois bots | Sala com código; cada pessoa escolhe o lado |
 | TDM | Dois times de 2 a 8 nos mapas de DM, renascimento contínuo | — |
 | DM | Você + 9 bots, todos contra todos, 5 minutos | Sala com código para até 10 pessoas; bots completam as vagas |
-| Practice | Treino livre de mira com 1 a 12 bots, ou qualquer mapa do jogo para testar (voo, compra e tempo infinitos) | — |
+| Practice | **Sozinho:** treino livre de mira com 1 a 12 bots, ou qualquer mapa do jogo para testar (voo, compra e tempo infinitos) | **Com amigos:** sala com código para até 10 pessoas no mesmo mapa, com as regras do treino livre |
 
 **Modos antigos:** 1v1, 2v2 e XvX viraram um modo só, o **Elimination**: ao clicar nele você já escolhe quantos jogadores tem em cada time, e um duelo é só o 1 contra 1. O antigo Plant the Bomb 2v2 virou o **Wingman**, e o antigo 5v5 virou o **Plant the Bomb**. Configurações salvas migram sozinhas (quem estava no 1v1 cai no Elimination 1v1, no 2v2 cai no 2v2).
 
@@ -187,6 +187,12 @@ Na faixa **Treino livre** do Practice, escolha qualquer mapa do jogo em vez da a
 - **Invulnerável:** nada tira vida.
 - **Granadas:** **4** alterna HE, flash e smoke, sem acabar.
 - **Voo intangível:** **N** liga e desliga o voo, que atravessa paredes e não tem gravidade. Use **W/A/S/D** para a direção da mira, **Espaço** para subir, **C/Ctrl** para descer e **Shift** para acelerar.
+
+### Practice com amigos
+
+No Practice há duas opções antes de começar: **Sozinho** (o treino de sempre) e **Com amigos**. Em **Com amigos**, escolha o mapa, clique em **Criar sala** e passe o código; seus amigos digitam em **Entrar na sala de um amigo** e caem no mesmo mapa, sem precisar escolher modo nem mapa. A sala aceita até 10 pessoas e segue as regras do treino livre (tempo infinito, loja grátis com **B**, granadas sem acabar, voo com **N**), sem bots. A diferença é que tiros e granadas valem entre vocês, para testar armas, dano e granadas juntos: quem morre renasce em seguida. Cada pessoa nasce no seu ponto do spawn dos atacantes, perto das outras. A arena de mira é só para treinar sozinho, então não aparece nessa opção.
+
+As granadas agora aparecem para todo mundo em qualquer sala online (trajetória, fumaça, flash e explosão). O dano e a cegueira de cada pessoa são calculados na máquina dela, e os dos bots no anfitrião, então ninguém leva o dano duas vezes.
 
 Escolha **Practice** no menu e clique em **Jogar Practice**. Os bots ficam parados e, ao morrer, desaparecem e renascem instantaneamente em outro spot livre da arena, já podendo receber tiros. Não há corpo nem animação de queda. O local do último abate e os espaços ocupados por outros bots ou pelo jogador são excluídos do respawn, inclusive com os 12 bots ativos.
 

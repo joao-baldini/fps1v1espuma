@@ -3801,7 +3801,7 @@ function phaseBanner(d) {
 function spawnSelf(side, spec) {
   configureLoadout();
   P.loadout=Object.assign({},S.loadout);
-  if(G.mode==='dm'){const order=dmLoadoutOrder(P.loadout,DM.category);ORDER.splice(0,ORDER.length,...order);}
+  if(G.mode==='dm'){const order=dmLoadoutOrder(P.loadout,DM.category);ORDER.splice(0,ORDER.length,...order);if(mapPracticeOn())ORDER.push(...GRENADES);}
   const sp = spawnPoint(side ? 1 : 0, spec);
   P.pos.set(sp.x, sp.y, sp.z); P.vel.set(0, 0, 0); P.yaw = sp.yaw; P.pitch = 0;
   // Fora do Plant the Bomb (que tem economia), todos nascem com colete e capacete se a opção estiver ligada.
@@ -4149,7 +4149,7 @@ function armorCut(e, amount, part, weapon) {
   return amount;
 }
 function takeDamage(dmg, part, sx, sz, wkey, killerId) {
-  if (mapPracticeOn()) return;
+  if (mapPracticeOn() && !practiceRoomOn()) return;
   if(G.mode==='dm'||G.mode==='team')return dmDamage(P,dmg,part,wkey,DM.byId.get(killerId),now());
   if (!P.alive) return;
   dmg = armorCut(P, dmg, part, wkey);
@@ -4731,12 +4731,13 @@ function dmInitialSpawns(count){
   return best;
 }
 function dmRespawn(entity,t,index){
+  if(index==null&&DM.practice)index=practiceSpawnIndex(entity);
   const p=index==null?dmChooseSpawn(entity,t):(entity.lastSpawn=index,DM.lastSpawnTimes[index]=t,DM.spawnPoints[index]);
-  if(entity===P)spawnSelf(0,[p.x,p.z,p.yaw]);
+  if(entity===P)spawnSelf(0,[p.x,p.z,p.yaw,p.y]);
   else if(entity.remote){
     // Pessoa na sala de DM: o juiz escolhe o ponto e ela renasce no próprio jogo.
     entity.pos.set(p.x,p.y,p.z);entity.yaw=p.yaw;entity.snaps.length=0;entity.dead=true;entity.alive=false;entity.respawnAt=Infinity;entity.hp=100;
-    arenaSendTo(entity.id,{t:'e',k:'spawn',d:{x:p.x,z:p.z,yaw:p.yaw,m:G.view.m}});dmUpdateHitboxes(entity);return;
+    arenaSendTo(entity.id,{t:'e',k:'spawn',d:{x:p.x,y:p.y,z:p.z,yaw:p.yaw,m:G.view.m}});dmUpdateHitboxes(entity);return;
   }
   else dmResetBot(entity,p,t,DM_POOLS[DM.category],Math.max(t,DM.startsAt));
   entity.hp=100;entity.alive=true;entity.respawnAt=0;entity.safeUntil=Math.max(t,DM.startsAt)+DM_PROTECT_MS;entity.deathT=0;
@@ -4768,11 +4769,13 @@ function dmSetup(t){
   DM.active=true;DM.category=DM_POOLS[S.dmWeapons]?S.dmWeapons:'all';DM.level=LEVELS[S.dmLevel]?S.dmLevel:'medio';DM.helmet=!!S.armor;
   DM.phase='freeze';DM.startsAt=t+3000;DM.endsAt=DM.startsAt+DM_DURATION;DM.scoreVersion=0;DM.winners=[];DM.resultReady=false;DM.nextSoundAt=DM.nextStepAt=0;
   DM.mode='dm';DM.tdm=S.mode==='tdm'&&!(ARENA.net&&ARENA.kind==='dm');
+  // Practice com amigos: valendo desde já, sem relógio, sem bots e sem limite de armas.
+  if(DM.practice){DM.category='all';DM.phase='live';DM.startsAt=t;DM.endsAt=Infinity;}
   // TDM: dois times de 2 a 8 (você + bots contra bots); DM: você e nove bots.
-  const size=clamp(S.tdmSize|0,2,TEAM_MAX),want=DM.tdm?size*2-1:9;
+  const size=clamp(S.tdmSize|0,2,TEAM_MAX),want=DM.practice?0:DM.tdm?size*2-1:9;
   if(DM.tdm){DM.endsAt=DM.startsAt+TDM_DURATION;DM.target=size*10;DM.teamScore=[0,0];}
   while(DM.pool.length<want){const b=dmMakeBot(DM.pool.length);b.name=TEAM_BOT_NAMES[DM.pool.length]||'Bot '+(DM.pool.length+1);DM.pool.push(b);}
-  G.stats={};G.names={};G.view={m:'dm-'+Math.random().toString(36).slice(2,8),r:1,ph:'freeze',endsAt:DM.startsAt,sc:{},tg:0,rt:300,win:null,why:'',mp:MAP.id};
+  G.stats={};G.names={};G.view={m:'dm-'+Math.random().toString(36).slice(2,8),r:1,ph:DM.phase,endsAt:DM.practice?Infinity:DM.startsAt,sc:{},tg:0,rt:300,win:null,why:'',mp:MAP.id};
   P.id=G.me;P.lastSpawn=-1;
   // Online, pessoas ocupam as vagas e bots completam os dez; sozinho, são os nove bots.
   if(ARENA.net&&ARENA.kind==='dm')arenaBuildActors(dmOnlineRoster());
@@ -4780,7 +4783,7 @@ function dmSetup(t){
   P.team=DM.tdm?0:-1;DM.bots.forEach((b,i)=>{b.team=DM.tdm?(i<size-1?0:1):-1;b.color=DM.tdm?TEAM_COLORS[b.team]:b.color;});
   for(const e of DM.actors){e.alive=false;e.lastSpawn=-1;e.dead=false;DM.byId.set(e.id,e);stat(e.id);if(e!==P)G.names[e.id]=e.name;}
   if(DM.tdm)sleeveMat.color.set(TEAM_COLORS[0]);
-  DM.lastSpawnTimes.fill(-Infinity);const first=DM.tdm?tdmInitialSpawns():dmInitialSpawns(DM.actors.length);DM.actors.forEach((e,i)=>dmRespawn(e,t,first[i%first.length]));dmRefreshTargets();
+  DM.lastSpawnTimes.fill(-Infinity);const first=DM.tdm?tdmInitialSpawns():DM.practice?DM.actors.map(practiceSpawnIndex):dmInitialSpawns(DM.actors.length);DM.actors.forEach((e,i)=>dmRespawn(e,t,first[i%first.length]));dmRefreshTargets();
 }
 // TDM: cada time começa numa metade do mapa (pontos ordenados pelo eixo z), sem repetir ponto.
 function tdmInitialSpawns(){
@@ -5302,8 +5305,21 @@ const prefireOn=()=>G.mode==='aimbotz'&&PREFIRE.active;
 // Practice num mapa do Wingman: sem bots nem rodada; loja grátis em qualquer lugar e a qualquer hora (dinheiro, tempo e
 // local de compra ilimitados), sem dano, granadas sem fim, e N liga/desliga o voo livre que atravessa paredes.
 const MAPPRACTICE={id:null};
-const mapPracticeOn=()=>G.mode==='aimbotz'&&!!MAPPRACTICE.id;
-function mapPracticeTick(){if(!mapPracticeOn())return;P.nades=P.nades||{};for(const k of GRENADES)P.nades[k]=9;if(P.alive)P.hp=100;}
+// Practice com amigos: a mesma sala online do DM, sem bots, sem tempo e sem fim, com as regras do Practice (compra
+// grátis, voo, granadas ilimitadas). Os tiros e granadas valem entre as pessoas, para testar armas e dano juntos;
+// quem morre renasce no spawn dos atacantes.
+const practiceRoomOn=()=>G.mode==='dm'&&!!DM.practice;
+const mapPracticeOn=()=>!!MAPPRACTICE.id&&(G.mode==='aimbotz'||practiceRoomOn());
+function mapPracticeTick(){if(!mapPracticeOn())return;P.nades=P.nades||{};for(const k of GRENADES)P.nades[k]=9;if(P.alive&&!practiceRoomOn())P.hp=100;}
+// A arena de mira (aimbotz) é só local; a sala usa o mapa escolhido ou o primeiro mapa de verdade da lista.
+const practiceRoomMap=()=>PRACTICE_MAPS.includes(S.practiceMap)&&S.practiceMap!=='aimbotz'?S.practiceMap:PRACTICE_MAPS.find(id=>id!=='aimbotz');
+// Pontos de nascimento da sala: os spawns dos atacantes (mais os dos defensores) nos mapas de bomba, os do DM nos mapas
+// de DM e o lado 1 nos do Elimination. Cada pessoa tem o seu ponto fixo (A no primeiro, B no segundo...), perto umas das outras.
+function practiceSpawnPoints(){
+  let list=MAP.plant?[...MAP.plant.t,...MAP.plant.ct]:MAP.dmSpawns&&MAP.dmSpawns.length?MAP.dmSpawns:Array.from({length:10},()=>randSpawn(0));
+  return list.map(sp=>spawnPoint(0,sp.length>=3?sp:[sp[0],sp[1],0])).map(p=>({x:p.x,y:p.y,z:p.z,yaw:p.yaw}));
+}
+function practiceSpawnIndex(e){const n=DM.spawnPoints.length,i=HUMAN_SLOTS.indexOf(e.id);return (i<0?0:i)%Math.max(1,n);}
 function togglePracticeFly(){if(!mapPracticeOn()||!P.alive)return;P.fly=!P.fly;P.vel.set(0,0,0);P.onGround=false;toast(P.fly?'Voo ligado · atravessa paredes · Espaço sobe, C desce, Shift acelera · N desliga':'Voo desligado');}
 function prefireTime(ms){const seconds=Math.floor(ms/1000);return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')+'.'+String(Math.floor(ms%1000/10)).padStart(2,'0');}
 function aimbotzHideBoards(){for(const p of [aimbotzBoard,aimbotzViewmodelBoard,aimbotzPrefireBoard])if(p)p.mesh.visible=false;}
@@ -5579,14 +5595,22 @@ function nadeBlocked(x, y, z) {
   for (const b of boxes) if (x > b.min[0] - .04 && x < b.max[0] + .04 && y > b.min[1] - .04 && y < b.max[1] + .04 && z > b.min[2] - .04 && z < b.max[2] + .04) return true;
   return y < rampH(x, z);
 }
-function throwNade(owner, type, eye, yaw, pitch, speed, t, vel) {
+// Salas online: toda granada aparece em todas as máquinas (trajetória, fumaça, flash, explosão). O dano e a cegueira
+// de cada pessoa são calculados na máquina dela, e os dos bots no juiz, para ninguém levar o dano duas vezes.
+function nadeRelay(owner, type, eye, yaw, pitch, speed, vel) {
+  if (!ARENA.net || !owner || owner.remote || (!ARENA.host && owner !== P)) return;
+  const d = { id: owner.id, ty: type, e: eye.map(r2), y: Math.round(yaw * 1000) / 1000, p: Math.round(pitch * 1000) / 1000, s: r2(speed), v: vel ? [r2(vel.x), r2(vel.y), r2(vel.z)] : null };
+  if (ARENA.host) arenaBroadcast({ t: 'e', k: 'nade', d }); else arenaSend({ t: 'e', k: 'nade', d });
+}
+function throwNade(owner, type, eye, yaw, pitch, speed, t, vel, ghost = false) {
   const d = dirFrom(yaw, pitch), gfx = nadeGfx();
   const n = { type, owner, team: owner.team, pos: new V3(eye[0] + d[0] * .35, eye[1] + d[1] * .35 - .05, eye[2] + d[2] * .35), vel: new V3(d[0] * speed, d[1] * speed, d[2] * speed),
     t0: t, fuseAt: t + NADE.fuse, stillT: 0, bounceAt: 0, mesh: null };
   if (vel) { n.vel.x += vel.x * .6; n.vel.z += vel.z * .6; n.vel.y += Math.max(0, vel.y) * .4; }
   if (nadeBlocked(n.pos.x, n.pos.y, n.pos.z)) n.pos.set(eye[0], eye[1], eye[2]);
   if (gfx) { n.mesh = new THREE.Mesh(gfx.box, gfx.mats[type]); n.mesh.position.copy(n.pos); scene.add(n.mesh); }
-  NADE.list.push(n);
+  NADE.list.push(n); n.ghost = ghost;
+  if (!ghost) nadeRelay(owner, type, eye, yaw, pitch, speed, vel);
   return n;
 }
 function nadeMove(n, dt, t) {
@@ -5642,7 +5666,10 @@ function nadeDetonate(n, t) {
       const chest = [e.pos.x, e.pos.y + 1.1, e.pos.z], d = Math.hypot(chest[0] - c[0], chest[1] - c[1], chest[2] - c[2]);
       if (d > NADE.heR || !clearLine(c, chest)) continue;
       const dmg = Math.round(NADE.heMax * Math.pow(1 - d / NADE.heR, 1.5));
-      if (dmg > 0 && dmDamage(e, dmg, 'body', 'he', n.owner, t) && n.owner === P) { hitmark(''); }
+      if (dmg <= 0) continue;
+      // Pessoa em outra máquina: a granada também explode lá, e é lá que o dano dela é aplicado.
+      if (e.remote) { if (n.owner === P) hitmark(''); continue; }
+      if (dmDamage(e, dmg, 'body', 'he', n.owner, t) && n.owner === P) { hitmark(''); }
     }
     return;
   }
@@ -7173,7 +7200,7 @@ function useAbility(t) {
 /* ---------- DM online ---------- */
 function dmOnlineRoster() {
   const humans = arenaHumans().slice(0, 10), rows = humans.map(id => [id, -1, id === G.me ? cleanName(S.name) : (ARENA.names[id] || 'Jogador ' + id), 'human']);
-  for (const b of DM.pool.slice(0, 10 - rows.length)) rows.push([b.id, -1, b.name, 'bot']);
+  if (!DM.practice) for (const b of DM.pool.slice(0, 10 - rows.length)) rows.push([b.id, -1, b.name, 'bot']);
   return rows;
 }
 // Alguém entrou ou saiu da sala de DM: uma pessoa assume a vaga de um bot (ou o bot volta), sem reiniciar a partida.
@@ -7183,19 +7210,20 @@ function dmRosterChanged(t) {
   dmRefreshTargets(); ARENA.lastBeat = 0;
 }
 function dmStateMsg(t) {
-  return { m: G.view.m, ph: DM.phase, s: Math.round(DM.startsAt - t), e: Math.round(DM.endsAt - t), mp: MAP.id, cat: DM.category, lvl: DM.level, roster: ARENA.roster, st: G.stats };
+  return { m: G.view.m, ph: DM.phase, s: Math.round(DM.startsAt - t), e: fin(DM.endsAt) ? Math.round(DM.endsAt - t) : 1e9, mp: MAP.id, cat: DM.category, lvl: DM.level, roster: ARENA.roster, st: G.stats };
 }
 function dmApplyState(d) {
   if (!d || typeof d.m !== 'string' || typeof d.ph !== 'string' || !fin(d.s) || !fin(d.e)) return;
   const t = now();
-  const map = MAPS[d.mp]?.dm ? d.mp : 'deathmatch';
+  // Practice com amigos: o mapa já veio na configuração da sala e foi carregado ao entrar.
+  const map = DM.practice ? MAP.id : MAPS[d.mp]?.dm ? d.mp : 'deathmatch';
   if (MAP.id !== map) buildMap(map);
   G.view.mp = MAP.id;
   if (d.m !== G.view.m) {
     G.stats = {}; G.view.m = d.m; DM.resultReady = false; DM.winners = []; DM.scoreVersion++; el.feed.replaceChildren(); $('dmResult').hidden = true; el.hud.classList.remove('dm-over');
     DM.phase = d.ph === 'over' ? 'live' : d.ph; P.alive = false; P.respawnAt = Infinity;
   }
-  DM.startsAt = t + d.s; DM.endsAt = t + d.e; if (DM_POOLS[d.cat]) DM.category = d.cat; if (LEVELS[d.lvl]) DM.level = d.lvl;
+  DM.startsAt = t + d.s; DM.endsAt = d.e >= 1e9 ? Infinity : t + d.e; if (DM_POOLS[d.cat]) DM.category = d.cat; if (LEVELS[d.lvl]) DM.level = d.lvl;
   const key = JSON.stringify(d.roster);
   if (key !== ARENA.rosterKey && rosterValid(d.roster, false)) { ARENA.rosterKey = key; arenaBuildActors(d.roster.map(([id, , name, kind]) => [id, -1, cleanName(name), kind === 'human' ? 'human' : 'bot'])); }
   arenaApplyStats(d.st);
@@ -7210,7 +7238,7 @@ function dmGuestTick(dt, t) {
 }
 function dmGuestSpawn(d) {
   if (!d || ![d.x, d.z, d.yaw].every(fin) || d.m !== G.view.m) return;
-  spawnSelf(0, [d.x, d.z, d.yaw]); P.respawnAt = 0; P.safeUntil = Math.max(now(), DM.startsAt) + DM_PROTECT_MS; dmUpdateHitboxes(P);
+  spawnSelf(0, fin(d.y) ? [d.x, d.z, d.yaw, d.y] : [d.x, d.z, d.yaw]); P.respawnAt = 0; P.safeUntil = Math.max(now(), DM.startsAt) + DM_PROTECT_MS; dmUpdateHitboxes(P);
 }
 
 /* ---------- rede em estrela (PeerJS) ---------- */
@@ -7312,6 +7340,13 @@ function arenaOnData(from, m) {
       if (!e || !e.alive || d.m !== match || d.r !== ARENA.r || !b || b.defused || b.blown || sideOf(e) !== 'ct' || Math.hypot(e.pos.x - b.x, e.pos.z - b.z) > 3) return;
       bombDefused(e, t);
     }
+    else if (m.k === 'nade') {
+      const id = ARENA.host ? from : d.id, e = DM.byId.get(id);
+      if (!e || e === P || !GRENADES.includes(d.ty) || !Array.isArray(d.e) || d.e.length !== 3 || !d.e.every(fin) || ![d.y, d.p, d.s].every(fin)) return;
+      const v = Array.isArray(d.v) && d.v.length === 3 && d.v.every(fin) ? { x: d.v[0], y: d.v[1], z: d.v[2] } : null;
+      throwNade(e, d.ty, d.e, d.y, d.p, clamp(d.s, 0, 40), t, v, true);
+      if (ARENA.host) arenaBroadcast({ t: 'e', k: 'nade', d: Object.assign({}, d, { id }) }, from);
+    }
     else if (m.k === 'shot') {
       const id = ARENA.host ? from : d.id, e = DM.byId.get(id);
       if (!e || e === P || !Array.isArray(d.s) || d.s.length !== 6 || !d.s.every(fin)) return;
@@ -7325,29 +7360,30 @@ function arenaOnData(from, m) {
 }
 function arenaHostReady() {
   ARENA.host = true; G.me = 'A'; P.id = 'A';
-  if (ARENA.kind === 'dm') { ARENA.netText = 'sala criada · bots completam as vagas'; dmSetup(now()); }
+  if (ARENA.kind === 'dm') { ARENA.netText = DM.practice ? 'treino criado · passe o código' : 'sala criada · bots completam as vagas'; dmSetup(now()); }
   else { ARENA.netText = 'sala criada · bots completam os times'; ARENA.startAt = now() + 400; ARENA.m = ''; arenaBuildActors(teamRoster()); }
 }
 function arenaJoined(id) {
-  if (ARENA.kind === 'dm') { dmRosterChanged(now()); arenaSendTo(id, { t: 'd', d: dmStateMsg(now()) }); toast((ARENA.names[id] || 'Jogador') + ' entrou na sala de DM.'); }
+  if (ARENA.kind === 'dm') { dmRosterChanged(now()); arenaSendTo(id, { t: 'd', d: dmStateMsg(now()) }); toast((ARENA.names[id] || 'Jogador') + (DM.practice ? ' entrou no treino.' : ' entrou na sala de DM.')); }
   else { ARENA.m = ''; ARENA.startAt = now() + 1500; toast((ARENA.names[id] || 'Jogador') + ' entrou na sala. Nova partida já.'); }
 }
 function arenaLeft(id) {
-  if (ARENA.kind === 'dm') { dmRosterChanged(now()); toast((ARENA.names[id] || 'Um jogador') + ' saiu. Um bot assume a vaga.'); }
+  if (ARENA.kind === 'dm') { dmRosterChanged(now()); toast((ARENA.names[id] || 'Um jogador') + (DM.practice ? ' saiu do treino.' : ' saiu. Um bot assume a vaga.')); }
   else { ARENA.m = ''; ARENA.startAt = now() + 1500; toast((ARENA.names[id] || 'Um jogador') + ' saiu da sala. Um bot assume a vaga.'); }
 }
 // Uma sala por código, em qualquer modo. Quem cria escolhe modo, mapa e regras; quem entra só digita o código e recebe
 // essa configuração do anfitrião (mensagem 'cfg') antes de abrir a partida.
 const ROOM_PREFIX = 'aimduelo-sala-v2-';
-const ROOM_MODES = ['elim', 'bomb', 'wingman', 'tdm', 'dm'];
-const ROOM_KEYS = ['mode', 'map', 'bombMap', 'fiveMap', 'dmMap', 'xvx', 'tdmSize', 'teamSetup', 'dmWeapons', 'dmLevel', 'botLevel'];
+const ROOM_MODES = ['elim', 'bomb', 'wingman', 'tdm', 'dm', 'aimbotz'];
+const ROOM_KEYS = ['mode', 'map', 'bombMap', 'fiveMap', 'dmMap', 'practiceMap', 'xvx', 'tdmSize', 'teamSetup', 'dmWeapons', 'dmLevel', 'botLevel'];
 function roomConfig() { const d = { v: 2, kind: ARENA.kind === 'dm' ? 'dm' : 'team', mp: MAP ? MAP.id : null }; for (const k of ROOM_KEYS) d[k] = S[k] == null ? null : JSON.parse(JSON.stringify(S[k])); return d; }
 function applyRoomConfig(d) {
   if (!d || typeof d !== 'object' || !['team', 'dm'].includes(d.kind) || !ROOM_MODES.includes(d.mode)) return false;
   const str = (k, ok) => { if (typeof d[k] === 'string' && ok(d[k])) S[k] = d[k]; };
   S.mode = d.mode;
   str('map', v => v === 'rotacao' || MAP_IDS.includes(v)); str('bombMap', v => v === 'rotacao' || BOMB_MAPS.includes(v)); str('fiveMap', v => FIVE_MAPS.includes(v));
-  str('dmMap', v => !!(MAPS[v] && MAPS[v].dm)); str('teamSetup', v => ['versus', 'coop'].includes(v)); str('dmWeapons', v => ['pistol', 'sniper', 'rifle', 'all'].includes(v));
+  str('dmMap', v => !!(MAPS[v] && MAPS[v].dm)); str('practiceMap', v => PRACTICE_MAPS.includes(v) && v !== 'aimbotz');
+  if (d.mode === 'aimbotz' && d.kind !== 'dm') return false; str('teamSetup', v => ['versus', 'coop'].includes(v)); str('dmWeapons', v => ['pistol', 'sniper', 'rifle', 'all'].includes(v));
   str('dmLevel', v => !!LEVELS[v]); str('botLevel', v => !!LEVELS[v]);
   if (d.xvx && typeof d.xvx === 'object') S.xvx = { mine: clamp(d.xvx.mine | 0, 1, TEAM_MAX), foes: clamp(d.xvx.foes | 0, 1, TEAM_MAX) };
   if (fin(d.tdmSize)) S.tdmSize = clamp(d.tdmSize | 0, 2, TEAM_MAX);
@@ -7738,6 +7774,7 @@ function updateHUD(dt, t) {
   setT(el.nmMe, cleanName(S.name)); setT(el.nmOp, G.opp ? nameOf(G.opp) : '—');
   if(G.mode==='dm'&&DM.tdm){setT(el.scMe,String(DM.teamScore[0]));setT(el.scOp,String(DM.teamScore[1]));setT(el.nmMe,'Seu time');setT(el.nmOp,'Inimigos · meta '+DM.target);}
   else if(G.mode==='dm'){const leader=dmRanking()[0];setT(el.scMe,String(stat(G.me).k));setT(el.scOp,String(stat(leader.id).k));setT(el.nmOp,'Líder · '+nameOf(leader.id));}
+  if(practiceRoomOn()){setT(el.nmMe,'Treino · '+DM.actors.length+(DM.actors.length===1?' pessoa':' pessoas'));setT(el.scMe,String(stat(G.me).k));setT(el.nmOp,P.fly?'Voando':'N voa');setT(el.scOp,MAPS[MAPPRACTICE.id].name);}
   const teamHUD=G.mode==='team';setH(el.aliveMe,!teamHUD);setH(el.aliveOp,!teamHUD);
   if(teamHUD){const mine=myTeam();setT(el.scMe,String(ARENA.sc[mine]));setT(el.scOp,String(ARENA.sc[1-mine]));setT(el.nmMe,bombOn()?SIDE_NAMES[sideOf(P)]:'Seu time');setT(el.nmOp,bombOn()?SIDE_NAMES[sideOf(P)==='t'?'ct':'t']:'Inimigos');setT(el.aliveMe,teamAlive(mine)+(teamAlive(mine)===1?' vivo':' vivos'));setT(el.aliveOp,teamAlive(1-mine)+(teamAlive(1-mine)===1?' vivo':' vivos'));}
   if (G.mode === 'aimbotz') {
@@ -7752,7 +7789,7 @@ function updateHUD(dt, t) {
   else if (v.ph === 'end') { label = 'fim da rodada'; time = '0:00'; }
   else if (v.ph === 'over') { label = 'fim de jogo'; time = fmtTime(Math.max(0, v.endsAt - t)); }
   if(G.mode==='dm'){label=DM.phase==='freeze'?'prepare-se':DM.phase==='over'?(DM.tdm?'fim do TDM':'fim do DM'):(DM.tdm?'team deathmatch':'deathmatch');if(DM.phase==='over')time='0:00';}
-  if (G.mode === 'aimbotz') { label = 'Practice'; time = '∞'; }
+  if (G.mode === 'aimbotz' || practiceRoomOn()) { label = 'Practice'; time = '∞'; }
   if(prefireOn()){label=PREFIRE.phase==='ready'?'avance para iniciar':PREFIRE.phase==='complete'?'Prefire concluído':PREFIRE.phase==='dead'?'reiniciando':'Prefire · Inferno';time=prefireTime(PREFIRE.elapsed);cls='';}
   let bombIcon = false;
   if (bombOn()) {
@@ -8317,7 +8354,8 @@ function showMenu(on) {
   $('inName').readOnly = !!G.mode;
   $('btnDmBoard').hidden=G.mode!=='dm';
   $('pauseNote').hidden = $('btnMenuArsenal').disabled = $('btnArsenal').disabled = G.mode === 'aimbotz';
-  if (G.mode === 'aimbotz') $('pauseInfo').textContent = prefireOn()?'Prefire · Inferno · '+PREFIRE.killed+'/15 · treino pausado':mapPracticeOn()?'Practice · '+MAPS[MAPPRACTICE.id].name+' · N voa':'Practice · ' + S.aimbotzBots + ' bots';
+  if (practiceRoomOn()) $('pauseInfo').textContent = 'Practice com amigos · '+MAPS[MAPPRACTICE.id].name+' · sala '+ARENA.code+' · N voa';
+  else if (G.mode === 'aimbotz') $('pauseInfo').textContent = prefireOn()?'Prefire · Inferno · '+PREFIRE.killed+'/15 · treino pausado':mapPracticeOn()?'Practice · '+MAPS[MAPPRACTICE.id].name+' · N voa':'Practice · ' + S.aimbotzBots + ' bots';
   else if (G.mode) $('pauseInfo').textContent = (G.mode === 'online' ? 'Sala ' + NET.code + (G.opp ? ' · contra ' + nameOf(G.opp) : ' · esperando oponente') : G.mode==='dm'?(ARENA.net?'Sala DM '+ARENA.code:'Deathmatch · 9 bots '+LEVELS[DM.level].label)+' · '+DM_LABELS[DM.category]+' · o tempo continua no menu':G.mode==='team'?(ARENA.net?'Sala '+teamLabel()+' '+ARENA.code+(ARENA.host?' · '+arenaHumans().length+'/'+arenaCapacity()+' pessoas':''):teamLabel()+' com bots '+LEVELS[DM.level].label):'Treino contra bot ' + (LEVELS[S.botLevel] || LEVELS.medio).label) + ' · ' + MAP.name;
 }
 function resetSession(spawn = null) {
@@ -8334,10 +8372,10 @@ const roomGo = opts => opts.join ? arenaJoinCode(opts.join) : arenaNetStart(clea
 async function startSession(mode, opts = {}) {
   const loadId=++sessionLoadId;
   $('tacticalRadar').hidden=true;
-  prefireStop();MAPPRACTICE.id=null;P.fly=false;
-  const map = mode === 'aimbotz' ? (PRACTICE_MAPS.includes(S.practiceMap) ? S.practiceMap : 'aimbotz') : mode==='team'&&S.mode==='bomb'?S.fiveMap:mode === 'team' && S.mode === 'wingman' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? S.dmMap : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
+  prefireStop();MAPPRACTICE.id=null;P.fly=false;DM.practice=false;
+  const map = mode === 'aimbotz' ? (PRACTICE_MAPS.includes(S.practiceMap) ? S.practiceMap : 'aimbotz') : mode==='team'&&S.mode==='bomb'?S.fiveMap:mode === 'team' && S.mode === 'wingman' ? (S.bombMap === 'rotacao' ? BOMB_MAPS[Math.floor(Math.random() * BOMB_MAPS.length)] : BOMB_MAPS.includes(S.bombMap) ? S.bombMap : BOMB_MAPS[0]) : mode === 'dm' ? (S.mode === 'aimbotz' ? practiceRoomMap() : S.dmMap) : S.map === 'rotacao' ? MAP_IDS[Math.floor(Math.random() * MAP_IDS.length)] : MAP_IDS.includes(S.map) ? S.map : 'caixas';
   if(MAPS[map].source){
-    const required=mode==='aimbotz'||S.mode==='bomb'?[map]:opts.online||S.bombMap==='rotacao'?BOMB_MAPS:[map];
+    const required=mode==='aimbotz'||mode==='dm'||S.mode==='bomb'?[map]:opts.online||S.bombMap==='rotacao'?BOMB_MAPS:[map];
     if(required.some(id=>!SourceMaps.get(id)))toast('Preparando '+MAPS[map].name+'…');
     try{await Promise.all(required.map(id=>SourceMaps.load(id)));}catch(error){toast('Não foi possível abrir o mapa. Recarregue e tente novamente.');return;}
     if(loadId!==sessionLoadId)return;
@@ -8368,12 +8406,15 @@ async function startSession(mode, opts = {}) {
     G.me='A';P.id='A';G.opp=null;G.host=false;G.hostPeer='A';oppGroup.visible=false;DM.showBoard=false;
     boardVersion=-1;ARENA.kind='dm';ARENA.net=!!opts.online;ARENA.host=true;ARENA.names={};ARENA.roster=[];ARENA.rosterKey='';ARENA.lastPhase='';
     dmBuildNav();
+    DM.practice=S.mode==='aimbotz'&&!!opts.online;
+    if(DM.practice){MAPPRACTICE.id=map;DM.spawnPoints=practiceSpawnPoints();DM.spawnVis=DM.spawnPoints.map(()=>new Uint8Array(DM.spawnPoints.length));DM.lastSpawnTimes=DM.spawnPoints.map(()=>-Infinity);}
     if(opts.online){
       // Até a sala abrir (ou descobrir que já existe), fica parado esperando.
       DM.mode='dm';DM.active=true;DM.phase='freeze';DM.startsAt=DM.endsAt=Infinity;DM.actors.length=0;DM.actors.push(P);DM.bots=[];DM.byId.clear();DM.byId.set(P.id,P);
       G.view={m:'',r:1,ph:'wait',endsAt:0,sc:{},tg:0,rt:300,win:null,why:'',mp:MAP.id};roomGo(opts);
     }else dmSetup(now());
     dmEnsureRender();dmRender(now());showMenu(false);lock();
+    if(DM.practice){banner('Practice com amigos · sala '+roomCodeOf(opts),MAP.name+' · B compra grátis · N voa · granadas ilimitadas · tiros valem entre vocês','',5000);return;}
     banner(opts.online?'Sala DM '+roomCodeOf(opts):MAP.name+' · Deathmatch',opts.online?'Até 10 pessoas · bots completam as vagas · 5 minutos':'Prepare-se · você + 9 bots · 5 minutos','',2800);return;
   }else if(mode==='team'){
     G.me='A';P.id='A';G.opp=null;G.host=false;G.hostPeer='A';oppGroup.visible=false;
@@ -8395,7 +8436,7 @@ async function startSession(mode, opts = {}) {
 function leaveSession() {
   sessionLoadId++;
   $('tacticalRadar').hidden=true;
-  prefireStop();MAPPRACTICE.id=null;P.fly=false;
+  prefireStop();MAPPRACTICE.id=null;P.fly=false;DM.practice=false;
   resetRoundAudio();
   netStop();arenaNetStop();ARENA.net=false;closeBuy();dmStop();nadesClear();clearDecals();if(typeof v2Fx!=='undefined'&&v2Fx)v2Fx.clear();setSleeveColor(S.pcol);G.mode = null; G.opp = null; H.st = null; oppGroup.visible = false;
   if (aimbotzBoard) aimbotzBoard.mesh.visible = false;
@@ -8505,7 +8546,7 @@ function syncLobbyPreview() {
   if(image.getAttribute('src')!==source){image.srcset='assets/menu/play/thumb/'+id+'.webp 320w, '+source+' 1280w';image.src=source;}
   $('stageTitle').textContent=title;
   $('stageDetail').textContent=bomb&&!five&&S.bombMap==='rotacao'?BOMB_MAPS.map(id=>MAPS[id].name).join(', ')+', alternados a cada rodada.':MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
-  $('lobbyFormat').textContent=practice?(S.practiceMap==='aimbotz'?S.aimbotzBots+' alvos':'Sozinho'):tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':five?'5 contra 5':bomb?'2 contra 2 · Wingman':S.xvx.mine+' contra '+S.xvx.foes;
+  $('lobbyFormat').textContent=practice?(lobbyRoute==='online'?'Com amigos · até 10':S.practiceMap==='aimbotz'?S.aimbotzBots+' alvos':'Sozinho'):tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':five?'5 contra 5':bomb?'2 contra 2 · Wingman':S.xvx.mine+' contra '+S.xvx.foes;
   $('lobbyGoalLabel').textContent=practice?'Treino':dm?'Duração':'Vitória';
   $('lobbyGoal').textContent=practice?'Sem limite':tdm?S.tdmSize*10+' abates · 10 min':dm?'5 minutos':bomb?'9 rodadas · melhor de 16':S.target+' rodadas';
   const mini=$('loadoutMini'),weapons=Object.values(S.loadout),key=weapons.map(k=>k+':'+skinOf(k)).join('|');
@@ -8529,6 +8570,9 @@ function syncInputs(except) {
   $('duelMaps').hidden = dm || practice || bomb;
   $('dmMaps').hidden = !dm;
   selectRadio($('bombMaps'), 'map', S.bombMap); $('bombMaps').hidden = !bomb||five;selectRadio($('fiveMaps'),'map',S.fiveMap);$('fiveMaps').hidden=!five;
+  // Com amigos, a arena de mira (só local) sai da lista e a sala usa um mapa de verdade.
+  if (practice && online && S.practiceMap === 'aimbotz') { S.practiceMap = practiceRoomMap(); saveS(); }
+  const arenaCard = $('practiceMaps').querySelector('[data-map="aimbotz"]'); if (arenaCard) arenaCard.hidden = practice && online;
   $('practiceMap').hidden = !practice || S.practiceMap !== 'aimbotz';
   selectRadio($('practiceMaps'), 'map', S.practiceMap); $('practiceMaps').hidden = !practice;
   $('mapTitle').textContent = practice ? 'Treino livre' : 'Mapas';
@@ -8537,21 +8581,22 @@ function syncInputs(except) {
   $('dmOptions').hidden=!dm;
   $('duelBotControls').hidden = dm || practice || online&&!duo&&!bomb;
   $('equipmentField').hidden=practice;
-  $('sessionRoute').hidden=practice;
-  $('launchOptions').hidden=practice;
+  $('launchOptions').hidden=practice&&!online;
   selectRadio($('sessionRoute'),'route',lobbyRoute);
-  $('roomField').hidden=practice||!online;
-  $('btnJoin').hidden=practice||!online;
-  $('mpStatus').hidden = practice || !online || typeof Peer !== 'undefined';
+  $('roomField').hidden=!online;
+  $('btnJoin').hidden=!online;
+  $('mpStatus').hidden = !online || typeof Peer !== 'undefined';
   $('btnBot').hidden = dm || practice || online;
-  $('sessionRoute').hidden = practice || five || tdm; $('tdmSizeField').hidden = !tdm;
+  $('sessionRoute').hidden = five || tdm;
+  // No Practice as duas opções são "Sozinho" e "Com amigos"; nos outros modos, "Contra bots" e "Com amigos".
+  setT($('sessionRoute').querySelector('[data-route="bots"]'), practice ? 'Sozinho' : 'Contra bots'); $('tdmSizeField').hidden = !tdm;
   $('btnDm').hidden = !dm || online;
-  $('btnAimbotz').hidden=!practice;
+  $('btnAimbotz').hidden=!practice||online;
   $('teamField').hidden=!(duo||bomb)||!online||S.mode==='wingman';$('sideField').hidden=S.mode!=='wingman'||practice;$('xvxField').hidden=!xvx;$('colorField').hidden=true;
   const label=xvx?S.xvx.mine+'v'+S.xvx.foes:'2v2';
   const [title] = MODE_MENU[mode];
   $('lobbyMode').textContent = xvx ? 'Elimination ' + label : title;
-  $('modeInfo').textContent=practice?'Treine contra alvos parados e ajuste a arena nos quadros.':online?'Você cria a sala; bots completam as vagas enquanto seus amigos entram.':tdm?'Renascimento contínuo e pontuação por equipe.':dm?'Todos contra todos, com renascimento contínuo.':bomb?'Plante ou desarme a bomba. Uma vida por rodada.':duo?'Uma vida por rodada, sem fogo amigo.':'A primeira eliminação decide a rodada.';
+  $('modeInfo').textContent=practice&&online?'Crie a sala e passe o código: seus amigos entram no mesmo mapa, com compra grátis, voo e granadas ilimitadas.':practice?'Treine contra alvos parados e ajuste a arena nos quadros.':online?'Você cria a sala; bots completam as vagas enquanto seus amigos entram.':tdm?'Renascimento contínuo e pontuação por equipe.':dm?'Todos contra todos, com renascimento contínuo.':bomb?'Plante ou desarme a bomba. Uma vida por rodada.':duo?'Uma vida por rodada, sem fogo amigo.':'A primeira eliminação decide a rodada.';
   $('btnJoin').textContent='Criar sala';$('btnJoin').setAttribute('aria-label','Criar sala de '+(xvx?'Elimination '+label:title));
   for(const id of ['btnBot','btnDm','btnAimbotz']){$(id).textContent='Jogar';$(id).setAttribute('aria-label','Jogar '+(xvx?label:title));}
 
@@ -8680,7 +8725,7 @@ $('btnJoin').addEventListener('click', () => {
   if (!code) code = genCode();
   S.room = code; saveS(); syncInputs($('inName'));
   if (isBombMode()) { OP_PICK.online = true; OP_PICK.join = null; startBomb(); return; }
-  if (S.mode === 'dm') startSession('dm', { online: true }); else startSession('team', { online: true });
+  if (S.mode === 'dm' || S.mode === 'aimbotz') startSession('dm', { online: true }); else startSession('team', { online: true });
 });
 // Entrar por código: pergunta a configuração à sala e abre a partida do jeito que o anfitrião montou.
 let JOIN = null;

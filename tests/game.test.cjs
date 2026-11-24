@@ -1387,6 +1387,48 @@ test('DM room: a friend joins the host map, takes a bot slot, and shares respawn
   assert.equal(bot.alive, false); assert.equal(host.stat('B').k, 1); assert.equal(guest.stat('B').k, 1); assert.equal(guest.P.hp, 80);
 });
 
+test('Practice com amigos: a room with the practice rules, no bots or clock, friends spawn together and share damage and grenades', () => {
+  const setup = g => {
+    const cx = g.context; cx.G.mode = 'dm'; cx.G.opp = null; cx.buildMap('sable'); g.dmBuildNav(); Object.assign(g.S, { mode: 'aimbotz', practiceMap: 'sable' });
+    vm.runInContext("ARENA.kind='dm';ARENA.net=true;ARENA.host=true;DM.practice=true;MAPPRACTICE.id='sable';DM.spawnPoints=practiceSpawnPoints();DM.lastSpawnTimes=DM.spawnPoints.map(()=>-Infinity);", cx);
+    return g;
+  };
+  const host = setup(fakeNet(game())), guest = setup(fakeNet(game()));
+  // O amigo recebe pelo código o modo Practice e o mapa; a arena de mira (só local) não vale como sala.
+  const cfg = vm.runInContext('roomConfig()', host.context); assert.equal(cfg.kind, 'dm'); assert.equal(cfg.mode, 'aimbotz'); assert.equal(cfg.practiceMap, 'sable');
+  const fresh = game(); Object.assign(fresh.S, { mode: 'dm', practiceMap: 'aimbotz' });
+  assert.equal(fresh.context.applyRoomConfig(cfg), true); assert.equal(fresh.S.mode, 'aimbotz'); assert.equal(fresh.S.practiceMap, 'sable');
+  fresh.S.practiceMap = 'neon'; assert.equal(fresh.context.applyRoomConfig(Object.assign({}, cfg, { practiceMap: 'aimbotz' })), true); assert.equal(fresh.S.practiceMap, 'neon');
+  assert.equal(vm.runInContext("S.practiceMap='aimbotz';practiceRoomMap()", fresh.context), 'sanctum');
+  let t = 10000; const tick = ms => { t += ms; host.tick(t); guest.tick(t); };
+  tick(0); const pump = connect(host, guest, 'treino');
+  pump(); tick(400); host.dmTick(0, t); pump(); vm.runInContext('arenaNetTick(now())', host.context); pump();
+  // Só pessoas, valendo desde já e sem relógio (o Infinity não passa pelo JSON: vai como 1e9 e volta Infinity).
+  assert.equal(host.DM.bots.length, 0); assert.equal(host.DM.actors.length, 2); assert.equal(guest.DM.actors.length, 2);
+  assert.equal(host.DM.phase, 'live'); assert.equal(host.DM.endsAt, Infinity); assert.equal(guest.DM.endsAt, Infinity); assert.equal(guest.DM.phase, 'live');
+  for (const g of [host, guest]) { assert.equal(vm.runInContext('mapPracticeOn()&&practiceRoomOn()&&freeShopOn()', g.context), true); vm.runInContext('mapPracticeTick()', g.context); assert.equal(g.P.nades.he, 9); assert.ok(vm.runInContext("ORDER.includes('smoke')", g.context)); }
+  // Cada pessoa nasce no seu ponto do spawn dos atacantes (A no primeiro, B no segundo), uns perto dos outros.
+  const plant = host.MAPS.sable.plant;
+  assert.ok(Math.hypot(host.P.pos.x - plant.t[0][0], host.P.pos.z - plant.t[0][1]) < .05);
+  assert.equal(guest.P.alive, true); assert.ok(Math.hypot(guest.P.pos.x - plant.t[1][0], guest.P.pos.z - plant.t[1][1]) < .05);
+  // Tiros valem entre amigos (no Practice sozinho você é invulnerável).
+  for (let i = 0; i < 3; i++) { tick(40); for (const g of [host, guest]) vm.runInContext('arenaNetTick(now())', g.context); pump(); for (const g of [host, guest]) vm.runInContext('arenaUpdateProxies(now()+100)', g.context); }
+  const proxyB = host.DM.byId.get('B'); proxyB.safeUntil = 0; guest.P.safeUntil = 0;
+  assert.ok(host.dmDamage(proxyB, 30, 'body', 'rifle', host.P, t) > 0); pump();
+  vm.runInContext('mapPracticeTick()', guest.context); assert.ok(guest.P.hp < 100 && guest.P.hp > 0, 'dano chegou e não é recarregado: ' + guest.P.hp);
+  // Granadas aparecem para todos; a explosão só machuca na máquina de quem leva o dano (uma vez só).
+  const hpBefore = guest.P.hp, nades = g => vm.runInContext('NADE.list', g.context);
+  vm.runInContext('throwNade(P,"smoke",eyePos(),P.yaw,0,10,now(),null)', host.context); pump();
+  assert.equal(nades(guest).length, 1); assert.equal(nades(guest)[0].ghost, true); assert.equal(nades(guest)[0].owner, guest.DM.byId.get('A')); assert.equal(nades(guest)[0].type, 'smoke');
+  proxyB.pos.set(guest.P.pos.x, guest.P.pos.y, guest.P.pos.z); proxyB.alive = true;
+  host.context.__at = [guest.P.pos.x, guest.P.pos.y, guest.P.pos.z + .6];
+  vm.runInContext('nadeDetonate({type:"he",owner:P,pos:new V3(__at[0],__at[1],__at[2])},now())', host.context); pump();
+  assert.equal(guest.P.hp, hpBefore, 'o juiz não manda o dano da granada para a pessoa');
+  guest.context.__at = host.context.__at;
+  vm.runInContext('nadeDetonate({type:"he",owner:DM.byId.get("A"),ghost:true,pos:new V3(__at[0],__at[1],__at[2])},now())', guest.context);
+  assert.ok(guest.P.hp < hpBefore, 'a cópia da granada machuca quem está perto, na máquina dele');
+});
+
 test('XvX: 1v5 against bots respects team sizes and plays rounds with only cross-team kills', () => {
   const g = game(), cx = g.context, map = g.MAPS.caixas;
   vm.runInContext(section('let mapQueue', 'const SUN ='), cx);
