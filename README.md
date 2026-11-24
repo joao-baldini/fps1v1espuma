@@ -277,6 +277,8 @@ A arma e o braço aparecem 45% maiores que antes. Eles crescem em torno da mão 
 
 As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão em bloco de pele, sem luva, e manga em bloco na cor do boneco (nos times, na cor do time). Com faca, como no CS, aparece só a mão direita.
 
+**Mãos e braços em primeira pessoa em low poly facetado** (`assets/v2/weapons-v2.js`, mesmo estilo dos bonecos). A luva é feita em blocos de faces planas: palma com dorso chanfrado, protetor dos nós, quatro dedos em duas falanges dobradas em volta do cabo, polegar em dois blocos e tira do punho. O antebraço é um prisma de 6 lados que afina até o pulso, para o fim da manga não tapar a mão. Antes eram cilindros e tubos arredondados.
+
 O bot pode usar qualquer uma das armas de fogo, com sua própria cadência, carregador e recarga. O capacete aparece no personagem; com a opção de colete e capacete ligada, todos nascem protegidos. A USP-S mata com um HS de perto sem capacete e exige mais de um com capacete; seu dano cai com a distância.
 
 As duas facas mostram a mão livre do lado oposto à arma, inclusive na preferência de mão esquerda. A mão livre da Butterfly foi levantada e afastada do centro para ficar dentro da tela com o tamanho atual das armas.

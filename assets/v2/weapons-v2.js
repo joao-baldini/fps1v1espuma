@@ -25,61 +25,63 @@
     return mat;
   }
 
-  // Sculpted tactical gloved hand (palm, curled fingers, thumb, carbon knuckle guard, wrist cuff)
-  function createGloveGeometry(THREE) {
-    const parts = [];
-    const pushPart = (geo, tx, ty, tz, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1, hex = 0x242930) => {
-      const g = geo.index ? geo.toNonIndexed() : geo;
-      g.scale(sx, sy, sz);
-      if (rx) g.rotateX(rx);
-      if (ry) g.rotateY(ry);
-      if (rz) g.rotateZ(rz);
-      g.translate(tx, ty, tz);
-      const count = g.attributes.position.count;
-      const c = new THREE.Color(hex);
-      const cols = new Float32Array(count * 3);
-      for (let i = 0; i < count; i++) { cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b; }
-      g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-      parts.push(g);
-    };
-    // Main palm
-    pushPart(new THREE.CylinderGeometry(0.036, 0.04, 0.088, 10), 0, 0, 0.005, Math.PI / 2, 0, 0, 1.05, 1, 0.85, 0x262b33);
-    // Carbon knuckle armor plate
-    pushPart(new THREE.BoxGeometry(0.068, 0.022, 0.028), 0, 0.024, -0.022, 0.15, 0, 0, 1, 1, 1, 0x16191f);
-    // Curled fingers
-    for (let i = 0; i < 4; i++) {
-      const fx = -0.024 + i * 0.016;
-      pushPart(new THREE.CylinderGeometry(0.0085, 0.0075, 0.044, 6), fx, -0.012, -0.042, 1.15, 0, 0, 1, 1, 1, 0x2e343d);
-    }
-    // Thumb
-    pushPart(new THREE.CylinderGeometry(0.01, 0.009, 0.046, 7), -0.038, 0.016, -0.016, 0.7, 0.3, 0.55, 1, 1, 1, 0x2e343d);
-    // Tactical wrist watch / strap cuff
-    pushPart(new THREE.CylinderGeometry(0.042, 0.044, 0.032, 10), 0, 0, 0.048, Math.PI / 2, 0, 0, 1.05, 1, 0.9, 0x191d22);
-
-    // Merge parts
-    let total = 0;
-    for (const g of parts) total += g.attributes.position.count;
+  // Mão em primeira pessoa, low poly facetada (mesmo estilo dos bonecos): luva em blocos com palma, protetor dos nós,
+  // quatro dedos em duas falanges dobradas em volta do cabo, polegar em dois blocos e tira do punho. Faces planas.
+  // Eixos: frente da mão em -Z, pulso em +Z, dorso em +Y.
+  function flatPart(THREE, geo, hex, tx, ty, tz, rx = 0, ry = 0, rz = 0) {
+    let g = geo.index ? geo.toNonIndexed() : geo;
+    if (rx) g.rotateX(rx); if (ry) g.rotateY(ry); if (rz) g.rotateZ(rz);
+    g.translate(tx, ty, tz); g.computeVertexNormals(); // não indexada: normal por face (facetado)
+    const c = new THREE.Color(hex), n = g.attributes.position.count, cols = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) { cols[k * 3] = c.r; cols[k * 3 + 1] = c.g; cols[k * 3 + 2] = c.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    return g;
+  }
+  function mergeParts(THREE, parts) {
+    let total = 0; for (const g of parts) total += g.attributes.position.count;
     const pos = new Float32Array(total * 3), nrm = new Float32Array(total * 3), col = new Float32Array(total * 3);
-    let offset = 0;
-    for (const g of parts) {
-      const n = g.attributes.position.count;
-      pos.set(g.attributes.position.array, offset * 3);
-      nrm.set(g.attributes.normal.array, offset * 3);
-      col.set(g.attributes.color.array, offset * 3);
-      offset += n;
-      g.dispose();
+    let o = 0;
+    for (const g of parts) { const n = g.attributes.position.count; pos.set(g.attributes.position.array, o * 3); nrm.set(g.attributes.normal.array, o * 3); col.set(g.attributes.color.array, o * 3); o += n; g.dispose(); }
+    const m = new THREE.BufferGeometry();
+    m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); m.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    m.computeBoundingSphere(); return m;
+  }
+  function createGloveGeometry(THREE) {
+    const B = (w, h, d) => new THREE.BoxGeometry(w, h, d), P = [];
+    const PALM = 0x2a3038, FING = 0x323943, PLATE = 0x1a1e24, CUFF = 0x1d2127;
+    // Palma: bloco com o dorso chanfrado (um segundo bloco mais estreito em cima dá a quina).
+    P.push(flatPart(THREE, B(0.072, 0.03, 0.086), PALM, 0, -0.002, 0.004));
+    P.push(flatPart(THREE, B(0.06, 0.012, 0.074), PALM, 0, 0.017, 0.006));
+    // Protetor dos nós dos dedos.
+    P.push(flatPart(THREE, B(0.07, 0.016, 0.026), PLATE, 0, 0.02, -0.03, 0.18));
+    // Dedos: falange de baixo saindo da palma e a de cima dobrada para baixo, em volta do cabo.
+    for (let f = 0; f < 4; f++) {
+      const x = -0.025 + f * 0.0167, len = f === 3 ? 0.024 : 0.03;
+      P.push(flatPart(THREE, B(0.0145, 0.016, len), FING, x, -0.004, -0.044 - len / 2 + 0.012, 0.35));
+      P.push(flatPart(THREE, B(0.0135, 0.015, 0.024), FING, x, -0.026, -0.058, 1.25));
     }
-    const merged = new THREE.BufferGeometry();
-    merged.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    merged.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-    merged.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    merged.computeBoundingSphere();
-    return merged;
+    // Polegar: dois blocos do lado de dentro, deitado sobre o cabo.
+    P.push(flatPart(THREE, B(0.017, 0.016, 0.032), FING, -0.04, 0.006, -0.006, 0.25, 0.35, 0.3));
+    P.push(flatPart(THREE, B(0.015, 0.014, 0.026), FING, -0.046, 0.012, -0.034, 0.45, 0.55, 0.3));
+    // Tira do punho da luva, em bloco.
+    // (mais fino que a palma: de trás, a mão em blocos aparece em volta dele, em vez de um disco tapando tudo)
+    P.push(flatPart(THREE, B(0.06, 0.03, 0.02), CUFF, 0, 0.002, 0.054));
+    // Dorso da mão subindo até o punho (a parte que se vê de trás).
+    P.push(flatPart(THREE, B(0.064, 0.026, 0.022), PALM, 0, 0.004, 0.042, -0.25));
+    return mergeParts(THREE, P);
   }
 
-  // Tapered anatomical forearm sleeve (Y is length axis [-0.5..0.5], +Y = wrist, -Y = elbow)
+  // Manga do antebraço em prisma de 6 lados (eixo Y de -0,5 a 0,5: +Y = pulso, -Y = cotovelo), facetada, afinando até
+  // o punho de tecido no pulso.
   function createSleeveGeometry(THREE) {
-    return new THREE.CylinderGeometry(0.92, 1.32, 1.0, 12, 1, false);
+    const prism = (rTop, rBot, h, y) => { const g = new THREE.CylinderGeometry(rTop, rBot, h, 6, 1, false).toNonIndexed(); g.rotateY(Math.PI / 6); g.translate(0, y, 0); g.computeVertexNormals(); return g; };
+    // Afina bem no pulso: o fim da manga fica menor que a mão, que aparece inteira por cima dele.
+    const parts = [prism(0.6, 1.22, 0.9, -0.05), prism(0.68, 0.66, 0.1, 0.45)];
+    let total = 0; for (const g of parts) total += g.attributes.position.count;
+    const pos = new Float32Array(total * 3), nrm = new Float32Array(total * 3); let o = 0;
+    for (const g of parts) { pos.set(g.attributes.position.array, o * 3); nrm.set(g.attributes.normal.array, o * 3); o += g.attributes.position.count; g.dispose(); }
+    const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); m.computeBoundingSphere();
+    return m;
   }
 
   // 3D volumetric star muzzle flash geometry

@@ -2861,7 +2861,8 @@ const gloveGeo = globalThis.V2Weapons ? V2Weapons.createGloveGeometry(THREE) : n
 const UPZ = new V3(0, 0, 1);
 function limb(group, from, to, thick, mat) {
   const a = new V3(...from), b = new V3(...to), len = a.distanceTo(b);
-  const geo = globalThis.V2Weapons ? new THREE.CylinderGeometry(thick * 0.48, thick * 0.62, len, 10).rotateX(Math.PI / 2) : new THREE.BoxGeometry(thick, thick, len);
+  // Braço em prisma de 6 lados, facetado (low poly, como a mão e os bonecos).
+  const geo = globalThis.V2Weapons ? (g => { g.rotateX(Math.PI / 2); g.computeVertexNormals(); return g; })(new THREE.CylinderGeometry(thick * 0.48, thick * 0.62, len, 6).toNonIndexed()) : new THREE.BoxGeometry(thick, thick, len);
   const m = new THREE.Mesh(geo, mat);
   m.position.copy(a).add(b).multiplyScalar(0.5);
   m.quaternion.setFromUnitVectors(UPZ, b.clone().sub(a).normalize());
@@ -3000,7 +3001,7 @@ function buildButterfly() {
   blade.add(free); pivot.add(blade);
   return { pivot, blade, free };
 }
-// Manga tática arredondada (V2Weapons) ou bloco (fallback de testes).
+// Manga em prisma de 6 lados facetado (V2Weapons) ou bloco (fallback de testes).
 const knifeArmGeo = globalThis.V2Weapons ? V2Weapons.createSleeveGeometry(THREE) : new THREE.BoxGeometry(2,1,2), knifeArmUp = new V3(0,1,0);
 const knifeArmA = new V3(), knifeArmB = new V3(), knifeArmDir = new V3();
 // Pose channels: hand x/y/z, pitch/yaw/roll, blade hinge, free hinge, left x/y/z/roll, finger opening, presentation at the index finger,
