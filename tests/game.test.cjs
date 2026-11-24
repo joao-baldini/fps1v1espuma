@@ -2410,6 +2410,44 @@ for(const key of NEW_FIVE){
   });
 }
 
+test('Breakable glass: holds the body, the bullet passes and breaks it, HE breaks nearby panes, rounds restore them',()=>{
+  assert.ok(sourcePacked.calamari.meta.objects.filter(o=>o.k==='glass').length>=10,'vidraças no Calamari');
+  const g=game({mode:'aimbotz'}),cx=g.context;cx.buildMap('calamari');const W=cx.sourceWorld,ev=c=>vm.runInContext(c,cx);
+  const list=ev('MAPOBJ.list'),pane=list.find(m=>m.o.k==='glass');assert.ok(pane);
+  const [x,y,z]=pane.o.c,[nx,nz]=pane.o.nrm,o=[x+nx*1.5,y,z+nz*1.5],d=[-nx,0,-nz];
+  const shot=W.ray(o,d,3);assert.ok(!shot||shot.t>1.6,'a bala não para no vidro');
+  assert.ok(W.ray(o,d,3,8),'o vidro está no caminho');assert.equal(W.glassIntact(pane.i),true);
+  cx.__o=o;cx.__d=d;ev('trace(__o,__d,3,[],null)');
+  assert.equal(W.glassIntact(pane.i),false,'o tiro quebrou');assert.equal(pane.mesh.visible,false);assert.equal(W.ray(o,d,3,8),null);
+  ev('nadesClear()');assert.equal(W.glassIntact(pane.i),true,'nova rodada: vidro de volta');assert.equal(pane.mesh.visible,true);
+  cx.__c=[x,y-1,z];ev("nadeDetonate({type:'he',owner:P,pos:new V3(__c[0],__c[1],__c[2])},now())");
+  assert.equal(W.glassIntact(pane.i),false,'a HE perto quebra a vidraça');
+});
+test('Doors: E opens the door away from you and the collision follows the leaf; bots open doors in their way',()=>{
+  assert.ok(sourcePacked.crown.meta.objects.some(o=>o.k==='door'),'porta no Crown');
+  const g=game({mode:'aimbotz'}),cx=g.context;cx.buildMap('crown');const W=cx.sourceWorld,ev=c=>vm.runInContext(c,cx);
+  const door=ev('MAPOBJ.list').find(m=>m.o.k==='door'),o=door.o,[nx,nz]=o.nrm;
+  const leafMid=state=>{cx.__s=state;const l=ev('doorLeaf(MAPOBJ.list['+door.i+'].o,__s)');return [(l[0]+l[2])/2,(l[1]+l[3])/2];};
+  const blockedAt=(px,pz)=>W.overlap(px,o.hinge[1]+.05,pz,1.8,.3);
+  assert.equal(blockedAt(o.mid[0],o.mid[2]),true,'fechada bloqueia');
+  const ground=W.ground(o.mid[0]+nx*1.1,o.mid[2]+nz*1.1,o.hinge[1]+.5);
+  g.P.alive=true;g.P.pos.set(o.mid[0]+nx*1.1,ground,o.mid[2]+nz*1.1);g.P.yaw=Math.atan2(nx,nz);
+  assert.equal(ev('doorUse()'),true);assert.notEqual(door.state,0);
+  const lm=leafMid(door.state);assert.ok((lm[0]-o.mid[0])*nx+(lm[1]-o.mid[2])*nz<0,'abriu para o lado de lá');
+  assert.equal(blockedAt(o.mid[0],o.mid[2]),false,'passagem livre');assert.equal(blockedAt(lm[0],lm[1]),true,'a folha aberta tem colisão');
+  ev('mapObjectsTick(1,now())');assert.ok(Math.abs(Math.abs(door.pivot.rotation.y)-Math.PI/2)<1e-6,'a folha girou 90°');
+  assert.equal(ev('doorUse()'),true);assert.equal(door.state,0);assert.equal(blockedAt(o.mid[0],o.mid[2]),true);
+  // Bot andando encostado na porta fechada abre.
+  const bot={alive:true,remote:false,vel:new Vec(2,0,0),pos:new Vec(o.mid[0]+nx*.5,o.hinge[1],o.mid[2]+nz*.5)};cx.__bot=bot;ev('DM.bots=[__bot]');
+  ev('mapObjectsTick(.01,now())');assert.notEqual(door.state,0,'bot abriu a porta');
+});
+test('Grates and fences are drawn as bars: the body stops, the bullet passes',()=>{
+  const g=game({mode:'aimbotz'}),cx=g.context;cx.buildMap('calamari');const W=cx.sourceWorld;
+  const pk=sourcePacked.calamari,masks=new Uint8Array(Buffer.from(pk.collision.masks,'base64'));
+  assert.ok(masks.filter(m=>m===1).length>100,'peças que só barram o corpo (grades, cercas, gradis)');
+  assert.ok(Buffer.from(pk.mesh.index,'base64').length/12>70000);void W;
+});
+
 test('5v5 starts ten actors on the authored attacking and defending bases using the existing bomb rules',()=>{
   for(const key of FIVE){
   const {g,cx,A,BM,step}=bombWorld(key,"S.mode='bomb'");step(10000,1100);

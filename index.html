@@ -1499,7 +1499,7 @@ function buildMap(id) {
     if(!sourceWorld)throw new Error('Source map must be loaded before starting');
     if(worldMesh){scene.remove(worldMesh);worldMesh.geometry.dispose();}
     const geo=sourceWorld.geometry(THREE),textured=!!(geo.attributes&&geo.attributes.pattern);
-    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);worldMesh.castShadow=worldMesh.receiveShadow=true;scene.add(worldMesh);applySourceFixes(def.source,worldMesh);if(def.bomb)try{buildSiteFloors(scene);}catch(e){console.warn('site floor',e);}
+    worldMesh=new THREE.Mesh(geo,textured?[texWorldMat,texGlassMat]:[worldMat,sourceGlassMat]);worldMesh.castShadow=worldMesh.receiveShadow=true;scene.add(worldMesh);mapObjectsBuild(geo,textured);applySourceFixes(def.source,worldMesh);if(def.bomb)try{buildSiteFloors(scene);}catch(e){console.warn('site floor',e);}
     if (globalThis.V2World && typeof worldLights !== 'undefined') { V2World.applyMood(THREE, worldLights, sky, scene, def.theme, AX, AZ); worldLights.sun.shadow.bias = -.0015; worldLights.sun.shadow.normalBias = .06; }
     try{clearDecals();BOT.wp=null;BOT.knowsUntil=0;}catch(e){}
     return;
@@ -1756,10 +1756,12 @@ function traceMap(o, d, tmax) {
   for (const r of ramps) { const h = rayRamp(o, d, r, best ? best.t : tmax); if (h) best = h; }
   return best;
 }
-function trace(o, d, tmax, targets, excludeActor) {
+function trace(o, d, tmax, targets, excludeActor, noGlass) {
   const m = traceMap(o, d, tmax);
   let lim = m ? m.t : tmax, hit = null;
   if (targets) for (const hb of targets) { if(excludeActor&&hb.actor===excludeActor)continue; const h = rayBox(o, d, hb.min, hb.max, lim); if (h && h.t < lim) { lim = h.t; hit = { t: h.t, part: hb.part, actor:hb.actor }; } }
+  // O vidro não segura a bala: tudo o que ela atravessou até parar quebra.
+  if (!noGlass && MAPOBJ.list.length) glassAlong(o, d, lim);
   if (hit) return { t: hit.t, part: hit.part, actor:hit.actor, point: [o[0] + d[0] * hit.t, o[1] + d[1] * hit.t, o[2] + d[2] * hit.t] };
   if (m) return { t: m.t, point: [o[0] + d[0] * m.t, o[1] + d[1] * m.t, o[2] + d[2] * m.t], normal: m.n };
   return null;
@@ -2231,6 +2233,8 @@ const AU = {
   },
   clink(v, pan) { this.tone(1700 + Math.random() * 500, .05, .07 * v, 'triangle', pan, -400); this.noise(.02, 3000, 2, .05 * v, pan, 'bandpass'); },
   boom(v, pan) { this.noise(.95, 380, .5, 1.1 * v, pan); this.tone(46, .75, .95 * v, 'sine', pan, -18); this.noise(.22, 2600, .7, .45 * v, pan, 'highpass'); },
+  glass(v, pan) { this.noise(.32, 4600, 1.1, .6 * v, pan, 'bandpass'); for (let k = 0; k < 4; k++) this.tone(2400 + Math.random() * 2600, .08 + Math.random() * .12, .05 * v, 'triangle', pan, -900); },
+  door(v, pan) { this.noise(.2, 420, 1.4, .45 * v, pan, 'bandpass'); this.tone(150, .18, .1 * v, 'sine', pan, -60); },
   pop(v, pan) { this.noise(.14, 3400, .8, .7 * v, pan, 'bandpass'); this.tone(2600, .5, .07 * v, 'sine', pan, -300); },
   hiss(v, pan) { this.noise(1.8, 5200, .4, .26 * v, pan, 'highpass'); this.noise(.5, 900, .6, .2 * v, pan); },
   ring(v) { this.tone(3500, 2.4, .05 * v, 'sine', 0, -150); },
@@ -5660,6 +5664,8 @@ function nadeDetonate(n, t) {
   }
   if (n.type === 'he') {
     AU.boom(s.v, s.pan); nadeFx(c[0], c[1] + .3, c[2], 0xffa040, 2.4, 260, t); nadeFx(c[0], c[1] + .5, c[2], 0x55504a, 3, 900, t);
+    // A explosão quebra as vidraças por perto (em todas as máquinas, que têm a mesma granada).
+    for (const m of MAPOBJ.list) if (m.o.k === 'glass' && Math.hypot(m.o.c[0] - c[0], m.o.c[1] - c[1], m.o.c[2] - c[2]) < 4.5 && clearLine(c, m.o.c)) glassBreak(m.i, false);
     if (Math.hypot(P.pos.x - c[0], P.pos.z - c[2]) < 10) P.punch = Math.min(P.punch + .03, .05);
     for (const e of DM.actors) {
       if (!e.alive || e === n.owner) continue;
@@ -5708,11 +5714,108 @@ function nadesTick(dt, t) {
   }
 }
 function nadesClear() {
+  mapObjectsReset();
   for (const n of NADE.list) if (n.mesh) scene.remove(n.mesh);
   for (const c of NADE.clouds) { for (const [m] of c.puffs) scene.remove(m); if (c.mat) c.mat.dispose(); }
   for (const f of NADE.fx) { scene.remove(f.m); f.mat.dispose(); }
   NADE.list.length = NADE.clouds.length = NADE.fx.length = 0;
 }
+// Vidraças e portas dos mapas convertidos (meta.objects do pacote, tools/map-objects.mjs). A vidraça segura o corpo,
+// mas o tiro passa; um tiro (ou uma HE perto) quebra o vidro, e aí dá para passar. A porta abre com E, girando 90° na
+// dobradiça para o lado de lá de quem abriu; bots abrem as portas do caminho. Tudo volta ao normal a cada rodada.
+const MAPOBJ = { list: [], group: null, hinted: false };
+const DOOR_SWING = Math.PI / 2 / .25, GLASS_REGROW_MS = 30000;
+function mapObjectsClear() {
+  if (MAPOBJ.group) { scene.remove(MAPOBJ.group); for (const m of MAPOBJ.list) m.mesh.geometry.dispose(); }
+  MAPOBJ.list = []; MAPOBJ.group = null;
+}
+function mapObjectsBuild(geo, textured) {
+  mapObjectsClear();
+  if (!sourceWorld || !sourceWorld.objects || !sourceWorld.objects.length) return;
+  sourceWorld.resetObjects();
+  // Sem WebGL (testes), só a lógica: objetos sem malha.
+  const draw = !!(THREE.BufferGeometry && THREE.Group && geo && geo.index);
+  if (draw) { MAPOBJ.group = new THREE.Group(); scene.add(MAPOBJ.group); }
+  sourceWorld.objects.forEach((o, i) => {
+    let mesh = { visible: true, geometry: { dispose() {} } }, pivot = mesh;
+    if (draw) {
+      const glass = o.k === 'glass'; mesh = new THREE.Mesh(sourceWorld.objectGeometry(THREE, geo, i), textured ? (glass ? texGlassMat : texWorldMat) : (glass ? sourceGlassMat : worldMat));
+      mesh.castShadow = !glass; mesh.receiveShadow = true; pivot = mesh;
+      if (o.k === 'door') { pivot = new THREE.Group(); pivot.position.set(o.hinge[0], 0, o.hinge[2]); mesh.position.set(-o.hinge[0], 0, -o.hinge[2]); pivot.add(mesh); }
+      MAPOBJ.group.add(pivot);
+    } else if (o.k === 'door') pivot = { rotation: { y: 0 } };
+    MAPOBJ.list.push({ o, i, mesh, pivot, state: 0, angle: 0, target: 0, brokenAt: 0 });
+  });
+}
+function mapObjectsReset() {
+  if (!sourceWorld || !sourceWorld.objects) return;
+  sourceWorld.resetObjects();
+  for (const m of MAPOBJ.list) { m.state = 0; m.angle = m.target = 0; m.brokenAt = 0; m.mesh.visible = true; if (m.pivot !== m.mesh) m.pivot.rotation.y = 0; }
+}
+function mapObjSend(k, d) { if (!ARENA.net) return; if (ARENA.host) arenaBroadcast({ t: 'e', k, d }); else arenaSend({ t: 'e', k, d }); }
+function glassBreak(i, net = true) {
+  const m = MAPOBJ.list[i]; if (!m || m.o.k !== 'glass' || !sourceWorld.breakGlass(i)) return false;
+  m.mesh.visible = false; m.brokenAt = now();
+  const [x, y, z] = m.o.c, s = spat(x, z); AU.glass(s.v, s.pan);
+  for (let k = 0; k < 5; k++) nadeFx(x + (Math.random() - .5) * .8, y + (Math.random() - .5) * .8, z + (Math.random() - .5) * .8, 0xe6f6ff, .35 + Math.random() * .3, 180 + Math.random() * 160, now());
+  if (net) mapObjSend('glass', { i });
+  return true;
+}
+// Tiro: quebra as vidraças atravessadas até onde a bala parou (o vidro não segura a bala).
+function glassAlong(o, d, limit) {
+  if (!sourceWorld || !MAPOBJ.list.length) return;
+  for (let k = 0; k < 4; k++) { const h = sourceWorld.ray(o, d, limit, 8); if (!h) break; const i = sourceWorld.hullObj[h.id]; if (i < 0 || !glassBreak(i)) break; }
+}
+const segDist = (px, pz, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, k = clamp(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1), 0, 1); return Math.hypot(px - ax - dx * k, pz - az - dz * k); };
+// Posições da folha: fechada (0) ou aberta girando +90° (1) / −90° (2) em torno da dobradiça (mesma rotação do importador).
+function doorLeaf(o, state) {
+  const ux = (o.mid[0] - o.hinge[0]) * 2 / o.len, uz = (o.mid[2] - o.hinge[2]) * 2 / o.len, sg = state === 1 ? 1 : -1;
+  const [dx, dz] = state === 0 ? [ux, uz] : [uz * sg, -ux * sg];
+  return [o.hinge[0], o.hinge[2], o.hinge[0] + dx * o.len, o.hinge[2] + dz * o.len];
+}
+const doorBlocked = (o, state, who) => DM.actors.concat(G.mode === 'dm' || G.mode === 'team' ? [] : [P]).some(e => e && e.alive && e !== who && Math.abs(e.pos.y - o.hinge[1]) < 2.2 && segDist(e.pos.x, e.pos.z, ...doorLeaf(o, state)) < .42);
+function doorSet(i, state, net = true) {
+  const m = MAPOBJ.list[i]; if (!m || m.o.k !== 'door' || m.state === state) return false;
+  m.state = state; m.target = state === 0 ? 0 : state === 1 ? Math.PI / 2 : -Math.PI / 2; sourceWorld.setDoor(i, state);
+  const s = spat(m.o.mid[0], m.o.mid[2]); AU.door(s.v, s.pan);
+  if (net) mapObjSend('door', { i, s: state });
+  return true;
+}
+// Abre girando para o lado de lá de quem abriu (ou para o outro, se tiver alguém no caminho); fecha se a passagem estiver livre.
+function doorToggle(i, who) {
+  const m = MAPOBJ.list[i]; if (!m) return false; const o = m.o;
+  if (m.state) { if (doorBlocked(o, 0, null)) return false; return doorSet(i, 0); }
+  const side = (who.pos.x - o.mid[0]) * o.nrm[0] + (who.pos.z - o.mid[2]) * o.nrm[1];
+  const away = [1, 2].sort((a, b) => { const la = doorLeaf(o, a), lb = doorLeaf(o, b), fa = ((la[2] + la[0]) / 2 - o.mid[0]) * o.nrm[0] + ((la[3] + la[1]) / 2 - o.mid[2]) * o.nrm[1], fb = ((lb[2] + lb[0]) / 2 - o.mid[0]) * o.nrm[0] + ((lb[3] + lb[1]) / 2 - o.mid[2]) * o.nrm[1]; return fa * side - fb * side; });
+  for (const v of away) if (!doorBlocked(o, v, who)) return doorSet(i, v);
+  return false;
+}
+function doorNear(e, reach = 1.7) {
+  let best = null, bestD = reach;
+  for (const m of MAPOBJ.list) { if (m.o.k !== 'door' || Math.abs(e.pos.y - m.o.hinge[1]) > 1.6) continue; const d = segDist(e.pos.x, e.pos.z, ...doorLeaf(m.o, m.state)); if (d < bestD) { bestD = d; best = m; } }
+  return best;
+}
+// E perto de uma porta (olhando para ela): abre ou fecha.
+function doorUse() {
+  if (!P.alive || !MAPOBJ.list.length) return false;
+  const m = doorNear(P); if (!m) return false;
+  const f = dirFrom(P.yaw, 0), dx = m.o.mid[0] - P.pos.x, dz = m.o.mid[2] - P.pos.z, d = Math.hypot(dx, dz) || 1;
+  if ((f[0] * dx + f[2] * dz) / d < .2 && d > .9) return false;
+  if (!doorToggle(m.i, P)) toast('Tem alguém na frente da porta.');
+  return true;
+}
+function mapObjectsTick(dt, t) {
+  if (!MAPOBJ.list.length) return;
+  for (const m of MAPOBJ.list) {
+    if (m.o.k === 'door' && m.angle !== m.target) { const step = DOOR_SWING * dt; m.angle = Math.abs(m.target - m.angle) <= step ? m.target : m.angle + Math.sign(m.target - m.angle) * step; m.pivot.rotation.y = m.angle; }
+    // No DM (sem rodadas) o vidro volta depois de um tempo, se não tiver ninguém encostado.
+    if (m.o.k === 'glass' && m.brokenAt && G.mode === 'dm' && t - m.brokenAt > GLASS_REGROW_MS && !DM.actors.some(e => e.alive && Math.hypot(e.pos.x - m.o.c[0], e.pos.z - m.o.c[2]) < 1.2)) { sourceWorld.restoreGlass(m.i); m.mesh.visible = true; m.brokenAt = 0; }
+  }
+  // Bots (só quem simula: sozinho ou o juiz da sala) abrem a porta fechada que está no caminho.
+  if (!ARENA.net || ARENA.host) for (const b of DM.bots) { if (!b.alive || b.remote || Math.hypot(b.vel.x, b.vel.z) < .3) continue; const m = doorNear(b, .75); if (m && !m.state) doorToggle(m.i, b); }
+  if (!MAPOBJ.hinted && P.alive && doorNear(P, 1.4)) { MAPOBJ.hinted = true; toast('E abre e fecha a porta.'); }
+}
+
 // Quanto a câmera está dentro de uma nuvem (0 a 1), para escurecer a tela.
 function smokeInside(x, y, z) {
   let k = 0; for (const c of NADE.clouds) { const d = Math.hypot(x - c.x, y - c.y, z - c.z); k = Math.max(k, clamp((c.r - d) / (c.r * .5), 0, 1)); }
@@ -6135,6 +6238,7 @@ function teamNewMatch(t) {
   arenaBuildActors(teamRoster()); teamNextRound(t);
 }
 function teamNextRound(t) {
+  mapObjectsReset();
   ARENA.r++; DM.phase = 'freeze'; ARENA.roundEnd = t + 3000; ARENA.win = null; ARENA.why = '';
   ARENA.mp = pickMap(ARENA.mp); if (ARENA.mp !== MAP.id) { buildMap(ARENA.mp); dmBuildNav([]); }
   const swap = Math.random() < .5 ? 1 : 0; ARENA.side = [swap, 1 - swap]; ARENA.sd = {};
@@ -6394,6 +6498,7 @@ function bombNewMatch(t) {
   opsAssign(); bombNextRound(t);
 }
 function bombNextRound(t) {
+  mapObjectsReset();
   ARENA.r++; DM.phase = 'freeze'; ARENA.roundEnd = t + BOMB.freezeMs; ARENA.win = null; ARENA.why = ''; BOMB.roundStart = t;
   if (ARENA.r === BOMB.half + 1) {
     // Troca de lado: placar fica, economia recomeça.
@@ -7021,7 +7126,7 @@ function doctorShoot(t, self) {
     P.injectT = t; P.injectHealAt = t + INJECT.ms * INJECT.heal; return true;
   }
   const boxes2 = []; for (const e of DM.actors) if (e !== P && e.alive && e.team === P.team) { dmUpdateHitboxes(e); boxes2.push(...e.dmBoxes); }
-  const e = eyePos(), d = dirFrom(P.yaw, P.pitch), hit = trace(e, d, DOCTOR.range, boxes2);
+  const e = eyePos(), d = dirFrom(P.yaw, P.pitch), hit = trace(e, d, DOCTOR.range, boxes2, null, true);
   const ally = hit && hit.part ? DM.byId.get(hit.actor) : null;
   if (ally && ally.hp >= 100) { opNotice(ally.name + ' já está com a vida cheia'); return false; }
   dartFire(P, muzzleWorld(), hit ? hit.point : [e[0] + d[0] * DOCTOR.range, e[1] + d[1] * DOCTOR.range, e[2] + d[2] * DOCTOR.range], ally, t);
@@ -7339,6 +7444,11 @@ function arenaOnData(from, m) {
       const e = DM.byId.get(from), b = BOMB.planted;
       if (!e || !e.alive || d.m !== match || d.r !== ARENA.r || !b || b.defused || b.blown || sideOf(e) !== 'ct' || Math.hypot(e.pos.x - b.x, e.pos.z - b.z) > 3) return;
       bombDefused(e, t);
+    }
+    else if (m.k === 'glass' || m.k === 'door') {
+      const i = d.i | 0, o = MAPOBJ.list[i]; if (!o || o.o.k !== (m.k === 'glass' ? 'glass' : 'door')) return;
+      if (m.k === 'glass') glassBreak(i, false); else if ([0, 1, 2].includes(d.s)) doorSet(i, d.s, false);
+      if (ARENA.host) arenaBroadcast({ t: 'e', k: m.k, d: m.k === 'glass' ? { i } : { i, s: d.s } }, from);
     }
     else if (m.k === 'nade') {
       const id = ARENA.host ? from : d.id, e = DM.byId.get(id);
@@ -8315,6 +8425,7 @@ document.addEventListener('keydown', e => {
   else if (bombOn() && e.code === 'KeyX') useAbility(now());
   else if (bombOn() && e.code === 'KeyG') playerDropWeapon(now());
   else if (bombOn() && e.code === 'KeyE' && weaponSwapNear(now())) {}
+  else if (e.code === 'KeyE' && doorUse()) {}
   else if (SLOT[e.code]) selectWeapon(G.mode==='aimbotz'&&!mapPracticeOn()?(SLOT[e.code]==='knife'?S.loadout.knife:S.aimbotzWeapon):(P.loadout||S.loadout)[SLOT[e.code]]);
   else if (e.code === 'Digit4' && mapPracticeOn()) { const nades = ORDER.filter(k => W[k].grenade); if (nades.length) selectWeapon(nades[(nades.indexOf(P.weapon) + 1) % nades.length]); }
   else if (e.code === 'KeyN' && mapPracticeOn()) togglePracticeFly();
@@ -8851,6 +8962,7 @@ function frame() {
   else if (G.mode === 'bot') botUpdate(dt, t);
   else if (prefireOn()) prefireTick(dt,t);
   if (G.mode === 'dm' || G.mode === 'team' || mapPracticeOn()) nadesTick(dt, t);
+  if (G.mode) mapObjectsTick(dt, t);
   mapPracticeTick();
   if (G.host) hostTick(t);
   netTick(t);

@@ -115,6 +115,8 @@ export function readPhy(b){
   }return hulls;
 }
 
+// Modelos vazados (grade, gradil, portão de barras, cerca): a forma vem do .phy, mas o desenho vira barras e o tiro passa.
+export const SEE_THROUGH = /railgate|railing|spikedgate|gate_fence|gate_a\/|chainlink|(?<!concrete_|wood_)fence(?!post|_rubble|_destroyed)|window_bars|_bars|grate|grill|lattice|portcullis|irongate/;
 const hiddenMaterial = name => /(^tools\/|tools?\/tools|trigger|nodraw|invis[ai]?ble|skybox|sky_day|sky_cs)/.test(name);
 const colorFor = (name,n,key) => {
   if(/glass|window/.test(name))return 0x8faaba;
@@ -175,18 +177,22 @@ export function compileSourceMap(file,key,options={}){
   const polygons=[],hulls=[],report={sourceSha256:bsp.sha256,worldFaces:0,displacementTriangles:0,brushes:0,propHulls:0,propModels:0,missingModels:[],unsupportedProps:[]};
   const keep=points=>points.some(p=>p[2]>=base-512)&&points.every(p=>p.every(Number.isFinite));
   const propColors=new Map();
+  // Origem de cada face e peça de colisão (brush do mundo, entidade, modelo): usada depois para achar vidros, portas e
+  // grades (tools/map-objects.mjs). Não vai para o pacote do jogo.
+  let SRC=null,BRUSH=null;
   // options.textures: guarda coordenadas de textura (texinfo do BSP, na escala real da textura) e o padrão do material.
   const planarUv=(points,n)=>{const a=Math.abs(n[0])>Math.abs(n[1])&&Math.abs(n[0])>Math.abs(n[2])?[1,2]:Math.abs(n[1])>Math.abs(n[2])?[0,2]:[0,1];return points.map(p=>[p[a[0]]/64,p[a[1]]/64]);};
   const emit=(points,n,material,tag='world',tex=-1)=>{if(points.length<3||!keep(points))return;const rgb=bsp.materialColors.get(material),c=rgb?flatColor(rgb):propColors.get(material)??colorFor(material,n,key),face={p:points.map(convert),n:normal(n),c,glass:/glass|window/.test(material),tag};
     if(options.textures){const ti=bsp.texInfo[tex],size=ti&&bsp.texSize[ti.data];face.uv=ti&&size?points.map(p=>[(ti.s[0]*p[0]+ti.s[1]*p[1]+ti.s[2]*p[2]+ti.s[3])/size[0],(ti.t[0]*p[0]+ti.t[1]*p[1]+ti.t[2]*p[2]+ti.t[3])/size[1]]):planarUv(points,n);face.pat=patternFor(material);}
     if(options.materialNames)face.material=material;
+    if(SRC)face.src=SRC;
     polygons.push(face);};
-  const collision=(ps,b,mask=3)=>{if(b[5]<base-512)return;const pts=corners(b).map(convert),bb=bounds(pts);hulls.push({planes:ps.map(plane),min:bb.slice(0,3),max:bb.slice(3),mask});};
+  const collision=(ps,b,mask=3)=>{if(b[5]<base-512)return;const pts=corners(b).map(convert),bb=bounds(pts);const h={planes:ps.map(plane),min:bb.slice(0,3),max:bb.slice(3),mask};if(SRC)h.src=SRC;if(BRUSH)h.brush=BRUSH;hulls.push(h);};
   const surfaceCollider=(points,n)=>{
     const top=points.map(convert),wn=normal(n),bottom=top.map(p=>sub(p,mul(wn,.025))),vertices=top.concat(bottom),count=top.length,tris=[];
     for(let i=1;i<count-1;i++)tris.push([0,i,i+1],[count,count+i+1,count+i]);
     for(let i=0;i<count;i++){const j=(i+1)%count;tris.push([i,count+i,count+j],[i,count+j,j]);}
-    const h=hullFromTriangles(vertices,tris),bb=bounds(vertices);hulls.push({planes:h.planes,min:bb.slice(0,3),max:bb.slice(3),mask:3});
+    const h=hullFromTriangles(vertices,tris),bb=bounds(vertices),hull={planes:h.planes,min:bb.slice(0,3),max:bb.slice(3),mask:3};if(SRC)hull.src=SRC;hulls.push(hull);
   };
   const drawModel=(index,origin=[0,0,0],angles=[0,0,0],solid=true)=>{
     const model=bsp.models[index],rot=rotation(angles),transform=p=>add(rot(p),origin);
@@ -233,27 +239,30 @@ export function compileSourceMap(file,key,options={}){
       if(!mask)continue;
       const ps=sides.map(s=>bsp.planes[s.plane]),bb=brushBounds(ps);if(bb.some(v=>Math.abs(v)>=32768)||bb[5]<base-512)continue;
       const transformed=ps.map(p=>{const n=rot(p.slice(0,3));return [...n,p[3]+dot(n,origin)];});
-      const rb=bounds(corners(bb).map(transform));collision(transformed,rb,mask);report.brushes++;
+      const rb=bounds(corners(bb).map(transform));BRUSH={id,contents:b.contents};collision(transformed,rb,mask);BRUSH=null;report.brushes++;
     }
   };
   drawModel(0);
   // Entidades de brush que no CS não são paredes: volumes invisíveis (neve/chuva, oclusores, bloqueio de navegação,
   // clipe só de física) ficam de fora; func_illusionary e func_lod aparecem, mas não colidem.
   const brushEntities=bsp.entities.filter(e=>/^\*\d+$/.test(e.model||'')&&!/^(func_bomb_target|func_buyzone|func_areaportal|trigger_|func_dust|func_precipitation|func_occluder|func_nav_blocker|func_clip_vphysics|func_smokevolume|func_hostage_rescue)/.test(e.classname)&&e.StartDisabled!=='1');
-  for(const e of brushEntities)drawModel(Number(e.model.slice(1)),numbers(e.origin),numbers(e.angles),e.Solidity!=='1'&&!/^(func_illusionary|func_lod)$/.test(e.classname));
+  for(const e of brushEntities){SRC={ent:e.classname,model:e.model,material:e.material,health:e.health,targetname:e.targetname};drawModel(Number(e.model.slice(1)),numbers(e.origin),numbers(e.angles),e.Solidity!=='1'&&!/^(func_illusionary|func_lod)$/.test(e.classname));SRC=null;}
   const modelCache=new Map();
-  const props=bsp.staticProps().concat(bsp.entities.filter(e=>/^(prop_dynamic|prop_physics)/.test(e.classname)).map(e=>({model:(e.model||'').toLowerCase(),origin:numbers(e.origin),angles:numbers(e.angles),solid:Number(e.solid??6),scale:Number(e.modelscale)||1})));
+  const props=bsp.staticProps().concat(bsp.entities.filter(e=>/^(prop_dynamic|prop_physics|prop_door_rotating)/.test(e.classname)).map(e=>({model:(e.model||'').toLowerCase(),origin:numbers(e.origin),angles:numbers(e.angles),solid:Number(e.solid??6),scale:Number(e.modelscale)||1,cls:e.classname})));
   for(const prop of props){
-    if(!prop.model||prop.origin[2]<base-512||!prop.solid)continue;
+    // Grades e gradis não sólidos (só enfeite no CS) também aparecem, sem colisão: antes ficavam invisíveis.
+    const ghost=!prop.solid&&SEE_THROUGH.test(prop.model);
+    if(!prop.model||prop.origin[2]<base-512||(!prop.solid&&!ghost))continue;
     let model=modelCache.get(prop.model);
     if(model===undefined){const phy=bsp.asset(prop.model.replace(/\.mdl$/,'.phy'));try{model=phy?readPhy(phy):null;propColors.set(prop.model,propColor(bsp,prop.model));}catch(err){report.unsupportedProps.push([prop.model,err.message]);model=null;}modelCache.set(prop.model,model);}
     if(!model){if(!report.missingModels.includes(prop.model))report.missingModels.push(prop.model);continue;}
-    const rot=rotation(prop.angles),transform=p=>add(rot(mul(p,prop.scale)),prop.origin);report.propModels++;
+    const rot=rotation(prop.angles),transform=p=>add(rot(mul(p,prop.scale)),prop.origin);report.propModels++;SRC={prop:{model:prop.model,origin:prop.origin,angles:prop.angles,scale:prop.scale,cls:prop.cls||'static',solid:prop.solid}};
     for(const h of model){const vertices=h.vertices.map(transform),ps=h.planes.map(p=>{const n=rot(p.slice(0,3));return [...n,p[3]*prop.scale+dot(n,prop.origin)];}),bb=bounds(vertices);if(!keep(vertices))continue;
-      collision(ps,bb,3);report.propHulls++;
+      collision(ps,bb,ghost?0:3);report.propHulls++;
       for(const ids of h.triangles){const p=ids.map(i=>vertices[i]);let n=unit(cross(sub(p[1],p[0]),sub(p[2],p[0])));const middle=mul(vertices.reduce((s,v)=>add(s,v),[0,0,0]),1/vertices.length);if(dot(n,sub(middle,p[0]))>0)n=mul(n,-1);emit(p,n,prop.model,'prop');}
     }
   }
+  SRC=null;
   const sites=bsp.entities.filter(e=>e.classname==='func_bomb_target').map((e,i)=>{const m=bsp.models[Number(e.model.slice(1))],bb=bounds(corners([...m.min,...m.max]).map(convert));return {name:String.fromCharCode(65+i),x0:bb[0],z0:bb[2],x1:bb[3],z1:bb[5],y0:bb[1],y1:bb[4],lx:(bb[0]+bb[3])/2,lz:(bb[2]+bb[5])/2};});
   const starts=type=>spawns.filter(e=>e.classname==='info_player_'+type).map(e=>{const p=convert(numbers(e.origin));return [p[0],p[2],(numbers(e.angles)[1]-90)*Math.PI/180,p[1]];});
   const ladders=bsp.entities.filter(e=>e.classname==='info_ladder').map(e=>{const lo=['x','y','z'].map(k=>Number(e['mins.'+k])),hi=['x','y','z'].map(k=>Number(e['maxs.'+k]));return bounds(corners([...lo,...hi]).map(convert));});

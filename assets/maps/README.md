@@ -196,6 +196,25 @@ Portes 1:1 dos mapas da Steam Workshop: **Calamari** (Mac, Geno e Reydifox, 7075
 
 **Cores (`tools/valorant-palette.mjs`).** As cores vêm dos materiais reais (VMT, refletividade do VTF e `$color`, como no Sable) e depois passam pela paleta do VALORANT: luminosidade com piso (`L' = max(L, 0,36 + 0,3·L)`, teto 0,86), saturação ×1,15 até 0,7, e o matiz mantido. A água (`liquids/…`, `cal_seawater`, `dev_waterbeneath`) vira turquesa claro na superfície e um turquesa mais fundo embaixo, em vez do cinza ou roxo do CS. Os pisos de madeira escura dos interiores ficam cor de mel, o chão de terra do Crown fica oliva claro.
 
+## Portas, vidros e grades (`tools/map-objects.mjs`)
+
+Análise feita nos BSPs de Neon, Forge, Sable, Lily, Calamari, Coldwater e Crown:
+
+| O que havia | Como era convertido | Agora |
+|---|---|---|
+| `func_breakable` de vidro (11 no Calamari, 26 no Crown, 2 no Neon) e brushes `WINDOW` (273 no Neon, 62 no Calamari) | parede sólida, a bala parava | vidraça: segura o corpo, a bala passa e quebra o vidro; quebra também com HE |
+| Grades e gradis com `.phy` (railgate, railingspiked, railing01/03, grades de janela do Dust) | o casco convexo do `.phy` desenhado como bloco maciço, bloqueando a bala | barras dentro da caixa do modelo; o corpo para no casco, a bala passa |
+| Grades não sólidas no CS (gradis, grades de janela, treliças) | ficavam de fora: invisíveis | desenhadas como barras, sem colisão |
+| Cercas e gradis sem `.phy` (chainlink, rusted_fence, railing) | placa de vidro translúcida ou bloco | tela de arame ou barras, mais uma colisão invisível só para o corpo |
+| Brushes `GRATE` (95 no Neon, 5 no Coldwater) | cartão sólido que segurava a bala | barras; como no CS, a bala passa |
+| `prop_door_rotating` (portão do A no Crown) | não era convertida (buraco na parede) | porta que abre com E |
+| Portas com `.phy` entre dois lugares andáveis | bloco fixo | porta que abre; só quando a navegação original do CS tem área dos dois lados, para nenhuma porta dar para fora do mapa |
+| Portas do Dust sem `.phy` (`dust_door_WxH`) | invisíveis | folha de madeira; se a navegação do CS passa por ali, sem colisão |
+
+**Como funciona.** `tools/source-bsp.mjs` marca de onde vem cada face e cada peça de colisão (brush do mundo com o conteúdo do BSP, entidade ou modelo). `extractMapObjects` agrupa vidraças e portas em objetos e testa cada um no próprio mapa. A vidraça precisa de espaço livre dos dois lados (senão é janela pintada na parede e fica como está), com espessura de até 45 cm. A porta precisa de chão andável dos dois lados. As grades viram barras (`barBoxes`: barras verticais com travessas, tela de arame ou treliça).
+
+**No pacote do jogo.** Cada objeto ganha um trecho próprio de índices no fim da malha (`mesh.world` marca onde termina o mundo fixo) e a lista das suas peças de colisão (`meta.objects`). A porta leva também as duas posições abertas, giradas ±90° na dobradiça, que começam desligadas. A colisão tem um bit novo, 8 = vidro: `ray(o, d, limite, 8)` acha as vidraças no caminho da bala, e o tiro normal (bit 2) passa por elas. No runtime, `setDoor`, `breakGlass`, `restoreGlass` e `resetObjects` só trocam as máscaras. A navegação é feita com as portas abertas (`withDoorsOpen`), e os bots abrem a porta quando encostam nela.
+
 ## Movimento em pisos, escadas e rampas
 
 A colisão nativa agora separa o movimento horizontal do apoio dos pés. O corpo é varrido acima da janela normal de degrau; o apoio procura as superfícies sob a mesma largura usada na colisão, inclusive as bordas. Assim, as costuras dos triângulos e espelhos dos degraus não funcionam como paredes laterais. A altura máxima de degrau continua em 0,5 m; paredes maiores e tetos baixos continuam sólidos. A queda e o salto mantêm a resolução de colisão vertical.

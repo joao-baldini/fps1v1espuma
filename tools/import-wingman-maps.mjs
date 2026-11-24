@@ -13,6 +13,7 @@ import { packMap, bakeNavigation } from './import-source-maps.mjs';
 import { rebuildSanctum } from './import-sanctum.mjs';
 import { styleLily } from './lily-style.mjs';
 import { valorantPalette } from './valorant-palette.mjs';
+import { extractMapObjects, withDoorsOpen, barBoxes } from './map-objects.mjs';
 import { styleNeon, addNeonSignage, NEON_PROPS, NEON_HOARDINGS, SABLE_PROPS } from './neon-style.mjs';
 import '../assets/maps/runtime.js';
 
@@ -71,9 +72,12 @@ const RULES = [
   [/bollard/, () => ({ size: [12, 12, 42], cyl: true, color: C.metal, pat: P.metal })],
   [/fencepost|fence_post/, () => ({ size: [6, 6, 96], cyl: true, color: C.fence, pat: P.metal })],
   [/razorwire/, () => ({ size: [128, 24, 32], color: C.fence, pat: P.metal, mask: 1, glass: true, elongated: true })],
-  [/chainlink_fence|fence|gate_fence/, m => ({ size: [tail(m, /_(\d+)(?:_low|b|c)?$/, 128), 4, 112], color: C.fence, pat: P.metal, mask: 1, glass: true, elongated: true })],
+  // Cerca de concreto é muro (antes caía na regra da cerca de arame e virava placa de vidro).
+  [/concrete_fence/, () => ({ size: [96, 12, 40], color: C.concrete, pat: P.concrete, elongated: true })],
+  // Cercas e gradis: tela de arame ou barras de verdade (antes uma placa de vidro); o corpo para, o tiro passa.
+  [/chainlink_fence|fence|gate_fence/, m => ({ size: [tail(m, /_(\d+)(?:_low|b|c|_links)?$/, 128), 4, /barbwire/.test(m) ? 130 : 112], color: C.fence, pat: P.metal, mask: 1, elongated: true, bars: /chainlink|gate_fence|wire/.test(m) ? 'mesh' : 'bars' })],
   [/guardrail(\d+)/, m => ({ size: [tail(m, /guardrail(\d+)/, 256), 8, 32], color: C.metal, pat: P.metal, elongated: true })],
-  [/railing/, m => ({ size: [tail(m, /_(\d+)(?:_low)?$/, 64), 3, 42], color: C.metal, pat: P.metal, mask: 1, elongated: true })],
+  [/railing/, m => ({ size: [tail(m, /_(\d+)(?:_low)?$/, 64), 3, 42], color: C.metal, pat: P.metal, mask: 1, elongated: true, bars: 'bars' })],
   [/ac_unit|roof_ac|ac_powerbox|ac_inset|generator|transformer/, () => ({ size: [64, 40, 48], color: C.metal, pat: P.metal })],
   [/table|desk|workbench/, () => ({ size: [64, 32, 30], color: C.wood, pat: P.wood })],
   [/cupboard|locker|cabinet|shelf|shelves|fridge|vending/, () => ({ size: [48, 24, 72], color: C.metal, pat: P.metal })],
@@ -180,7 +184,10 @@ function approximateProps(map, nav, report, extraRules = []) {
           stats.shrunk++;
         }
       }
-      out.push({ faces: shape(x0, x1, y0, y1, 0, H, xf, rot, !!spec.cyl), mask, color: spec.color, pat: spec.pat, glass: !!spec.glass, faceUv: !!spec.faceUv });
+      if (spec.bars) {
+        for (const bb of barBoxes([x0, y0, 0], [x1, y1, H], spec.bars)) out.push({ faces: shape(bb[0], bb[1], bb[2], bb[3], bb[4], bb[5], xf, rot), mask: 0, color: spec.color, pat: spec.pat });
+        if (mask) out.push({ faces: shape(x0, x1, y0, y1, 0, H, xf, rot), mask, noDraw: true, color: spec.color, pat: spec.pat });
+      } else out.push({ faces: shape(x0, x1, y0, y1, 0, H, xf, rot, !!spec.cyl), mask, color: spec.color, pat: spec.pat, glass: !!spec.glass, faceUv: !!spec.faceUv });
     }
     stats.approximated++;
     for (const piece of out) {
@@ -364,14 +371,17 @@ export function importWingmanMap(file, key) {
   if (!navFile) throw Error(key + ': no navigation mesh');
   const nav = readNav(map.bsp.asset(navFile));
   approximateProps(map, nav, map.report, key === 'neon' ? NEON_PROPS : key === 'sable' ? SABLE_PROPS : []);
+  extractMapObjects(map, { packMap, nav, navHeightsAt }); // vidraças, portas e grades (tools/map-objects.mjs)
   if (info.real) valorantPalette(map); // paleta clara e viva do Valorant sobre as cores reais (tools/valorant-palette.mjs)
-  bakeNavigation(map);
+  // A navegação trata as portas como passagem (bots abrem a porta no caminho).
+  withDoorsOpen(map, () => bakeNavigation(map));
   clipToPlay(map);
   if (key === 'neon') addHoardings(map, NEON_HOARDINGS);
-  delete map.navigation; bakeNavigation(map);
+  delete map.navigation; withDoorsOpen(map, () => bakeNavigation(map));
   // Spawn points in some BSPs float up to ~1.6 m above the floor (in CS the player drops); put them on the ground.
   { const native = new globalThis.SourceMaps.NativeMap(packMap(map)); for (const p of map.t.concat(map.ct)) { const y = native.ground(p[0], p[1], p[3]); if (p[3] - y > .05 && p[3] - y < 3) p[3] = y; } }
-  pruneNavigation(map);
+  withDoorsOpen(map, () => pruneNavigation(map));
+  for (const f of map.polygons) delete f.src; for (const h of map.hulls) { delete h.src; delete h.brush; }
   delete map.bsp; delete map.convert;
   return map;
 }

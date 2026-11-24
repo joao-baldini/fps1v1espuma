@@ -308,6 +308,15 @@ Os cinco mapas de duelo são simétricos (girados 180°), com chão branco e uma
 
 No Elimination online vale o mapa escolhido por quem criou a sala.
 
+### Portas, vidros e grades nos mapas convertidos
+
+Nos mapas vindos de BSPs do CS (Wingman e Plant the Bomb):
+
+- **Vidro:** as vidraças seguram o corpo, mas a bala atravessa (dá para varar). O tiro ou uma HE por perto quebram o vidro, com estilhaços e som; quebrado, dá para passar pela janela. A cada rodada os vidros voltam; no Deathmatch, voltam 30 segundos depois. Janelas pintadas na parede, sem nada atrás, continuam como estão.
+- **Portas:** **E** perto de uma porta abre ou fecha. Ela gira 90° na dobradiça para o lado de lá de quem abriu (ou para o outro lado, se tiver alguém no caminho) e a colisão acompanha a folha. Os bots abrem as portas que estão no caminho. Viram portas abríveis a `prop_door_rotating` do mapa e as portas que ficam entre dois lugares onde se anda no mapa original; portas de enfeite (fechadas contra a parede) continuam fixas.
+- **Grades, gradis, portões de barras e cercas:** agora são barras e telas de arame de verdade. Antes apareciam como blocos maciços ou nem apareciam. O corpo continua parando nelas e a bala passa entre as barras.
+- **Salas online:** vidro quebrado e porta aberta aparecem para todos da sala.
+
 ## Regras
 
 - Primeiro a 10 rodadas vence (dá para mudar para 5, 8, 13 ou 16).
@@ -452,7 +461,7 @@ A cada tiro a arma dá um coice na mão: vai um pouco para trás e levanta a boc
 | 1 2 3 | Primária (fuzis, SMG, escopeta, AWP e Scout), pistola e faca; no Plant the Bomb, 4 alterna granadas e 5 pega a bomba |
 | Q / rodinha | Última arma / trocar arma |
 | G | Largar a arma na mão |
-| E | Pegar/trocar a arma do chão; plantar e desarmar a bomba |
+| E | Pegar/trocar a arma do chão; plantar e desarmar a bomba; abrir e fechar portas |
 | R | Recarregar |
 | F | Inspecionar (giros da Karambit e Butterfly) |
 | B | Loja (grátis fora do Plant the Bomb e do Wingman) |

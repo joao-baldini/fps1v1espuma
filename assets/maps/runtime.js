@@ -8,6 +8,9 @@
       this.meta=data.meta;this.mesh=data.mesh;const c=data.collision;
       this.planes=array(Float32Array,c.planes);this.offsets=array(Uint32Array,c.offsets);this.bounds=array(Float32Array,c.bounds);this.masks=array(Uint8Array,c.masks);
       this.count=this.masks.length;this.marks=new Uint32Array(this.count);this.stamp=0;this.tile=2;
+      // Vidraças e portas (meta.objects): cada peça de colisão sabe a que objeto pertence; o estado muda as máscaras.
+      this.objects=this.meta.objects||[];this.hullObj=new Int32Array(this.count).fill(-1);this.baseMasks=this.masks.slice();
+      this.objects.forEach((o,i)=>{for(const k of ['h','o1','o2'])for(const id of o[k]||[])this.hullObj[id]=i;});
       const b=this.meta.bounds;this.minX=b[0]-1;this.minZ=b[2]-1;this.w=Math.ceil((b[3]-this.minX+1)/this.tile);this.h=Math.ceil((b[5]-this.minZ+1)/this.tile);
       const buckets=Array.from({length:this.w*this.h},()=>[]);
       for(let i=0;i<this.count;i++){
@@ -74,7 +77,7 @@
         const hit=this.hullRay(id,o,d,best?best.t:limit,radius,height);if(hit&&(!best||hit.t<best.t))best=hit;
       });return best;
     }
-    ray(o,d,limit=300){
+    ray(o,d,limit=300,mask=2){
       // A two-dimensional grid walk avoids scanning every cell in a long diagonal shot.
       const b=this.bounds,ps=this.planes;let best=null,stamp=++this.stamp;if(stamp>=4294967295){this.marks.fill(0);this.stamp=stamp=1;}
       const end=[o[0]+d[0]*limit,o[2]+d[2]*limit];let x=this.cx(o[0]),z=this.cz(o[2]),ex=this.cx(end[0]),ez=this.cz(end[1]);
@@ -83,10 +86,10 @@
       for(let visited=0;visited<this.w+this.h+4;visited++){
         const cell=z*this.w+x;
         for(let k=this.gridStarts[cell];k<this.gridStarts[cell+1];k++){
-          const id=this.gridIds[k];if(this.marks[id]===stamp||!(this.masks[id]&2))continue;this.marks[id]=stamp;
+          const id=this.gridIds[k];if(this.marks[id]===stamp||!(this.masks[id]&mask))continue;this.marks[id]=stamp;
           const p=id*6,max=best?best.t:limit,minY=Math.min(o[1],o[1]+d[1]*max),maxY=Math.max(o[1],o[1]+d[1]*max);
           if(b[p+1]>maxY||b[p+4]<minY)continue;
-          const hit=this.hullRay(id,o,d,max);if(hit&&(!best||hit.t<best.t))best=hit;
+          const hit=this.hullRay(id,o,d,max);if(hit&&(!best||hit.t<best.t)){best=hit;best.id=id;}
         }
         if((x===ex&&z===ez)||Math.min(tx,tz)>(best?best.t:limit))break;
         if(tx<tz){x+=sx;tx+=stepX;}else{z+=sz;tz+=stepZ;}
@@ -239,8 +242,19 @@
       g.setAttribute('position',new THREE.BufferAttribute(array(Float32Array,m.position),3));g.setAttribute('normal',new THREE.BufferAttribute(array(Float32Array,m.normal),3));g.setAttribute('color',new THREE.BufferAttribute(c,3));g.setIndex(new THREE.BufferAttribute(array(Uint32Array,m.index),1));
       // Textura leve (mapas do Wingman): coordenadas de textura e o padrão procedural de cada vértice.
       if(m.uv){g.setAttribute('uv',new THREE.BufferAttribute(array(Float32Array,m.uv),2));const pat=array(Uint8Array,m.pattern),f=new Float32Array(pat.length);for(let i=0;i<f.length;i++)f[i]=pat[i];g.setAttribute('pattern',new THREE.BufferAttribute(f,1));}
-      g.addGroup(0,m.opaque,0);const total=g.index.count;if(total>m.opaque)g.addGroup(m.opaque,total-m.opaque,1);g.computeBoundingSphere();return g;
+      g.addGroup(0,m.opaque,0);const total=m.world??g.index.count;if(total>m.opaque)g.addGroup(m.opaque,total-m.opaque,1);g.computeBoundingSphere();return g;
     }
+    // Geometria de um objeto (vidraça ou porta): os mesmos atributos da malha do mapa, só o trecho de índices dele.
+    objectGeometry(THREE,base,i){
+      const o=this.objects[i],g=new THREE.BufferGeometry();for(const k in base.attributes)g.setAttribute(k,base.attributes[k]);
+      g.setIndex(new THREE.BufferAttribute(base.index.array.slice(o.s,o.s+o.n),1));g.computeBoundingSphere();return g;
+    }
+    // Porta: 0 fechada, 1 e 2 abertas para um lado ou para o outro (cada posição tem a sua colisão pronta).
+    setDoor(i,state){const o=this.objects[i];if(!o||o.k!=='door')return;for(const [k,s] of [['h',0],['o1',1],['o2',2]])for(const id of o[k]||[])this.masks[id]=state===s?3:0;}
+    breakGlass(i){const o=this.objects[i];if(!o||o.k!=='glass')return false;let any=false;for(const id of o.h){if(this.masks[id])any=true;this.masks[id]=0;}return any;}
+    restoreGlass(i){const o=this.objects[i];if(!o||o.k!=='glass')return;for(const id of o.h)this.masks[id]=this.baseMasks[id];}
+    glassIntact(i){const o=this.objects[i];return !!o&&o.h.some(id=>this.masks[id]);}
+    resetObjects(){this.masks.set(this.baseMasks);}
   }
   async function load(id){
     if(cache.has(id))return cache.get(id);if(pending.has(id))return pending.get(id);
