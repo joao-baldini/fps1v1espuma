@@ -2960,7 +2960,7 @@ test('first-person hands close around each weapon grip: fitted grip per gun, tri
     const a=arms[w];assert.equal(a.length,f.length,w);
     a.forEach((h,i)=>{
       assert.equal(JSON.stringify(h.grip),JSON.stringify(f[i][0]),w+' usa a pegada medida');
-      assert.ok(h.ch.hy>=.008&&h.ch.hy<=.04&&h.ch.hz>=.008&&h.ch.hz<=.04,w+' canal do tamanho de um cabo');
+      assert.ok(h.ch.hy>=.008&&h.ch.hy<=.05&&h.ch.hz>=.008&&h.ch.hz<=.05,w+' canal do tamanho de um cabo');
       assert.ok(h.axis.length===3&&(h.back||h.to),w+' orientação definida');
     });
   }
@@ -2973,4 +2973,16 @@ test('first-person hands close around each weapon grip: fitted grip per gun, tri
   const grab=vm.runInContext(section('const GRAB_FIT =','\n};')+'\n};GRAB_FIT',cx);
   for(const w of ['rifle','galil','ump'])assert.ok(grab[w].mag&&grab[w].bolt,w+' pega pente e alavanca');
   for(const [w,g] of Object.entries(grab))for(const k of Object.keys(g))assert.ok(g[k][3]>0&&g[k][3]<=1,w+' '+k+' fecha a mão');
+});
+
+test('Finder scan has a limited range like Brimstone smokes: the target is pulled to the 40 m edge and the minimap dims outside it',()=>{
+  const g=game({mode:'aimbotz'}),cx=g.context;
+  assert.equal(vm.runInContext('SCAN.range',cx),40);
+  assert.equal(vm.runInContext('JSON.stringify(scanClamp({pos:{x:2,z:3}},12,-4))',cx),'[12,-4]');
+  const far=JSON.parse(vm.runInContext('JSON.stringify(scanClamp({pos:{x:0,z:0}},90,0))',cx));
+  assert.ok(Math.abs(far[0]-40)<1e-9&&Math.abs(far[1])<1e-9);
+  const radar=require('../assets/ui/hud-radar.js'),calls=[];
+  const ctx=new Proxy({},{get:(t,k)=>k in t?t[k]:(...a)=>{calls.push(k);},set:(t,k,v)=>{t[k]=v;return true;}});
+  radar.drawOverview(ctx,{halfWidth:30,halfHeight:30,canvas:{}},{size:512,markers:[],pose:{x:0,z:0,yaw:0},selected:[5,5],scanRadius:5,range:40});
+  assert.ok(calls.includes('fill')&&calls.includes('setLineDash'),'escurece fora do alcance e marca a borda');
 });

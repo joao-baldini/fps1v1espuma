@@ -109,13 +109,19 @@
     ctx.restore(); ctx.beginPath(); ctx.arc(c, c, c - 2, 0, TAU); ctx.strokeStyle = 'rgba(221,234,238,.28)'; ctx.lineWidth = 1.5; ctx.stroke();
   }
   function drawOverview(ctx, map, state) {
-    const { size, markers, sites = [], pose, selected, scanRadius } = state, metrics = overview(map.halfWidth, map.halfHeight, size), c = size / 2;
+    const { size, markers, sites = [], pose, selected, scanRadius, range } = state, metrics = overview(map.halfWidth, map.halfHeight, size), c = size / 2;
     const point = (x, z) => ({ x: c + x * metrics.scale, y: c + z * metrics.scale });
     ctx.clearRect(0, 0, size, size); ctx.save(); ctx.beginPath(); ctx.arc(c, c, c - 2, 0, TAU); ctx.clip(); ctx.fillStyle = '#18252deb'; ctx.fillRect(0, 0, size, size);
     ctx.drawImage(map.canvas, c - map.halfWidth * metrics.scale, c - map.halfHeight * metrics.scale, map.halfWidth * metrics.scale * 2, map.halfHeight * metrics.scale * 2);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '600 18px "Plex UI",sans-serif';
     for (const site of sites) { const p = point(site.lx ?? (site.x0 + site.x1) / 2, site.lz ?? (site.z0 + site.z1) / 2); ctx.fillStyle = palette.site; ctx.fillText(site.name || 'A', p.x, p.y); }
     for (const marker of markers) { const p = point(marker.x, marker.z); dot(ctx, p.x, p.y, marker.color || palette.ally, 4.5); }
+    // Alcance da habilidade (como a smoke do Brimstone): fora do círculo o mapa escurece; a borda fica marcada.
+    if (pose && range) {
+      const p = point(pose.x, pose.z), r = range * metrics.scale;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, size, size); ctx.arc(p.x, p.y, r, 0, TAU, true); ctx.fillStyle = 'rgba(6,12,16,.62)'; ctx.fill('evenodd');
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.setLineDash([10, 7]); ctx.strokeStyle = 'rgba(155,198,212,.85)'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+    }
     if (pose) { const p = point(pose.x, pose.z); triangle(ctx, p.x, p.y, -pose.yaw, palette.self, 8); }
     if (selected) { const p = point(...selected); ctx.beginPath(); ctx.arc(p.x, p.y, scanRadius * metrics.scale, 0, TAU); ctx.fillStyle = '#9bc6d42b'; ctx.fill(); ctx.strokeStyle = '#c5e2e9'; ctx.lineWidth = 1.5; ctx.stroke(); }
     ctx.restore(); return metrics;

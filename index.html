@@ -47,7 +47,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
   <div id="hpbox" aria-label="Vida e proteção"><svg class="health-symbol" viewBox="0 0 24 24" aria-label="Vida"><path d="M12 4v16M4 12h16"/></svg><span class="health-value"><b id="hp">100</b><span id="healthTrack" aria-hidden="true"><i id="healthFill"></i></span></span><span id="bbArmor" hidden aria-label="Colete"><svg viewBox="0 0 24 28" aria-hidden="true"><path d="M12 2 3 6v8c0 6 9 12 9 12s9-6 9-12V6Z"/></svg><b id="armorValue">0</b><svg id="helmetIndicator" viewBox="0 0 24 24" aria-label="Capacete"><path d="M3 14v-3a9 9 0 0 1 18 0v3l-6 1v5h-4v-5H3Z"/></svg></span></div>
   <div id="bombbox" hidden><span id="bbMoney">$800</span><span id="bbC4" hidden><svg viewBox="0 0 24 28" aria-hidden="true"><rect x="4" y="8" width="16" height="17" rx="2"/><path d="M9 8V3h6v5M8 13h8M8 17h4"/></svg>C4</span></div>
   <div id="ability" hidden><div class="ab-icon"><svg class="ability-ring" viewBox="0 0 49 49" aria-hidden="true"><circle class="track" cx="24.5" cy="24.5" r="23"/><circle id="abilityArc" cx="24.5" cy="24.5" r="23" pathLength="1"/></svg><span id="abIcon"></span><b id="abCd" hidden></b></div><div class="ability-copy"><div class="ability-title"><kbd>X</kbd><span id="abName"></span></div><small id="abState"></small></div></div>
-  <section id="minimap" hidden aria-label="Minimapa"><header><b>Varredura</b><span>escolha a área (10 m) com o clique · X ou Esc cancela</span></header><canvas id="mmCanvas" width="512" height="512"></canvas></section>
+  <section id="minimap" hidden aria-label="Minimapa"><header><b>Varredura</b><span>escolha a área (10 m) dentro do alcance de 40 m · X ou Esc cancela</span></header><canvas id="mmCanvas" width="512" height="512"></canvas></section>
   <aside id="tacticalRadar" hidden aria-label="Radar de aliados"><header><b id="radarMapName"></b></header><canvas id="radarCanvas" width="384" height="384" aria-label="Minimapa circular orientado pela câmera"></canvas></aside>
   <div id="actbar" hidden><span id="actLbl">Plantando</span><i><b id="actFill"></b></i></div>
   <section id="shop" hidden aria-label="Loja"><header><b>Loja</b><span id="shopMoney"></span><span id="shopTime"></span><span id="shopHint">clique compra · botão direito vende o que foi comprado nesta rodada</span><button type="button" id="shopClose">Fechar · B</button></header><div id="shopGrid"></div></section>
@@ -2853,26 +2853,26 @@ ARMS.c4 = [{ left: true, grip: [-.055, -.08, -.02], axis: [0, 0, 1], back: [-1, 
 ARMS.he = ARMS.flash = ARMS.smoke = [{ grip: [.012, -.075, .005], axis: [0, -1, .15], back: [1, .2, .4], ch: { hy: .02, hz: .02 }, to: [.16, -.33, .32] }];
 ARMS.ump = [supportHand([0, -.045, -.27], [-.24, -.34, 0]), triggerHand([0, -.08, .015], [.17, -.32, .32])];
 ARMS.bucky = [supportHand([0, -.045, -.47], [-.24, -.34, -.06], { hy: .02, hz: .026 }), triggerHand([0, -.08, .035], [.17, -.32, .34])];
-// Pegada medida em cada modelo: [ponto do cabo, meia altura, meia profundidade, polegar]. Calculada fora do jogo com
-// um teste triângulo × bloco (e "bloco dentro do sólido") entre a arma e cada falange, palma e polegar: o canal é o
-// menor que não deixa nenhuma peça da mão atravessar a arma (nem a outra mão, nas pistolas). Ver o README.
+// Pegada medida em cada modelo: [centro do cabo, meia altura, meia profundidade, polegar]. O canal é o perfil real do
+// cabo sob os dedos (fatia da arma na faixa dos dedos, contorno que envolve o ponto da pegada); os dedos dobram em
+// volta dele. Nas pistolas, a mão esquerda envolve a direita (o canal dela inclui os dedos da direita). Ver o README.
 const GRIP_FIT = {
-  rifle: [[[0, -0.03, -0.42], 0.019, 0.029], [[0, -0.0925, 0.0112], 0.022, 0.02]],
-  galil: [[[0.0005, -0.03, -0.42], 0.019, 0.028], [[0, -0.0953, 0.0121], 0.015, 0.019]],
-  m4a4: [[[0.0005, -0.06, -0.42], 0.025, 0.03], [[0, -0.0905, 0.0283], 0.016, 0.026]],
-  m4a1s: [[[0, -0.03, -0.42], 0.019, 0.028], [[0, -0.0905, 0.0283], 0.016, 0.026]],
-  famas: [[[0.005, -0.055, -0.31], 0.02, 0.034], [[0, -0.1125, -0.131], 0.015, 0.028]],
-  ump: [[[0.012, -0.051, -0.27], 0.024, 0.016, 0.65], [[0, -0.1001, 0.0158], 0.016, 0.026]],
-  bucky: [[[0.0005, -0.045, -0.47], 0.019, 0.026], [[0.03, -0.08, 0.035], 0.02, 0.026, 0.82]],
-  sniper: [[[0.006, -0.053, -0.45], 0.016, 0.024, 0.3], [[0.03, -0.0793, 0.0183], 0.02, 0.019]],
-  ssg: [[[0, -0.035, -0.45], 0.01, 0.01], [[0.018, -0.0949, 0.0235], 0.023, 0.023]],
-  usps: [[[-0.052, -0.0967, 0.0331], 0.034, 0.027], [[0.016, -0.0901, 0.0153], 0.02, 0.028]],
-  glock: [[[-0.052, -0.0971, 0.0316], 0.033, 0.026], [[0.016, -0.0965, -0.0042], 0.02, 0.018]],
-  medgun: [[[-0.052, -0.0942, 0.0433], 0.03, 0.022], [[0, -0.089, 0.0197], 0.018, 0.028]],
+  rifle: [[[0, -0.011, -0.42], 0.036, 0.031], [[0, -0.0847, 0.011], 0.019, 0.024]],
+  galil: [[[0, -0.01, -0.42], 0.035, 0.031], [[0, -0.0847, 0.011], 0.019, 0.024]],
+  m4a4: [[[0, -0.009, -0.42], 0.034, 0.043], [[0, -0.0787, 0.0311], 0.019, 0.025]],
+  m4a1s: [[[0, -0.001, -0.42], 0.026, 0.031], [[0, -0.0787, 0.0311], 0.019, 0.025]],
+  famas: [[[0, -0.034, -0.31], 0.034, 0.041], [[0, -0.0959, -0.1329], 0.019, 0.034]],
+  ump: [[[-0.004, -0.034, -0.27], 0.044, 0.035], [[0, -0.0861, 0.0112], 0.019, 0.027]],
+  bucky: [[[0, -0.019, -0.47], 0.029, 0.029], [[0, -0.0795, 0.0532], 0.019, 0.032]],
+  sniper: [[[0, -0.026, -0.45], 0.046, 0.033], [[0, -0.0945, -0.0116], 0.021, 0.018]],
+  ssg: [[[0, -0.035, -0.45], 0.016, 0.02], [[0, -0.0902, 0.0028], 0.012, 0.02]],
+  usps: [[[-0.012, -0.094, 0.015], .027, .04, .3], [[0, -0.09, 0.021], 0.0125, 0.037]],
+  glock: [[[-0.012, -0.0952, 0.0091], .027, .04, .3], [[0, -0.0912, 0.0151], 0.012, 0.039]],
+  medgun: [[[-0.012, -0.089, 0.012], .027, .04, .3], [[0, -0.085, 0.018], 0.0105, 0.031]],
   c4: [[[-0.0648, -0.0581, -0.02], 0.02, 0.034], [[0.0852, -0.0598, -0.02], 0.02, 0.028]],
-  he: [[[0.012, -0.0854, 0.0066], 0.02, 0.024]],
-  flash: [[[0.0132, -0.0754, 0.0023], 0.02, 0.022]],
-  smoke: [[[0.0132, -0.0752, 0.0034], 0.02, 0.026]],
+  he: [[[.012, -.08, .004], .026, .026]],
+  flash: [[[.0112, -.0759, -.0007], .022, .022]],
+  smoke: [[[.012, -.0761, -.0025], .024, .024]],
 };
 for (const [w, fits] of Object.entries(GRIP_FIT)) ARMS[w] = ARMS[w].map((a, i) => ({ ...a, grip: fits[i][0], ch: { ...a.ch, hy: fits[i][1], hz: fits[i][2], ct: fits[i][3] ?? 1 } }));
 vmScene.add(new THREE.HemisphereLight(0xaad2f5, 0x38414a, 0.85));
@@ -2899,56 +2899,110 @@ setSleeveColor(S.pcol);
    e nada atravessa a palma ou o dorso. A esquerda é a mesma montagem espelhada em X.
    A mão é orientada pelo cabo (eixo do indicador ao mindinho) e pelo cotovelo (ou pelo lado do dorso), e a manga
    sai do pulso da luva até o cotovelo: punho, mão e antebraço sempre ligados. */
-const HAND_PALM = -.016, HAND_KNUCKLE = -.036, HAND_T = .016, HAND_REACH = .03, HAND_WRIST = new V3(0, -.001, .068);
-const HAND_COL = { palm: 0x2a3038, finger: 0x323943, plate: 0x1a1e24, cuff: 0x1d2127 };
-function handPiece(w, h, d, hex, x = 0, y = 0, z = 0, rx = 0) {
-  const g = new THREE.BoxGeometry(w, h, d).toNonIndexed(), c = new THREE.Color(hex), col = [];
-  for (let i = 0; i < g.attributes.position.count; i++) col.push(c.r, c.g, c.b);
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  const m = new THREE.Mesh(g, skinMat); m.position.set(x, y, z); m.rotation.x = rx; return m;
+const HAND_PALM = -.016, HAND_KNUCKLE = -.036, HAND_T = .015, HAND_REACH = .03, HAND_WRIST = new V3(0, -.001, .068);
+const HAND_COL = { skin: 0xd39c76, knuckle: 0xc48b66, nail: 0xf0cdb8, band: 0x2c3238 };
+// Peça arredondada da mão: seções transversais em superelipse (quadrado de cantos bem redondos, 10 lados) ao longo
+// de -Z, com tampas nas pontas e faces planas. secs: [z, largura, altura, centro y, centro x].
+function handLoft(secs, hex, part, n = 2.6, N = 10) {
+  const rings = secs.map(([z, w, h, yc = 0, xc = 0]) => { const r = []; for (let i = 0; i < N; i++) { const a = (i + .5) / N * TAU, c = Math.cos(a), sn = Math.sin(a); r.push([xc + w / 2 * Math.sign(c) * Math.abs(c) ** (2 / n), yc + h / 2 * Math.sign(sn) * Math.abs(sn) ** (2 / n), z]); } return r; });
+  const p = [], tri = (a, b, c) => p.push(...a, ...b, ...c), mid = r => [0, 1, 2].map(k => r.reduce((s, q) => s + q[k], 0) / r.length);
+  for (let k = 0; k < rings.length - 1; k++) for (let i = 0; i < N; i++) { const a = rings[k][i], b = rings[k][(i + 1) % N], c = rings[k + 1][(i + 1) % N], d = rings[k + 1][i]; tri(a, c, b); tri(a, d, c); }
+  const f = rings[0], l = rings[rings.length - 1], mf = mid(f), ml = mid(l);
+  for (let i = 0; i < N; i++) { tri(mf, f[i], f[(i + 1) % N]); tri(ml, l[(i + 1) % N], l[i]); }
+  const g = new THREE.BufferGeometry(), col = new THREE.Color(hex), cols = [];
+  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.computeVertexNormals();
+  for (let i = 0; i < p.length / 3; i++) cols.push(col.r, col.g, col.b);
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const m = new THREE.Mesh(g, skinMat); m.userData.part = part; return m;
+}
+// Falange ao longo de -Z (da junta até a próxima), passando um pouco das duas juntas para a dobra não abrir buraco.
+// A da ponta afina até a ponta do dedo e leva a unha.
+function fingerSeg(L, w, T, part, tip) {
+  const ov = T * .42;
+  if (!tip) return handLoft([[ov, w * .62, T * .6], [ov * .45, w * .92, T * .92], [-L * .5, w, T], [-L - ov * .45, w * .93, T * .92], [-L - ov, w * .62, T * .6]], HAND_COL.skin, part);
+  const g = new THREE.Group(), m = handLoft([[ov, w * .62, T * .6], [ov * .45, w * .93, T * .92], [-L * .55, w * .9, T * .86], [-L * .85, w * .78, T * .72], [-L, w * .42, T * .38]], HAND_COL.skin, part);
+  const nail = handLoft([[-L * .42, w * .5, T * .1, T * .4], [-L * .8, w * .56, T * .12, T * .34], [-L * .93, w * .4, T * .08, T * .26]], HAND_COL.nail, part + '.n');
+  g.add(m, nail); g.userData.seg = m; return g;
+}
+// Dobra uma cadeia de falanges em volta do cabo (no plano da mão: u = para a frente, v = para cima): cada junta gira o
+// máximo que dá sem a falange entrar no cabo (retângulo de cantos redondos inflado pela espessura do dedo) nem na
+// palma. Assim os dedos abraçam cabos finos até a ponta encostar na palma e cabos grossos só até onde alcançam.
+function wrapChain(start, phi0, lens, maxTurn, dir, chan, T) {
+  const [cu, cv, hu, hv] = chan, rr = Math.min(hu, hv) * .7, out = [];
+  const sdf = (u, v) => { const qx = Math.abs(u - cu) - (hu - rr), qy = Math.abs(v - cv) - (hv - rr); return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rr; };
+  const free = (u, v) => sdf(u, v) >= T * .46 && !(u < -HAND_KNUCKLE - .006 && v > HAND_PALM - T * .46);
+  let [u, v] = start, phi = phi0;
+  lens.forEach((L, i) => {
+    let best = 0;
+    for (let t = maxTurn[i]; t >= 0; t -= .03) {
+      const ph = phi + dir * t; let ok = true;
+      for (let k = 1; k <= 8 && ok; k++) { const d = L * k / 8; ok = free(u + Math.cos(ph) * d, v - Math.sin(ph) * d); }
+      if (ok) { best = t; break; }
+    }
+    phi += dir * best; out.push(dir * best); u += Math.cos(phi) * L; v -= Math.sin(phi) * L;
+  });
+  return out;
+}
+const HAND_KZ = [.0015, -.002, 0, .005], HAND_LEN = [[.038, .024, .021], [.04, .026, .022], [.038, .024, .021], [.031, .019, .017]], HAND_THUMB = [.032, .027];
+// Como a mão fecha em volta de um cabo (ch): centro do canal C, ângulos das juntas de cada dedo e do polegar. Uma mão
+// pode ter várias (cabo, pente, alavanca) e mistura entre elas nas animações.
+function gripSet(ch) {
+  // 1,5 mm de folga em volta do cabo medido: a mão encosta, não entra
+  const hy = (ch.hy ?? .013) + .0015, hz = (ch.hz ?? .02) + .0015, T = HAND_T, C = new V3(0, HAND_PALM - hy, HAND_KNUCKLE - HAND_REACH + hz);
+  const chan = [-C.z, C.y, hz, hy], closed = [];
+  for (let f = 0; f < 4; f++) {
+    const cc = f === 0 && ch.iz != null ? [-(C.z + ch.iz + hz + T / 2), C.y, hz, hy] : chan;
+    closed.push(wrapChain([-(HAND_KNUCKLE + HAND_KZ[f]), HAND_PALM + T / 2], 0, HAND_LEN[f], [1.2, 1.75, 1.45], 1, cc, T).map(a => -a));
+  }
+  const tb = C.z + hz + T * .5 + .004, tang = wrapChain([-tb, HAND_PALM - .002], Math.PI / 2, HAND_THUMB, [.4, 1.7], -1, chan, T * 1.1);
+  return { C, closed, thumbClosed: [-(Math.PI / 2 + tang[0]), -tang[1]], tb };
+}
+function addGripSet(hand, name, ch) { hand.userData.sets[name] = gripSet(ch); }
+// Mistura as pegadas (pesos das extras; o resto é a principal) e devolve o centro do canal resultante.
+function mixGrip(hand, w) {
+  const u = hand.userData, key = Object.entries(w).map(([k, v]) => k + (v > 0 ? v.toFixed(3) : 0)).join();
+  if (u.mix === key) return u.C; u.mix = key; u.curl[0] = -1;
+  const m = u.sets.main; let wm = 1; for (const v of Object.values(w)) wm -= v; wm = Math.max(0, wm);
+  const C = m.C.clone().multiplyScalar(wm), closed = m.closed.map(a => a.map(x => x * wm)), th = m.thumbClosed.map(x => x * wm);
+  for (const [k, v] of Object.entries(w)) { const st = u.sets[k]; if (!st || !(v > 0)) continue; C.addScaledVector(st.C, v); st.closed.forEach((a, f) => a.forEach((x, i) => { closed[f][i] += x * v; })); st.thumbClosed.forEach((x, i) => { th[i] += x * v; }); }
+  u.C = C; u.closed = closed; u.thumbClosed = th; return C;
 }
 // ch: meia altura (hy, no eixo do dorso) e meia profundidade (hz, da palma para a frente) do cabo segurado; ci e ct:
-// quanto o indicador e o polegar fecham em repouso (indicador meio esticado = dedo no gatilho).
+// quanto o indicador e o polegar fecham em repouso (indicador meio esticado = dedo no gatilho); iz: o indicador
+// fecha num ponto à frente/atrás do centro do canal (o anel da karambit).
 function buildHand(left = false, ch = {}) {
-  const hy = ch.hy ?? .013, hz = ch.hz ?? .02, T = HAND_T, s = left ? -1 : 1, C = new V3(0, HAND_PALM - hy, HAND_KNUCKLE - HAND_REACH + hz);
-  const root = new THREE.Group();
-  root.add(handPiece(.072, .028, .084, HAND_COL.palm, 0, -.002, .004));          // palma
-  root.add(handPiece(.06, .01, .07, HAND_COL.palm, 0, .016, .008));              // dorso chanfrado
-  root.add(handPiece(.07, .012, .02, HAND_COL.plate, 0, .012, -.028, .12));      // protetor dos nós
-  root.add(handPiece(.062, .032, .026, HAND_COL.cuff, 0, -.001, .055));          // punho da luva
-  root.add(handPiece(.02, .016, .036, HAND_COL.palm, s * -.026, -.022, .014));   // base do polegar
-  // Cabo alto ou largo demais para a mão (guarda-mão, corpo da granada): os dedos abraçam só até onde alcançam e a
-  // ponta segue reta pela lateral, em vez de esticar as falanges; o polegar faz o mesmo do outro lado.
-  const L2full = 2 * hy + T, L2 = Math.min(L2full, .046), tipWrap = L2 >= L2full - 1e-6, fingers = [], L1 = HAND_REACH + T / 2;
+  const T = HAND_T, s = left ? -1 : 1;
+  const root = new THREE.Group(), add = m => (root.add(m), m);
+  // Palma: do pulso aos nós, mais larga nos nós, dorso levemente arqueado; nós dos dedos em relevo; base do polegar.
+  add(handLoft([[.072, .046, .03, -.001], [.05, .054, .03, -.001], [.026, .064, .031, -.0005], [0, .071, .031, -.0005], [-.026, .075, .028, -.002], [-.04, .07, .02, -.004], [-.046, .056, .011, -.004]], HAND_COL.skin, 'palm', 2.8));
+  for (let f = 0; f < 4; f++) add(handLoft([[-.022, .011, .006, .011, s * (-.0255 + f * .017)], [-.032, .015, .009, .0105, s * (-.0255 + f * .017)], [-.042, .011, .006, .008, s * (-.0255 + f * .017)]], HAND_COL.knuckle, 'knuckle'));
+  add(handLoft([[.04, .014, .01, -.015, s * -.025], [.028, .024, .02, -.019, s * -.026], [.006, .027, .022, -.02, s * -.027], [-.01, .021, .017, -.018, s * -.026], [-.018, .01, .008, -.015, s * -.024]], HAND_COL.skin, 'thenar'));
+  add(handLoft([[.074, .05, .034, -.001], [.058, .056, .036, -.001]], HAND_COL.band, 'cuff', 3));
+  // Dedos: comprimentos de mão de verdade (médio mais longo, mindinho mais curto); os nós formam uma linha curva.
+  const W = [.0158, .0162, .0152, .0132], KZ = HAND_KZ, LEN = HAND_LEN;
+  const fingers = [], set = gripSet(ch);
   for (let f = 0; f < 4; f++) {
-    const x = s * (-.0255 + f * .017), w = f === 3 ? .0125 : .0145, L3 = Math.min(2 * hz * .75, .026) * (f === 3 ? .85 : 1);
-    // ch.iz: o indicador desce em outro ponto (relativo ao centro do canal), p. ex. pelo anel da karambit
-    const L1f = f === 0 && ch.iz != null ? HAND_KNUCKLE - C.z - ch.iz : L1;
-    const j1 = new THREE.Group(), j2 = new THREE.Group(), j3 = new THREE.Group();
-    j1.position.set(x, HAND_PALM + T / 2, HAND_KNUCKLE);
-    j1.add(handPiece(w, T, L1f + T / 2, HAND_COL.finger, 0, 0, -(L1f + T / 2) / 2));
-    j2.position.z = -L1f; j1.add(j2); j2.add(handPiece(w, T, L2 + T / 2, HAND_COL.finger, 0, 0, -(L2 + T / 2) / 2));
-    j3.position.z = -L2; j2.add(j3); j3.add(handPiece(w * .94, T * .9, L3, HAND_COL.finger, 0, 0, -L3 / 2));
-    [j1, j2, j3].forEach((j, i) => { j.children[0].userData.part = 'f' + f + '.' + i; });
-    root.add(j1); fingers.push([j1, j2, j3]);
+    const x = s * (-.0255 + f * .017), kz = HAND_KNUCKLE + KZ[f], L = LEN[f];
+    const j = [new THREE.Group(), new THREE.Group(), new THREE.Group()];
+    j[0].position.set(x, HAND_PALM + T / 2, kz); j[1].position.z = -L[0]; j[2].position.z = -L[1];
+    j.forEach((g, i) => { g.add(fingerSeg(L[i], W[f] * (1 - i * .05), T * (1 - i * .05), 'f' + f + '.' + i, i === 2)); if (i) j[i - 1].add(g); });
+    root.add(j[0]); fingers.push(j);
   }
-  const t1 = new THREE.Group(), t2 = new THREE.Group(), ty = HAND_PALM - .002, TL1full = ty - (C.y - hy - T / 2), TL1 = Math.min(TL1full, .042), thumbWrap = TL1 >= TL1full - 1e-6, TL2 = Math.min(2 * hz + T * .5, .034);
-  t1.position.set(s * -.042, ty, C.z + hz + T / 2 + .002);
-  t1.add(handPiece(.017, .017, TL1 + T / 2, HAND_COL.finger, 0, 0, -(TL1 + T / 2) / 2));
-  t2.position.z = -TL1; t1.add(t2); t2.add(handPiece(.016, .015, TL2, HAND_COL.finger, 0, 0, -TL2 / 2));
-  root.add(t1); t1.children[0].userData.part = 'thumb.0'; t2.children[0].userData.part = 'thumb.1';
-  ['palm', 'back', 'plate', 'cuff', 'thenar'].forEach((n, i) => { root.children[i].userData.part = n; });
-  root.userData = { hand: true, s, C, fingers, thumb: [t1, t2], curl: [-1, -1, -1, -1], tip: tipWrap ? Math.PI / 2 : 0, thumbTip: thumbWrap ? Math.PI / 2 : 0, rest: [1, ch.ci ?? 1, ch.ct ?? 1] };
+  // Polegar: sai da base, desce atrás do cabo e deita por baixo dele, do lado de fora do indicador.
+  const t1 = new THREE.Group(), t2 = new THREE.Group(), TL = HAND_THUMB;
+  t1.position.set(s * -.041, HAND_PALM - .002, set.tb); t2.position.z = -TL[0];
+  t1.add(fingerSeg(TL[0], .02, .018, 'thumb.0', false)); t2.add(fingerSeg(TL[1], .0185, .0165, 'thumb.1', true)); t1.add(t2); root.add(t1);
+  root.userData = { hand: true, s, C: set.C, fingers, closed: set.closed, thumb: [t1, t2], thumbClosed: set.thumbClosed, curl: [-1, -1, -1, -1], rest: [1, ch.ci ?? 1, ch.ct ?? 1], sets: { main: set }, mix: '' };
   setHandCurl(root, 1, ch.ci ?? 1, ch.ct ?? 1);
   return root;
 }
 // Fecha (1) ou abre (0) a mão: c = médio, anelar e mindinho; ci = indicador; ct = polegar; it = ponta do indicador.
+// Aberta, a mão fica relaxada (dedos levemente dobrados) e o polegar sobe para fora.
 function setHandCurl(hand, c, ci = c, ct = c, it = ci) {
   const u = hand.userData, k = u.curl; if (k[0] === c && k[1] === ci && k[2] === ct && k[3] === it) return; k[0] = c; k[1] = ci; k[2] = ct; k[3] = it;
-  const H = Math.PI / 2;
-  u.fingers.forEach((j, f) => { const a = f ? c : ci, t = f ? c : it; j[0].rotation.x = .1 * (1 - a); j[1].rotation.x = -.15 - (H - .15) * a; j[2].rotation.x = -.1 - (u.tip - .1) * t; });
-  // aberto, o polegar sobe e vai para fora (deixa livre o plano embaixo da palma, onde a faca gira)
-  u.thumb[0].rotation.set(1.05 - (H + 1.05) * ct, u.s * .6 * (1 - ct), 0); u.thumb[1].rotation.x = .1 + (u.thumbTip - .1) * ct;
+  const OPEN = [.08, -.18, -.12];
+  u.fingers.forEach((j, f) => { const a = f ? c : ci, t = f ? c : it, cl = u.closed[f]; for (let i = 0; i < 3; i++) j[i].rotation.x = OPEN[i] + (cl[i] - OPEN[i]) * (i === 2 ? t : a); });
+  u.thumb[0].rotation.set(1.05 + (u.thumbClosed[0] - 1.05) * ct, u.s * .6 * (1 - ct), 0); u.thumb[1].rotation.x = .1 + (u.thumbClosed[1] - .1) * ct;
 }
 const _hx = new V3(), _hy = new V3(), _hz = new V3(), _hv = new V3(), _hm = new THREE.Matrix4();
 // spec: grip (ponto no meio do cabo, no espaço do pai), axis (do indicador para o mindinho) e back (para onde o dorso
@@ -2994,9 +3048,9 @@ const vmRoot = new THREE.Group(); vmRoot.scale.setScalar(0.5); vmHands.add(vmRoo
 const vmGuns = {}, vmFlash = {}, vmKnives = {};
 // Karambit: peças contínuas, curvas Bézier e eixo no centro do anel do indicador.
 // Pegada da karambit como no CS: indicador no anel, cabo atravessando o punho e garra saindo para o centro da tela, curvada para cima.
-const KH_ROT = [-1.2,-.25,-.1], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.18;
+const KH_ROT = [-1.2,-.25,-.1], RH_ROT = [0,0,0], KARAMBIT_SCALE = 1.0;
 const KARAMBIT_DIP = .016;
-const KARAMBIT_VIEW = { scale: 1.4, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.01,-.025], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
+const KARAMBIT_VIEW = { scale: 1.3, right: [.085,-.04,0], left: [-.115,-.02,.02], leftRot: [-.25,.2,-.05], holder: [-.047,.01,-.025], elbows: [[.50,-.28,.12],[-.42,-.24,.12]] };
 let karambitGeo = null;
 // Karambit no mesmo estilo das armas: cor chapada com sombreamento fixo por face (tons das caixas).
 const KNIFE_FACE_SHADE = [.80,.80,.80,.80,.80,.80,.70,.70,.70,.70,.70,.70,1,1,1,1,1,1,.50,.50,.50,.50,.50,.50,.90,.90,.90,.90,.90,.90,.62,.62,.62,.62,.62,.62];
@@ -3356,7 +3410,7 @@ function applyKnifePose(rig, pose) {
 // Karambit: o indicador passa no anel (at.x calculado para o indicador ficar no centro do anel) e o cabo atravessa o
 // punho; butterfly: os dois cabos fechados juntos no meio do comprimento.
 // iz: onde o indicador desce (relativo ao centro do canal): na karambit ele passa pelo furo do anel.
-const KNIFE_GRIP = { knife: { at: [null,.001,0], hy: .007, hz: .016, iz: 0, hand: 1.1 }, butterfly: { at: [.1,0,0], hy: .013, hz: .016, hand: 1.1 } };
+const KNIFE_GRIP = { knife: { at: [null,-.019,0], hy: .009, hz: .02, iz: -.0146, hand: 1.3 }, butterfly: { at: [.1,.004,0], hy: .013, hz: .016, hand: 1.1 } };
 function fitKnifeGlove(right, holder, pivot, butterfly, V) {
   const KG = KNIFE_GRIP[butterfly ? 'butterfly' : 'knife'], ks = butterfly ? 1 : KARAMBIT_SCALE, hs = KG.hand;
   holder.updateMatrix(); pivot.updateMatrix();
@@ -3395,8 +3449,10 @@ function buildKnifeHands(g, butterfly = false) {
 function buildDeagleHands(g,body){
   const right=new THREE.Group(),left=new THREE.Group(),pivot=new THREE.Group(),weapon=new THREE.Group(),rest=new V3(.012,-.085,.005),trigger=new V3(0,-.035,-.025);
   // Luvas dentro dos grupos animados: a direita fecha no cabo (inclinado como o da Deagle), a esquerda envolve os dedos da direita.
-  const rg=placeHand(buildHand(false,{hy:.016,hz:.027}),{grip:[-.012,-.005,.022],axis:[0,-1,.24],elbow:[.158,-.235,.315]});
-  const lg=placeHand(buildHand(true,{hy:.03,hz:.034}),{grip:[.013,-.005,.025],axis:[0,-1,.24],back:[-1,-.15,.2]});
+  // (pegada medida como GRIP_FIT, no espaço dos grupos animados)
+  // (cabo da Deagle medido: 3,4 cm de largura, 7,8 cm de profundidade, inclinado para trás; a esquerda envolve a direita)
+  const rg=placeHand(buildHand(false,{hy:.017,hz:.039,ci:.45}),{grip:[-.012,-.0052,.017],axis:[0,-1,.22],back:[1,0,0]});
+  const lg=placeHand(buildHand(true,{hy:.029,hz:.042,ct:.3}),{grip:[.013,-.004,.026],axis:[0,-1,.22],back:[-1,0,0]});
   right.position.copy(rest);right.add(rg);left.add(lg);g.add(right,left);
   pivot.position.copy(trigger);weapon.position.copy(trigger).multiplyScalar(-1);pivot.add(weapon);g.add(pivot);weapon.add(body);
   deagleSlide=boxModel(DEAGLE_SLIDE, weaponPbrMat);weapon.add(deagleSlide);
@@ -3412,7 +3468,7 @@ function applyDeaglePose(rig,pose){
   rig.left.rotation.copy(rig.right.rotation);rig.left.rotation.z+=pose[12];
   // A arma gira em volta do indicador no saque: os dedos abrem enquanto ela não está no cabo; a esquerda abre longe da direita.
   const turn=smooth01(.12,.5,Math.abs(pose[6])+Math.abs(pose[7])+Math.abs(pose[8])),away=smooth01(.012,.05,Math.hypot(pose[9],pose[10],pose[11]));
-  setHandCurl(rig.rg,1-.7*turn,1-.4*turn,1-.7*turn);setHandCurl(rig.lg,1-.6*away);
+  const rr=rig.rg.userData.rest,lr=rig.lg.userData.rest;setHandCurl(rig.rg,1-.7*turn,rr[1]*(1-.4*turn),rr[2]*(1-.7*turn));setHandCurl(rig.lg,1-.6*away,lr[1]*(1-.6*away),lr[2]*(1-.6*away));
   for(let i=0;i<2;i++)fitSleeve(rig.arms[i].sleeve,i?rig.lg:rig.rg,rig.arms[i].elbow);
   deagleSlide.position.z=pose[13];
   if(rig.mag){const m=rig.mag;m.grp.position.set(m.rest[0]+pose[14],m.rest[1]+pose[15],m.rest[2]+pose[16]);m.grp.rotation.x=pose[17];}
@@ -3469,9 +3525,9 @@ function gk(t, o = {}) {
 }
 // Centro do canal da mão (o que ela segura) relativo à origem dela, na orientação de repouso: para levar a mão a uma
 // peça (pente, ferrolho), a pose põe o canal em volta da peça, e não o meio da palma em cima dela.
-const handChan = (h, q = h.restQ) => h.hand.userData.C.clone().multiplyScalar(h.hand.scale.x).applyQuaternion(q).toArray();
+const handChan = (h, q = h.restQ, set = 'main') => h.hand.userData.sets[set].C.clone().multiplyScalar(h.hand.scale.x).applyQuaternion(q).toArray();
 // Deslocamento (em relação ao repouso) que põe o canal da mão, virada em q, em volta do ponto p.
-const grabOffset = (h, p, q) => vSub(vSub(p, handChan(h, q)), h.rest.toArray());
+const grabOffset = (h, p, q, set) => vSub(vSub(p, handChan(h, q, set)), h.rest.toArray());
 // Orientação da mão (quaternion) a partir do eixo do cabo e do lado do dorso, como em placeHand.
 function handQuat(left, axis, back) {
   const x = new V3(...axis).normalize(); if (left) x.negate();
@@ -3502,7 +3558,7 @@ function boltPull(rig, t0, t1, g, L0) {
   // AK/Galil: a mão passa por baixo da arma e puxa a alavanca do lado direito (como no CS); M4: puxa o T de trás; UMP: lado esquerdo.
   const h0 = rig.hands[0], q = h0.boltQ || h0.restQ, w = h0.boltQ ? 1 : 0, pull = kind === 'rear' ? .06 : .085;
   const grip = h0.boltOff || (kind === 'rear' ? [0, .02, .01] : kind === 'left' ? [-.012, 0, 0] : [.012, -.004, 0]);
-  const H = grabOffset(h0, vAdd(B, grip), q), gb = kind === 'side' ? vAdd(g, [0, 0, 0, .02, .06, .18]) : g;
+  const H = grabOffset(h0, vAdd(B, grip), q, h0.boltQ ? 'bolt' : 'main'), gb = kind === 'side' ? vAdd(g, [0, 0, 0, .02, .06, .18]) : g;
   // Vai e volta por baixo da arma (a mão contorna a caixa da culatra em vez de atravessá-la).
   const dip = [0, -.075, .02];
   out.push(gk(t0 + d * .17, { g: gb, l: vAdd(H, dip), gb: w * .6 }), gk(t0 + d * .35, { g: gb, l: H, gb: w }), gk(t0 + d * .62, { g: gb, l: vAdd(H, [0, 0, pull]), b: pull, gb: w }), gk(t0 + d * .7, { g: vAdd(gb, [0, 0, .006, .03, 0, 0]), l: vAdd(H, [0, .012, pull]), gb: w }),
@@ -3512,22 +3568,23 @@ function boltPull(rig, t0, t1, g, L0) {
 // Ferrolho de sniper: a mão direita sai do cabo, levanta a alavanca, puxa, empurra e abaixa (como a AWP e a Scout do CS).
 function sniperBolt(rig, t0, t1) {
   const sp = VM_PARTS[rig.k], R0 = rig.hands[1].rest.toArray(), d = t1 - t0, ay = sp.axis, A = .9;
-  const knob = rig.knob, H0 = vSub(vAdd(knob, [.006, 0, 0]), handChan(rig.hands[1]));
+  // a bolinha da alavanca sobe girando em volta do eixo do ferrolho; a mão acompanha com o canal em volta dela
+  const knob = vAdd(rig.knob, [.006, 0, 0]), Cb = handChan(rig.hands[1], rig.hands[1].restQ, 'bolt');
   const lift = p => { const x = p[0], y = p[1] - ay; return [x * Math.cos(A) - y * Math.sin(A), ay + x * Math.sin(A) + y * Math.cos(A), p[2]]; };
-  const H1 = lift(H0), g = [0, .008, 0, .05, -.04, .16], back = .11;
+  const H0 = vSub(knob, Cb), H1 = vSub(lift(knob), Cb), g = [0, .008, 0, .05, -.04, .16], back = .11;
   return [
-    gk(t0 + d * .16, { g, r: vSub(H0, R0) }),
-    gk(t0 + d * .32, { g, r: vSub(H1, R0), bl: A }),
-    gk(t0 + d * .5, { g: vAdd(g, [0, 0, .004, .02, 0, 0]), r: vAdd(vSub(H1, R0), [0, 0, back]), bl: A, b: back }),
-    gk(t0 + d * .64, { g, r: vSub(H1, R0), bl: A }),
-    gk(t0 + d * .78, { g, r: vSub(H0, R0) }),
+    gk(t0 + d * .16, { g, r: vSub(H0, R0), gb: 1 }),
+    gk(t0 + d * .32, { g, r: vSub(H1, R0), bl: A, gb: 1 }),
+    gk(t0 + d * .5, { g: vAdd(g, [0, 0, .004, .02, 0, 0]), r: vAdd(vSub(H1, R0), [0, 0, back]), bl: A, b: back, gb: 1 }),
+    gk(t0 + d * .64, { g, r: vSub(H1, R0), bl: A, gb: 1 }),
+    gk(t0 + d * .78, { g, r: vSub(H0, R0), gb: 1 }),
   ];
 }
 // Troca de pente (rifles e snipers): segura o pente, tira, joga fora da tela, traz o novo e encaixa com um tapa.
 // Onde a mão esquerda fecha no pente: na metade de baixo dele.
-const MAG_GRAB = [0, -.025, 0];
+const MAG_GRAB = [0, -.025, 0], MAG_HOLD = { hy: .015, hz: .028 }, BOLT_HOLD = { hy: .007, hz: .008 };
 function magSwap(rig, t0, t1, g, L0, rock = 0) {
-  const h0 = rig.hands[0], M = rig.mag.center, G = grabOffset(h0, vAdd(M, h0.magOff || MAG_GRAB), h0.magQ || h0.restQ), d = t1 - t0, at = x => t0 + d * x;
+  const h0 = rig.hands[0], M = rig.mag.center, G = grabOffset(h0, vAdd(M, h0.magOff || MAG_GRAB), h0.magQ || h0.restQ, h0.magQ ? 'mag' : 'main'), d = t1 - t0, at = x => t0 + d * x;
   const gs = vAdd(g, [0, 0, 0, .04, 0, 0]);
   return [
     gk(at(.22), { g, l: G, gm: 1 }),
@@ -3543,7 +3600,7 @@ function buildGunAnims(rig) {
   const k = rig.k, sp = VM_PARTS[k] || {}, kind = sp.kind, L0 = rig.hands[0].rest.toArray(), rest = gk(0), end = gk(1), A = {};
   const sortKeys = keys => keys.sort((a, b) => a[0] - b[0]);
   if (kind === 'pistol') {
-    const h0 = rig.hands[0], M = rig.mag.center, G = grabOffset(h0, vAdd(M, h0.magOff || [0, -.06, 0]), h0.magQ || h0.restQ), gm = h0.magQ ? 1 : 0, g = [-.02, .07, -.03, .2, -.06, -.32];
+    const h0 = rig.hands[0], M = rig.mag.center, G = grabOffset(h0, vAdd(M, h0.magOff || [0, -.06, 0]), h0.magQ || h0.restQ, h0.magQ ? 'mag' : 'main'), gm = h0.magQ ? 1 : 0, g = [-.02, .07, -.03, .2, -.06, -.32];
     A.reload = sortKeys([rest, gk(.1, { g }), gk(.16, { g, l: [-.02, -.08, .02] }),
       gk(.32, { g, l: [-.05, -.32, .04], m: [0, -.48, .05], mr: .4 }), gk(.33, { g, l: vAdd(G, [-.03, -.28, .03]), m: [-.03, -.34, .03], mr: -.25, gm }),
       gk(.52, { g, l: vAdd(G, [0, -.065, 0]), m: [0, -.065, 0], gm }), gk(.6, { g: vAdd(g, [0, .008, 0, .05, 0, 0]), l: vAdd(G, [0, .012, 0]), gm }),
@@ -3595,21 +3652,22 @@ function applyGunPose(rig, pose) {
     // Fora do cabo (pegando pente, ferrolho, telha), a mão abre: não fecha o punho em volta de nada nem atravessa a peça.
     const away = smooth01(.012, .05, Math.hypot(pose[o], pose[o + 1], pose[o + 2])), r = h.hand.userData.rest;
     let c = 1 - .6 * away, ci = r[1] * (1 - .6 * away), ct = r[2] * (1 - .7 * away), hold = 0;
-    // Segurando o pente (o canal da mão em volta dele, onde quer que ele esteja) ou a alavanca: a mão fecha o quanto a
-    // pegada medida manda, sem atravessar a peça.
+    // Segurando o pente (o canal da pegada do pente em volta dele, onde quer que ele esteja) ou a alavanca: a mão fecha
+    // em volta da peça com a pegada dela (cada pegada tem o próprio fechamento dos dedos).
     if (!i && rig.mag && h.magOff) {
-      const q = handChan(h, h.hand.quaternion), m = rig.mag.grp.position, o2 = h.magOff;
+      const q = handChan(h, h.hand.quaternion, 'mag'), m = rig.mag.grp.position, o2 = h.magOff;
       hold = 1 - smooth01(.012, .035, Math.hypot(h.hand.position.x + q[0] - m.x - o2[0], h.hand.position.y + q[1] - m.y - o2[1], h.hand.position.z + q[2] - m.z - o2[2]));
-      c += (h.magCurl - c) * hold; ci += (h.magCurl - ci) * hold; ct += (h.magCurl - ct) * hold;
     }
-    if (!i && h.boltQ && pose[23] > 0) { const b = Math.min(1, pose[23]); c += (h.boltCurl - c) * b; ci += (h.boltCurl - ci) * b; ct += (h.boltCurl - ct) * b; }
+    const wm = Math.max(hold, h.magQ ? Math.min(1, pose[22]) * (1 - away * .5) : 0), wb = h.hand.userData.sets.bolt ? Math.min(1, Math.max(0, pose[23])) : 0;
+    mixGrip(h.hand, { mag: h.hand.userData.sets.mag ? wm : 0, bolt: wb });
+    const held = Math.max(hold, wb); c += (1 - c) * held; ci += (1 - ci) * held; ct += (1 - ct) * held;
     setHandCurl(h.hand, c, ci, ct);
     // A mão que segura o pente acompanha o pente: gira junto e fecha exatamente no ponto da pegada (as curvas da mão e
     // do pente não passam pelos mesmos pontos entre as poses-chave).
     if (hold > 0) {
       const m = rig.mag.grp.position; handRoll.setFromEuler(handEuler.set(pose[15] * hold, 0, pose[20] * hold)); h.hand.quaternion.premultiply(handRoll);
       const grab = handTmp.fromArray(h.magOff).applyEuler(handEuler.set(pose[15], 0, pose[20])).add(m);
-      grab.sub(handTmp2.copy(h.hand.userData.C).multiplyScalar(h.hand.scale.x).applyQuaternion(h.hand.quaternion)); h.hand.position.lerp(grab, hold);
+      grab.sub(handTmp2.copy(h.hand.userData.sets.mag.C).multiplyScalar(h.hand.scale.x).applyQuaternion(h.hand.quaternion)); h.hand.position.lerp(grab, hold);
     }
     fitSleeve(h.sleeve, h.hand, h.elbow);
   });
@@ -3632,8 +3690,10 @@ function buildGunRig(k, g) {
     const sleeve = new THREE.Mesh(knifeArmGeo, sleeveMat); g.add(sleeve);
     const h = { hand, sleeve, rest: hand.position.clone(), restQ: hand.quaternion.clone(), elbow: new V3(...a.to) }; h.chan = handChan(h); rig.hands.push(h);
     const gf = GRAB_FIT[k] || {};
-    if (a.left && gf.mag) { h.magQ = handQuat(true, gf.mag[0], gf.mag[1]); h.magOff = vAdd(MAG_GRAB, gf.mag[2]); h.magCurl = gf.mag[3]; }
-    if (a.left && gf.bolt) { h.boltQ = handQuat(true, gf.bolt[0], gf.bolt[1]); h.boltOff = gf.bolt[2]; h.boltCurl = gf.bolt[3]; }
+    // pegadas extras: pente (fecha em volta da metade de baixo dele) e alavanca do ferrolho (pinça pequena)
+    if (a.left && gf.mag) { h.magQ = handQuat(true, gf.mag[0], gf.mag[1]); h.magOff = vAdd(MAG_GRAB, gf.mag[2]); addGripSet(hand, 'mag', MAG_HOLD); }
+    if (a.left && gf.bolt) { h.boltQ = handQuat(true, gf.bolt[0], gf.bolt[1]); h.boltOff = gf.bolt[2]; addGripSet(hand, 'bolt', BOLT_HOLD); }
+    if (!a.left && (VM_PARTS[k] || {}).kind === 'sniper') addGripSet(hand, 'bolt', BOLT_HOLD);
   }
   // Cartucho da escopeta: deitado no canal da mão esquerda (na palma, entre os dedos), não atravessando o dorso.
   if (sp.kind === 'pump') { const s = boxModel([[[-.011, -.011, -.03], [.011, .011, .012], 0xb3262a], [[-.0115, -.0115, .012], [.0115, .0115, .026], 0xc9a23e]]); const h = rig.hands[0].hand; s.position.copy(h.userData.C); s.rotation.y = Math.PI / 2; s.visible = false; h.add(s); rig.shell = s; }
@@ -7271,13 +7331,13 @@ function bombRenderObj(t) {
 // se alguém do outro time passa muito perto ele apita, revela essa pessoa e se autodestrói; se for destruído
 // a tiro, o dono recebe o aviso. Cada habilidade recarrega 45 s depois de usada e volta pronta a cada rodada.
 const OPS = {
-  finder: { name: 'Finder', ability: 'Varredura', desc: 'Abre o minimapa e escaneia uma área de 10 m: mostra uma silhueta onde cada inimigo estava, e de novo 1 s depois.', color: '#3ff4ff', outfit: [0x2f6f7a, 0xa6b4bc] },
+  finder: { name: 'Finder', ability: 'Varredura', desc: 'Abre o minimapa e escaneia uma área de 10 m a até 40 m de você: mostra uma silhueta onde cada inimigo estava, e de novo 1 s depois.', color: '#3ff4ff', outfit: [0x2f6f7a, 0xa6b4bc] },
   doctor: { name: 'Doctor', ability: 'Estimulante', desc: 'Saca uma pistola de cura: botão esquerdo atira num aliado, botão direito aplica em você. Cura 50 de vida.', color: '#3dff7a', outfit: [0xe6ecef, 0xc4d2d8] },
   ghost: { name: 'Ghost', ability: 'Passos mudos', desc: 'Por 5 segundos seus passos não fazem nenhum barulho, mesmo correndo: ninguém escuta você chegar.', color: '#a78bfa', outfit: [0x3a2f55, 0x8a80a8] },
   brutus: { name: 'Brutus', ability: 'Couraça', desc: 'Por 5 segundos recebe 10% menos dano, exceto de headshots. Solta uma gargalhada ao ativar.', color: '#facc15', outfit: [0x4c525b, 0xa3a9b0] },
   detector: { name: 'Detector', ability: 'Alarme', desc: 'Coloca um alarme no chão, invisível para o inimigo de longe. Apita, revela e se destrói quando alguém chega perto.', color: '#f08a24', outfit: [0x5a6642, 0xb4b48c] },
 };
-const SCAN = { radius: 5, delay: 700, tag: 1500, retag: 1000 }, GHOSTS = [], ALARM = { seen: 7, trip: 3.2, hp: 20, armMs: 1000, reveal: 4000, list: [], next: 1 };
+const SCAN = { radius: 5, range: 40, delay: 700, tag: 1500, retag: 1000 }, GHOSTS = [], ALARM = { seen: 7, trip: 3.2, hp: 20, armMs: 1000, reveal: 4000, list: [], next: 1 };
 // outfit: [roupa, calça] do operador, igual para os dois lados.
 const opNotice = msg => { if (typeof toast === 'function') toast(msg); };
 function opsAssign() {
@@ -7393,8 +7453,11 @@ function revealActor(e, team, t, ms) {
   for (const mate of DM.bots) if (mate.alive && mate.team === team && !mate.seen) { mate.lastSeen.set(e.pos.x, e.pos.y, e.pos.z); mate.knowsUntil = t + ms; mate.planAt = 0; }
 }
 // Varredura do Finder: pulso no ponto (x, z); revela quem do outro time estiver dentro do círculo quando o pulso chega.
+// O alcance é limitado como a smoke do Brimstone: um ponto mais longe que SCAN.range é trazido para a borda.
+function scanClamp(e, x, z) { const dx = x - e.pos.x, dz = z - e.pos.z, d = Math.hypot(dx, dz); return d <= SCAN.range ? [x, z] : [e.pos.x + dx * SCAN.range / d, e.pos.z + dz * SCAN.range / d]; }
 function finderScan(e, x, z, t) {
   if (e.op !== 'finder' || !(e.charges > 0) || !e.alive || DM.phase !== 'live') return false;
+  [x, z] = scanClamp(e, x, z);
   opSpend(e, t); SCAN.pending = { by: e, team: e.team, x, z, at: t + SCAN.delay };
   if (e.team === P.team) AU.arm && AU.arm();
   return true;
@@ -8556,8 +8619,10 @@ function updateTacticalRadar(t){
 function openMinimap(){if(MINI.open||!bombOn())return;MINI.open=true;el.hud.classList.add('finder-open');$('minimap').hidden=false;P.m1=P.m2=P.m1Press=P.m2Press=false;keys.clear();BUY.x=innerWidth/2;BUY.y=innerHeight/2;$('vcursor').hidden=false;moveVCursor();drawMinimap(now());}
 function closeMinimap(){if(!MINI.open)return;MINI.open=false;el.hud.classList.remove('finder-open');$('minimap').hidden=true;$('vcursor').hidden=!BUY.open&&!SHOP.open;}
 function minimapWorld(px,py){return HudRadar.unproject(px,py,$('mmCanvas').getBoundingClientRect(),HudRadar.overview(AX,AZ,$('mmCanvas').width));}
+// Ponto da varredura sob o cursor, preso dentro do alcance do Finder (o círculo do minimapa).
+function minimapTarget(px,py){const at=minimapWorld(px,py);return at?scanClamp(P,at[0],at[1]):null;}
 function drawMinimap(t){
-  const c=$('mmCanvas');HudRadar.drawOverview(c.getContext('2d'),radarMap(),{size:c.width,pose:{x:P.pos.x,z:P.pos.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),selected:minimapWorld(BUY.x,BUY.y),scanRadius:SCAN.radius});
+  const c=$('mmCanvas');HudRadar.drawOverview(c.getContext('2d'),radarMap(),{size:c.width,pose:{x:P.pos.x,z:P.pos.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),selected:minimapTarget(BUY.x,BUY.y),scanRadius:SCAN.radius,range:SCAN.range});
 }
 function moveVCursor() {
   $('vcursor').style.transform='translate('+BUY.x+'px,'+BUY.y+'px)';
@@ -8625,7 +8690,7 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mousedown', e => {
   if (!locked) return;
-  if (MINI.open) { if (e.button === 0) { const at = minimapWorld(BUY.x, BUY.y); if (at && finderScan(P, at[0], at[1], now())) closeMinimap(); } else closeMinimap(); return; }
+  if (MINI.open) { if (e.button === 0) { const at = minimapTarget(BUY.x, BUY.y); if (at && finderScan(P, at[0], at[1], now())) closeMinimap(); } else closeMinimap(); return; }
   if (SHOP.open) { if (BUY.hover && e.button === 0) BUY.hover.click(); else if (BUY.hover && e.button === 2 && BUY.hover.dataset.item && bombOn() && bombSell(P, BUY.hover.dataset.item, now())) { renderShop(now()); moveVCursor(); } return; }
   if (BUY.open) { if (e.button === 0 && BUY.hover) BUY.hover.click(); return; }
   if (!P.alive && (e.button === 0 || e.button === 2) && specActive(now())) { specNext(e.button === 2 ? -1 : 1); return; }

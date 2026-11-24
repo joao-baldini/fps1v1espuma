@@ -103,7 +103,7 @@ Efeitos: o Ghost fala "shh" e a tela ganha uma borda roxa desfocada enquanto os 
 
 | Operador | Habilidade | Visual |
 |---|---|---|
-| Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro. Após um pulso, mostra uma silhueta parada (na cor do contorno inimigo) onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |
+| Finder | Abre o minimapa; o clique escolhe uma área de 10 m de diâmetro a até 40 m de você (alcance limitado como a smoke do Brimstone: fora do círculo o mapa escurece e a mira para na borda). Após um pulso, mostra uma silhueta parada (na cor do contorno inimigo) onde cada inimigo da área estava (vista através das paredes) e mostra de novo 1 s depois; a marcação não segue a pessoa | Viseira ciano e antena |
 | Doctor | Saca uma pistola de cura estimulante. O botão esquerdo atira um dardo de verdade (branco, ponta azul e agulha) que voa até o aliado da mira e cura quando chega; se errar, a carga é gasta e o dardo fica cravado onde bateu. O botão direito aplica em você: o antebraço esquerdo entra na tela e ele crava o dardo nele. Cura 50 de vida (até 100); X de novo guarda a pistola. Bots se curam ou mandam o dardo num aliado próximo abaixo de 60 de vida | Cruz verde no peito e maleta branca com cruz vermelha nas costas |
 | Ghost | Por 5 s seus passos ficam mudos: ninguém escuta você andando ou correndo e os bots não reagem ao barulho. O HUD mostra o tempo restante. Bots Atacantes usam perto do bomb antes de plantar; bots Defensores usam depois que a bomba é plantada | Capuz escuro com máscara e faixa roxas |
 | Brutus | Couraça: por 5 s recebe 10% menos dano, exceto de headshots. Bots ligam ao entrar numa troca de tiros | Ombreiras amarelas, placa no peito com divisa e protetor de queixo |
@@ -216,7 +216,7 @@ Placar e tempo ficam reunidos no topo. Vida, proteção e munição têm número
 
 Ao acertar um tiro aparece só o **hitmarker** (o X no centro), sem número de dano. Ele não aparece quando o tiro atravessa uma smoke: o dano conta, mas você não fica sabendo pelo X. Dá para desligar em **Configurações → Vídeo → Hitmarker**.
 
-O radar é redesenhado a cada quadro, com a posição suavizada da câmera; antes ele atualizava só a cada 80 ms e parecia travado. O radar é circular e gira com a câmera, mantendo a mesma escala nos dois eixos. Aparece nos duelos, times, DM, TDM e Prefire. Mostra você, aliados vivos e as últimas posições reveladas pela varredura do Finder; não revela adversários sem essa habilidade. Os sites A/B e a bomba seguem o estado da partida. A geometria é desenhada uma vez por mapa e reutilizada; o radar atualiza no máximo a cada 80 ms, sem uma segunda câmera 3D. A HUD usa a resolução da tela mesmo com a resolução 3D reduzida. O Finder conserva a escolha de área de 10 m no mapa completo circular.
+O radar é redesenhado a cada quadro, com a posição suavizada da câmera; antes ele atualizava só a cada 80 ms e parecia travado. O radar é circular e gira com a câmera, mantendo a mesma escala nos dois eixos. Aparece nos duelos, times, DM, TDM e Prefire. Mostra você, aliados vivos e as últimas posições reveladas pela varredura do Finder; não revela adversários sem essa habilidade. Os sites A/B e a bomba seguem o estado da partida. A geometria é desenhada uma vez por mapa e reutilizada; o radar atualiza no máximo a cada 80 ms, sem uma segunda câmera 3D. A HUD usa a resolução da tela mesmo com a resolução 3D reduzida. O Finder conserva a escolha de área de 10 m no mapa completo circular, com o alcance de 40 m marcado em volta de você; fora dele o mapa escurece e a mira não passa da borda (vale também para os bots).
 
 Testes do radar: `node --test tests/hud-radar.test.cjs`.
 
@@ -275,27 +275,23 @@ A arma e o braço aparecem 45% maiores que antes. Eles crescem em torno da mão 
 - **Facas:** ficam um pouco menores, para a mão esquerda não virar um bloco enorme.
 - **Granadas e C4:** sobem um pouco.
 
-As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: luva escura em blocos e manga na cor do boneco (nos times, na cor do time).
+As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão de pele modelada em low poly e manga na cor do boneco (nos times, na cor do time).
 
-**Mãos que seguram de verdade** (`index.html`, `buildHand` e `placeHand`). Cada mão é um punho low poly articulado, em blocos de faces planas: palma com dorso chanfrado, protetor dos nós, punho da luva, quatro dedos com três falanges cada e polegar com duas.
-- **O punho fecha em volta do cabo.** A falange de baixo passa por cima, a do meio desce na frente e a da ponta volta por baixo; o polegar desce atrás do cabo e deita do outro lado. Em cabos altos (guarda-mão, corpo da granada), os dedos abraçam só até onde alcançam.
-- **A mão é orientada pelo cabo e pelo cotovelo.** O eixo vai do indicador ao mindinho; o dorso fica para fora na mão do gatilho e para baixo na mão de apoio. A manga sai do pulso da luva até o cotovelo, então punho, mão e antebraço ficam sempre ligados. A mão esquerda é a mesma montagem espelhada (antes era a direita copiada, virada para baixo).
-- **O indicador fica no gatilho.** Na mão do gatilho ele fica meio estendido, e cada pegada tem o quanto o polegar fecha.
-- **Medido em cada modelo.** `GRIP_FIT` guarda, por arma, o ponto do cabo e as medidas do canal; `GRAB_FIT` guarda como a mão esquerda pega o pente e a alavanca do ferrolho: orientação, ponto e quanto fecha. Os valores saíram de uma busca fora do jogo que testa cada triângulo da arma contra cada bloco da mão, e também bloco inteiro dentro da arma. O canal escolhido é o menor em que nenhuma peça da mão atravessa a arma, nem a outra mão nas pistolas.
-- **Nas animações.** Ao ir ao pente ou à alavanca, a mão gira para a pegada (canais 22 e 23 da pose) e contorna por baixo da caixa da culatra em vez de atravessá-la. Segurando o pente, ela gira e anda junto com ele. Longe do cabo, os dedos abrem.
+**Mão modelada em low poly** (`index.html`, `buildHand`). Ela é feita de peças arredondadas, com seções em superelipse e faces planas, no lugar dos blocos:
+- palma mais larga nos nós e mais estreita no pulso, com o dorso levemente arqueado;
+- nós dos dedos em relevo e base do polegar saliente;
+- quatro dedos com três falanges que afinam até a ponta, com unha, e comprimentos de mão de verdade (médio mais longo, mindinho mais curto, linha dos nós curva);
+- polegar com duas falanges e faixa no pulso.
 
-| Primeira pessoa | Triângulos da arma dentro da mão (todos os quadros de saque, recarga e ferrolho) |
-|---|---|
-| AK-47 | 2.978 → 79 |
-| M4A4 / M4A1-S | 1.593 / 1.586 → 220 / 230 |
-| Galil | 2.892 → 392 |
-| UMP | 3.820 → 410 |
-| AWP / Scout | 5.078 / 3.178 → 638 / 203 |
-| Karambit (saque, inspeção, cortes, estocada) | 15.055 → 160 |
-| Butterfly | 785 → 106 |
-| Granadas, C4, Estimulante (repouso) | 54 / 13 / 25 / 5 / 42 → 0 |
+**Os dedos dobram em volta do cabo de verdade** (`wrapChain`). Cada junta gira o máximo possível sem a falange entrar no cabo (um retângulo de cantos redondos com 1,5 mm de folga) nem na palma. Assim os dedos dão a volta em cabos finos e, em cabos grossos (guarda-mão, cabo fundo de pistola), abraçam só até onde alcançam.
 
-O que sobra são toques de polegar e pontas de dedo de poucos milímetros nos quadros de transição. A Desert Eagle, a USP-S e a Glock ainda acusam contato da palma e do polegar com os frisos finos da empunhadura; nas vistas de perto, a mão fecha certinho no cabo.
+**O cabo é medido no modelo** (`GRIP_FIT`). Para cada mão, o jogo pega a fatia da arma na faixa dos dedos e o contorno que envolve o ponto da pegada, e esse retângulo vira o canal. Exemplos: cabo do AK com 3,8 × 4,8 cm, guarda-mão com a palma embaixo e os dedos subindo pela lateral, cabo da Deagle com 3,4 × 7,8 cm inclinado para trás. Nas pistolas, a mão esquerda envolve a direita.
+
+**Cada pegada tem o próprio fechamento** (`gripSet`, `mixGrip`): cabo, pente e alavanca do ferrolho. Na recarga, a mão esquerda gira e fecha no pente ou na alavanca, e a direita da AWP e da Scout fecha na bolinha do ferrolho; a mão passa suavemente de uma pegada para a outra. A orientação e o ponto das pegadas do pente e da alavanca ficam em `GRAB_FIT`.
+
+**Karambit e butterfly.** Na karambit, a faca foi reduzida e a mão aumentada até o anel caber no indicador: antes o anel era maior que o espaço entre dois dedos e invadia o dedo médio.
+
+`tools/` não guarda as ferramentas de medição; elas rodaram fora do jogo com o Playwright, testando cada triângulo da arma contra cada peça da mão. Sobram toques de milímetros do polegar e, nas pistolas, do pulso na traseira da armação.
 
 **Braços em low poly facetado** (`assets/v2/weapons-v2.js`, mesmo estilo dos bonecos). O antebraço é um prisma de 6 lados que afina até o pulso.
 
