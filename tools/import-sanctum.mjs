@@ -107,7 +107,7 @@ function facesForPart(part){
 }
 
 export function rebuildSanctum(file,{bake=true}={}){
-  const map=compileSourceMap(file,'sanctum',{materialNames:true});map.name='Sanctum';map.credit='alicate madeira 4';
+  const map=compileSourceMap(file,'sanctum',{materialNames:true,keepNodraw:true});map.name='Sanctum';map.credit='alicate madeira 4';
   const report=map.report;report.rebuild={version:2,method:'Fresh BSP geometry plus independently rebuilt lightweight props',externalModelsEmbedded:0,standardGameGrid:true,props:[],omitted:[]};
   for(const face of map.polygons){face.c=architectureColor(face);delete face.material;}
   const navName=[...map.bsp.pak.keys()].find(n=>n.endsWith('.nav')),authoredNav=readNav(map.bsp.asset(navName));
@@ -163,7 +163,7 @@ export function rebuildSanctum(file,{bake=true}={}){
     const y=native.ground(p[0],p[1],p[3]);if(!Number.isFinite(y)||native.overlap(p[0],y+.01,p[1],1.8,.3))throw Error('Blocked source spawn');p[3]=y;
   }
   for(const f of map.polygons)delete f.src;for(const h of map.hulls){delete h.src;delete h.brush;}
-  report.rebuild.originalNavAreas=authoredNav.areas.length;
+  delete map.hiddenFaces;report.rebuild.originalNavAreas=authoredNav.areas.length;
   report.rebuild.preservedWorldFaces=report.worldFaces;
   delete map.bsp;delete map.convert;return map;
 }

@@ -4744,7 +4744,10 @@
     "doorsStatic": 3,
     "grateProps": 0,
     "grateBrushes": 1,
-    "barsFaces": 60
+    "barsFaces": 60,
+    "solidifiedBrushes": 0,
+    "facadePieces": 4,
+    "facadeSkipped": 0
   },
   "objectDetail": {
     "panesThick": 2,
@@ -4902,7 +4905,7 @@
       "lz": -10.621499999999997
     }
   ],
-  "triangles": 14068,
+  "triangles": 14116,
   "collisionHulls": 620,
-  "assetBytes": 213150
+  "assetBytes": 213521
 }

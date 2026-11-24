@@ -310,6 +310,10 @@ Os cinco mapas de duelo são simétricos (girados 180°), com chão branco e uma
 
 No Elimination online vale o mapa escolhido por quem criou a sala.
 
+### Paredes com desgaste (regra)
+
+Nenhuma parede lisa fica lisa, em nenhum mapa do jogo: reboco e concreto em pé têm manchas, escorridos e pedaços descascados com o tijolo aparecendo, como no VALORANT e nos mapas originais do CS. A imagem também ficou um pouco menos esbranquiçada: exposição e gama de meio-tom levemente menores.
+
 ### Portas, vidros e grades nos mapas convertidos
 
 Nos mapas vindos de BSPs do CS (Wingman e Plant the Bomb):

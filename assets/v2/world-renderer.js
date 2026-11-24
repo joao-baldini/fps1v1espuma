@@ -71,6 +71,8 @@ varying float vAO;
 varying vec3 vWPos;
 varying vec3 vWNorm;
 
+float v2wH(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float v2wN(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(v2wH(i),v2wH(i+vec2(1,0)),f.x),mix(v2wH(i+vec2(0,1)),v2wH(i+vec2(1,1)),f.x),f.y);}
 vec4 sampleWorldMat(int id, vec2 uv) {
   if (id == 1) return texture2D(uTexWood, uv * 0.75);
   if (id == 2) return texture2D(uTexMetal, uv * 0.55);
@@ -89,6 +91,23 @@ vec4 v2tex = sampleWorldMat(v2mId, v2uv);
 float v2distFade = clamp(1.0 - (length(vWPos - cameraPosition) - 18.0) / 55.0, 0.25, 1.0);
 float v2detailAmt = uDetail * v2distFade;
 diffuseColor.rgb *= mix(1.0, v2tex.r * 1.08, v2detailAmt);
+// Regra do jogo: parede lisa nunca fica lisa. Concreto/reboco em pé ganha manchas, escorridos e reboco descascado com
+// o tijolo aparecendo (mesma regra do material dos mapas convertidos).
+if (v2mId == 0 && v2an.y < 0.35) {
+  vec2 wq = vec2(vWPos.x + vWPos.z * 0.83, vWPos.y);
+  float st = v2wN(wq * vec2(0.32, 0.42)) * 0.65 + v2wN(wq * vec2(1.1, 1.4) + 7.3) * 0.35;
+  float streak = v2wN(vec2(wq.x * 2.6, wq.y * 0.16) + 3.1) * v2wN(vec2(wq.x * 0.7, wq.y * 0.5));
+  diffuseColor.rgb *= 1.0 - smoothstep(0.52, 0.85, st) * 0.15 - smoothstep(0.3, 0.6, streak) * 0.1;
+  float peel = v2wN(wq * vec2(0.55, 0.7) + 11.0) * 0.72 + v2wN(wq * vec2(2.4, 2.9) + 5.0) * 0.28;
+  float hole = smoothstep(0.80, 0.825, peel), rim = smoothstep(0.775, 0.80, peel) - hole;
+  // Tijolo desenhado: fiadas de 7,5 cm com meio tijolo de deslocamento e rejunte claro.
+  float row = floor(wq.y / 0.075), bx = wq.x / 0.22 + mod(row, 2.0) * 0.5;
+  vec2 bq = vec2(fract(bx), fract(wq.y / 0.075)), bw = fwidth(vec2(bx, wq.y / 0.075)) + 0.04;
+  float mortar = 1.0 - smoothstep(0.0, bw.x, bq.x) * smoothstep(0.0, bw.y, bq.y);
+  vec3 brick = vec3(0.62, 0.35, 0.27) * (0.85 + 0.3 * v2wH(vec2(floor(bx), row)));
+  brick = mix(brick, vec3(0.80, 0.76, 0.70), mortar * 0.8);
+  diffuseColor.rgb = mix(diffuseColor.rgb, brick, hole) * (1.0 - rim * 0.16);
+}
 float v2groundAO = v2an.y < 0.5 ? (0.80 + 0.20 * smoothstep(0.0, 0.75, max(0.0, vWPos.y))) : 1.0;
 diffuseColor.rgb *= clamp(vAO * v2groundAO, 0.48, 1.0);`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>

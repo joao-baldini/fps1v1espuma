@@ -213,6 +213,7 @@ export function extractMapObjects(map, { packMap, nav, navHeightsAt } = {}) {
     report.doors++; detail.doorList.push(d.model.split('/').pop() + '@' + mid.map(v => v.toFixed(1)).join(','));
   }
   if (native) decorateFacades(map, native, frame, report);
+  if (native && map.hiddenFaces?.length) fillExposedNodraw(map, native, report);
   // Colisões de enfeite (máscara 0) não precisam ir para o jogo.
 
   map.hulls = map.hulls.filter(h => h.mask || h.obj != null);
@@ -288,4 +289,26 @@ function decorateFacades(map, native, frame, report) {
     if (spec.kind === 'bars') for (const bb of barBoxes([-W, 1.5, 0], [W, 3.5, H], 'bars')) push(bb, IRON, P.metal);
   }
   report.facadePieces = added; report.facadeSkipped = skipped;
+}
+
+// Faces nodraw que ficaram à mostra (degrau, espelho de escada, fundo de beiral): no CS um modelo cobre essas faces; aqui,
+// sem o modelo, viravam buracos para o vazio. Entra a face quando há espaço livre na frente, sólido atrás e ela está na
+// altura de alguém que anda por perto; cor e padrão da face visível mais próxima.
+function fillExposedNodraw(map, native, report) {
+  const cell = 2, grid = new Map(), key = (x, z) => Math.floor(x / cell) + ',' + Math.floor(z / cell);
+  for (const f of map.polygons) { if (f.glass || f.tag === 'prop') continue; const c = centroid(f); const k = key(c[0], c[2]); (grid.get(k) || grid.set(k, []).get(k)).push([f, c]); }
+  const nearest = c => { let best = null, bd = 9; const gx = Math.floor(c[0] / cell), gz = Math.floor(c[2] / cell); for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (const [f, fc] of grid.get((gx + dx) + ',' + (gz + dz)) || []) { const d = (fc[0] - c[0]) ** 2 + (fc[1] - c[1]) ** 2 * 2 + (fc[2] - c[2]) ** 2; if (d < bd) { bd = d; best = f; } } return best; };
+  let filled = 0;
+  for (const h of map.hiddenFaces) {
+    if (h.p.length < 3) continue;
+    const c = centroid({ p: h.p }), n = h.n, front = add(c, mul(n, .03)), back = add(c, mul(n, -.03));
+    if (native.overlap(front[0], front[1] - .005, front[2], .01, .005, 3) || !native.overlap(back[0], back[1] - .005, back[2], .01, .005, 3)) continue;
+    const g = native.ground(front[0], front[2], front[1] + .6), up = front[1] - g;
+    if (!(g > -1e3 && up > -.6 && up < 4)) continue;
+    const near = nearest(c); if (!near) continue;
+    const face = { p: h.p, n, c: near.c, glass: false, tag: 'world' };
+    if (TEXTURED) { face.pat = near.pat; const a = Math.abs(n[0]) > Math.abs(n[1]) && Math.abs(n[0]) > Math.abs(n[2]) ? [1, 2] : Math.abs(n[1]) > Math.abs(n[2]) ? [0, 2] : [0, 1]; face.uv = h.p.map(p => [p[a[0]] / 1.6256, p[a[1]] / 1.6256]); }
+    map.polygons.push(face); filled++;
+  }
+  report.nodrawFilled = filled;
 }

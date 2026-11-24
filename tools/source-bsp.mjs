@@ -165,6 +165,15 @@ function propColor(bsp,name){
   return colors.length?flatColor(colors.reduce((sum,rgb)=>add(sum,rgb),[0,0,0]).map(v=>v/colors.length)):null;
 }
 
+// Polígono de um lado do brush: um quadrado enorme no plano do lado, recortado pelos outros planos (brush convexo).
+function brushSidePolygon(planes,k){
+  const [nx,ny,nz,d]=planes[k],n=[nx,ny,nz],ref=Math.abs(nz)<.9?[0,0,1]:[1,0,0],u=unit(cross(ref,n)),v=cross(n,u),o=mul(n,d),R=32768;
+  let poly=[add(o,add(mul(u,-R),mul(v,-R))),add(o,add(mul(u,R),mul(v,-R))),add(o,add(mul(u,R),mul(v,R))),add(o,add(mul(u,-R),mul(v,R)))];
+  for(let j=0;j<planes.length&&poly.length>=3;j++){if(j===k)continue;const q=planes[j],out=[];
+    for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],da=dot(q,a)-q[3],db=dot(q,b)-q[3];if(da<=.01)out.push(a);if((da<=.01)!==(db<=.01)){const t=da/(da-db);out.push(add(a,mul(sub(b,a),t)));}}
+    poly=out;}
+  return poly;
+}
 export function compileSourceMap(file,key,options={}){
   const bsp=new SourceBsp(file),spawns=bsp.entities.filter(e=>/info_player_(terrorist|counterterrorist)$/.test(e.classname));
   if(!spawns.length)throw Error('Map has no player spawns');
@@ -179,7 +188,7 @@ export function compileSourceMap(file,key,options={}){
   const propColors=new Map();
   // Origem de cada face e peça de colisão (brush do mundo, entidade, modelo): usada depois para achar vidros, portas e
   // grades (tools/map-objects.mjs). Não vai para o pacote do jogo.
-  let SRC=null,BRUSH=null;
+  let SRC=null,BRUSH=null;const hiddenFaces=[];
   // options.textures: guarda coordenadas de textura (texinfo do BSP, na escala real da textura) e o padrão do material.
   const planarUv=(points,n)=>{const a=Math.abs(n[0])>Math.abs(n[1])&&Math.abs(n[0])>Math.abs(n[2])?[1,2]:Math.abs(n[1])>Math.abs(n[2])?[0,2]:[0,1];return points.map(p=>[p[a[0]]/64,p[a[1]]/64]);};
   const emit=(points,n,material,tag='world',tex=-1)=>{if(points.length<3||!keep(points))return;const rgb=bsp.materialColors.get(material),c=rgb?flatColor(rgb):propColors.get(material)??colorFor(material,n,key),face={p:points.map(convert),n:normal(n),c,glass:/glass|window/.test(material),tag};
@@ -197,7 +206,8 @@ export function compileSourceMap(file,key,options={}){
   const drawModel=(index,origin=[0,0,0],angles=[0,0,0],solid=true)=>{
     const model=bsp.models[index],rot=rotation(angles),transform=p=>add(rot(p),origin);
     for(let i=model.face;i<model.face+model.count;i++){
-      const f=bsp.faces[i],material=bsp.material(f);if(hiddenMaterial(material)||!f.count)continue;
+      const f=bsp.faces[i],material=bsp.material(f);
+      if(hiddenMaterial(material)||!f.count)continue;
       const ps=bsp.faceVertices(f),pn=bsp.planes[f.plane],n=rot(mul(pn.slice(0,3),f.side?-1:1));
       if(f.disp>=0){
         const d=bsp.lump(26),v=bsp.lump(33),q=f.disp*176,power=d.readInt32LE(q+20),start=vec(d,q),first=d.readInt32LE(q+12);let size=(1<<power)+1;
@@ -240,6 +250,13 @@ export function compileSourceMap(file,key,options={}){
       const ps=sides.map(s=>bsp.planes[s.plane]),bb=brushBounds(ps);if(bb.some(v=>Math.abs(v)>=32768)||bb[5]<base-512)continue;
       const transformed=ps.map(p=>{const n=rot(p.slice(0,3));return [...n,p[3]+dot(n,origin)];});
       const rb=bounds(corners(bb).map(transform));BRUSH={id,contents:b.contents,nonSolid:!solid};collision(transformed,rb,solid?mask:0);BRUSH=null;report.brushes++;
+      // Lados nodraw de brush sólido: o VBSP nem gera a face (no CS um modelo cobre). Guarda o polígono do lado para, se
+      // ficar à mostra aqui (modelo que não veio no BSP), ser preenchido depois (tools/map-objects.mjs).
+      if(options.keepNodraw&&mask===3&&solid)for(let k=0;k<sides.length;k++){
+        const sd=sides[k];if(sd.bevel)continue;const mat=bsp.materials[bsp.texInfo[sd.tex]?.data]||'';if(!/nodraw/.test(mat))continue;
+        const poly=brushSidePolygon(ps,k);if(poly.length<3)continue;const pts=poly.map(transform);if(!keep(pts))continue;
+        hiddenFaces.push({p:pts.map(convert),n:normal(rot(ps[k].slice(0,3))),src:SRC});
+      }
     }
   };
   drawModel(0);
@@ -268,5 +285,5 @@ export function compileSourceMap(file,key,options={}){
   const ladders=bsp.entities.filter(e=>e.classname==='info_ladder').map(e=>{const lo=['x','y','z'].map(k=>Number(e['mins.'+k])),hi=['x','y','z'].map(k=>Number(e['maxs.'+k]));return bounds(corners([...lo,...hi]).map(convert));});
   const allBounds=bounds(polygons.flatMap(p=>p.p));
   report.flatColors={method:'Original BSP material reflectivity and embedded model material averages; no runtime textures',materials:bsp.materialColors.size,models:[...propColors.values()].filter(c=>c!==null).length,samples:Object.fromEntries([...bsp.materialColors].filter(([name])=>/wall_concrete_02|housedeck01|floor_tile_white_01|plasterwall|plaster_wall/.test(name)).slice(0,12).map(([name,rgb])=>[name,flatColor(rgb).toString(16).padStart(6,'0')]))};
-  return {key,scale,center,bounds:allBounds,t:starts('terrorist'),ct:starts('counterterrorist'),sites,ladders,polygons,hulls,report,bsp,convert,base};
+  return {hiddenFaces,key,scale,center,bounds:allBounds,t:starts('terrorist'),ct:starts('counterterrorist'),sites,ladders,polygons,hulls,report,bsp,convert,base};
 }

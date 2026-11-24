@@ -644,7 +644,7 @@ const v2Mats = globalThis.V2Materials ? V2Materials.init(THREE, renderer) : null
 if (v2Mats) {
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.06;
+  renderer.toneMappingExposure = .97; // um pouco menos de exposição: a imagem estava esbranquiçada
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 }
@@ -1669,12 +1669,14 @@ function makeMapMaterial(opacity) {
   mat.onBeforeCompile = shader => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float pattern;\nvarying float vP;\nvarying vec2 vAUv;\nvarying vec3 vMWP;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvP = pattern; vAUv = uv; vMWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      .replace('#include <common>', '#include <common>\nattribute float pattern;\nvarying float vP;\nvarying vec2 vAUv;\nvarying vec3 vMWP;\nvarying vec3 vWN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvP = pattern; vAUv = uv; vMWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform sampler2D uAtlas;uniform float uReady;uniform vec3 uMeans[16];uniform float uOwn[16];uniform float uVivid;
-varying float vP;varying vec2 vAUv;varying vec3 vMWP;
+varying float vP;varying vec2 vAUv;varying vec3 vMWP;varying vec3 vWN;
+float wH(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float wN(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(wH(i),wH(i+vec2(1,0)),f.x),mix(wH(i+vec2(0,1)),wH(i+vec2(1,1)),f.x),f.y);}
 const float CELL=${MAP_ATLAS.cell.toFixed(1)},SIZE=${MAP_ATLAS.size.toFixed(1)},PAD=${MAP_ATLAS.pad.toFixed(1)},ATLAS=${(MAP_ATLAS.cell * 4).toFixed(1)};
 vec3 meanOf(int id){vec3 m=vec3(1.0);for(int i=0;i<16;i++)if(i==id)m=uMeans[i];return m;}
 float ownOf(int id){float o=0.0;for(int i=0;i<16;i++)if(i==id)o=uOwn[i];return o;}`)
@@ -1692,12 +1694,30 @@ if(uReady>0.5){
   // Como no VALORANT: de longe o detalhe some e fica a cor limpa do material (leitura clara do mapa).
   float mFar=clamp((length(vMWP-cameraPosition)-22.0)/55.0,0.0,0.6);
   mBase=mix(mBase,mix(diffuseColor.rgb,mt,ownOf(mId)),mFar);
+  // Regra do jogo: parede lisa nunca fica lisa (como no VALORANT e nos mapas originais). Reboco e concreto em pé ganham
+  // manchas largas, escorridos de chuva e pedaços de reboco descascado com o tijolo aparecendo, tudo pela posição no
+  // mundo (nada se repete em grade), sem mudar o tom do material.
+  if((mId==0||mId==4)&&abs(vWN.y)<.35){
+    vec2 wq=vec2(vMWP.x+vMWP.z*.83,vMWP.y);
+    float st=wN(wq*vec2(.32,.42))*.65+wN(wq*vec2(1.1,1.4)+7.3)*.35;
+    float streak=wN(vec2(wq.x*2.6,wq.y*.16)+3.1)*wN(vec2(wq.x*.7,wq.y*.5));
+    mBase*=1.0-smoothstep(.52,.85,st)*.15-smoothstep(.3,.6,streak)*.1;
+    float peel=wN(wq*vec2(.55,.7)+11.0)*.72+wN(wq*vec2(2.4,2.9)+5.0)*.28;
+    float hole=smoothstep(.80,.825,peel),rim=smoothstep(.775,.80,peel)-hole;
+    if(hole>0.0){
+      vec2 bf=fract(wq/1.6256),bo=vec2(1.0,3.0)*CELL+PAD;
+      vec3 brick=texture2DGradEXT(uAtlas,(bo+bf*SIZE)/ATLAS,dFdx(wq/1.6256)*SIZE/ATLAS,dFdy(wq/1.6256)*SIZE/ATLAS).rgb;
+      float bl=dot(brick,vec3(.299,.587,.114));brick=mix(mix(vec3(bl),brick,.6),mBase,.25);
+      mBase=mix(mBase,brick,hole*(1.0-mFar*.6));
+    }
+    mBase*=1.0-rim*.16;
+  }
 }
 // Cores do mapa em sRGB → luz linear; um pouco mais de saturação para o visual ensolarado.
 float mL=dot(mBase,vec3(.299,.587,.114));mBase=clamp(mix(vec3(mL),mBase,uVivid),0.0,1.0);
 // Sem tons escuros no cenário (valores parecidos, pouco contraste): o que é escuro sobe até um piso, mantendo o tom.
 mL=dot(mBase,vec3(.299,.587,.114));mBase=clamp(mBase*max(mL,.22)/max(mL,.001),0.0,1.0);
-diffuseColor.rgb=pow(mBase,vec3(2.2));`)
+diffuseColor.rgb=pow(mBase,vec3(2.32)); // gama um pouco maior no meio-tom: menos lavado, mesmas cores`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 if(mId==13)totalEmissiveRadiance=diffuseColor.rgb*.85;`);
     valorantLighting(shader);
@@ -8741,7 +8761,7 @@ function applySettings() {
   }
   if (typeof v2Fx !== 'undefined' && v2Fx) v2Fx.setDensity(S.gfxParticles);
   renderer.toneMapping = S.gfxEffects === 'low' ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = S.gfxEffects === 'low' ? 1.0 : 1.05;
+  renderer.toneMappingExposure = S.gfxEffects === 'low' ? .92 : .97;
   const env = (S.gfxEffects !== 'low' && typeof v2Mats !== 'undefined' && v2Mats?.envMap) ? v2Mats.envMap : null;
   scene.environment = env;
   vmScene.environment = env;

@@ -239,6 +239,20 @@ Causas e correções:
 
 **Navegação.** A poda dos caminhos dos bots agora testa cada ligação também chegando já andando (meio passo antes, com velocidade) e com mais deslocamentos de lado. As rotas seguidas pelos bots são verificadas a partir das duas bases.
 
+## Degraus e faces que mostravam o vazio
+
+No CS, os lados de brush com `nodraw` ficam escondidos atrás de um modelo (a escada de madeira por cima dos degraus, por exemplo), e o compilador do BSP nem gera essas faces. Sem o modelo, sobravam buracos para o vazio. O compilador agora recria o polígono de cada lado `nodraw` dos brushes sólidos, recortando o plano do lado pelos outros planos do brush (`brushSidePolygon`, opção `keepNodraw`). `fillExposedNodraw` desenha só os lados que ficaram à mostra, com espaço livre na frente, sólido atrás e na altura de quem anda por perto. Cada um recebe a cor e o padrão da face visível mais próxima: 230 no Crown e 321 no Calamari, por exemplo.
+
+## Regra: parede lisa nunca fica lisa
+
+Como no VALORANT e nos próprios mapas do CS, nenhuma parede de reboco ou concreto em pé fica lisa. O material dos mapas convertidos (`makeMapMaterial` no `index.html`) e o dos mapas feitos no jogo (`assets/v2/world-renderer.js`) aplicam em toda parede vertical lisa (padrões reboco e concreto):
+
+- manchas largas;
+- escorridos de chuva;
+- pedaços de reboco descascado com borda mais escura e o tijolo aparecendo.
+
+Tudo é calculado pela posição no mundo, então nada se repete em grade e o tom de cada material continua o mesmo. Nos mapas convertidos, o tijolo é o do atlas de texturas; nos mapas do jogo, é desenhado em fiadas, com meio tijolo de deslocamento e rejunte.
+
 ## Movimento em pisos, escadas e rampas
 
 A colisão nativa agora separa o movimento horizontal do apoio dos pés. O corpo é varrido acima da janela normal de degrau; o apoio procura as superfícies sob a mesma largura usada na colisão, inclusive as bordas. Assim, as costuras dos triângulos e espelhos dos degraus não funcionam como paredes laterais. A altura máxima de degrau continua em 0,5 m; paredes maiores e tetos baixos continuam sólidos. A queda e o salto mantêm a resolução de colisão vertical.

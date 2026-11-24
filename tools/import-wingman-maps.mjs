@@ -373,7 +373,7 @@ function clusterModelFaces(map, cell) {
 export function importWingmanMap(file, key) {
   if(key==='sanctum')return rebuildSanctum(file);
   const info = WINGMAN_MAPS[key] || FIVE_MAPS[key];
-  const map = compileSourceMap(file, key, { textures: true, keepNonSolid: true, materialNames: key === 'neon' || key === 'sable' || key === 'lily' || !!info.real, ...(info.dispStep ? { dispStep: info.dispStep } : {}) });
+  const map = compileSourceMap(file, key, { textures: true, keepNonSolid: true, keepNodraw: true, materialNames: key === 'neon' || key === 'sable' || key === 'lily' || !!info.real, ...(info.dispStep ? { dispStep: info.dispStep } : {}) });
   if (info.propCell) clusterModelFaces(map, info.propCell);
   map.name = info.name; map.credit = info.credit;
   if (key === 'neon') { styleNeon(map); addNeonSignage(map); }
@@ -396,7 +396,7 @@ export function importWingmanMap(file, key) {
   withDoorsOpen(map, () => pruneNavigation(map));
   if (process.env.KEEP_SRC) { map.debugPolygons = map.polygons.map(f => f.src || null); map.debugHulls = map.hulls.map(h => h.src ? { ...h.src, brush: h.brush } : h.brush ? { brush: h.brush } : null); }
   for (const f of map.polygons) { delete f.src; delete f.srcMaterial; } for (const h of map.hulls) { delete h.src; delete h.brush; }
-  delete map.bsp; delete map.convert;
+  delete map.bsp; delete map.convert; delete map.hiddenFaces;
   return map;
 }
 
