@@ -3017,3 +3017,35 @@ test('Ultimate Gun Pack (Quaternius, CC0): every replaced gun has its model, rig
   }
   assert.equal(I.m4a1s.acc,'Silencer_1');assert.equal(I.usps.acc,'Silencer_Short');
 });
+
+test('Low Poly Male Base (wh_nerevar, CC-BY-4.0): every operator and team rig is built on the pack body with hands on the grip', () => {
+  const src = readFileSync(resolve(__dirname, '../assets/agents/body-base.js'), 'utf8');
+  assert.match(src, /wh_nerevar/); assert.match(src, /CC-BY-4\.0/);
+  assert.ok(html.indexOf('assets/agents/body-base.js') > 0 && html.indexOf('assets/agents/body-base.js') < html.indexOf('assets/agents/operators-v2.js'), 'body-base.js loads before operators-v2.js');
+  const ctx = { Math, Map, Float32Array, console };
+  ctx.globalThis = ctx;
+  vm.runInNewContext(src, ctx); vm.runInNewContext(readFileSync(resolve(__dirname, '../assets/agents/operators-v2.js'), 'utf8'), ctx);
+  const B = ctx.BODY_BASE;
+  for (const k of ['head', 'body', 'hip', 'legL', 'legR', 'segThigh', 'segShin', 'segBoot']) {
+    assert.ok(B[k].r.length > 20, k + ' has triangles'); assert.equal(B[k].p.length, B[k].r.length * 9, k + ' positions match triangles');
+    assert.ok(B[k].r.every(r => r >= 0 && r <= 4), k + ' regions');
+  }
+  class Attr { constructor(a, n) { this.array = a; this.itemSize = n; } }
+  class Geo { setAttribute(n, a) { this[n] = a; } computeBoundingSphere() {} }
+  const THREE = { BufferGeometry: Geo, Float32BufferAttribute: Attr };
+  const box = a => { const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9]; for (let i = 0; i < a.length; i += 3) for (let j = 0; j < 3; j++) { assert.ok(Number.isFinite(a[i + j])); lo[j] = Math.min(lo[j], a[i + j]); hi[j] = Math.max(hi[j], a[i + j]); } return { lo, hi }; };
+  const near = (a, p, d) => { for (let i = 0; i < a.length; i += 3) if (Math.hypot(a[i] - p[0], a[i + 1] - p[1], a[i + 2] - p[2]) < d) return true; return false; };
+  const keys = [...Object.keys(ctx.V2Operators.TEAM_STYLES).map(k => [k, false]), ...Object.keys(ctx.V2Operators.OP_STYLES).map(k => [k, true])];
+  for (const [k, op] of keys) {
+    const g = ctx.V2Operators.getRigGeometries(THREE, k, op);
+    const head = box(g.head.position.array), body = box(g.body.position.array), legL = box(g.legL.position.array), boot = box(g.segBoot.position.array);
+    assert.ok(head.hi[1] <= 1.86 && head.lo[1] > 1.45, k + ': head between the neck and 1.86 m');
+    assert.ok(body.lo[1] > .85 && body.hi[1] < 1.8, k + ': torso above the hip');
+    assert.ok(legL.lo[1] >= -.001 && legL.hi[1] < .9 && Math.abs((legL.lo[0] + legL.hi[0]) / 2) < .06, k + ': leg stands on the floor, centered on its pivot');
+    assert.ok(boot.hi[1] > .7 && boot.hi[1] < .9, k + ': foot normalized for the articulated step');
+    // luvas no ponto da pegada das duas mãos (a arma em terceira pessoa fica nesses pontos)
+    for (const s of ['R', 'L']) assert.ok(near(g.body.position.array, B.arms[s].grip, .06), k + ': glove at the ' + s + ' grip');
+    // nenhum resto das mãos abertas do modelo longe do corpo
+    assert.ok(body.hi[0] < .42 && body.lo[0] > -.42, k + ': no leftover A-pose hands');
+  }
+});

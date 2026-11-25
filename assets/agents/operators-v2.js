@@ -238,6 +238,37 @@
     addOBox(out, thumbC, th.rt, th.up, th.fw, 0.012, 0.012, 0.028, glove, 0.004);
   }
 
+  // ---------- Corpo do pack (low_poly_male_base de wh_nerevar, CC-BY-4.0; ver tools/pack/build_body.py) ----------
+  const BASE = globalThis.BODY_BASE || null;
+  // Triângulos de uma peça do corpo base, pintados por região com as cores do operador.
+  function addBase(out, part, s, recolor = null) {
+    const d = BASE[part], P = d.p, cols = [s.skin, s.cloth, s.cloth2, s.pants, s.boot].map(hexRGB);
+    for (let t = 0; t < d.r.length; t++) {
+      const o = t * 9, a = [P[o] / 1e4, P[o + 1] / 1e4, P[o + 2] / 1e4], b = [P[o + 3] / 1e4, P[o + 4] / 1e4, P[o + 5] / 1e4], c = [P[o + 6] / 1e4, P[o + 7] / 1e4, P[o + 8] / 1e4];
+      const hex = recolor ? recolor(d.r[t], a, b, c) : null, [r, g, bl] = hex != null ? hexRGB(hex) : cols[d.r[t]];
+      pushTri(out, a, b, c, r, g, bl);
+    }
+  }
+  // Escala os vértices acrescentados desde `from` em torno de um centro (equipamentos da cabeça no rosto do pack).
+  function scaleFrom(out, from, c, k) {
+    for (let i = from; i < out.p.length; i += 3) for (let j = 0; j < 3; j++) out.p[i + j] = c[j] + (out.p[i + j] - c[j]) * k[j];
+  }
+  const HEAD_C = [0, 1.675, 0], HEAD_K = [0.84, 1, 0.84];
+  // Luva fechada na empunhadura no pulso do braço do pack (mesma mão do braço procedural).
+  function addHand(out, wrist, dir, s, side) {
+    const { rt, up, fw } = frame(dir), inward = side > 0 ? -1 : 1, glove = s.gear;
+    addLoft(out, [{ pos: [wrist[0] - dir[0] * 0.045, wrist[1] - dir[1] * 0.045, wrist[2] - dir[2] * 0.045], rx: 0.044, rz: 0.047 }, { pos: wrist, rx: 0.046, rz: 0.049 }], 6, s.cloth, true, true);
+    const palm = [wrist[0] + fw[0] * 0.035, wrist[1] + fw[1] * 0.035, wrist[2] + fw[2] * 0.035];
+    addOBox(out, palm, rt, up, fw, 0.036, 0.02, 0.04, glove, 0.008);
+    const fingersC = [palm[0] + fw[0] * 0.045 - up[0] * 0.022, palm[1] + fw[1] * 0.045 - up[1] * 0.022, palm[2] + fw[2] * 0.045 - up[2] * 0.022];
+    const curl = frame([fw[0] - up[0] * .9, fw[1] - up[1] * .9, fw[2] - up[2] * .9], up);
+    addOBox(out, fingersC, curl.rt, curl.up, curl.fw, 0.034, 0.016, 0.026, glove, 0.006);
+    addOBox(out, [palm[0] + fw[0] * 0.03 + up[0] * 0.012, palm[1] + fw[1] * 0.03 + up[1] * 0.012, palm[2] + fw[2] * 0.03 + up[2] * 0.012], rt, up, fw, 0.034, 0.008, 0.012, s.vest, 0.004);
+    const thumbC = [palm[0] + rt[0] * inward * 0.03 + fw[0] * 0.03 + up[0] * 0.01, palm[1] + rt[1] * inward * 0.03 + fw[1] * 0.03 + up[1] * 0.01, palm[2] + rt[2] * inward * 0.03 + fw[2] * 0.03 + up[2] * 0.01];
+    const th = frame([fw[0] + rt[0] * inward * .35, fw[1] + rt[1] * inward * .35, fw[2] + rt[2] * inward * .35], up);
+    addOBox(out, thumbC, th.rt, th.up, th.fw, 0.012, 0.012, 0.028, glove, 0.004);
+  }
+
   function toGeometry(THREE, out) {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(out.p, 3));
@@ -252,6 +283,14 @@
     // Unified leg centered at hip pivot x = 0 (offset later by legL/legR)
     const legGeo = (side) => {
       const out = { p: [], n: [], c: [] };
+      if (BASE) {
+        // Perna do pack (calça e bota) com joelheira e o coldre de coxa no lado direito.
+        addBase(out, side > 0 ? 'legR' : 'legL', s);
+        addBevelBox(out, 0, 0.45, -0.058, 0.09, 0.11, 0.03, s.gear, 0.012);
+        if (side > 0) addBevelBox(out, 0.082, 0.62, -0.005, 0.03, 0.13, 0.09, s.gear, 0.008);
+        else addBevelBox(out, -0.078, 0.63, 0, 0.022, 0.05, 0.12, s.vest, 0.005);
+        return toGeometry(THREE, out);
+      }
       // Thigh + calf + ankle (y from 0.81 down to 0.14)
       addLoft(out, [
         { pos: [0, 0.82, 0], rx: 0.095, rz: 0.105 },
@@ -279,6 +318,15 @@
     };
 
     // Individual articulated segments for Elimination IK gait (normalized to unit Y=0.81 height like legacy elimLegPose!)
+    if (BASE) {
+      const seg = (part, extra) => { const o = { p: [], n: [], c: [] }; addBase(o, part, s); if (extra) extra(o); return toGeometry(THREE, o); };
+      return {
+        legL: legGeo(-1), legR: legGeo(1),
+        segThigh: seg('segThigh'),
+        segShin: seg('segShin', o => addBevelBox(o, 0, 0.78, -0.07, 0.1, 0.14, 0.035, s.gear, 0.012)),
+        segBoot: seg('segBoot'),
+      };
+    }
     const thighOut = { p: [], n: [], c: [] };
     addLoft(thighOut, [
       { pos: [0, 0.0, 0], rx: 0.078, rz: 0.084 },
@@ -308,6 +356,12 @@
 
   function buildHip(THREE, s) {
     const out = { p: [], n: [], c: [] };
+    if (BASE) {
+      addBase(out, 'hip', s);
+      addBevelBox(out, 0, 0.845, 0, 0.375, 0.055, 0.235, s.gear, 0.014);
+      addBevelBox(out, 0, 0.845, -0.122, 0.07, 0.05, 0.018, 0x8a929a, 0.004);
+      return toGeometry(THREE, out);
+    }
     addLoft(out, [
       { pos: [0, 0.72, 0], rx: 0.195, rz: 0.135 },
       { pos: [0, 0.84, 0], rx: 0.21, rz: 0.145 },
@@ -319,6 +373,7 @@
   }
 
   function buildBody(THREE, s, opId = null) {
+    if (BASE) return buildBaseBody(THREE, s, opId);
     const out = { p: [], n: [], c: [] };
     // Anatomical tapered athletic torso (waist -> ribcage -> broad shoulders -> collar)
     addLoft(out, [
@@ -395,8 +450,56 @@
     return toGeometry(THREE, out);
   }
 
+  // Tronco do pack com o colete, bolsos e equipamentos de cada operador assentados nele, e os braços do pack na
+  // pose de segurar a arma com as luvas fechadas na empunhadura.
+  function buildBaseBody(THREE, s, opId) {
+    const out = { p: [], n: [], c: [] };
+    addBase(out, 'body', s);
+    addLoft(out, [{ pos: [0, 1.47, -0.01], rx: 0.1, rz: 0.1 }, { pos: [0, 1.515, -0.01], rx: 0.088, rz: 0.09 }], 10, s.cloth2, true, true, true);
+    // Colete: placas da frente e de trás, faixas laterais e alças nos ombros
+    addBevelBox(out, 0, 1.24, -0.15, 0.3, 0.34, 0.05, s.vest, 0.02);
+    addBevelBox(out, 0, 1.25, 0.105, 0.29, 0.33, 0.048, s.vest, 0.02);
+    for (const side of [-1, 1]) {
+      addBevelBox(out, side * 0.155, 1.15, -0.025, 0.04, 0.16, 0.22, s.vest, 0.01);
+      addBevelBox(out, side * 0.12, 1.45, -0.01, 0.06, 0.04, 0.25, s.gear, 0.008);
+      addBevelBox(out, side * 0.215, 1.36, 0.02, 0.022, 0.07, 0.07, s.accent, 0.005);
+    }
+    for (const mx of [-0.095, 0, 0.095]) {
+      addBevelBox(out, mx, 1.12, -0.186, 0.072, 0.135, 0.045, s.cloth2, 0.01);
+      addBevelBox(out, mx, 1.15, -0.207, 0.06, 0.03, 0.015, s.gear, 0.004);
+    }
+    addBevelBox(out, -0.12, 1.33, -0.182, 0.055, 0.105, 0.035, s.gear, 0.008);
+    addLoft(out, [{ pos: [-0.13, 1.38, -0.182], rx: 0.006, rz: 0.006 }, { pos: [-0.14, 1.56, -0.17], rx: 0.004, rz: 0.004 }], 6, s.gear, true, true, true);
+    if (opId === 'finder') {
+      addBevelBox(out, 0.02, 1.24, 0.17, 0.26, 0.34, 0.09, s.gear, 0.02);
+      addLoft(out, [{ pos: [0.11, 1.41, 0.18], rx: 0.008, rz: 0.008 }, { pos: [0.11, 1.72, 0.18], rx: 0.006, rz: 0.006 }], 6, s.gear);
+      addBevelBox(out, 0.11, 1.72, 0.18, 0.028, 0.035, 0.028, s.accent, 0.006);
+    } else if (opId === 'doctor') {
+      addBevelBox(out, 0, 1.18, 0.18, 0.29, 0.34, 0.13, 0xe8ece8, 0.024);
+      addBevelBox(out, 0, 1.19, 0.25, 0.038, 0.15, 0.018, 0xd9453a, 0.004);
+      addBevelBox(out, 0, 1.19, 0.25, 0.13, 0.038, 0.018, 0xd9453a, 0.004);
+      addBevelBox(out, 0, 1.24, -0.18, 0.035, 0.13, 0.016, s.accent, 0.004);
+      addBevelBox(out, 0, 1.24, -0.18, 0.11, 0.035, 0.016, s.accent, 0.004);
+    } else if (opId === 'ghost') {
+      addBevelBox(out, 0, 1.42, 0.09, 0.36, 0.11, 0.12, s.cloth2, 0.025);
+    } else if (opId === 'brutus') {
+      for (const side of [-1, 1]) {
+        addEllipsoid(out, side * 0.22, 1.42, 0.01, 0.085, 0.08, 0.13, 8, 6, s.accent);
+        addBevelBox(out, side * 0.225, 1.34, 0.01, 0.085, 0.08, 0.22, s.vest, 0.015);
+      }
+      addBevelBox(out, 0, 1.47, -0.03, 0.24, 0.07, 0.2, s.vest, 0.018);
+    } else if (opId === 'detector') {
+      addBevelBox(out, 0, 1.20, 0.17, 0.28, 0.35, 0.13, s.vest, 0.02);
+      addBevelBox(out, 0, 1.37, 0.17, 0.24, 0.055, 0.12, s.accent, 0.012);
+    }
+    // Luvas fechadas no ponto da pegada (pulso e direção vêm do braço do pack reposicionado)
+    for (const [k, side] of [['R', 1], ['L', -1]]) { const a = BASE.arms[k]; addEllipsoid(out, a.elbow[0], a.elbow[1], a.elbow[2], 0.05, 0.05, 0.052, 6, 4, s.cloth); addHand(out, a.wrist, a.dir, s, side); }
+    return toGeometry(THREE, out);
+  }
+
   function buildHead(THREE, s, opId = null) {
     const out = { p: [], n: [], c: [] };
+    if (BASE) return buildBaseHead(THREE, s, opId, out);
     // Cabeça low poly: crânio facetado, mandíbula em bloco chanfrado (queixo reto), maçãs do rosto, nariz em cunha.
     addEllipsoid(out, 0, 1.675, 0.004, 0.116, 0.12, 0.124, 8, 6, s.skin);
     addBevelBox(out, 0, 1.6, -0.018, 0.17, 0.1, 0.19, s.skin, 0.045);
@@ -449,6 +552,44 @@
     return toGeometry(THREE, out);
   }
 
+  // Cabeça do pack; os acessórios de cada operador (cabelo, viseira, capuz, gorro) encolhem para o rosto dele.
+  function buildBaseHead(THREE, s, opId, out) {
+    if (!opId) {
+      // Bonecos dos times: balaclava (a própria cabeça na cor da máscara) com a faixa dos olhos à mostra.
+      addBase(out, 'head', s, (r, a, b, c) => { const y = (a[1] + b[1] + c[1]) / 3, z = (a[2] + b[2] + c[2]) / 3; return y > 1.625 && y < 1.705 && z < -0.05 ? s.skin : (s.mask || 0x1e242a); });
+    } else addBase(out, 'head', s);
+    const from = out.p.length;
+    if (opId === 'finder') {
+      addEllipsoid(out, 0, 1.72, 0.015, 0.122, 0.08, 0.126, 12, 6, s.hair, true);
+      addBevelBox(out, 0, 1.668, -0.122, 0.21, 0.052, 0.042, 0x1a2830, 0.014);
+      addBevelBox(out, 0, 1.67, -0.142, 0.185, 0.022, 0.012, s.accent, 0.004);
+      for (const side of [-1, 1]) addEllipsoid(out, side * 0.132, 1.655, 0.005, 0.026, 0.045, 0.042, 8, 6, s.gear);
+    } else if (opId === 'doctor') {
+      addEllipsoid(out, 0, 1.71, 0.02, 0.122, 0.085, 0.128, 12, 6, s.hair, true);
+      addEllipsoid(out, 0.01, 1.73, 0.135, 0.055, 0.055, 0.055, 8, 6, s.hair);
+      addBevelBox(out, 0, 1.67, -0.12, 0.15, 0.022, 0.014, 0x22292d, 0.004);
+    } else if (opId === 'ghost') {
+      addEllipsoid(out, 0, 1.68, 0.005, 0.132, 0.138, 0.138, 12, 10, s.cloth);
+      addBevelBox(out, 0, 1.59, -0.115, 0.165, 0.095, 0.05, s.gear, 0.02);
+      addBevelBox(out, 0, 1.668, -0.125, 0.175, 0.028, 0.02, s.accent, 0.006);
+    } else if (opId === 'brutus') {
+      addEllipsoid(out, 0, 1.715, 0.01, 0.122, 0.075, 0.126, 12, 6, s.hair, true);
+      addEllipsoid(out, 0, 1.565, -0.045, 0.096, 0.062, 0.098, 10, 6, s.hair);
+      addBevelBox(out, 0, 1.71, -0.005, 0.242, 0.036, 0.25, s.accent, 0.012);
+    } else if (opId === 'detector') {
+      addEllipsoid(out, 0, 1.72, 0.01, 0.128, 0.085, 0.132, 12, 6, s.accent, true);
+      for (const side of [-1, 1]) {
+        addEllipsoid(out, side * 0.052, 1.72, -0.125, 0.04, 0.028, 0.024, 8, 6, s.gear);
+        addEllipsoid(out, side * 0.052, 1.72, -0.142, 0.028, 0.018, 0.01, 8, 6, s.visor);
+      }
+    } else {
+      addBevelBox(out, 0, 1.668, -0.128, 0.185, 0.042, 0.022, s.visor || 0x162029, 0.01);
+      addBevelBox(out, 0, 1.67, -0.14, 0.16, 0.014, 0.008, s.accent, 0.003);
+    }
+    scaleFrom(out, from, HEAD_C, HEAD_K);
+    return toGeometry(THREE, out);
+  }
+
   function buildHelmet(THREE, s) {
     const out = { p: [], n: [], c: [] };
     // Contoured ballistic FAST/ACH helmet dome
@@ -468,6 +609,7 @@
     addBevelBox(out, 0, 1.705, 0.152, 0.095, 0.065, 0.032, s.gear, 0.008);
     // Subtle IFF strobe strip on top
     addBevelBox(out, 0, 1.83, 0.02, 0.042, 0.016, 0.065, s.accent, 0.004);
+    if (BASE) scaleFrom(out, 0, HEAD_C, HEAD_K);
     return toGeometry(THREE, out);
   }
 

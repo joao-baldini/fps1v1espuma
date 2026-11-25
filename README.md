@@ -93,7 +93,13 @@ Antes do Plant the Bomb, a tela de agentes mostra os cinco retratos. Clique num 
 
 Finder, Doctor, Ghost, Brutus e Detector têm modelos próprios de roupa, rosto e equipamento, usados também nos personagens da partida. Retratos e prévia são renderizados a partir desses mesmos modelos, sem imagens ou texturas de personagens externas. A prévia só é desenhada enquanto essa tela está aberta e respeita a preferência por movimento reduzido.
 
-**Modelos em low poly facetado** (`assets/agents/operators-v2.js`, usados pelos operadores e pelos bonecos dos outros modos): todas as formas têm faces planas e poucos lados, sem tubos e bolas lisas. O braço tem deltoide, braço e antebraço em prismas de 6 lados, cotovelo e punho da manga. A mão é uma luva em blocos: palma, os quatro dedos dobrados em volta do cabo, os nós dos dedos e o polegar por cima. A cabeça tem crânio facetado, mandíbula em bloco chanfrado, maçãs do rosto e nariz em cunha. Os pontos de ombro, cotovelo e empunhadura são os mesmos de antes, então as animações e as armas continuam encaixadas.
+**Corpo do pack** (`assets/agents/body-base.js`): operadores e bonecos de todos os modos usam o **[Low Poly Male Base](https://sketchfab.com/wh_nerevar)** de **wh_nerevar** (licença CC-BY-4.0). Como o modelo entra no jogo:
+
+- **Conversão:** `tools/pack/build_body.py` vira o boneco para a frente do jogo e o ajusta a 1,80 m, com a virilha no pivô do quadril (0,81 m). Depois separa cabeça, tronco com pescoço, quadril e pernas, além de coxa, canela e pé para o passo articulado do Elimination.
+- **Braços:** o modelo vem em pose A. Cada braço é recolocado com três ossos (tronco, braço e antebraço) e um IK de dois ossos até o ponto da mão que segura a arma, com o cotovelo para fora no braço do gatilho e para baixo no de apoio. As mãos abertas do modelo saem e entram as luvas fechadas na empunhadura, nos mesmos pontos de antes, então as armas em terceira pessoa continuam encaixadas.
+- **Cores:** cada triângulo tem uma região (pele, camisa, manga, calça ou bota) pintada com as cores do operador ou do time. Nos bonecos dos times, a própria cabeça vira a balaclava, com a faixa dos olhos à mostra.
+- **Equipamento (`assets/agents/operators-v2.js`):** colete, bolsos, rádio, joelheiras, cinto e o equipamento de cada operador foram reposicionados sobre o corpo novo. Os acessórios da cabeça (cabelo, viseiras, capuz, gorro) e o capacete encolhem para o rosto do modelo.
+- **Formas:** os equipamentos continuam em low poly facetado, com faces planas e poucos lados.
 
 A habilidade fica na tecla **X**. Depois de usada, ela recarrega em 45 s e volta pronta no começo de cada rodada. Os operadores de um mesmo time são sempre diferentes; os bots sorteiam entre os que sobram.
 
