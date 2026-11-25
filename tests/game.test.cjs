@@ -3049,3 +3049,24 @@ test('Low Poly Male Base (wh_nerevar, CC-BY-4.0): every operator and team rig is
     assert.ok(body.hi[0] < .42 && body.lo[0] > -.42, k + ': no leftover A-pose hands');
   }
 });
+
+test('URBAN props: the game maps get pack props against walls, with collision, mirrored on Elimination maps and away from spawns', () => {
+  const src = readFileSync(resolve(__dirname, '../assets/maps/urban-props.js'), 'utf8'), data = {};
+  vm.runInNewContext(src.replace('globalThis.URBAN_PROPS', 'this.URBAN_PROPS'), data);
+  assert.ok(html.indexOf('assets/maps/urban-props.js') > 0, 'urban-props.js is loaded by the page');
+  for (const [k, P] of Object.entries(data.URBAN_PROPS)) { assert.equal(P.p.length, P.c.length * 9, k); assert.ok(P.b[1] > -.01 && P.b[4] < 7, k + ' stands on the floor'); }
+  const hit = (a, b) => a.min[0] < b.max[0] - 1e-6 && a.max[0] > b.min[0] + 1e-6 && a.min[2] < b.max[2] - 1e-6 && a.max[2] > b.min[2] + 1e-6 && a.min[1] < b.max[1] && a.max[1] > b.min[1];
+  for (const id of ['caixas', 'patio', 'torres', 'ponte', 'fortes', 'deathmatch', 'dmdeposito', 'dmborgo', 'dust2']) {
+    const g = game(), cx = g.context; cx.G.mode = 'dm'; cx.URBAN_PROPS = undefined;
+    cx.buildMap(id); const rd = e => vm.runInContext(e, cx), before = rd('boxes').slice(), key = b => b.min.concat(b.max).map(v => v.toFixed(3)).join();
+    cx.URBAN_PROPS = data.URBAN_PROPS; cx.buildMap(id);
+    const was = new Set(before.map(key)), AX = rd('AX'), AZ = rd('AZ'), added = rd('boxes').filter(b => !was.has(key(b))), def = rd('MAPS')[id];
+    assert.ok(added.length >= (id === 'dust2' ? 1 : 4), id + ': props placed (' + added.length + ')');
+    for (const b of added) {
+      assert.ok(b.min[0] >= -AX - 1e-6 && b.max[0] <= AX + 1e-6 && b.min[2] >= -AZ - 1e-6 && b.max[2] <= AZ + 1e-6, id + ': prop inside the arena');
+      assert.ok(!before.some(o => o.max[1] > .05 && hit(b, o)), id + ': prop does not overlap the map');
+      if (def.dmSpawns) for (const [x, z] of def.dmSpawns) assert.ok(!(b.min[0] < x + 1.2 && b.max[0] > x - 1.2 && b.min[2] < z + 1.2 && b.max[2] > z - 1.2), id + ': prop away from DM spawn');
+      if (!def.dm) assert.ok(added.some(o => Math.abs(o.min[0] + b.max[0]) < 1e-3 && Math.abs(o.min[2] + b.max[2]) < 1e-3), id + ': mirrored prop on the other side');
+    }
+  }
+});

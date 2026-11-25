@@ -360,6 +360,16 @@ Os cinco mapas de duelo são simétricos (girados 180°), com chão branco e uma
 
 No Elimination online vale o mapa escolhido por quem criou a sala.
 
+### Props urbanos (pack URBAN)
+
+Os mapas próprios do jogo ganharam props do **pack URBAN**: caçambas, barreiras de concreto, cones, cavaletes, lixeiras, sacos de lixo, frades, muretas de pedra, cercas de madeira e postes de luz. Valem para os cinco mapas do Elimination e para Medina, Depósito, Borgo e Dust II. Os mapas convertidos de outros autores ficam como no original.
+
+- **Conversão:** `tools/pack/build_urban.py` lê os `.glb` do pack e grava `assets/maps/urban-props.js`. Cada triângulo leva a cor da textura no centro dele, então o prop entra na malha única do mapa com o mesmo visual facetado e sem texturas extras.
+- **Posição:** cada tema de mapa tem a sua lista (industrial, mediterrâneo, militar, viaduto, vila). Os props ficam encostados nas paredes de fora e nas laterais dos prédios, com o lado longo paralelo à parede. Uma caçamba ou lixeira às vezes vem com um saco de lixo ao lado.
+- **Regras:** os props não tocam caixas, rampas nem decoração e ficam longe dos nascimentos. Na frente de cada um ficam pelo menos 1,4 m livres, para não fechar becos.
+- **Mapas espelhados:** no Elimination, cada prop tem o par girado do outro lado.
+- **Colisão:** a caixa do prop tem colisão; no poste de luz, só a base. O lugar de cada prop é sorteado com uma semente fixa por mapa, então todo mundo vê o mesmo mapa.
+
 ### Paredes com desgaste (regra)
 
 Nenhuma parede lisa fica lisa, em nenhum mapa do jogo: reboco e concreto em pé têm manchas, escorridos e pedaços descascados com o tijolo aparecendo, como no VALORANT e nos mapas originais do CS. A imagem também ficou um pouco menos esbranquiçada: exposição e gama de meio-tom levemente menores.

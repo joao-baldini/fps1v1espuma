@@ -324,6 +324,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
 <script src="assets/maps/textures.js"></script>
 <script src="assets/agents/models.js"></script>
 <script src="assets/agents/body-base.js"></script>
+<script src="assets/maps/urban-props.js"></script>
 <script src="assets/agents/operators-v2.js"></script>
 <script src="assets/v2/materials.js"></script>
 <script src="assets/v2/world-renderer.js"></script>
@@ -1512,6 +1513,107 @@ function applySourceFixes(id, parent) {
   }
 }
 let exteriorMesh = null;
+// ---------- Props do pack URBAN (assets/maps/urban-props.js, gerado por tools/pack/build_urban.py) ----------
+// Triângulos com cor por triângulo e normal plana (o mesmo visual facetado dos blocos do mapa).
+function addTrisTo(out, tris, cols, matId = 0) {
+  for (let t = 0; t < cols.length; t++) {
+    const o = t * 9, ax = tris[o], ay = tris[o + 1], az = tris[o + 2], ux = tris[o + 3] - ax, uy = tris[o + 4] - ay, uz = tris[o + 5] - az, vx = tris[o + 6] - ax, vy = tris[o + 7] - ay, vz = tris[o + 8] - az;
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+    const c = cols[t], r = (c >> 16 & 255) / 255, g = (c >> 8 & 255) / 255, b = (c & 255) / 255;
+    for (let j = 0; j < 3; j++) {
+      out.p.push(tris[o + j * 3], tris[o + j * 3 + 1], tris[o + j * 3 + 2]); out.n.push(nx, ny, nz); out.c.push(r, g, b);
+      if (out.m) out.m.push(matId); if (out.ao) out.ao.push(tris[o + j * 3 + 1] < .25 ? .82 : 1);
+    }
+  }
+}
+const URBAN_MAT = { dumpsterRed: 2, dumpsterBlue: 2, dumpsterOpen: 2, metalCan: 2, metalCanFull: 2, streetLight: 2, trafficLight: 2, busStop: 2, pipe: 2, duct: 2, ductCorner: 2, barrier2: 2, barrier3: 2, fenceWood: 1 };
+// Caixa ocupada por um prop girado em quartos de volta (q = 0..3) com a base em (x, y, z).
+function urbanBox(key, x, z, q = 0, y = 0) {
+  const b = URBAN_PROPS[key].b, sw = q & 1, hx = (sw ? b[5] - b[2] : b[3] - b[0]) / 2, hz = (sw ? b[3] - b[0] : b[5] - b[2]) / 2;
+  return { min: [x - hx, y + b[1], z - hz], max: [x + hx, y + b[4], z + hz] };
+}
+// Coloca um prop: malha girada em quartos de volta e colisão na caixa dele (postes: só o poste).
+function urbanProp(B, key, x, z, q = 0, y = 0, collide = true) {
+  const prop = URBAN_PROPS[key], cs = [1, 0, -1, 0][q & 3], sn = [0, 1, 0, -1][q & 3], tris = new Array(prop.p.length);
+  for (let i = 0; i < prop.p.length; i += 3) { const px = prop.p[i] / 1000, pz = prop.p[i + 2] / 1000; tris[i] = x + px * cs + pz * sn; tris[i + 1] = y + prop.p[i + 1] / 1000; tris[i + 2] = z - px * sn + pz * cs; }
+  B.mesh(tris, prop.c, URBAN_MAT[key] ?? 0);
+  if (!collide) return;
+  if (prop.pole) { const r = .22, px = x + prop.pole[0] * cs + prop.pole[1] * sn, pz = z - prop.pole[0] * sn + prop.pole[1] * cs; B.collide([px - r, y, pz - r], [px + r, y + 3, pz + r]); return; }
+  const bx = urbanBox(key, x, z, q, y); B.collide(bx.min, bx.max);
+}
+// Props do pack por tema: encostados nas paredes de fora, longe dos nascimentos e sem tocar em nada que já existe
+// (caixas, rampas e decoração), então as rotas não mudam. Nos mapas espelhados do Elimination, cada prop tem o par
+// girado 180° do outro lado, para os dois times verem o mesmo mapa.
+const URBAN_THEME = {
+  azul: ['dumpsterBlue', 'jersey', 'metalCan', 'bag', 'cone', 'barrier3', 'dumpsterRed', 'bagBlue', 'trashPile'],
+  industria: ['dumpsterRed', 'jerseyDirty', 'metalCanFull', 'bagBlue', 'coneTall', 'barrier3', 'dumpsterBlue', 'jersey', 'trashPile', 'cone'],
+  amarelo: ['bollardRetro', 'trashCan', 'drystone', 'bag', 'fenceWood', 'metalCan'],
+  verde: ['jersey', 'jerseyBroken', 'barrier2', 'metalCan', 'cone', 'dumpsterBlue', 'bag'],
+  roxo: ['jersey', 'jerseyDirty', 'cone', 'coneTall', 'bollard', 'barrier3', 'trashCan', 'bagBlue'],
+  laranja: ['drystone', 'fenceWood', 'metalCan', 'bag', 'jerseyBroken', 'trashPile'],
+  areia: ['drystone', 'metalCan', 'bag', 'trashPile', 'bollardRetro', 'dumpsterRed', 'fenceWood'],
+  terracota: ['trashCan', 'metalCan', 'bollardRetro', 'bag', 'bagBlue', 'drystone', 'fenceWood'],
+};
+const URBAN_LIGHTS = { azul: 'streetLight', industria: 'streetLight', roxo: 'trafficLight', verde: 'streetLight', areia: 'streetLight', terracota: 'streetLight', amarelo: 'streetLight', laranja: 'streetLight' };
+function urbanDress(B, mapId, def) {
+  const list = URBAN_THEME[def.theme]; if (!list || def.source) return [];
+  let seed = 0; for (const ch of mapId) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const mirror = !def.dm, placed = [], ax = AX, az = AZ;
+  const hit = (a, b, m) => a.min[0] < b.max[0] + m && a.max[0] > b.min[0] - m && a.min[2] < b.max[2] + m && a.max[2] > b.min[2] - m && a.min[1] < b.max[1] && a.max[1] > b.min[1];
+  const inner = b => b.max[0] > -ax + .01 && b.min[0] < ax - .01 && b.max[2] > -az + .01 && b.min[2] < az - .01 && b.max[1] > .05;
+  // decoração rente às paredes (rodapé, pilastras, até 0,2 m) fica atrás do prop; o resto não pode ser tocado
+  const flush = d => d.max[0] < -ax + .2 || d.min[0] > ax - .2 || d.max[2] < -az + .2 || d.min[2] > az - .2;
+  const blockers = boxes.filter(inner), decoBlock = B.decos.filter(d => d.max[1] > .1 && inner(d) && !flush(d));
+  const rampBox = r => ({ min: [r.x0, 0, r.z0], max: [r.x1, 9, r.z1] });
+  const spawnOk = (bx) => {
+    const sp = !def.dm && def.spawn; if (sp) for (const s of [1, -1]) { const z0 = s * -(sp.z0 - 1.5), z1 = s * -(sp.z1 + 1.5); if (hit(bx, { min: [-sp.hx - 1.5, 0, Math.min(z0, z1)], max: [sp.hx + 1.5, 9, Math.max(z0, z1)] }, 0)) return false; }
+    if (def.dmSpawns) for (const [x, z] of def.dmSpawns) if (bx.min[0] < x + 1.6 && bx.max[0] > x - 1.6 && bx.min[2] < z + 1.6 && bx.max[2] > z - 1.6) return false;
+    if (MAP.exit && Math.abs((bx.min[2] + bx.max[2]) / 2) > Math.abs(MAP.exit.zc) - 2.5) return false;
+    return true;
+  };
+  const free = (bx, host) => spawnOk(bx) && !blockers.some(o => o !== host && hit(bx, o, .45)) && !decoBlock.some(o => hit(bx, o, .03)) && !ramps.some(r => hit(bx, rampBox(r), .6)) && !placed.some(o => hit(bx, o, .35));
+  // 1,4 m livres na frente do prop (não fecha beco nem corredor)
+  const clear = (bx, f) => { const c = { min: bx.min.slice(), max: bx.max.slice() }, k = f.axis === 'x' ? 0 : 2;
+    if (f.n > 0) { c.min[k] = bx.max[k]; c.max[k] = bx.max[k] + 1.4; } else { c.max[k] = bx.min[k]; c.min[k] = bx.min[k] - 1.4; }
+    c.min[1] = 0; c.max[1] = 2; return !blockers.some(o => hit(c, o, 0)) && c.min[0] > -ax && c.max[0] < ax && c.min[2] > -az && c.max[2] < az; };
+  const put = (key, x, z, q, f) => {
+    const host = f && f.host, mh = host && blockers.find(o => Math.abs(o.min[0] + host.max[0]) < .01 && Math.abs(o.min[2] + host.max[2]) < .01);
+    const bx = urbanBox(key, x, z, q); if (!free(bx, host) || (f && !clear(bx, f))) return false;
+    let mb = null; if (mirror) { mb = urbanBox(key, -x, -z, (q + 2) & 3); if (!free(mb, mh) || hit(bx, mb, .6) || (f && !clear(mb, { axis: f.axis, n: -f.n }))) return false; }
+    urbanProp(B, key, x, z, q); placed.push(bx); if (mb) { urbanProp(B, key, -x, -z, (q + 2) & 3); placed.push(mb); }
+    return true;
+  };
+  // Faces onde encostar: as quatro paredes de fora e as laterais dos prédios (blocos com 2,3 m ou mais e 3 m de face).
+  const faces = [{ axis: 'x', c: -ax, n: 1, a0: -az, a1: az }, { axis: 'x', c: ax, n: -1, a0: -az, a1: az }, { axis: 'z', c: -az, n: 1, a0: -ax, a1: ax }, { axis: 'z', c: az, n: -1, a0: -ax, a1: ax }];
+  for (const b of blockers) if (b.max[1] - Math.max(0, b.min[1]) >= 2.3 && b.min[1] < .1) {
+    if (b.max[2] - b.min[2] >= 3) { faces.push({ axis: 'x', c: b.min[0], n: -1, a0: b.min[2], a1: b.max[2], host: b }, { axis: 'x', c: b.max[0], n: 1, a0: b.min[2], a1: b.max[2], host: b }); }
+    if (b.max[0] - b.min[0] >= 3) { faces.push({ axis: 'z', c: b.min[2], n: -1, a0: b.min[0], a1: b.max[0], host: b }, { axis: 'z', c: b.max[2], n: 1, a0: b.min[0], a1: b.max[0], host: b }); }
+  }
+  const cap = mirror ? 10 : 24; let n = 0;
+  for (const f of faces) {
+    for (let a = f.a0 + 1.2 + rnd() * 2; a < f.a1 - 1.2 && n < cap; a += 3.4 + rnd() * 4) {
+      const key = list[Math.floor(rnd() * list.length)], b = URBAN_PROPS[key].b, long = (b[3] - b[0]) >= (b[5] - b[2]);
+      // eixo longo paralelo à face, costas para ela
+      const q = (f.axis === 'x' ? (long ? 1 : 0) : (long ? 0 : 1)) + (f.n < 0 ? 2 : 0), bb = urbanBox(key, 0, 0, q);
+      const depth = f.axis === 'x' ? bb.max[0] : bb.max[2], off = f.c + f.n * (depth + .22);
+      if (!(f.axis === 'x' ? put(key, off, a, q, f) : put(key, a, off, q, f))) continue;
+      n++;
+      // saco ou lixo ao lado de caçambas e latas
+      if (/dumpster|Can/.test(key) && rnd() < .6) {
+        const k2 = rnd() < .5 ? 'bag' : 'trashPile', along = (f.axis === 'x' ? bb.max[2] : bb.max[0]) + .6, d2 = urbanBox(k2, 0, 0, 0).max[0], o2 = f.c + f.n * (d2 + .22);
+        f.axis === 'x' ? put(k2, o2, a + along, 0, f) : put(k2, a + along, o2, 0, f);
+      }
+    }
+  }
+  // dois postes de luz no meio das paredes laterais, virados para dentro
+  const lamp = URBAN_LIGHTS[def.theme];
+  if (lamp) { const d = URBAN_PROPS[lamp].b; for (const s of mirror ? [-1] : [-1, 1]) for (const a of [-az * .35, az * .35]) {
+    const q = s < 0 ? 1 : 3, x = s * (ax - (d[5] - d[2]) / 2 - .22), bx = urbanBox(lamp, x, a, q), mb = urbanBox(lamp, -x, -a, (q + 2) & 3);
+    if (!free(bx) || (mirror && !free(mb))) continue;
+    urbanProp(B, lamp, x, a, q); placed.push(bx); if (mirror) { urbanProp(B, lamp, -x, -a, (q + 2) & 3); placed.push(mb); } } }
+  return placed;
+}
 function buildMap(id) {
   const mapId = MAPS[id] ? id : 'caixas';
   const def = MAPS[mapId], baseK = THEMES[def.theme];
@@ -1574,10 +1676,15 @@ function buildMap(id) {
     else if (dir === '+x') boxes.push({ min: [x1 - e, y0, z0], max: [x1, y1, z1] });
     else boxes.push({ min: [x0, y0, z0], max: [x0 + e, y1, z1] });
   };
+  const decos = [];
   const B = {
     solid,
     ramp,
-    deco: (a, b, hex, matId = null) => addBoxTo(out, a, b, hex, false, false, matId != null ? matId : matOfHex(hex), 1.0, 0.82), // só visual: sem colisão, sem bloquear tiro
+    deco: (a, b, hex, matId = null) => { decos.push({ min: a, max: b }); addBoxTo(out, a, b, hex, false, false, matId != null ? matId : matOfHex(hex), 1.0, 0.82); }, // só visual: sem colisão, sem bloquear tiro
+    // Malha pronta (props do pack URBAN): triângulos com cor própria; colisão à parte, com B.collide.
+    mesh: (tris, cols, matId) => addTrisTo(out, tris, cols, matId),
+    collide: (a, b) => boxes.push({ min: a, max: b, deck: false }),
+    decos,
     deck: (a, b, col) => solid(a, b, col, true),
     box: (x, z, w, d, h, col, y0 = 0) => solid([x - w / 2, y0, z - d / 2], [x + w / 2, y0 + h, z + d / 2], col),
     pair: (x, z, w, d, h, col, y0 = 0) => { B.box(x, z, w, d, h, col, y0); B.box(-x, -z, w, d, h, col, y0); },
@@ -1592,6 +1699,7 @@ function buildMap(id) {
   solid([-AX, 0, AZ], [AX, WALL_H, AZ + 1], K.wall);
   def.build(B, K);
   if (globalThis.V2Maps && V2Maps.decorateMap) V2Maps.decorateMap(mapId, B, K, AX, AZ);
+  if (globalThis.URBAN_PROPS && !def.practice) urbanDress(B, mapId, def);
   if (worldMesh) { scene.remove(worldMesh); worldMesh.geometry.dispose(); }
   worldMesh = new THREE.Mesh(geoFrom(out), worldMat);
   if (typeof v2Mats !== 'undefined' && v2Mats) { worldMesh.castShadow = true; worldMesh.receiveShadow = true; }
