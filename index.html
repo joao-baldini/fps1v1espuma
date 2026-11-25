@@ -328,6 +328,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
 <script src="assets/v2/world-renderer.js"></script>
 <script src="assets/v2/maps-v2.js"></script>
 <script src="assets/v2/weapons-v2.js"></script>
+<script src="assets/models/guns-pack.js"></script>
 <script src="assets/v2/audio-v2.js"></script>
 <script src="assets/v2/menu-scene.js"></script>
 <script src="assets/ui/hud-radar.js"></script>
@@ -603,8 +604,27 @@ const SKIN_MODELS = {
       GTB([0, .025, -.86], [0, .025, -.83], .0118, .0118, 0xff6a13, 10), GTB([0, .128, -.215], [0, .128, -.195], .0196, .0196, 0xff6a13, 12)] },
 };
 const skinModelCache = {};
+// Skins exclusivas sobre os modelos do pack: as cores da skin trocam os materiais do pack (preto, metais, madeira,
+// verde da AWP...) e ganham os filetes de energia nas laterais das peças mais longas.
+const PACK_SKIN = {
+  sublime: { Black: 0xd9a93a, Black2: 0xd9a93a, DarkMetal: 0xefe7d6, Metal: 0xefe7d6, Grey: 0x2b2f36, LightMetal: 0xf4eee1, Wood: 0xf4eee1, DarkWood: 0xd9a93a, glow: [0x5ff6ff, 0x5ff6ff] },
+  alien: { Black: 0x121314, Black2: 0x121314, DarkMetal: 0x9cff2e, Metal: 0x9cff2e, Grey: 0x121314, LightMetal: 0xf2f2f2, Wood: 0xa6ff3c, DarkWood: 0xf2f2f2, glow: [0x7dff3a, 0xf2f2f2] },
+  blaster: { Main: 0xf4f6f8, MainLight: 0x5ec8ff, MainDark: 0x121416, Black: 0x121416, Black2: 0x121416, DarkMetal: 0xf4f6f8, Metal: 0x5ec8ff, Grey: 0x121416, LightMetal: 0xf4f6f8, glow: [0x5ec8ff, 0xff3030] },
+  buzzer: { Main: 0xffc81a, MainLight: 0xffc81a, MainDark: 0x141414, Black: 0x141414, Black2: 0x141414, DarkMetal: 0x141414, Metal: 0xffc81a, Grey: 0x141414, LightMetal: 0xfff1b0, glow: [0x141414, 0xfff1b0] },
+  vanguarda: { Green: 0xf4f4f2, Black: 0x1c1c1e, Black2: 0x1c1c1e, DarkMetal: 0x2a2a2c, Metal: 0xff6a13, Grey: 0x1c1c1e, LightMetal: 0xf0f0ee, glow: [0xff6a13, 0x1c1c1e] },
+};
+function packSkin(id, parts) {
+  // cores do pack por material (PACK_PAL: material -> cor); a skin troca cada material pela cor dela
+  const sk = PACK_SKIN[id], byHex = {}; for (const [m, hex] of Object.entries(globalThis.PACK_PAL || {})) if (sk[m] != null) byHex[hex] = sk[m];
+  const out = parts.map(([a, b, hex, mesh, tag]) => [a, b, byHex[hex] ?? hex, mesh, tag]);
+  const longest = parts.map((p, i) => [p[1][2] - p[0][2], i, p[1][0] - p[0][0]]).filter(w => w[2] >= .02).sort((x, y) => y[0] - x[0]).slice(0, 2);
+  longest.forEach(([, i], n) => { const [a, b] = parts[i], y = a[1] + (b[1] - a[1]) * .55, z0 = a[2] + (b[2] - a[2]) * .15, z1 = b[2] - (b[2] - a[2]) * .15;
+    out.push([[b[0], y - .004, z0], [b[0] + .0025, y + .004, z1], sk.glow[n]], [[a[0] - .0025, y - .004, z0], [a[0], y + .004, z1], sk.glow[n]]); });
+  return out;
+}
 function skinModel(id, parts) {
   if (skinModelCache[id]) return skinModelCache[id];
+  if (parts.pack && PACK_SKIN[id]) return (skinModelCache[id] = packSkin(id, parts));
   const m = SKIN_MODELS[id], map = m.map();
   return (skinModelCache[id] = parts.map(([a, b, hex, mesh]) => [a, b, map[hex] ?? hex, mesh]).concat(m.extra()));
 }
@@ -615,7 +635,7 @@ function skinPartsFor(k, id, parts, accents = true) {
   const model = SKIN_MODELS[id]; if (model && k === model.gun && parts === GUNS[k]) return skinModel(id, parts);
   const sk = SKINS[id]; if (!sk || !sk.body || !skinFits(k, id)) return parts;
   const c = new THREE.Color(), hsl = {};
-  const out = parts.map(([a, b, hex, mesh]) => { c.setHex(hex).getHSL(hsl); return [a, b, hsl.l < .28 ? sk.metal : sk.body, mesh]; });
+  const out = parts.map(([a, b, hex, mesh, tag]) => { c.setHex(hex).getHSL(hsl); return [a, b, hsl.l < .28 ? sk.metal : sk.body, mesh, tag]; });
   if (!accents || !parts.length) return out;
   // Filetes luminosos nas laterais das duas peças mais longas.
   // Só peças do corpo (largas) recebem o filete; canos e tubos finos ficam de fora.
@@ -2881,6 +2901,16 @@ const GRIP_FIT = {
   smoke: [[[.012, -.0761, -.0025], .024, .024]],
 };
 for (const [w, fits] of Object.entries(GRIP_FIT)) ARMS[w] = ARMS[w].map((a, i) => ({ ...a, grip: fits[i][0], ch: { ...a.ch, hy: fits[i][1], hz: fits[i][2], ct: fits[i][3] ?? 1 } }));
+// Armas do pack: cabo e guarda-mão medidos no próprio modelo (tools/pack/build_guns.py corta o corpo por um plano na
+// altura da mão). Coronha sem cabo de pistola (M14, escopeta): a mão fecha no pescoço da coronha, inclinada.
+if (globalThis.PACK_GUN_INFO) for (const [w, inf] of Object.entries(PACK_GUN_INFO)) {
+  const g = inf.grips || {}, a = ARMS[w]; if (!a || !g.right) continue;
+  const [rp, rhy, rhz, kind] = g.right, R = { ...a[1], grip: rp, ch: { ...a[1].ch, hy: rhy, hz: rhz, ct: 1 } };
+  if (kind === 'wrist') R.axis = [0, -.55, .85];
+  const L = g.left ? { ...a[0], grip: g.left[0], ch: { ...a[0].ch, hy: g.left[1], hz: g.left[2], ct: 1 } }
+    : { ...a[0], grip: [rp[0] - .012, rp[1] - .004, rp[2] - .006], ch: { ...a[0].ch, hy: .027, hz: .04, ct: .3 } };
+  ARMS[w] = [L, R];
+}
 vmScene.add(new THREE.HemisphereLight(0xaad2f5, 0x38414a, 0.85));
 { const sun = new THREE.DirectionalLight(0xfff4e0, 1.15); sun.position.set(0.6, 1.2, 0.7); vmScene.add(sun);
   const rim = new THREE.DirectionalLight(0x68c4f5, 0.45); rim.position.set(-0.8, 0.5, -0.6); vmScene.add(rim); }
@@ -3035,6 +3065,14 @@ function fitSleeve(sleeve, hand, elbow) { fitKnifeArm(sleeve, elbow, handWrist(h
 const handRoll = new THREE.Quaternion(), handEuler = new THREE.Euler(), handTmp = new V3(), handTmp2 = new V3(), AXIS_Z = new V3(0, 0, 1);
 const smooth01 = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
 const MUZZLE = { rifle: [0, .01, -.675], pistol: [0, .043, -.357], sniper: [0,.025,-.945], m4a4: [0,.006,-.79], m4a1s: [0,.006,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.9], ump: [0,.005,-.48], bucky: [0,.014,-.75], glock: [0,.006,-.226], galil: [0,.007,-.68], famas: [0,.005,-.593] };
+// Armas do Ultimate Gun Pack (Quaternius, CC0; assets/models/guns-pack.js, gerado por tools/pack/build_guns.py):
+// mesma escala para todas, cano para -Z, gatilho no lugar de antes e peças marcadas para o rig (pente, ferrolho,
+// telha). A Deagle separa o ferrolho móvel; a M4A1-S e a USP-S usam os silenciadores do próprio pack.
+if (globalThis.PACK_GUNS) for (const [k, parts] of Object.entries(PACK_GUNS)) {
+  const inf = PACK_GUN_INFO[k], list = parts.filter(p => p[4] !== 'slide').map(p => p.slice());
+  list.pack = inf.src; GUNS[k] = list; MUZZLE[k] = [0, inf.muzzle[1], inf.muzzle[2] - .004];
+  if (k === 'pistol') DEAGLE_SLIDE.splice(0, DEAGLE_SLIDE.length, ...parts.filter(p => p[4] === 'slide').map(p => p.slice(0, 4)));
+}
 const VM_BASE = { rifle: [.15, -.16, -.40], pistol: [.13, -.105, -.38], knife: [.005, -.11, -.38], sniper: [.15, -.16, -.38] };
 VM_BASE.m4a4 = VM_BASE.m4a1s = VM_BASE.galil = VM_BASE.rifle; VM_BASE.famas = [.15, -.165, -.36]; VM_BASE.glock = VM_BASE.pistol; VM_BASE.ump = [.14, -.15, -.38]; VM_BASE.he = VM_BASE.flash = VM_BASE.smoke = [.13, -.15, -.38]; VM_BASE.c4 = [.06, -.13, -.36]; VM_BASE.medgun = VM_BASE.pistol; VM_BASE.bucky = [.15, -.16, -.40]; VM_BASE.usps = VM_BASE.pistol; VM_BASE.ssg = VM_BASE.sniper; VM_BASE.butterfly = VM_BASE.pistol;
 const VM_YAW = { glock: .03, galil: .05, famas: .05, rifle: .05, pistol: .03, knife: 0, sniper: .05, m4a4: .05, m4a1s: .05, usps: .03, ssg: .05, butterfly: 0, ump: .05, bucky: .05, he: .03, flash: .03, smoke: .03, c4: 0, medgun: .03 };
@@ -3457,8 +3495,12 @@ function buildDeagleHands(g,body){
   // Luvas dentro dos grupos animados: a direita fecha no cabo (inclinado como o da Deagle), a esquerda envolve os dedos da direita.
   // (pegada medida como GRIP_FIT, no espaço dos grupos animados)
   // (cabo da Deagle medido: 3,4 cm de largura, 7,8 cm de profundidade, inclinado para trás; a esquerda envolve a direita)
-  const rg=placeHand(buildHand(false,{hy:.017,hz:.039,ci:.45}),{grip:[-.012,-.0052,.017],axis:[0,-1,.22],back:[1,0,0]});
-  const lg=placeHand(buildHand(true,{hy:.029,hz:.042,ct:.3}),{grip:[.013,-.004,.026],axis:[0,-1,.22],back:[-1,0,0]});
+  // com o modelo do pack, o cabo vem medido nele (no espaço da arma; aqui, relativo ao grupo de cada mão)
+  const pg=globalThis.PACK_GUN_INFO&&PACK_GUN_INFO.pistol&&PACK_GUN_INFO.pistol.grips.right;
+  const rg=pg?placeHand(buildHand(false,{hy:pg[1],hz:pg[2],ci:.45}),{grip:[pg[0][0]-.012,pg[0][1]+.085,pg[0][2]-.005],axis:[0,-1,.22],back:[1,0,0]})
+    :placeHand(buildHand(false,{hy:.017,hz:.039,ci:.45}),{grip:[-.012,-.0052,.017],axis:[0,-1,.22],back:[1,0,0]});
+  const lg=pg?placeHand(buildHand(true,{hy:pg[1]+.012,hz:pg[2]+.006,ct:.3}),{grip:[pg[0][0]-.012+.025,pg[0][1]-.004+.09,pg[0][2]-.006+.01],axis:[0,-1,.22],back:[-1,0,0]})
+    :placeHand(buildHand(true,{hy:.029,hz:.042,ct:.3}),{grip:[.013,-.004,.026],axis:[0,-1,.22],back:[-1,0,0]});
   right.position.copy(rest);right.add(rg);left.add(lg);g.add(right,left);
   pivot.position.copy(trigger);weapon.position.copy(trigger).multiplyScalar(-1);pivot.add(weapon);g.add(pivot);weapon.add(body);
   deagleSlide=boxModel(DEAGLE_SLIDE, weaponPbrMat);weapon.add(deagleSlide);
@@ -3504,11 +3546,15 @@ const VM_PARTS = {
   pistol: { mag: c => c[1] < -.15, magBody: [[-.014, -.165, .005], [.014, -.05, .06], 0x2a2f35] },
 };
 VM_PARTS.m4a1s = VM_PARTS.m4a4;
+// ferrolho das snipers do pack: gira em volta da linha do cano
+if (globalThis.PACK_GUN_INFO) for (const k of ['sniper', 'ssg']) if (PACK_GUN_INFO[k]) VM_PARTS[k] = { ...VM_PARTS[k], axis: PACK_GUN_INFO[k].muzzle[1] };
 const partBox = p => { const c = [], s = []; for (let j = 0; j < 3; j++) { c.push((p[0][j] + p[1][j]) / 2); s.push(Math.abs(p[1][j] - p[0][j])); } return [c, s]; };
 function splitGun(k, list) {
   const spec = VM_PARTS[k] || {}, out = { body: [], mag: [], bolt: [], pump: [] };
-  for (const p of list) { const [c, s] = partBox(p); out[spec.mag && spec.mag(c, s) ? 'mag' : spec.bolt && spec.bolt(c, s) ? 'bolt' : spec.pump && spec.pump(c, s) ? 'pump' : 'body'].push(p); }
-  if (spec.magBody && out.mag.length) out.mag.unshift(spec.magBody);
+  // modelos do pack já vêm com as peças marcadas (pente, alavanca, telha); os antigos são separados pela posição
+  const tagged = list.some(p => p[4]);
+  for (const p of list) { if (tagged) { out[p[4] || 'body'].push(p); continue; } const [c, s] = partBox(p); out[spec.mag && spec.mag(c, s) ? 'mag' : spec.bolt && spec.bolt(c, s) ? 'bolt' : spec.pump && spec.pump(c, s) ? 'pump' : 'body'].push(p); }
+  if (spec.magBody && out.mag.length && !tagged) out.mag.unshift(spec.magBody);
   return out;
 }
 function partsCenter(list) {

@@ -140,26 +140,37 @@ Clique esquerdo lança a granada longe; o direito joga perto. As granadas quicam
 
 ### Modelos das armas
 
-Todas as armas, menos a Karambit, ganharam modelos mais detalhados. Em vez de caixas, cada peça é um perfil lateral recortado (côncavo quando precisa), tubos facetados para canos, silenciadores e lunetas, e caixas pequenas para os detalhes:
+As armas de fogo usam os modelos do **[Ultimate Gun Pack by Quaternius](https://quaternius.com)** (licença CC0, uso livre). Cada arma do jogo usa este modelo do pack:
 
-- **AK-47:** caixa com tampa e mola, guarda-mão de madeira em duas partes com ranhuras, carregador curvo, alça de mira, massa com orelhas e freio de boca.
-- **M4A4 e M4A1-S:** dividem o mesmo corpo (trilho com dentes, alça rebatível, retém, janela de ejeção, tubo do amortecedor e coronha retrátil). A M4A4 tem guarda-mão de trilhos, massa em A e quebra-chamas; a M4A1-S, guarda-mão fino e silenciador com anéis.
-- **Galil AR, FAMAS, UMP-45, Bucky e SSG 08:**
-  - **Galil:** alavanca de manejo para cima e coronha esqueleto.
-  - **FAMAS:** alça comprida e bipé dobrado nos lados.
-  - **UMP:** guarda-mão vazado e coronha rebatível.
-  - **Bucky:** telha estriada, tubo de cartuchos e mira de pérola.
-  - **SSG:** cano facetado, freio de boca e luneta com torres.
-- **USP-S e Glock-18:** ferrolho com serrilhas, armação com trilho, cabo texturizado e miras. A USP-S tem cão e silenciador; a Glock tem pontos brancos e o seletor de rajada.
-- **AWP:** refeita no estilo da do CS. Tem chassi verde-oliva com coronha vazada (thumbhole), descanso de rosto ajustável e ação com trilho. O ferrolho tem bola, o cano afina até o freio de boca com janelas, o carregador é destacável e a luneta tem objetiva grande e três torres.
-- **Desert Eagle:** ganhou trilho com ranhuras e massa com ponto no cano, alavanca de desmontagem e cabo de borracha texturizado. O ferrolho tem trava ambidestra e mira. A animação e o ferrolho que recua no tiro continuam iguais.
+| Arma do jogo | Modelo do pack | Peças animadas |
+| --- | --- | --- |
+| AK-47 | AssaultRifle_2 | carregador |
+| Galil AR | AssaultRifle_5 | carregador |
+| M4A4 | AssaultRifle2_1 | carregador |
+| M4A1-S | AssaultRifle2_2 + Silencer_1 | carregador |
+| FAMAS | Bullpup_3 | carregador |
+| UMP-45 | SubmachineGun_5 | carregador |
+| Bucky | Shotgun_1 | telha |
+| AWP | SniperRifle_3 | ferrolho |
+| SSG 08 (Scout) | SniperRifle_2 (cinza, com carregador) | carregador e ferrolho |
+| USP-S | Pistol_2 + Silencer_Short | — |
+| Glock-18 | Pistol_1 (ferrolho escuro, cabo de madeira) | — |
+| Desert Eagle | Pistol_6 (longa, com trilho e cabo preto) | ferrolho que recua no tiro |
+
+Como os modelos entram no jogo:
+
+- **Conversão:** `tools/pack/export_quaternius.py` lê os `.blend` com o Blender em Python (bpy) e gera `tools/pack/quaternius.json`. Depois, `tools/pack/build_guns.py` gera `assets/models/guns-pack.js`. Nesse passo, cada arma é girada para o cano apontar para a frente, ganha a escala do jogo e tem o gatilho alinhado ao ponto da mão. As cores são as dos materiais do pack, calibradas pela prévia.
+- **Peças animadas:** o carregador, o ferrolho e a telha são as peças soltas do próprio modelo, separadas para as animações de recarga. As pistolas ganham um carregador escondido dentro do cabo, que sai na recarga.
+- **Pegadas medidas:** o script fatia o cabo e o guarda-mão de cada modelo e mede a grossura sob cada mão. A mão do gatilho e a de apoio fecham no tamanho real, sem atravessar a arma. Na Scout, o cabo é fino demais, então a mão segura o punho da coronha.
+- **Boca do cano:** fica na ponta do cano de cada modelo, ou na ponta do silenciador.
+- **Skins exclusivas:** Sublime, Alien, Blaster, Buzzer e Vanguarda trocam as cores de cada material do pack e mantêm os filetes de energia.
+
+Continuam com modelos próprios:
+
+- **Karambit e Butterfly.**
 - **Granadas:** HE redonda, flash e smoke cilíndricas, todas com alavanca, espoleta e argola do pino.
-- **C4, pistola do Doctor e Butterfly:**
-  - **C4:** três tijolos, painel com visor e teclado, e fios.
-  - **Pistola do Doctor:** frasco de vidro com tampas, cruz médica e cilindro de gás.
-  - **Butterfly:** já tinha lâmina e cabos vazados detalhados e ficou como estava.
-
-Mãos e boca do cano continuam nos mesmos pontos. As skins recolorem os modelos novos, e a AK Sublime agora usa o modelo novo da AK em marfim e ouro, com as ranhuras e a janela de ejeção em energia ciano. Cada arma fica abaixo de 1.500 triângulos.
+- **C4:** três tijolos, painel com visor e teclado, e fios.
+- **Pistola do Doctor:** frasco de vidro com tampas, cruz médica e cilindro de gás.
 
 ## Deathmatch
 

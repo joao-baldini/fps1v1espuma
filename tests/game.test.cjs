@@ -3003,3 +3003,17 @@ test('minimap options like Valorant: rotate with the camera or north up, keep th
   assert.ok(Math.abs(Math.hypot(up[0]-3,up[1]-4)-40)<1e-9);
   const ov=radar.overview(30,30,512,Math.PI/2),p=radar.unproject(256+ov.scale*10,256,rect,ov);assert.ok(Math.abs(p[0])<1e-9&&Math.abs(p[1]+10)<1e-9);
 });
+
+test('Ultimate Gun Pack (Quaternius, CC0): every replaced gun has its model, rig parts, muzzle at the barrel tip and measured grips',()=>{
+  const src=readFileSync(resolve(__dirname,'../assets/models/guns-pack.js'),'utf8');assert.match(src,/Quaternius \(CC0\)/);
+  const box={};vm.runInNewContext(src,box);const G=box.PACK_GUNS,I=box.PACK_GUN_INFO;
+  const expect={rifle:'mag',galil:'mag',m4a4:'mag',m4a1s:'mag',famas:'mag',ump:'mag',bucky:'pump',sniper:'bolt',ssg:'bolt',usps:'mag',glock:'mag',pistol:'slide'};
+  for(const [k,tag] of Object.entries(expect)){
+    const parts=G[k],tris=parts.reduce((n,p)=>n+(p[3]?p[3].indices.length/3:12),0);
+    assert.ok(parts.some(p=>p[4]===tag),k+' tem a peça '+tag);assert.ok(tris<2600,k+' até 2.600 triângulos ('+tris+')');
+    const minZ=Math.min(...parts.map(p=>p[0][2]));assert.ok(Math.abs(I[k].muzzle[2]-minZ)<1e-3,k+' boca do cano na ponta');
+    assert.ok(I[k].grips.right&&I[k].grips.right[1]>.005&&I[k].grips.right[2]>.005,k+' cabo medido');
+    if(!['usps','glock','pistol'].includes(k))assert.ok(I[k].grips.left,k+' guarda-mão medido');
+  }
+  assert.equal(I.m4a1s.acc,'Silencer_1');assert.equal(I.usps.acc,'Silencer_Short');
+});
