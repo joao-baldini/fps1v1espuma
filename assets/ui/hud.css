@@ -46,7 +46,7 @@
 #minimap{position:absolute;z-index:21;left:50%;top:50%;transform:translate(-50%,-50%);background:none;padding:0;color:#edf2ef;text-align:center}
 #minimap header{display:grid;gap:7px;justify-items:center;margin-bottom:16px;font:600 22px/1.25 var(--ui-font);letter-spacing:.02em}
 #minimap header span{max-width:48ch;font:400 13px/1.5 var(--ui-font);color:#cbd5e1}
-#mmCanvas{display:block;width:min(64vmin,520px);height:auto;aspect-ratio:1;border-radius:50%;border:2px solid rgba(125,211,252,.35);box-shadow:0 16px 48px rgba(0,0,0,.6)}
+#mmCanvas{display:block;width:min(70vmin,600px);height:auto;aspect-ratio:1;background:none;filter:drop-shadow(0 0 14px rgba(63,244,255,.35))}
 #hud.finder-open #banner,#hud.finder-open #waitline,#hud.finder-open #tacticalRadar{visibility:hidden}
 #hud.finder-open::after{content:"";position:absolute;inset:0;z-index:20;pointer-events:none;background:rgba(7,12,18,.38)}
 

@@ -2975,7 +2975,7 @@ test('first-person hands close around each weapon grip: fitted grip per gun, tri
   for(const [w,g] of Object.entries(grab))for(const k of Object.keys(g))assert.ok(g[k][3]>0&&g[k][3]<=1,w+' '+k+' fecha a mão');
 });
 
-test('Finder scan has a limited range like Brimstone smokes: the target is pulled to the 40 m edge and the minimap dims outside it',()=>{
+test('Finder scan has a limited range like Brimstone smokes: the target is pulled to the 40 m edge and the minimap zooms to that range around the player',()=>{
   const g=game({mode:'aimbotz'}),cx=g.context;
   assert.equal(vm.runInContext('SCAN.range',cx),40);
   assert.equal(vm.runInContext('JSON.stringify(scanClamp({pos:{x:2,z:3}},12,-4))',cx),'[12,-4]');
@@ -2983,6 +2983,9 @@ test('Finder scan has a limited range like Brimstone smokes: the target is pulle
   assert.ok(Math.abs(far[0]-40)<1e-9&&Math.abs(far[1])<1e-9);
   const radar=require('../assets/ui/hud-radar.js'),calls=[];
   const ctx=new Proxy({},{get:(t,k)=>k in t?t[k]:(...a)=>{calls.push(k);},set:(t,k,v)=>{t[k]=v;return true;}});
-  radar.drawOverview(ctx,{halfWidth:30,halfHeight:30,canvas:{}},{size:512,markers:[],pose:{x:0,z:0,yaw:0},selected:[5,5],scanRadius:5,range:40});
-  assert.ok(calls.includes('fill')&&calls.includes('setLineDash'),'escurece fora do alcance e marca a borda');
+  // como o mapa do Brimstone: zoom centrado no jogador, o círculo inteiro é o alcance
+  const m=radar.drawRangeMap(ctx,{halfWidth:30,halfHeight:30,canvas:{}},{size:512,markers:[],pose:{x:10,z:-4,yaw:0},selected:[15,-4],scanRadius:5,range:40});
+  assert.ok(calls.includes('clip')&&calls.includes('drawImage'),'mapa recortado no círculo do alcance');
+  const rect={left:0,top:0,width:512,height:512},center=radar.unprojectRange(256,256,rect,m),edge=radar.unprojectRange(256+m.radius,256,rect,m);
+  assert.deepEqual(center,[10,-4]);assert.ok(Math.abs(edge[0]-50)<1e-9,'a borda do círculo fica a 40 m');
 });

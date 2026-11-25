@@ -47,7 +47,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
   <div id="hpbox" aria-label="Vida e proteção"><svg class="health-symbol" viewBox="0 0 24 24" aria-label="Vida"><path d="M12 4v16M4 12h16"/></svg><span class="health-value"><b id="hp">100</b><span id="healthTrack" aria-hidden="true"><i id="healthFill"></i></span></span><span id="bbArmor" hidden aria-label="Colete"><svg viewBox="0 0 24 28" aria-hidden="true"><path d="M12 2 3 6v8c0 6 9 12 9 12s9-6 9-12V6Z"/></svg><b id="armorValue">0</b><svg id="helmetIndicator" viewBox="0 0 24 24" aria-label="Capacete"><path d="M3 14v-3a9 9 0 0 1 18 0v3l-6 1v5h-4v-5H3Z"/></svg></span></div>
   <div id="bombbox" hidden><span id="bbMoney">$800</span><span id="bbC4" hidden><svg viewBox="0 0 24 28" aria-hidden="true"><rect x="4" y="8" width="16" height="17" rx="2"/><path d="M9 8V3h6v5M8 13h8M8 17h4"/></svg>C4</span></div>
   <div id="ability" hidden><div class="ab-icon"><svg class="ability-ring" viewBox="0 0 49 49" aria-hidden="true"><circle class="track" cx="24.5" cy="24.5" r="23"/><circle id="abilityArc" cx="24.5" cy="24.5" r="23" pathLength="1"/></svg><span id="abIcon"></span><b id="abCd" hidden></b></div><div class="ability-copy"><div class="ability-title"><kbd>X</kbd><span id="abName"></span></div><small id="abState"></small></div></div>
-  <section id="minimap" hidden aria-label="Minimapa"><header><b>Varredura</b><span>escolha a área (10 m) dentro do alcance de 40 m · X ou Esc cancela</span></header><canvas id="mmCanvas" width="512" height="512"></canvas></section>
+  <section id="minimap" hidden aria-label="Minimapa"><header><b>Varredura</b><span>alcance de 40 m em volta de você · clique para escanear 10 m · X ou Esc cancela</span></header><canvas id="mmCanvas" width="512" height="512"></canvas></section>
   <aside id="tacticalRadar" hidden aria-label="Radar de aliados"><header><b id="radarMapName"></b></header><canvas id="radarCanvas" width="384" height="384" aria-label="Minimapa circular orientado pela câmera"></canvas></aside>
   <div id="actbar" hidden><span id="actLbl">Plantando</span><i><b id="actFill"></b></i></div>
   <section id="shop" hidden aria-label="Loja"><header><b>Loja</b><span id="shopMoney"></span><span id="shopTime"></span><span id="shopHint">clique compra · botão direito vende o que foi comprado nesta rodada</span><button type="button" id="shopClose">Fechar · B</button></header><div id="shopGrid"></div></section>
@@ -8620,9 +8620,10 @@ function openMinimap(){if(MINI.open||!bombOn())return;MINI.open=true;el.hud.clas
 function closeMinimap(){if(!MINI.open)return;MINI.open=false;el.hud.classList.remove('finder-open');$('minimap').hidden=true;$('vcursor').hidden=!BUY.open&&!SHOP.open;}
 function minimapWorld(px,py){return HudRadar.unproject(px,py,$('mmCanvas').getBoundingClientRect(),HudRadar.overview(AX,AZ,$('mmCanvas').width));}
 // Ponto da varredura sob o cursor, preso dentro do alcance do Finder (o círculo do minimapa).
-function minimapTarget(px,py){const at=minimapWorld(px,py);return at?scanClamp(P,at[0],at[1]):null;}
+// O minimapa do Finder é um zoom no alcance (como o do Brimstone): o círculo mostra só os 40 m em volta de você.
+function minimapTarget(px,py){const c=$('mmCanvas'),at=HudRadar.unprojectRange(px,py,c.getBoundingClientRect(),HudRadar.rangeMetrics(c.width,SCAN.range,{x:P.pos.x,z:P.pos.z}));return at?scanClamp(P,at[0],at[1]):null;}
 function drawMinimap(t){
-  const c=$('mmCanvas');HudRadar.drawOverview(c.getContext('2d'),radarMap(),{size:c.width,pose:{x:P.pos.x,z:P.pos.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),selected:minimapTarget(BUY.x,BUY.y),scanRadius:SCAN.radius,range:SCAN.range});
+  const c=$('mmCanvas');HudRadar.drawRangeMap(c.getContext('2d'),radarMap(),{size:c.width,pose:{x:P.pos.x,z:P.pos.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),selected:minimapTarget(BUY.x,BUY.y),scanRadius:SCAN.radius,range:SCAN.range,color:OPS.finder.color,t});
 }
 function moveVCursor() {
   $('vcursor').style.transform='translate('+BUY.x+'px,'+BUY.y+'px)';

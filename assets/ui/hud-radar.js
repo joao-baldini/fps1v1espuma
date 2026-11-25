@@ -126,6 +126,48 @@
     if (selected) { const p = point(...selected); ctx.beginPath(); ctx.arc(p.x, p.y, scanRadius * metrics.scale, 0, TAU); ctx.fillStyle = '#9bc6d42b'; ctx.fill(); ctx.strokeStyle = '#c5e2e9'; ctx.lineWidth = 1.5; ctx.stroke(); }
     ctx.restore(); return metrics;
   }
-  const api = { project, overview, unproject, makeMap, drawRadar, drawOverview };
+  // Mapa da habilidade com alcance (como o do Brimstone no Valorant): zoom centrado no jogador, o círculo mostra só a
+  // área que a habilidade alcança (raio = range), em holograma na cor do agente, com anel de marcas em volta.
+  function rangeMetrics(size, range, pose) { const radius = size / 2 - 40; return { size, radius, scale: radius / range, cx: pose.x, cz: pose.z, range }; }
+  function unprojectRange(px, py, rect, m) {
+    if (!(rect.width > 0 && rect.height > 0)) return null;
+    const x = ((px - rect.left) / rect.width - .5) * m.size, z = ((py - rect.top) / rect.height - .5) * m.size;
+    return [m.cx + x / m.scale, m.cz + z / m.scale];
+  }
+  function drawRangeMap(ctx, map, state) {
+    const { size, markers = [], sites = [], pose, selected, scanRadius, range, color = '#3ff4ff', t = 0 } = state, c = size / 2, m = rangeMetrics(size, range, pose), R = m.radius;
+    const point = (x, z) => ({ x: c + (x - m.cx) * m.scale, y: c + (z - m.cz) * m.scale });
+    ctx.clearRect(0, 0, size, size);
+    // anel externo de marcas (gira devagar)
+    ctx.save(); ctx.translate(c, c); ctx.rotate(t * .00012); ctx.strokeStyle = color; ctx.globalAlpha = .55;
+    for (let i = 0; i < 96; i++) { const a = i / 96 * TAU, long = i % 8 === 0, r0 = R + 12, r1 = R + (long ? 30 : 22); ctx.lineWidth = long ? 3 : 1.6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.stroke(); }
+    ctx.restore();
+    // dentro do alcance: o mapa recortado e tingido, sobre um fundo translúcido, com grade de holograma
+    ctx.save(); ctx.beginPath(); ctx.arc(c, c, R, 0, TAU); ctx.clip();
+    ctx.globalAlpha = .95; const o = point(-map.halfWidth, -map.halfHeight);
+    ctx.drawImage(map.canvas, o.x, o.y, map.halfWidth * 2 * m.scale, map.halfHeight * 2 * m.scale);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = color; ctx.globalAlpha = .38; ctx.fillRect(0, 0, size, size);
+    ctx.globalCompositeOperation = 'destination-over'; ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(6,34,42,.55)'; ctx.fillRect(0, 0, size, size);
+    ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = color; ctx.globalAlpha = .1; ctx.lineWidth = 1;
+    const step = 5 * m.scale, gx = ((c - m.cx * m.scale) % step + step) % step, gz = ((c - m.cz * m.scale) % step + step) % step;
+    for (let x = gx; x < size; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, size); ctx.stroke(); }
+    for (let y = gz; y < size; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(size, y); ctx.stroke(); }
+    ctx.globalAlpha = 1; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 26px "Plex UI",sans-serif';
+    for (const site of sites) { const p = point(site.lx ?? (site.x0 + site.x1) / 2, site.lz ?? (site.z0 + site.z1) / 2); ctx.fillStyle = '#f2fbff'; ctx.globalAlpha = .85; ctx.fillText(site.name || 'A', p.x, p.y); }
+    ctx.globalAlpha = 1;
+    for (const marker of markers) { const p = point(marker.x, marker.z); dot(ctx, p.x, p.y, marker.color || palette.ally, 6); }
+    triangle(ctx, c, c, -pose.yaw, '#f4f5ef', 11);
+    if (selected) {
+      const p = point(...selected), r = Math.max(10, scanRadius * m.scale);
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.fillStyle = 'rgba(63,244,255,.22)'; ctx.fill();
+      ctx.strokeStyle = '#e9feff'; ctx.lineWidth = 3; ctx.setLineDash([r * .9, r * .67]); ctx.lineDashOffset = -t * .02; ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, TAU); ctx.fillStyle = '#e9feff'; ctx.fill();
+    }
+    ctx.restore();
+    // borda brilhante do alcance
+    ctx.save(); ctx.shadowColor = color; ctx.shadowBlur = 18; ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(c, c, R, 0, TAU); ctx.stroke(); ctx.restore();
+    return m;
+  }
+  const api = { project, overview, unproject, makeMap, drawRadar, drawOverview, rangeMetrics, unprojectRange, drawRangeMap };
   root.HudRadar = api; if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);
