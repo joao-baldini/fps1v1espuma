@@ -283,6 +283,10 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
     <label class="sl"><span>Volume</span><output data-out="volume"></output><input id="volume" type="range" min="0" max="1" step="0.05" data-k="volume"></label>
     <label class="fld"><span>Contorno dos inimigos</span><select data-k="enemyOutline" aria-label="Cor do contorno dos inimigos"><option value="vermelho">Vermelho (padrão)</option><option value="amarelo">Amarelo</option><option value="roxo">Roxo</option></select></label>
     <p class="note">Também muda a cor das marcações do Finder e do Detector. Aliados aparecem através das paredes em azul-água. Nenhum preset cria vantagem competitiva.</p>
+    <p class="note"><b>Minimapa</b> (como no Valorant; vale também para o mapa da varredura do Finder)</p>
+    <label class="chk"><input type="checkbox" data-k="radarRotate">Girar o minimapa com a câmera (desligado: norte sempre para cima)</label>
+    <label class="chk"><input type="checkbox" data-k="radarCentered">Manter o jogador no centro (desligado: o mapa fica parado e você anda por ele)</label>
+    <label class="sl"><span>Zoom do minimapa</span><output data-out="radarZoom"></output><input id="radarZoom" type="range" min="0.6" max="1.6" step="0.05" data-k="radarZoom"></label>
     <label class="chk"><input id="showFps" type="checkbox" data-k="showFps">Mostrar FPS</label>
     <label class="chk"><input type="checkbox" data-k="hitmarker">Hitmarker (marca no centro ao acertar)</label>
     <label class="chk"><input type="checkbox" data-k="adaptiveScale">Ajustar resolução automaticamente para manter a fluidez</label>
@@ -348,7 +352,7 @@ function normalizeViewmodel(value) {
 }
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
   gfxPreset: 'high', gfxShadows: 'medium', gfxTextures: 'high', gfxParticles: 'high', gfxEffects: 'high',
-  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', wingSide: 't', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', practiceMap: 'aimbotz', fiveMap:'lily', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true,
+  target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', wingSide: 't', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', practiceMap: 'aimbotz', fiveMap:'lily', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true, radarRotate: true, radarCentered: true, radarZoom: 1,
   aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right', viewmodel: { x: 0, y: 0, z: 0 },
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
@@ -379,6 +383,8 @@ function loadS() {
   if (!['low', 'medium', 'high'].includes(s.gfxParticles)) s.gfxParticles = 'high';
   if (!['low', 'medium', 'high'].includes(s.gfxEffects)) s.gfxEffects = 'high';
   s.hitmarker = s.hitmarker !== false;
+  s.radarRotate = s.radarRotate !== false; s.radarCentered = s.radarCentered !== false;
+  s.radarZoom = isFinite(+s.radarZoom) ? Math.min(1.6, Math.max(.6, +s.radarZoom)) : 1;
   // "Bot com capacete" virou "Colete e capacete para todos" (ligado por padrão).
   if (typeof s.armor !== 'boolean') s.armor = s.botHelmet !== false; delete s.botHelmet;
   if (typeof s.smoothRecoil !== 'boolean') s.smoothRecoil = true;
@@ -8614,16 +8620,25 @@ function updateTacticalRadar(t){
   if(t>=RADAR.nextAt){RADAR.nextAt=t+100;setT($('radarMapName'),areaName(P.pos.x,P.pos.y,P.pos.z)||MAP.name);}
   const rp=renderPos();
   const c=$('radarCanvas'),bomb=bombOn()?(BOMB.planted&&!BOMB.planted.defused&&!BOMB.planted.blown?BOMB.planted:sideOf(P)==='t'?BOMB.dropped:null):null;
-  HudRadar.drawRadar(c.getContext('2d'),radarMap(),{size:c.width,range:clamp(Math.max(AX,AZ)*.75,20,35),pose:{x:rp.x,z:rp.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),bomb,alive:P.alive});
+  // Preferências do Valorant: girar com a câmera ou norte para cima; jogador no centro ou mapa parado (inteiro, centrado
+  // no meio do mapa); zoom divide o alcance mostrado.
+  const rot=S.radarRotate?P.yaw:0,view=S.radarCentered?{x:rp.x,z:rp.z,yaw:rot}:{x:0,z:0,yaw:rot},range=(S.radarCentered?clamp(Math.max(AX,AZ)*.75,20,35):Math.hypot(AX,AZ)*.98)/(S.radarZoom||1);
+  HudRadar.drawRadar(c.getContext('2d'),radarMap(),{size:c.width,range,pose:{x:rp.x,z:rp.z,yaw:P.yaw},view,markers:radarMarkers(t),sites:radarSites(),bomb,alive:P.alive});
 }
 function openMinimap(){if(MINI.open||!bombOn())return;MINI.open=true;el.hud.classList.add('finder-open');$('minimap').hidden=false;P.m1=P.m2=P.m1Press=P.m2Press=false;keys.clear();BUY.x=innerWidth/2;BUY.y=innerHeight/2;$('vcursor').hidden=false;moveVCursor();drawMinimap(now());}
 function closeMinimap(){if(!MINI.open)return;MINI.open=false;el.hud.classList.remove('finder-open');$('minimap').hidden=true;$('vcursor').hidden=!BUY.open&&!SHOP.open;}
 function minimapWorld(px,py){return HudRadar.unproject(px,py,$('mmCanvas').getBoundingClientRect(),HudRadar.overview(AX,AZ,$('mmCanvas').width));}
 // Ponto da varredura sob o cursor, preso dentro do alcance do Finder (o círculo do minimapa).
 // O minimapa do Finder é um zoom no alcance (como o do Brimstone): o círculo mostra só os 40 m em volta de você.
-function minimapTarget(px,py){const c=$('mmCanvas'),at=HudRadar.unprojectRange(px,py,c.getBoundingClientRect(),HudRadar.rangeMetrics(c.width,SCAN.range,{x:P.pos.x,z:P.pos.z}));return at?scanClamp(P,at[0],at[1]):null;}
+// Com o jogador fora do centro (preferência), mostra o mapa inteiro parado com o círculo do alcance em volta de você.
+function minimapTarget(px,py){
+  const c=$('mmCanvas'),rect=c.getBoundingClientRect(),rot=S.radarRotate?P.yaw:0;
+  const at=S.radarCentered?HudRadar.unprojectRange(px,py,rect,HudRadar.rangeMetrics(c.width,SCAN.range,{x:P.pos.x,z:P.pos.z},rot)):HudRadar.unproject(px,py,rect,HudRadar.overview(AX,AZ,c.width,rot));
+  return at?scanClamp(P,at[0],at[1]):null;
+}
 function drawMinimap(t){
-  const c=$('mmCanvas');HudRadar.drawRangeMap(c.getContext('2d'),radarMap(),{size:c.width,pose:{x:P.pos.x,z:P.pos.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),selected:minimapTarget(BUY.x,BUY.y),scanRadius:SCAN.radius,range:SCAN.range,color:OPS.finder.color,t});
+  const c=$('mmCanvas');const st={size:c.width,pose:{x:P.pos.x,z:P.pos.z,yaw:P.yaw},markers:radarMarkers(t),sites:radarSites(),selected:minimapTarget(BUY.x,BUY.y),scanRadius:SCAN.radius,range:SCAN.range,color:OPS.finder.color,t,rot:S.radarRotate?P.yaw:0};
+  if(S.radarCentered)HudRadar.drawRangeMap(c.getContext('2d'),radarMap(),st);else HudRadar.drawOverview(c.getContext('2d'),radarMap(),st);
 }
 function moveVCursor() {
   $('vcursor').style.transform='translate('+BUY.x+'px,'+BUY.y+'px)';
@@ -8957,7 +8972,7 @@ addEventListener('resize',updateMapNav);
 
 function getK(k) { return k.split('.').reduce((o, p) => o[p], S); }
 function setK(k, v) { const ps = k.split('.'); let o = S; for (let i = 0; i < ps.length - 1; i++) o = o[ps[i]]; o[ps[ps.length - 1]] = v; }
-const OUTFMT = { 'ch.alpha': v => Math.round(v * 100) + '%', scale: v => Math.round(v * 100) + '%', volume: v => Math.round(v * 100) + '%', fov: v => v + '°', zoomRatio: v => (+v).toFixed(2) };
+const OUTFMT = { radarZoom: v => (+v).toFixed(2) + '×', 'ch.alpha': v => Math.round(v * 100) + '%', scale: v => Math.round(v * 100) + '%', volume: v => Math.round(v * 100) + '%', fov: v => v + '°', zoomRatio: v => (+v).toFixed(2) };
 function syncLobbyPreview() {
   const mode=S.mode,practice=mode==='aimbotz',tdm=mode==='tdm',dm=mode==='dm'||tdm,five=mode==='bomb',bomb=isBombMode(),duelMap=S.map==='rotacao'||MAP_IDS.includes(S.map)?S.map:'caixas',bombMap=S.bombMap==='rotacao'?BOMB_MAPS[0]:S.bombMap,id=practice?(PRACTICE_MAPS.includes(S.practiceMap)?S.practiceMap:'aimbotz'):dm?S.dmMap:five?S.fiveMap:bomb?bombMap:duelMap;
   const title=bomb&&!five&&S.bombMap==='rotacao'?'Rotação':MAPS[id]?.name||'Rotação',image=$('stageImage'),source='assets/menu/play/'+id+'.webp';

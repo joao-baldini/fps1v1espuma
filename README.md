@@ -216,6 +216,13 @@ Placar e tempo ficam reunidos no topo. Vida, proteção e munição têm número
 
 Ao acertar um tiro aparece só o **hitmarker** (o X no centro), sem número de dano. Ele não aparece quando o tiro atravessa uma smoke: o dano conta, mas você não fica sabendo pelo X. Dá para desligar em **Configurações → Vídeo → Hitmarker**.
 
+**Opções do minimapa** (Configurações → Vídeo → Minimapa, como no Valorant):
+- **Girar o minimapa com a câmera:** ligado, a direção para onde você olha fica sempre para cima. Desligado, o norte fica para cima e a seta mostra sua direção.
+- **Manter o jogador no centro:** ligado, o mapa acompanha você. Desligado, o mapa inteiro fica parado e você anda por ele.
+- **Zoom do minimapa:** de 0,6× a 1,6×.
+
+As duas primeiras valem também para o mapa da varredura do Finder. Com o jogador no centro, ele é o zoom de 40 m no estilo do Brimstone; sem o jogador no centro, mostra o mapa inteiro com o círculo do alcance em volta de você e o resto escurecido. Nos dois casos o mapa gira ou não conforme a opção.
+
 O radar é redesenhado a cada quadro, com a posição suavizada da câmera; antes ele atualizava só a cada 80 ms e parecia travado. O radar é circular e gira com a câmera, mantendo a mesma escala nos dois eixos. Aparece nos duelos, times, DM, TDM e Prefire. Mostra você, aliados vivos e as últimas posições reveladas pela varredura do Finder; não revela adversários sem essa habilidade. Os sites A/B e a bomba seguem o estado da partida. A geometria é desenhada uma vez por mapa e reutilizada; o radar atualiza no máximo a cada 80 ms, sem uma segunda câmera 3D. A HUD usa a resolução da tela mesmo com a resolução 3D reduzida. O minimapa do Finder funciona como o mapa da smoke do Brimstone: dá zoom centrado em você e o círculo mostra só os 40 m que a varredura alcança, em holograma ciano com anel de marcas; a área de 10 m segue o cursor e não passa da borda (o alcance vale também para os bots).
 
 Testes do radar: `node --test tests/hud-radar.test.cjs`.

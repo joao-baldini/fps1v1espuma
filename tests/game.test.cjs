@@ -2989,3 +2989,17 @@ test('Finder scan has a limited range like Brimstone smokes: the target is pulle
   const rect={left:0,top:0,width:512,height:512},center=radar.unprojectRange(256,256,rect,m),edge=radar.unprojectRange(256+m.radius,256,rect,m);
   assert.deepEqual(center,[10,-4]);assert.ok(Math.abs(edge[0]-50)<1e-9,'a borda do círculo fica a 40 m');
 });
+
+test('minimap options like Valorant: rotate with the camera or north up, keep the player centered or a fixed whole map, and zoom; the Finder map follows them',()=>{
+  const g=game({mode:'aimbotz'}),cx=g.context;
+  assert.equal(vm.runInContext('S.radarRotate&&S.radarCentered&&S.radarZoom===1',cx),true);
+  const radar=require('../assets/ui/hud-radar.js');
+  // norte para cima: um ponto ao norte do jogador aparece acima dele, qualquer que seja a direção da câmera
+  const north=radar.project(0,-10,{x:0,z:0,yaw:0},512,40),rotated=radar.project(0,-10,{x:0,z:0,yaw:Math.PI/2},512,40);
+  assert.ok(north.y<256&&Math.abs(north.x-256)<1e-6);assert.ok(Math.abs(rotated.y-256)<1e-6&&rotated.x>256,'girando com a câmera o mapa roda em volta do jogador');
+  // mapa da varredura girado: clicar no centro continua sendo você, e o ponto clicado desfaz o giro
+  const rect={left:0,top:0,width:512,height:512},m=radar.rangeMetrics(512,40,{x:3,z:4},Math.PI/2),up=radar.unprojectRange(256,256-m.radius,rect,m);
+  assert.deepEqual(radar.unprojectRange(256,256,rect,m).map(v=>+v.toFixed(9)),[3,4]);
+  assert.ok(Math.abs(Math.hypot(up[0]-3,up[1]-4)-40)<1e-9);
+  const ov=radar.overview(30,30,512,Math.PI/2),p=radar.unproject(256+ov.scale*10,256,rect,ov);assert.ok(Math.abs(p[0])<1e-9&&Math.abs(p[1]+10)<1e-9);
+});

@@ -12,14 +12,16 @@
     if (edge && clampToEdge) { sx *= radius / distance; sy *= radius / distance; }
     return { x: size / 2 + sx, y: size / 2 + sy, edge, distance: Math.hypot(dx, dz) };
   }
-  function overview(halfWidth, halfHeight, size) {
-    return { size, halfWidth, halfHeight, scale: size * .46 / Math.hypot(halfWidth, halfHeight) };
+  // Giro do mapa (rot): tela = R(rot)·mundo, como no radar que gira com a câmera.
+  const turn = (x, z, a) => { const c = Math.cos(a), s = Math.sin(a); return [c * x - s * z, s * x + c * z]; };
+  function overview(halfWidth, halfHeight, size, rot = 0) {
+    return { size, halfWidth, halfHeight, rot, scale: size * .46 / Math.hypot(halfWidth, halfHeight) };
   }
   function unproject(px, py, rect, metrics) {
     if (!(rect.width > 0 && rect.height > 0)) return null;
     const x = ((px - rect.left) / rect.width - .5) * metrics.size, z = ((py - rect.top) / rect.height - .5) * metrics.size;
     if (Math.hypot(x, z) > metrics.size / 2) return null;
-    const wx = x / metrics.scale, wz = z / metrics.scale;
+    const [wx, wz] = turn(x / metrics.scale, z / metrics.scale, -(metrics.rot || 0));
     return Math.abs(wx) <= metrics.halfWidth && Math.abs(wz) <= metrics.halfHeight ? [wx, wz] : null;
   }
 
@@ -87,32 +89,33 @@
     ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = '#17232a'; ctx.lineWidth = 2.5; ctx.stroke();
   }
   function drawRadar(ctx, map, state) {
-    const { size, range, pose, markers, sites = [], bomb, alive = true } = state, c = size / 2, scale = (c - 18) / range;
+    // view: centro e giro do radar (jogador no centro e girando com a câmera, ou mapa parado / norte para cima)
+    const { size, range, pose, view = pose, markers, sites = [], bomb, alive = true } = state, c = size / 2, scale = (c - 18) / range;
     ctx.clearRect(0, 0, size, size); ctx.save(); ctx.beginPath(); ctx.arc(c, c, c - 2, 0, TAU); ctx.clip();
     ctx.fillStyle = 'rgba(15,24,30,.72)'; ctx.fillRect(0, 0, size, size);
-    ctx.save(); ctx.translate(c, c); ctx.rotate(pose.yaw); ctx.scale(scale, scale); ctx.translate(-pose.x, -pose.z); ctx.imageSmoothingEnabled = true;
+    ctx.save(); ctx.translate(c, c); ctx.rotate(view.yaw); ctx.scale(scale, scale); ctx.translate(-view.x, -view.z); ctx.imageSmoothingEnabled = true;
     ctx.drawImage(map.canvas, -map.halfWidth, -map.halfHeight, map.halfWidth * 2, map.halfHeight * 2); ctx.restore();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '600 25px "Plex UI",sans-serif';
     for (const site of sites) {
-      const p = project(site.lx ?? (site.x0 + site.x1) / 2, site.lz ?? (site.z0 + site.z1) / 2, pose, size, range);
+      const p = project(site.lx ?? (site.x0 + site.x1) / 2, site.lz ?? (site.z0 + site.z1) / 2, view, size, range);
       ctx.lineWidth = 5; ctx.strokeStyle = '#24323a'; ctx.strokeText(site.name || 'A', p.x, p.y); ctx.fillStyle = palette.site; ctx.fillText(site.name || 'A', p.x, p.y);
     }
     for (const marker of markers) {
-      const p = project(marker.x, marker.z, pose, size, range), color = marker.color || palette.ally;
+      const p = project(marker.x, marker.z, view, size, range), color = marker.color || palette.ally;
       ctx.globalAlpha = p.edge ? .75 : 1;
       if (p.edge) triangle(ctx, p.x, p.y, Math.atan2(p.x - c, -(p.y - c)), color, 8); else dot(ctx, p.x, p.y, color, marker.ghost ? 7.5 : 6.5);
     }
     ctx.globalAlpha = 1;
-    if (bomb) { const p = project(bomb.x, bomb.z, pose, size, range); ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.PI / 4); ctx.fillStyle = '#e7bc97'; ctx.fillRect(-6, -6, 12, 12); ctx.restore(); }
-    if (alive) triangle(ctx, c, c, 0, palette.self, 12);
-    ctx.font = '500 22px "Plex UI",sans-serif'; ctx.fillStyle = '#ecf0ed'; ctx.fillText('N', c + Math.sin(pose.yaw) * (c - 14), c - Math.cos(pose.yaw) * (c - 14));
+    if (bomb) { const p = project(bomb.x, bomb.z, view, size, range); ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.PI / 4); ctx.fillStyle = '#e7bc97'; ctx.fillRect(-6, -6, 12, 12); ctx.restore(); }
+    if (alive) { const p = project(pose.x, pose.z, view, size, range); triangle(ctx, p.x, p.y, view.yaw - pose.yaw, palette.self, 12); }
+    ctx.font = '500 22px "Plex UI",sans-serif'; ctx.fillStyle = '#ecf0ed'; ctx.fillText('N', c + Math.sin(view.yaw) * (c - 14), c - Math.cos(view.yaw) * (c - 14));
     ctx.restore(); ctx.beginPath(); ctx.arc(c, c, c - 2, 0, TAU); ctx.strokeStyle = 'rgba(221,234,238,.28)'; ctx.lineWidth = 1.5; ctx.stroke();
   }
   function drawOverview(ctx, map, state) {
-    const { size, markers, sites = [], pose, selected, scanRadius, range } = state, metrics = overview(map.halfWidth, map.halfHeight, size), c = size / 2;
-    const point = (x, z) => ({ x: c + x * metrics.scale, y: c + z * metrics.scale });
+    const { size, markers, sites = [], pose, selected, scanRadius, range, rot = 0 } = state, metrics = overview(map.halfWidth, map.halfHeight, size, rot), c = size / 2;
+    const point = (x, z) => { const [u, v] = turn(x, z, rot); return { x: c + u * metrics.scale, y: c + v * metrics.scale }; };
     ctx.clearRect(0, 0, size, size); ctx.save(); ctx.beginPath(); ctx.arc(c, c, c - 2, 0, TAU); ctx.clip(); ctx.fillStyle = '#18252deb'; ctx.fillRect(0, 0, size, size);
-    ctx.drawImage(map.canvas, c - map.halfWidth * metrics.scale, c - map.halfHeight * metrics.scale, map.halfWidth * metrics.scale * 2, map.halfHeight * metrics.scale * 2);
+    ctx.save(); ctx.translate(c, c); ctx.rotate(rot); ctx.drawImage(map.canvas, -map.halfWidth * metrics.scale, -map.halfHeight * metrics.scale, map.halfWidth * metrics.scale * 2, map.halfHeight * metrics.scale * 2); ctx.restore();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '600 18px "Plex UI",sans-serif';
     for (const site of sites) { const p = point(site.lx ?? (site.x0 + site.x1) / 2, site.lz ?? (site.z0 + site.z1) / 2); ctx.fillStyle = palette.site; ctx.fillText(site.name || 'A', p.x, p.y); }
     for (const marker of markers) { const p = point(marker.x, marker.z); dot(ctx, p.x, p.y, marker.color || palette.ally, 4.5); }
@@ -122,21 +125,21 @@
       ctx.save(); ctx.beginPath(); ctx.rect(0, 0, size, size); ctx.arc(p.x, p.y, r, 0, TAU, true); ctx.fillStyle = 'rgba(6,12,16,.62)'; ctx.fill('evenodd');
       ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.setLineDash([10, 7]); ctx.strokeStyle = 'rgba(155,198,212,.85)'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
     }
-    if (pose) { const p = point(pose.x, pose.z); triangle(ctx, p.x, p.y, -pose.yaw, palette.self, 8); }
+    if (pose) { const p = point(pose.x, pose.z); triangle(ctx, p.x, p.y, rot - pose.yaw, palette.self, 8); }
     if (selected) { const p = point(...selected); ctx.beginPath(); ctx.arc(p.x, p.y, scanRadius * metrics.scale, 0, TAU); ctx.fillStyle = '#9bc6d42b'; ctx.fill(); ctx.strokeStyle = '#c5e2e9'; ctx.lineWidth = 1.5; ctx.stroke(); }
     ctx.restore(); return metrics;
   }
   // Mapa da habilidade com alcance (como o do Brimstone no Valorant): zoom centrado no jogador, o círculo mostra só a
   // área que a habilidade alcança (raio = range), em holograma na cor do agente, com anel de marcas em volta.
-  function rangeMetrics(size, range, pose) { const radius = size / 2 - 40; return { size, radius, scale: radius / range, cx: pose.x, cz: pose.z, range }; }
+  function rangeMetrics(size, range, pose, rot = 0) { const radius = size / 2 - 40; return { size, radius, scale: radius / range, cx: pose.x, cz: pose.z, range, rot }; }
   function unprojectRange(px, py, rect, m) {
     if (!(rect.width > 0 && rect.height > 0)) return null;
-    const x = ((px - rect.left) / rect.width - .5) * m.size, z = ((py - rect.top) / rect.height - .5) * m.size;
-    return [m.cx + x / m.scale, m.cz + z / m.scale];
+    const x = ((px - rect.left) / rect.width - .5) * m.size, z = ((py - rect.top) / rect.height - .5) * m.size, [dx, dz] = turn(x / m.scale, z / m.scale, -(m.rot || 0));
+    return [m.cx + dx, m.cz + dz];
   }
   function drawRangeMap(ctx, map, state) {
-    const { size, markers = [], sites = [], pose, selected, scanRadius, range, color = '#3ff4ff', t = 0 } = state, c = size / 2, m = rangeMetrics(size, range, pose), R = m.radius;
-    const point = (x, z) => ({ x: c + (x - m.cx) * m.scale, y: c + (z - m.cz) * m.scale });
+    const { size, markers = [], sites = [], pose, selected, scanRadius, range, color = '#3ff4ff', t = 0, rot = 0 } = state, c = size / 2, m = rangeMetrics(size, range, pose, rot), R = m.radius;
+    const point = (x, z) => { const [u, v] = turn(x - m.cx, z - m.cz, rot); return { x: c + u * m.scale, y: c + v * m.scale }; };
     ctx.clearRect(0, 0, size, size);
     // anel externo de marcas (gira devagar)
     ctx.save(); ctx.translate(c, c); ctx.rotate(t * .00012); ctx.strokeStyle = color; ctx.globalAlpha = .55;
@@ -144,19 +147,22 @@
     ctx.restore();
     // dentro do alcance: o mapa recortado e tingido, sobre um fundo translúcido, com grade de holograma
     ctx.save(); ctx.beginPath(); ctx.arc(c, c, R, 0, TAU); ctx.clip();
-    ctx.globalAlpha = .95; const o = point(-map.halfWidth, -map.halfHeight);
-    ctx.drawImage(map.canvas, o.x, o.y, map.halfWidth * 2 * m.scale, map.halfHeight * 2 * m.scale);
+    ctx.globalAlpha = .95; ctx.save(); ctx.translate(c, c); ctx.rotate(rot); ctx.scale(m.scale, m.scale); ctx.translate(-m.cx, -m.cz);
+    ctx.drawImage(map.canvas, -map.halfWidth, -map.halfHeight, map.halfWidth * 2, map.halfHeight * 2); ctx.restore();
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = color; ctx.globalAlpha = .38; ctx.fillRect(0, 0, size, size);
     ctx.globalCompositeOperation = 'destination-over'; ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(6,34,42,.55)'; ctx.fillRect(0, 0, size, size);
     ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = color; ctx.globalAlpha = .1; ctx.lineWidth = 1;
-    const step = 5 * m.scale, gx = ((c - m.cx * m.scale) % step + step) % step, gz = ((c - m.cz * m.scale) % step + step) % step;
-    for (let x = gx; x < size; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, size); ctx.stroke(); }
-    for (let y = gz; y < size; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(size, y); ctx.stroke(); }
+    // grade de 5 m presa ao mapa (gira junto)
+    ctx.save(); ctx.translate(c, c); ctx.rotate(rot); ctx.scale(m.scale, m.scale); ctx.translate(-m.cx, -m.cz); ctx.lineWidth = 1 / m.scale;
+    const g0x = Math.floor((m.cx - range * 1.5) / 5) * 5, g0z = Math.floor((m.cz - range * 1.5) / 5) * 5;
+    for (let x = g0x; x <= m.cx + range * 1.5; x += 5) { ctx.beginPath(); ctx.moveTo(x, m.cz - range * 1.5); ctx.lineTo(x, m.cz + range * 1.5); ctx.stroke(); }
+    for (let z = g0z; z <= m.cz + range * 1.5; z += 5) { ctx.beginPath(); ctx.moveTo(m.cx - range * 1.5, z); ctx.lineTo(m.cx + range * 1.5, z); ctx.stroke(); }
+    ctx.restore();
     ctx.globalAlpha = 1; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 26px "Plex UI",sans-serif';
     for (const site of sites) { const p = point(site.lx ?? (site.x0 + site.x1) / 2, site.lz ?? (site.z0 + site.z1) / 2); ctx.fillStyle = '#f2fbff'; ctx.globalAlpha = .85; ctx.fillText(site.name || 'A', p.x, p.y); }
     ctx.globalAlpha = 1;
     for (const marker of markers) { const p = point(marker.x, marker.z); dot(ctx, p.x, p.y, marker.color || palette.ally, 6); }
-    triangle(ctx, c, c, -pose.yaw, '#f4f5ef', 11);
+    triangle(ctx, c, c, rot - pose.yaw, '#f4f5ef', 11);
     if (selected) {
       const p = point(...selected), r = Math.max(10, scanRadius * m.scale);
       ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, TAU); ctx.fillStyle = 'rgba(63,244,255,.22)'; ctx.fill();
