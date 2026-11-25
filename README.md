@@ -299,13 +299,15 @@ A arma e o braço aparecem 45% maiores que antes. Eles crescem em torno da mão 
 - **Facas:** ficam um pouco menores, para a mão esquerda não virar um bloco enorme.
 - **Granadas e C4:** sobem um pouco.
 
-As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: mão de pele modelada em low poly e manga na cor do boneco (nos times, na cor do time).
+As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: a mão e o antebraço são os do **Low Poly Male Base** (wh_nerevar, CC-BY-4.0), com a manga na cor do boneco (nos times, na cor do time).
 
-**Mão modelada em low poly** (`index.html`, `buildHand`). Ela é feita de peças arredondadas, com seções em superelipse e faces planas, no lugar dos blocos:
-- palma mais larga nos nós e mais estreita no pulso, com o dorso levemente arqueado;
-- nós dos dedos em relevo e base do polegar saliente;
-- quatro dedos com três falanges que afinam até a ponta, com unha, e comprimentos de mão de verdade (médio mais longo, mindinho mais curto, linha dos nós curva);
-- polegar com duas falanges e faixa no pulso.
+**Mão do modelo com ossos** (`index.html`, `buildBaseHand`; dados em `assets/agents/body-base.js`, gerados por `tools/pack/build_body.py`):
+- **Malha:** a malha da mão do modelo vira uma mão com ossos: palma, três falanges em cada dedo e duas no polegar.
+- **Ajuste:** cada dedo é endireitado sobre as falanges do rig e ganha a largura e a espessura de um dedo de verdade (os do modelo são muito finos). Os dedos se espalham pela largura da palma, e o polegar sai do lado do indicador.
+- **Juntas:** perto dos nós, cada dedo passa aos poucos da palma para a primeira falange, e cada junta mistura os dois ossos. Assim a mão fecha sem pontas nem buracos.
+- **Antebraço:** tem a seção oval do braço do modelo, grosso no cotovelo e do tamanho do pulso da mão na ponta. O lado largo fica alinhado à largura da mão.
+- **Pegada das armas de duas mãos:** a mão de apoio aponta o pulso para o cotovelo, que fica embaixo, à esquerda e perto da câmera. O antebraço entra na diagonal pelo canto de baixo da tela e a mão envolve o guarda-mão por baixo, com o polegar na lateral.
+- **Bonecos (terceira pessoa):** usam a mesma mão, fechada em punho no ponto da pegada. Os braços do modelo ficaram 35% mais grossos em volta do osso.
 
 **Os dedos dobram em volta do cabo de verdade** (`wrapChain`). Cada junta gira o máximo possível sem a falange entrar no cabo (um retângulo de cantos redondos com 1,5 mm de folga) nem na palma. Assim os dedos dão a volta em cabos finos e, em cabos grossos (guarda-mão, cabo fundo de pistola), abraçam só até onde alcançam.
 

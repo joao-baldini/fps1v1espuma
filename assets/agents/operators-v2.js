@@ -254,20 +254,47 @@
     for (let i = from; i < out.p.length; i += 3) for (let j = 0; j < 3; j++) out.p[i + j] = c[j] + (out.p[i + j] - c[j]) * k[j];
   }
   const HEAD_C = [0, 1.675, 0], HEAD_K = [0.84, 1, 0.84];
-  // Luva fechada na empunhadura no pulso do braço do pack (mesma mão do braço procedural).
-  function addHand(out, wrist, dir, s, side) {
-    const { rt, up, fw } = frame(dir), inward = side > 0 ? -1 : 1, glove = s.gear;
-    addLoft(out, [{ pos: [wrist[0] - dir[0] * 0.045, wrist[1] - dir[1] * 0.045, wrist[2] - dir[2] * 0.045], rx: 0.044, rz: 0.047 }, { pos: wrist, rx: 0.046, rz: 0.049 }], 6, s.cloth, true, true);
-    const palm = [wrist[0] + fw[0] * 0.035, wrist[1] + fw[1] * 0.035, wrist[2] + fw[2] * 0.035];
-    addOBox(out, palm, rt, up, fw, 0.036, 0.02, 0.04, glove, 0.008);
-    const fingersC = [palm[0] + fw[0] * 0.045 - up[0] * 0.022, palm[1] + fw[1] * 0.045 - up[1] * 0.022, palm[2] + fw[2] * 0.045 - up[2] * 0.022];
-    const curl = frame([fw[0] - up[0] * .9, fw[1] - up[1] * .9, fw[2] - up[2] * .9], up);
-    addOBox(out, fingersC, curl.rt, curl.up, curl.fw, 0.034, 0.016, 0.026, glove, 0.006);
-    addOBox(out, [palm[0] + fw[0] * 0.03 + up[0] * 0.012, palm[1] + fw[1] * 0.03 + up[1] * 0.012, palm[2] + fw[2] * 0.03 + up[2] * 0.012], rt, up, fw, 0.034, 0.008, 0.012, s.vest, 0.004);
-    const thumbC = [palm[0] + rt[0] * inward * 0.03 + fw[0] * 0.03 + up[0] * 0.01, palm[1] + rt[1] * inward * 0.03 + fw[1] * 0.03 + up[1] * 0.01, palm[2] + rt[2] * inward * 0.03 + fw[2] * 0.03 + up[2] * 0.01];
-    const th = frame([fw[0] + rt[0] * inward * .35, fw[1] + rt[1] * inward * .35, fw[2] + rt[2] * inward * .35], up);
-    addOBox(out, thumbC, th.rt, th.up, th.fw, 0.012, 0.012, 0.028, glove, 0.004);
+  // Mão do pack fechada no cabo: a malha da mão do modelo (BODY_BASE.hand, com ossos) dobrada num punho, posta com o
+  // centro do punho no ponto da pegada e o pulso virado para o antebraço.
+  const HP = -.016, HK = -.036, HT = .015, HKZ = [.0015, -.002, 0, .005], HLEN = [[.038, .024, .021], [.04, .026, .022], [.038, .024, .021], [.031, .019, .017]];
+  const FIST = [[-1.1, -1.35, -.9], [-1.3, -1.5, -1.0], [-1.3, -1.5, -1.0], [-1.35, -1.5, -1.0]], THUMB = [-1.8, -.45];
+  const rx = (a) => { const c = Math.cos(a), s = Math.sin(a); return [[1, 0, 0], [0, c, -s], [0, s, c]]; };
+  const mmul = (A, B) => A.map(r => [0, 1, 2].map(j => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j]));
+  const mv = (A, v) => [0, 1, 2].map(i => A[i][0] * v[0] + A[i][1] * v[1] + A[i][2] * v[2]);
+  let fistCache = null;
+  function fistMesh() {
+    if (fistCache) return fistCache;
+    const H = BASE.hand, bones = [{ R: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], t: [0, 0, 0], rest: [0, 0, 0] }];
+    for (let f = 0; f < 4; f++) {
+      let R = [[1, 0, 0], [0, 1, 0], [0, 0, 1]], t = [H.fx[f], HP + HT / 2, HK + HKZ[f]], rest = t.slice();
+      for (let i = 0; i < 3; i++) {
+        if (i) { const d = mv(R, [0, 0, -HLEN[f][i - 1]]); t = [t[0] + d[0], t[1] + d[1], t[2] + d[2]]; rest = [rest[0], rest[1], rest[2] - HLEN[f][i - 1]]; }
+        R = mmul(R, rx(FIST[f][i])); bones.push({ R, t: t.slice(), rest: rest.slice() });
+      }
+    }
+    const tr = H.thumbRef, R1 = rx(THUMB[0]), t2 = mv(R1, [0, 0, -.032]);
+    bones.push({ R: R1, t: tr.slice(), rest: tr.slice() }, { R: mmul(R1, rx(THUMB[1])), t: [tr[0] + t2[0], tr[1] + t2[1], tr[2] + t2[2]], rest: [tr[0], tr[1], tr[2] - .032] });
+    const n = H.p.length / 3, P = [];
+    for (let v = 0; v < n; v++) {
+      const p = [H.p[v * 3] / 1e5, H.p[v * 3 + 1] / 1e5, H.p[v * 3 + 2] / 1e5], o = [0, 0, 0];
+      for (let k = 0; k < 2; k++) { const b = bones[H.b[v * 2 + k]], w = H.w[v * 2 + k]; if (!w) continue; const q = mv(b.R, [p[0] - b.rest[0], p[1] - b.rest[1], p[2] - b.rest[2]]); for (let j = 0; j < 3; j++) o[j] += w * (q[j] + b.t[j]); }
+      P.push(o);
+    }
+    return (fistCache = { P, I: H.i, C: [0, HP - .0145, HK - .03 + .0215] });
   }
+  function addHand(out, wrist, dir, s, side, grip) {
+    const F = fistMesh(), k = 1.12, m = side > 0 ? 1 : -1;
+    // eixos da mão: Z para o cotovelo, X do indicador ao mindinho (para baixo na mão do gatilho, para trás na de apoio)
+    const Z = norm([-dir[0], -dir[1], -dir[2]]), want = side > 0 ? [0, -1, 0] : [0, 0, 1];
+    let X = sub(want, Z.map(v => v * dot(want, Z))); X = norm(X); const Y = cross(Z, X);
+    const g = grip || wrist, [r, gg, bl] = hexRGB(s.skin);
+    const at = (p) => { const x = (p[0] * m - F.C[0]) * k, y = (p[1] - F.C[1]) * k, z = (p[2] - F.C[2]) * k; return [g[0] + X[0] * x + Y[0] * y + Z[0] * z, g[1] + X[1] * x + Y[1] * y + Z[1] * z, g[2] + X[2] * x + Y[2] * y + Z[2] * z]; };
+    for (let t = 0; t < F.I.length; t += 3) {
+      const a = at(F.P[F.I[t]]), b = at(F.P[F.I[t + 1]]), c = at(F.P[F.I[t + 2]]);
+      if (m > 0) pushTri(out, a, b, c, r, gg, bl); else pushTri(out, a, c, b, r, gg, bl);
+    }
+  }
+
 
   function toGeometry(THREE, out) {
     const g = new THREE.BufferGeometry();
@@ -493,7 +520,7 @@
       addBevelBox(out, 0, 1.37, 0.17, 0.24, 0.055, 0.12, s.accent, 0.012);
     }
     // Luvas fechadas no ponto da pegada (pulso e direção vêm do braço do pack reposicionado)
-    for (const [k, side] of [['R', 1], ['L', -1]]) { const a = BASE.arms[k]; addEllipsoid(out, a.elbow[0], a.elbow[1], a.elbow[2], 0.05, 0.05, 0.052, 6, 4, s.cloth); addHand(out, a.wrist, a.dir, s, side); }
+    for (const [k, side] of [['R', 1], ['L', -1]]) { const a = BASE.arms[k]; addEllipsoid(out, a.elbow[0], a.elbow[1], a.elbow[2], 0.06, 0.06, 0.062, 6, 4, s.cloth); addHand(out, a.wrist, a.dir, s, side, a.grip); }
     return toGeometry(THREE, out);
   }
 

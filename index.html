@@ -2968,26 +2968,27 @@ const DEAGLE_SLIDE = [
 // (a manga vai do pulso da luva até ele, saindo da tela).
 // Mão de apoio (esquerda) por baixo do guarda-mão: palma para cima, indicador para a frente, dedos subindo pelo lado
 // direito; mão do gatilho no cabo de pistola, com o dorso para fora e os dedos dando a volta pela frente.
-const supportHand = (grip, to, ch = { hy: .021, hz: .024 }, back = [0, -1, 0]) => ({ left: true, grip, axis: [0, 0, 1], back, ch, to });
+// Mão de apoio: o pulso aponta para o cotovelo (a mão segue o antebraço, que entra pelo canto de baixo à esquerda).
+const supportHand = (grip, to, ch = { hy: .021, hz: .024 }, back = null) => ({ left: true, grip, axis: [0, 0, 1], back, ch, to });
 const triggerHand = (grip, to, axis = [0, -1, .3], ch = { hy: .013, hz: .02 }, back = [1, 0, 0]) => ({ grip, axis, back, ch: { ci: .45, ...ch }, to });
 // Pistolas: a esquerda envolve os dedos da direita pelo lado esquerdo (dorso para a esquerda).
 const cupHand = (grip, to, axis = [0, -1, .25]) => ({ left: true, grip, axis, back: [-1, 0, 0], ch: { hy: .03, hz: .034 }, to });
 const ARMS = {
-  rifle:  [supportHand([0, -.03, -.42], [-.24, -.34, -.02]), triggerHand([0, -.085, .01], [.17, -.32, .32])],
+  rifle:  [supportHand([0, -.03, -.42], [-.36, -.42, .14]), triggerHand([0, -.085, .01], [.17, -.32, .32])],
   pistol: [cupHand([-.022, -.1, .02], [-.22, -.33, .26]), triggerHand([0, -.09, .022], [.16, -.33, .32], [0, -1, .25], { hy: .015, hz: .026 })],
   knife:  [],
-  sniper: [supportHand([0, -.035, -.45], [-.24, -.34, -.04]), triggerHand([0, -.085, .02], [.17, -.32, .33])],
+  sniper: [supportHand([0, -.035, -.45], [-.36, -.42, .12]), triggerHand([0, -.085, .02], [.17, -.32, .33])],
 };
 ARMS.m4a4 = ARMS.m4a1s = ARMS.rifle; ARMS.usps = ARMS.pistol; ARMS.ssg = ARMS.sniper; ARMS.butterfly = [];
 ARMS.medgun = ARMS.pistol; ARMS.glock = ARMS.pistol; ARMS.galil = ARMS.rifle;
-ARMS.famas = [supportHand([0, -.055, -.31], [-.24, -.34, -.02]), triggerHand([0, -.095, -.13], [.17, -.32, .30])];
+ARMS.famas = [supportHand([0, -.055, -.31], [-.36, -.42, .22]), triggerHand([0, -.095, -.13], [.17, -.32, .30])];
 // C4: uma mão de cada lado do bloco, segurando as quinas de baixo.
 ARMS.c4 = [{ left: true, grip: [-.055, -.08, -.02], axis: [0, 0, 1], back: [-1, -.4, 0], ch: { hy: .016, hz: .02 }, to: [-.22, -.33, .26] },
   { grip: [.055, -.08, -.02], axis: [0, 0, 1], back: [1, -.4, 0], ch: { hy: .016, hz: .02 }, to: [.16, -.33, .32] }];
 // Granadas: a mão fecha em volta do corpo da granada, em pé.
 ARMS.he = ARMS.flash = ARMS.smoke = [{ grip: [.012, -.075, .005], axis: [0, -1, .15], back: [1, .2, .4], ch: { hy: .02, hz: .02 }, to: [.16, -.33, .32] }];
-ARMS.ump = [supportHand([0, -.045, -.27], [-.24, -.34, 0]), triggerHand([0, -.08, .015], [.17, -.32, .32])];
-ARMS.bucky = [supportHand([0, -.045, -.47], [-.24, -.34, -.06], { hy: .02, hz: .026 }), triggerHand([0, -.08, .035], [.17, -.32, .34])];
+ARMS.ump = [supportHand([0, -.045, -.27], [-.36, -.42, .25]), triggerHand([0, -.08, .015], [.17, -.32, .32])];
+ARMS.bucky = [supportHand([0, -.045, -.47], [-.36, -.42, .1], { hy: .02, hz: .026 }), triggerHand([0, -.08, .035], [.17, -.32, .34])];
 // Pegada medida em cada modelo: [centro do cabo, meia altura, meia profundidade, polegar]. O canal é o perfil real do
 // cabo sob os dedos (fatia da arma na faixa dos dedos, contorno que envolve o ponto da pegada); os dedos dobram em
 // volta dele. Nas pistolas, a mão esquerda envolve a direita (o canal dela inclui os dedos da direita). Ver o README.
@@ -3115,7 +3116,49 @@ function mixGrip(hand, w) {
 // ch: meia altura (hy, no eixo do dorso) e meia profundidade (hz, da palma para a frente) do cabo segurado; ci e ct:
 // quanto o indicador e o polegar fecham em repouso (indicador meio esticado = dedo no gatilho); iz: o indicador
 // fecha num ponto à frente/atrás do centro do canal (o anel da karambit).
+// Mão do pack (low_poly_male_base, wh_nerevar, CC-BY-4.0): a malha do modelo com ossos (palma, três falanges por dedo,
+// duas no polegar), gerada por tools/pack/build_body.py nos mesmos eixos e medidas desta mão. Os ossos ficam nos
+// mesmos lugares das juntas acima, então a pegada medida em cada arma fecha a mão do modelo do mesmo jeito.
+const BASE_HAND = globalThis.BODY_BASE && BODY_BASE.hand, baseHandGeo = [null, null];
+let baseHandMat = null;
+function baseHandGeometry(left) {
+  const k = left ? 1 : 0; if (baseHandGeo[k]) return baseHandGeo[k];
+  const H = BASE_HAND, n = H.p.length / 3, pos = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), col = new Float32Array(n * 3), c = new THREE.Color(HAND_COL.skin);
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = H.p[i * 3] / 1e5 * (left ? -1 : 1); pos[i * 3 + 1] = H.p[i * 3 + 1] / 1e5; pos[i * 3 + 2] = H.p[i * 3 + 2] / 1e5;
+    si[i * 4] = H.b[i * 2]; si[i * 4 + 1] = H.b[i * 2 + 1]; sw[i * 4] = H.w[i * 2]; sw[i * 4 + 1] = H.w[i * 2 + 1];
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  const idx = H.i.slice(); if (left) for (let t = 0; t < idx.length; t += 3) { const a = idx[t + 1]; idx[t + 1] = idx[t + 2]; idx[t + 2] = a; }
+  let g = new THREE.BufferGeometry(); g.setIndex(idx);
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  g = g.toNonIndexed(); g.computeVertexNormals(); g.computeBoundingSphere();   // faces planas, como o resto do jogo
+  return (baseHandGeo[k] = g);
+}
+function buildBaseHand(left, ch) {
+  const T = HAND_T, s = left ? -1 : 1, root = new THREE.Group(), set = gripSet(ch);
+  if (!baseHandMat) { baseHandMat = globalThis.V2Operators && typeof v2Mats !== 'undefined' && v2Mats ? V2Operators.createCharacterMaterial(THREE, v2Mats) : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .7, metalness: .05 }); baseHandMat.skinning = true; }
+  const palm = new THREE.Bone(); root.add(palm); const bones = [palm], fingers = [];
+  for (let f = 0; f < 4; f++) {
+    const L = HAND_LEN[f], j = [new THREE.Bone(), new THREE.Bone(), new THREE.Bone()];
+    j[0].position.set(s * BASE_HAND.fx[f], HAND_PALM + T / 2, HAND_KNUCKLE + HAND_KZ[f]); j[1].position.z = -L[0]; j[2].position.z = -L[1];
+    palm.add(j[0]); j[0].add(j[1]); j[1].add(j[2]); bones.push(...j); fingers.push(j);
+  }
+  const t1 = new THREE.Bone(), t2 = new THREE.Bone(), ref = BASE_HAND.thumbRef;
+  t1.position.set(s * ref[0], ref[1], ref[2]); t2.position.z = -HAND_THUMB[0]; palm.add(t1); t1.add(t2); bones.push(t1, t2);
+  const mesh = new THREE.SkinnedMesh(baseHandGeometry(left), baseHandMat); mesh.frustumCulled = false; mesh.userData.part = 'palm'; root.add(mesh);
+  root.updateMatrixWorld(true); mesh.bind(new THREE.Skeleton(bones));
+  // base do polegar no lugar desta pegada (o osso leva a malha junto)
+  t1.position.set(s * -.041, HAND_PALM - .002, set.tb);
+  const wr = BASE_HAND.wrist;
+  root.userData = { hand: true, s, C: set.C, fingers, closed: set.closed, thumb: [t1, t2], thumbClosed: set.thumbClosed, curl: [-1, -1, -1, -1], rest: [1, ch.ci ?? 1, ch.ct ?? 1], sets: { main: set }, mix: '',
+    wrist: new V3(s * (wr[0] + wr[1]) / 2, (wr[2] + wr[3]) / 2, .066) };
+  setHandCurl(root, 1, ch.ci ?? 1, ch.ct ?? 1);
+  return root;
+}
 function buildHand(left = false, ch = {}) {
+  if (BASE_HAND) return buildBaseHand(left, ch);
   const T = HAND_T, s = left ? -1 : 1;
   const root = new THREE.Group(), add = m => (root.add(m), m);
   // Palma: do pulso aos nós, mais larga nos nós, dorso levemente arqueado; nós dos dedos em relevo; base do polegar.
@@ -3163,14 +3206,30 @@ function placeHand(hand, spec) {
   return hand;
 }
 // Pulso da luva no espaço do braço (o grupo marcado com userData.armSpace), subindo pelos pais da mão.
-function handWrist(hand, out) {
-  out.copy(HAND_WRIST);
-  for (let o = hand; o && !o.userData.armSpace; o = o.parent) { o.updateMatrix(); out.applyMatrix4(o.matrix); }
+function handWrist(hand, out, axisOut) {
+  out.copy(hand.userData.wrist || HAND_WRIST); if (axisOut) axisOut.set(1, 0, 0);
+  for (let o = hand; o && !o.userData.armSpace; o = o.parent) { o.updateMatrix(); out.applyMatrix4(o.matrix); if (axisOut) axisOut.applyQuaternion(o.quaternion); }
   return out;
 }
-const sleeveWrist = new V3();
-// Manga: prisma do cotovelo até o pulso da luva (ponta fina no pulso).
-function fitSleeve(sleeve, hand, elbow) { fitKnifeArm(sleeve, elbow, handWrist(hand, sleeveWrist), .036); }
+const sleeveWrist = new V3(), sleeveX = new V3(), sleeveY = new V3(), sleeveZ = new V3(), sleeveM = new THREE.Matrix4();
+// Manga: antebraço do modelo do pack (seção oval, grossa no cotovelo, do tamanho do pulso da mão na ponta), do
+// cotovelo até o pulso, com o lado largo alinhado à largura da mão.
+function fitSleeve(sleeve, hand, elbow) {
+  if (!BASE_HAND) { fitKnifeArm(sleeve, elbow, handWrist(hand, sleeveWrist), .036); return; }
+  handWrist(hand, sleeveWrist, sleeveX); sleeveY.copy(sleeveWrist).sub(elbow); const L = sleeveY.length(); sleeveY.multiplyScalar(1 / Math.max(L, 1e-4));
+  sleeveX.addScaledVector(sleeveY, -sleeveX.dot(sleeveY)).normalize(); sleeveZ.crossVectors(sleeveX, sleeveY);
+  sleeveM.makeBasis(sleeveX, sleeveY, sleeveZ); sleeve.quaternion.setFromRotationMatrix(sleeveM);
+  sleeve.position.copy(elbow).add(sleeveWrist).multiplyScalar(.5); sleeve.scale.set(1, L, 1);
+}
+// Antebraço: anéis ovais de 8 lados ao longo de +Y (-0,5 cotovelo, +0,5 pulso), medidas em metros na escala da mão.
+function forearmGeometry() {
+  const wr = BASE_HAND.wrist, ax = (wr[1] - wr[0]) / 2 + .006, az = Math.max((wr[3] - wr[2]) / 2 + .006, ax * .85);
+  const rings = [[-.56, .058, .055], [-.3, .062, .058], [0, .056, .052], [.3, .046, .043], [.47, ax + .003, az + .003], [.5, ax, az]], N = 8, p = [];
+  const pt = (r, i) => { const a = (i + .5) / N * TAU; return [Math.cos(a) * r[1], r[0], Math.sin(a) * r[2]]; };
+  for (let k = 0; k < rings.length - 1; k++) for (let i = 0; i < N; i++) { const a = pt(rings[k], i), b = pt(rings[k], i + 1), c = pt(rings[k + 1], i + 1), d = pt(rings[k + 1], i); p.push(...a, ...c, ...b, ...a, ...d, ...c); }
+  const r0 = rings[0]; for (let i = 0; i < N; i++) p.push(0, r0[0], 0, ...pt(r0, i), ...pt(r0, i + 1));
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.computeVertexNormals(); g.computeBoundingSphere(); return g;
+}
 const handRoll = new THREE.Quaternion(), handEuler = new THREE.Euler(), handTmp = new V3(), handTmp2 = new V3(), AXIS_Z = new V3(0, 0, 1);
 const smooth01 = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
 const MUZZLE = { rifle: [0, .01, -.675], pistol: [0, .043, -.357], sniper: [0,.025,-.945], m4a4: [0,.006,-.79], m4a1s: [0,.006,-.95], usps: [0,.015,-.45], ssg: [0,.01,-.9], ump: [0,.005,-.48], bucky: [0,.014,-.75], glock: [0,.006,-.226], galil: [0,.007,-.68], famas: [0,.005,-.593] };
@@ -3316,7 +3375,7 @@ function buildButterfly() {
   return { pivot, blade, free };
 }
 // Manga em prisma de 6 lados facetado (V2Weapons) ou bloco (fallback de testes).
-const knifeArmGeo = globalThis.V2Weapons ? V2Weapons.createSleeveGeometry(THREE) : new THREE.BoxGeometry(2,1,2), knifeArmUp = new V3(0,1,0);
+const knifeArmGeo = BASE_HAND ? forearmGeometry() : globalThis.V2Weapons ? V2Weapons.createSleeveGeometry(THREE) : new THREE.BoxGeometry(2,1,2), knifeArmUp = new V3(0,1,0);
 const knifeArmA = new V3(), knifeArmB = new V3(), knifeArmDir = new V3();
 // Pose channels: hand x/y/z, pitch/yaw/roll, blade hinge, free hinge, left x/y/z/roll, finger opening, presentation at the index finger,
 // and (butterfly) the knife standing up around its pin.

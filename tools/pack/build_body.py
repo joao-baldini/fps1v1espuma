@@ -69,6 +69,91 @@ def ik(S, T, L1, L2, pole):
     return S + u * a + p * h, k
 
 
+# ---------------- Mão com ossos para a primeira pessoa ----------------
+# Eixos da mão do jogo (mão direita): +X do indicador para o mindinho, +Y dorso, -Z para onde os dedos saem, pulso em
+# z = +0,068. Ossos: 0 palma, 1..12 dedos (indicador..mindinho, 3 falanges cada), 13..14 polegar. Os dedos do modelo
+# são endireitados sobre as falanges do rig (mesmos comprimentos que o jogo usa para fechar a mão no cabo).
+HAND_PALM, HAND_KNUCKLE, HAND_T = -.016, -.036, .015
+HAND_KZ = [.0015, -.002, 0, .005]
+HAND_LEN = [[.038, .024, .021], [.04, .026, .022], [.038, .024, .021], [.031, .019, .017]]
+HAND_THUMB = [.032, .027]
+FW = [.0195, .02, .019, .0165]
+FX = [-.031, -.0105, .0105, .0305]   # dedos espalhados pela largura da palma do modelo
+THUMB_REF = [-.041, HAND_PALM - .002, -.0115]   # base do polegar na pegada padrão (o jogo desloca o osso por pegada)
+
+
+def build_hand(U, F):
+    W = np.array([0.477, 1.052, 0.012]); tipc = np.array([0.55, 0.886, 0.0])
+    d = tipc - W; d /= np.linalg.norm(d); Z = -d
+    X = np.array([0, 0, 1.]); X -= X @ Z * Z; X /= np.linalg.norm(X); Y = np.cross(Z, X); R = np.stack([X, Y, Z])
+    sel = np.where((U[:, 0] > .40) & (U[:, 1] < 1.10))[0]
+    Q = (U[sel] - W) @ R.T; Q[:, 2] += .068
+    # polegar: no modelo ele sai para o lado do indicador (-X), do meio da palma até a ponta
+    thumb = (Q[:, 0] < -.04) & (Q[:, 2] > -.04)
+    palm = (Q[:, 2] < .04) & (Q[:, 2] > -.03) & ~thumb
+    Q[:, 0] -= (Q[palm, 0].max() + Q[palm, 0].min()) / 2       # palma centrada em X
+    yc = (Q[palm, 1].max() + Q[palm, 1].min()) / 2; Q[:, 1] = -.001 + (Q[:, 1] - yc) * .74   # e com a espessura da do jogo
+    n = len(sel); bone = np.zeros((n, 2), int); wt = np.zeros((n, 2)); wt[:, 0] = 1
+    out = Q.copy()
+    sm = lambda e0, e1, x: np.clip((x - e0) / (e1 - e0), 0, 1) ** 2 * (3 - 2 * np.clip((x - e0) / (e1 - e0), 0, 1))
+    fing = (Q[:, 2] < HAND_KNUCKLE + .004) & ~thumb
+    # quatro dedos: agrupa por X na ponta e segue cada um até o nó
+    xs = Q[fing, 0]; cent = np.quantile(xs, [.12, .38, .62, .88])
+    for _ in range(20):
+        lab = np.argmin(np.abs(xs[:, None] - cent[None]), 1); cent = np.array([xs[lab == k].mean() for k in range(4)])
+    fidx = np.where(fing)[0]
+    for f in range(4):
+        ids = fidx[lab == f]; P = Q[ids]
+        top = P[P[:, 2] > P[:, 2].max() - .012].mean(0)       # nó (anel de cima do dedo)
+        ax = P[P[:, 2] < P[:, 2].min() + .012].mean(0) - top; Lb = np.linalg.norm(ax); ax /= Lb
+        across = np.array([1., 0, 0]) - ax[0] * ax; across /= np.linalg.norm(across); up = np.cross(-ax, across) * -1
+        up = np.cross(across, ax * -1); up /= np.linalg.norm(up)
+        L = HAND_LEN[f]; Lr = sum(L); k = Lr / Lb
+        # seção do dedo com a largura e a espessura de um dedo de verdade (o modelo tem dedos muito finos)
+        qs = P - top; oxs = qs @ across; oys = qs @ up
+        ox0, oy0 = (oxs.max() + oxs.min()) / 2, (oys.max() + oys.min()) / 2
+        kx = FW[f] / max(oxs.max() - oxs.min(), 1e-4); ky = HAND_T / max(oys.max() - oys.min(), 1e-4)
+        base = np.array([FX[f], HAND_PALM + HAND_T / 2, HAND_KNUCKLE + HAND_KZ[f]])
+        for j, vi in enumerate(ids):
+            q = Q[vi] - top; t = (q @ ax) * k; ox = (q @ across - ox0) * kx; oy = (q @ up - oy0) * ky
+            warped = base + [ox * (1 - .25 * max(0, t - Lr * .8) / (Lr * .2)), oy, -t]
+            # perto do nó, passa aos poucos da posição na palma para a do dedo (sem esticar triângulos em ponta)
+            g = sm(-.002, .016, t); out[vi] = Q[vi] * (1 - g) + warped * g
+            # falange e pesos (mistura curta em volta de cada junta)
+            b0, b1 = L[0], L[0] + L[1]
+            if t < b0 / 2:
+                w = sm(-.012, .018, t); bone[vi] = [0, 1 + f * 3]; wt[vi] = [1 - w, w]
+            elif t < (b0 + b1) / 2:
+                w = sm(b0 - .007, b0 + .007, t); bone[vi] = [1 + f * 3, 2 + f * 3]; wt[vi] = [1 - w, w]
+            else:
+                w = sm(b1 - .006, b1 + .006, t); bone[vi] = [2 + f * 3, 3 + f * 3]; wt[vi] = [1 - w, w]
+    # polegar: metacarpo (palma) leva a junta até a base do osso; falanges endireitadas ao longo do -Z do osso
+    tid = np.where(thumb)[0]; P = Q[tid]; x0 = P[:, 0].max(); x1 = P[:, 0].min()
+    tip = P[P[:, 0] < x1 + .009].mean(0)
+    mcp = P[(P[:, 0] < x0 - .015) & (P[:, 0] > x0 - .03)].mean(0)
+    cmc = P[P[:, 0] > x0 - .008].mean(0)
+    ax = tip - mcp; Lb = np.linalg.norm(ax); ax /= Lb; k = sum(HAND_THUMB) / Lb
+    across = np.cross(ax, np.array([0, 1., 0])); across /= np.linalg.norm(across); up = np.cross(across, ax)
+    ref = np.array(THUMB_REF)
+    ph = P[(P - mcp) @ ax >= 0] - mcp; tox = ph @ across; toy = ph @ up
+    tox0, toy0 = (tox.max() + tox.min()) / 2, (toy.max() + toy.min()) / 2
+    tkx = .021 / max(tox.max() - tox.min(), 1e-4); tky = .019 / max(toy.max() - toy.min(), 1e-4)
+    for vi in tid:
+        q = Q[vi] - mcp; t = q @ ax
+        if t < 0:   # metacarpo: desloca aos poucos até a base do osso do polegar
+            s_ = np.clip((Q[vi] - cmc) @ (mcp - cmc) / max((mcp - cmc) @ (mcp - cmc), 1e-9), 0, 1)
+            out[vi] = Q[vi] + (ref - mcp) * s_; w = sm(-.006, 0, t); bone[vi] = [0, 13]; wt[vi] = [1 - w, w]; continue
+        t *= k; ox = (q @ across - tox0) * tkx; oy = (q @ up - toy0) * tky
+        g = sm(-.002, .014, t); out[vi] = (Q[vi] + (ref - mcp)) * (1 - g) + (ref + [ox, oy, -t]) * g
+        w = sm(HAND_THUMB[0] - .004, HAND_THUMB[0] + .004, t); bone[vi] = [13, 14]; wt[vi] = [1 - w, w]
+    # triângulos da mão
+    pos = {v: i for i, v in enumerate(sel)}
+    tris = [[pos[a], pos[b], pos[c]] for a, b, c in F if a in pos and b in pos and c in pos]
+    return {'p': [int(round(v * 100000)) for v in out.reshape(-1)], 'i': [int(v) for v in np.array(tris).reshape(-1)],
+            'b': [int(v) for v in bone.reshape(-1)], 'fx': FX, 'w': [round(float(v), 3) for v in wt.reshape(-1)], 'thumbRef': THUMB_REF,
+            'wrist': [round(float(v), 4) for v in (Q[Q[:, 2] > .055][:, 0].min(), Q[Q[:, 2] > .055][:, 0].max(), Q[Q[:, 2] > .055][:, 1].min(), Q[Q[:, 2] > .055][:, 1].max())]}
+
+
 def main(src):
     V, F = load(src)
     # juntas medidas no modelo (lado +X = direito do boneco); y ainda na escala original
@@ -102,6 +187,14 @@ def main(src):
         E2, k = ik(S, wristT, L1, L2, pole)
         RU = rot_from_to(E - S, E2 - S); RF = rot_from_to(Wr - E, wristT - E2)
         arms[sg] = dict(S=S, E=E, RU=RU, RF=RF, E2=E2, k=k, wrist=wristT, grip=grip, dir=dirH)
+    # braços do modelo são finos para um boneco de tiro: engrossa 35% em volta do osso (antes de dobrar)
+    for sg, a in arms.items():
+        m = (side == sg) & ((wU + wF) > 0)
+        P = V[m]; S, E = a['S'], a['E']; Wr = J['W'] * [sg, 1, 1]
+        t1, d1 = seg_param(P, S, E); t2, d2 = seg_param(P, E, Wr)
+        q = np.where((d1 <= d2)[:, None], S + np.clip(t1, 0, 1)[:, None] * (E - S), E + np.clip(t2, 0, 1)[:, None] * (Wr - E))
+        k = 1 + .35 * (wU + wF)[m]
+        V[m] = q + (P - q) * k[:, None]
     newV = V.copy()
     for sg, a in arms.items():
         m = side == sg
@@ -165,6 +258,7 @@ def main(src):
     out['arms'] = {('R' if sg > 0 else 'L'): {'shoulder': [round(v, 4) for v in a['S']], 'elbow': [round(v, 4) for v in a['E2']],
                    'wrist': [round(v, 4) for v in a['wrist']], 'k': round(a['k'], 3), 'grip': [round(v, 4) for v in a['grip']], 'dir': [round(v, 4) for v in a['dir']]} for sg, a in arms.items()}
     out['headScale'] = [round(v, 3) for v in HEAD_S]
+    out['hand'] = build_hand(V0, F)
     tris = {k: len(v['r']) for k, v in out.items() if isinstance(v, dict) and 'r' in v}
     with open(OUT, 'w') as fh:
         fh.write('// Gerado por tools/pack/build_body.py a partir de "Low Poly Male Base" de wh_nerevar (Sketchfab), licença CC-BY-4.0:\n'

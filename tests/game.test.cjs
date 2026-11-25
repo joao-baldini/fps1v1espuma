@@ -2968,8 +2968,10 @@ test('first-person hands close around each weapon grip: fitted grip per gun, tri
   for(const w of ['rifle','galil','m4a4','m4a1s','famas','ump','bucky','sniper','ssg','usps','glock']){
     assert.equal(arms[w][0].left,true,w);assert.ok(!arms[w][1].left,w);assert.ok(arms[w][1].ch.ci<1,w+' indicador no gatilho');
   }
-  // apoio por baixo do guarda-mão: dorso para baixo, indicador para a frente
-  assert.equal(JSON.stringify(arms.rifle[0].back),'[0,-1,0]');assert.equal(JSON.stringify(arms.rifle[0].axis),'[0,0,1]');
+  // apoio por baixo do guarda-mão: indicador para a frente e o pulso virado para o cotovelo, que fica embaixo, à
+  // esquerda e mais perto da câmera (o antebraço entra pelo canto de baixo da tela)
+  for(const w of ['rifle','sniper','famas','ump','bucky']){const a=arms[w][0];assert.equal(a.back,null,w);assert.equal(JSON.stringify(a.axis),'[0,0,1]',w);
+    assert.ok(a.to[0]<a.grip[0]-.25&&a.to[1]<a.grip[1]-.3&&a.to[2]>a.grip[2]+.3,w+' cotovelo embaixo à esquerda');}
   const grab=vm.runInContext(section('const GRAB_FIT =','\n};')+'\n};GRAB_FIT',cx);
   for(const w of ['rifle','galil','ump'])assert.ok(grab[w].mag&&grab[w].bolt,w+' pega pente e alavanca');
   for(const [w,g] of Object.entries(grab))for(const k of Object.keys(g))assert.ok(g[k][3]>0&&g[k][3]<=1,w+' '+k+' fecha a mão');
@@ -3026,6 +3028,9 @@ test('Low Poly Male Base (wh_nerevar, CC-BY-4.0): every operator and team rig is
   ctx.globalThis = ctx;
   vm.runInNewContext(src, ctx); vm.runInNewContext(readFileSync(resolve(__dirname, '../assets/agents/operators-v2.js'), 'utf8'), ctx);
   const B = ctx.BODY_BASE;
+  const H = B.hand; assert.ok(H && H.p.length / 3 > 100 && H.i.length % 3 === 0, 'first-person hand mesh from the model');
+  assert.equal(H.b.length, H.p.length / 3 * 2); assert.ok(H.b.every(b => b >= 0 && b <= 14), 'hand bones: palm, 12 finger joints, 2 thumb joints');
+  for (let f = 1; f <= 14; f++) assert.ok(H.b.some((b, i) => b === f && H.w[i] > .5), 'every hand bone moves part of the mesh (' + f + ')');
   for (const k of ['head', 'body', 'hip', 'legL', 'legR', 'segThigh', 'segShin', 'segBoot']) {
     assert.ok(B[k].r.length > 20, k + ' has triangles'); assert.equal(B[k].p.length, B[k].r.length * 9, k + ' positions match triangles');
     assert.ok(B[k].r.every(r => r >= 0 && r <= 4), k + ' regions');
