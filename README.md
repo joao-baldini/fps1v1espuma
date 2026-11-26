@@ -223,7 +223,7 @@ O quadro pequeno **Prefire** abre o percurso da **Inferno: Banana → B → CT �
 
 Esse trecho usa a geometria física do VPK fornecido, convertida offline e recortada, com cores chapadas e o shader de grade do jogo. O restante da Inferno, materiais e texturas do CS2 não são carregados. Detalhes da conversão em [assets/maps/README.md](assets/maps/README.md).
 
-O quadro separado **Viewmodel** muda a posição da arma em tempo real. **X** move para esquerda/direita (−2 a 2,5), **Y** para trás/frente (−2 a 2) e **Z** para baixo/cima (−2 a 2). Os botões usam passos de 0,5; **Preferências → Posição da arma** permite digitar valores de 0,1 em 0,1. As duas telas compartilham a mesma preferência, salva no navegador e aplicada em todos os modos. **Restaurar padrão** zera os três valores e recupera a posição anterior do jogo. É uma transformação do modelo em primeira pessoa, sem mudar a câmera, a mira, os tiros ou o modelo dos adversários.
+A posição da arma em primeira pessoa não é ajustável: todas as armas usam o viewmodel padrão (ver **Viewmodel padrão** abaixo).
 
 Em **Preferências → Posição da arma → Mão da arma**, escolha **Mão direita** (padrão) ou **Mão esquerda**. A troca espelha as armas, facas, mãos e animações em primeira pessoa, vale em todos os modos e fica salva no navegador.
 
@@ -293,13 +293,15 @@ Abra **Arsenal** no topo ou clique em **Editar equipamento**. Escolha uma combin
 | 2 | Pistola | Desert Eagle, USP-S com silenciador, Glock-18 |
 | 3 | Faca | Karambit, Butterfly |
 
-A arma e o braço aparecem 45% maiores que antes. Eles crescem em torno da mão do gatilho: o braço continua saindo pelo canto da tela e mais cano fica à vista. Todas as armas seguem o padrão da AK. Fuzis, SMG, escopeta, AWP, Scout, USP-S e Glock usam o tamanho puro. Algumas têm um ajuste fino para não destoar:
+**Viewmodel padrão (igual ao CS).** Todas as armas de fogo aparecem em tamanho real, perto da câmera, e seguem o mesmo preset:
+- **Mesma pegada:** o ponto em que a mão do gatilho segura cada arma fica sempre no mesmo lugar em relação ao olho, com a mesma inclinação. A USP-S, a Glock e a Deagle não ficam mais recuadas nem mais à frente que os fuzis.
+- **Encaixe no CS:** o preset foi calculado sobrepondo um print do CS com a AK. A massa de mira, a alça, a tampa da culatra e o carregador do nosso modelo caem em cima dos do CS. A arma aponta para a frente, vista de cima e por trás, entra pelo canto de baixo à direita e fica tombada levemente para a esquerda.
+- **Braço de apoio:** sobe quase reto de baixo até o guarda-mão.
+- **Granadas e C4:** não têm cabo de pistola, então a mão sobe um pouco para o objeto aparecer na tela.
+- **Facas:** mantêm o enquadramento próprio das animações.
+- **Sem ajuste:** não existe mais ajuste de posição (X/Y/Z), nem nas Preferências nem no quadro do Practice. Continua valendo a escolha de **Mão da arma** (direita ou esquerda).
 
-- **Desert Eagle:** vista de trás, ela subiria até o meio da tela, então fica 18% menor e um pouco mais baixa, no porte das outras pistolas.
-- **Facas:** ficam um pouco menores, para a mão esquerda não virar um bloco enorme.
-- **Granadas e C4:** sobem um pouco.
-
-As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: a mão e o antebraço são os do **Low Poly Male Base** (wh_nerevar, CC-BY-4.0), com a manga na cor do boneco (nos times, na cor do time).
+As mãos seguem o mesmo padrão com qualquer arma, facas incluídas: a mão e o antebraço são os do **Low Poly Male Base** (wh_nerevar, CC-BY-4.0), 15% maiores que a mão do rig, com luva escura, antebraço grosso de pele e a manga perto do cotovelo.
 
 **Mão do modelo com ossos** (`index.html`, `buildBaseHand`; dados em `assets/agents/body-base.js`, gerados por `tools/pack/build_body.py`):
 - **Malha:** a malha da mão do modelo vira uma mão com ossos: palma, três falanges em cada dedo e duas no polegar.

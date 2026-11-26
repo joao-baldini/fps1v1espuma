@@ -114,7 +114,7 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
         <div class="map-grid" id="fiveMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
         <div class="map-grid" id="practiceMaps" role="radiogroup" aria-labelledby="mapTitle" hidden></div>
 
-          <p class="practice-map" id="practiceMap" hidden>Alvos parados e respawn imediato. Os quadros da arena ajustam bots, armas, munição e viewmodel.</p>
+          <p class="practice-map" id="practiceMap" hidden>Alvos parados e respawn imediato. Os quadros da arena ajustam bots, armas e munição.</p>
         </section>
         <aside class="lobby-launch" aria-labelledby="lobbyMode">
           <header class="launch-heading"><h2 id="lobbyMode">Duelo 1v1</h2><p id="modeInfo"></p></header>
@@ -196,15 +196,8 @@ canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cro
     <label class="preference-toggle"><span><b>Suavizar tremor dos disparos</b><small>Ative para reduzir o movimento da câmera ao atirar.</small></span><input type="checkbox" data-k="smoothRecoil" aria-label="Suavizar tremor dos disparos"></label>
     <p class="note">Altera só a câmera. A precisão, o dano e o spray das balas continuam iguais.</p>
     <div class="viewmodel-preferences">
-      <div><h3>Posição da arma</h3><p class="note">O quadro do Practice usa estes mesmos valores.</p></div>
+      <div><h3>Posição da arma</h3><p class="note">Todas as armas seguem o mesmo viewmodel padrão, no enquadramento do CS.</p></div>
       <label class="fld"><span>Mão da arma</span><select data-k="weaponHand" aria-label="Mão da arma"><option value="right">Mão direita</option><option value="left">Mão esquerda</option></select><small>Troca na hora para todas as armas e facas.</small></label>
-      <div class="viewmodel-fields">
-        <label class="fld"><span>X · Lateral</span><input type="number" data-k="viewmodel.x" min="-2" max="2.5" step="0.1" aria-label="Viewmodel X lateral"><small>Esquerda / direita</small></label>
-        <label class="fld"><span>Y · Profundidade</span><input type="number" data-k="viewmodel.y" min="-2" max="2" step="0.1" aria-label="Viewmodel Y profundidade"><small>Trás / frente</small></label>
-        <label class="fld"><span>Z · Altura</span><input type="number" data-k="viewmodel.z" min="-2" max="2" step="0.1" aria-label="Viewmodel Z altura"><small>Baixo / cima</small></label>
-      </div>
-      <button type="button" id="btnViewmodelReset">Restaurar posição padrão</button>
-      <p class="note">Padrão: X 0 · Y 0 · Z 0. Vale para todas as armas e modos; não muda a mira nem os tiros.</p>
     </div>
   </section>
   <section class="tab" data-pane="armas" hidden>
@@ -349,14 +342,10 @@ const r2 = n => Math.round(n * 100) / 100;
 const fin = n => typeof n === 'number' && isFinite(n);
 
 /* ================= Configurações ================= */
-const VIEWMODEL_LIMITS = { x: [-2, 2.5], y: [-2, 2], z: [-2, 2] };
-function normalizeViewmodel(value) {
-  return Object.fromEntries(Object.entries(VIEWMODEL_LIMITS).map(([axis,[min,max]])=>[axis,Math.round(clamp(fin(value?.[axis])?value[axis]:0,min,max)*10)/10]));
-}
 const DEFAULTS = { name: 'Jogador', room: '', sens: 2, dpi: 800, zoomRatio: 1, fov: 90, scale: 1, volume: 0.6, showFps: true, crouchCtrl: false,
   gfxPreset: 'high', gfxShadows: 'medium', gfxTextures: 'high', gfxParticles: 'high', gfxEffects: 'high',
   target: 10, roundTime: 60, botLevel: 'medio', pcol: 'vermelho', map: 'caixas', mode: 'elim', teamSetup: 'versus', wingSide: 't', xvx: { mine: 1, foes: 1 }, dmMap: 'deathmatch', dmWeapons:'all', dmLevel:'medio', bombMap: 'sanctum', practiceMap: 'aimbotz', fiveMap:'lily', operator: 'finder', tdmSize: 5, enemyOutline: 'vermelho', hitmarker: true, radarRotate: true, radarCentered: true, radarZoom: 1,
-  aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right', viewmodel: { x: 0, y: 0, z: 0 },
+  aimbotzBots: 8, aimbotzWeapon: 'rifle', aimbotzInfiniteAmmo: false, weaponHand: 'right',
   loadout: { rifle: 'rifle', pistol: 'pistol', knife: 'knife' }, skins: {}, unlocks: [], startSlot: 'rifle', botWeapon: 'rifle', autoBhop: true, wheelJump: false, adaptiveScale: true, smoothRecoil: true,
   ch: { style: 'static', color: '#3cff6e', len: 6, thick: 2, gap: 2, outline: true, dot: false, alpha: 1, tshape: false } };
 function genCode() { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; let c = ''; for (let i = 0; i < 5; i++) c += a[Math.floor(Math.random() * a.length)]; return c; }
@@ -393,25 +382,39 @@ function loadS() {
   if (typeof s.smoothRecoil !== 'boolean') s.smoothRecoil = true;
   if (typeof s.aimbotzInfiniteAmmo !== 'boolean') s.aimbotzInfiniteAmmo = false;
   if (!['right', 'left'].includes(s.weaponHand)) s.weaponHand = 'right';
-  s.viewmodel = normalizeViewmodel(s.viewmodel);
+  delete s.viewmodel;   // posição da arma não é mais ajustável: todas seguem o viewmodel padrão
   s.xvx = { mine: clamp(+((s.xvx || {}).mine) || 1, 1, 8), foes: clamp(+((s.xvx || {}).foes) || 5, 1, 8) };
   if (!s.room) s.room = genCode();
   return s;
 }
 const S = loadS();
 function saveS() { try { localStorage.setItem('aimduelo.v1', JSON.stringify(S)); } catch (e) {} }
-function setViewmodelAxis(axis,value) {
-  if (!Object.hasOwn(VIEWMODEL_LIMITS,axis) || !fin(value)) return false;
-  S.viewmodel=normalizeViewmodel({...S.viewmodel,[axis]:value});return true;
-}
-function resetViewmodel() { S.viewmodel={...DEFAULTS.viewmodel}; }
-function offsetViewmodel(position) {
-  position.x+=S.viewmodel.x*.025;position.y+=S.viewmodel.z*.02;position.z-=S.viewmodel.y*.025;
-}
 // Tamanho da arma na tela: cresce em torno da mão do gatilho (o braço continua saindo pelo canto, e mais cano fica à vista).
 // Padrão: +45% (opção C). VM_FIT acerta as armas que destoariam da AK nesse tamanho: a Deagle (vista de trás, subiria
 // até o meio da tela) fica menor e mais baixa; nas facas a mão esquerda viraria um bloco enorme; granadas e C4 sobem um pouco.
 const VM_ANCHOR = [.16, -.2, -.38];
+// Viewmodel padrão (todas as armas de fogo, granadas e C4): a arma em tamanho real, perto da câmera, como no CS. O
+// ponto em que a mão do gatilho segura cada arma fica sempre no mesmo lugar em relação ao olho, com a mesma
+// inclinação (cano um pouco para dentro e para cima). Assim nenhuma arma fica mais atrás ou mais na frente que outra.
+const VM_STD = { anchor: [.131, -.206, -.263], pitch: -.013, yaw: -.076, roll: .018,
+  // granadas e C4 não têm cabo de pistola: a mão sobe um pouco para o objeto aparecer na tela
+  reach: { he: [-.04, .1], flash: [-.04, .1], smoke: [-.04, .1], c4: [-.16, .06] } };
+const vmStdCache = {};
+function vmStdBase(w) {
+  if (vmStdCache[w]) return vmStdCache[w];
+  const hs = ARMS[w] || [], right = hs.find(a => !a.left) || hs[0];
+  const g = w === 'c4' && hs.length === 2 ? hs[0].grip.map((v, i) => (v + hs[1].grip[i]) / 2) : right ? right.grip : [0, -.085, 0];
+  const off = new THREE.Vector3(...g).applyEuler(new THREE.Euler(VM_STD.pitch, VM_STD.yaw, VM_STD.roll));
+  // pistolas: os braços esticados levam a arma um pouco mais para a frente, no mesmo alinhamento
+  const r = VM_STD.reach[w] || [0, 0];
+  return (vmStdCache[w] = [VM_STD.anchor[0] - off.x, VM_STD.anchor[1] + r[1] - off.y, VM_STD.anchor[2] + r[0] - off.z]);
+}
+function vmPlace(w, side) {
+  const std = !W[w].melee;
+  if (std) { vmHands.scale.set(side, 1, 1); vmHands.position.set(0, 0, 0); vmRoot.scale.setScalar(1); }
+  else { applyVmSize(vmHands, side, w); vmRoot.scale.setScalar(.5); }
+  return std;
+}
 let VM_SIZE = 1.45;
 const VM_FIT = { pistol: { s: .82, y: -.02 }, knife: { s: .8 }, butterfly: { s: .85 }, he: { y: .03 }, flash: { y: .03 }, smoke: { y: .03 }, c4: { y: .02 } };
 function applyVmSize(hands, side = 1, w = P.weapon) {
@@ -2974,21 +2977,21 @@ const triggerHand = (grip, to, axis = [0, -1, .3], ch = { hy: .013, hz: .02 }, b
 // Pistolas: a esquerda envolve os dedos da direita pelo lado esquerdo (dorso para a esquerda).
 const cupHand = (grip, to, axis = [0, -1, .25]) => ({ left: true, grip, axis, back: [-1, 0, 0], ch: { hy: .03, hz: .034 }, to });
 const ARMS = {
-  rifle:  [supportHand([0, -.03, -.42], [-.36, -.42, .14]), triggerHand([0, -.085, .01], [.17, -.32, .32])],
+  rifle:  [supportHand([0, -.03, -.42], [-.06, -.36, -.22]), triggerHand([0, -.085, .01], [.17, -.32, .32])],
   pistol: [cupHand([-.022, -.1, .02], [-.22, -.33, .26]), triggerHand([0, -.09, .022], [.16, -.33, .32], [0, -1, .25], { hy: .015, hz: .026 })],
   knife:  [],
-  sniper: [supportHand([0, -.035, -.45], [-.36, -.42, .12]), triggerHand([0, -.085, .02], [.17, -.32, .33])],
+  sniper: [supportHand([0, -.035, -.45], [-.06, -.36, -.25]), triggerHand([0, -.085, .02], [.17, -.32, .33])],
 };
 ARMS.m4a4 = ARMS.m4a1s = ARMS.rifle; ARMS.usps = ARMS.pistol; ARMS.ssg = ARMS.sniper; ARMS.butterfly = [];
 ARMS.medgun = ARMS.pistol; ARMS.glock = ARMS.pistol; ARMS.galil = ARMS.rifle;
-ARMS.famas = [supportHand([0, -.055, -.31], [-.36, -.42, .22]), triggerHand([0, -.095, -.13], [.17, -.32, .30])];
+ARMS.famas = [supportHand([0, -.055, -.31], [-.06, -.38, -.11]), triggerHand([0, -.095, -.13], [.17, -.32, .30])];
 // C4: uma mão de cada lado do bloco, segurando as quinas de baixo.
-ARMS.c4 = [{ left: true, grip: [-.055, -.08, -.02], axis: [0, 0, 1], back: [-1, -.4, 0], ch: { hy: .016, hz: .02 }, to: [-.22, -.33, .26] },
-  { grip: [.055, -.08, -.02], axis: [0, 0, 1], back: [1, -.4, 0], ch: { hy: .016, hz: .02 }, to: [.16, -.33, .32] }];
+ARMS.c4 = [{ left: true, grip: [-.055, -.08, -.02], axis: [0, 0, 1], back: [-1, -.4, 0], ch: { hy: .016, hz: .02 }, to: [-.14, -.4, .16] },
+  { grip: [.055, -.08, -.02], axis: [0, 0, 1], back: [1, -.4, 0], ch: { hy: .016, hz: .02 }, to: [.14, -.4, .16] }];
 // Granadas: a mão fecha em volta do corpo da granada, em pé.
 ARMS.he = ARMS.flash = ARMS.smoke = [{ grip: [.012, -.075, .005], axis: [0, -1, .15], back: [1, .2, .4], ch: { hy: .02, hz: .02 }, to: [.16, -.33, .32] }];
-ARMS.ump = [supportHand([0, -.045, -.27], [-.36, -.42, .25]), triggerHand([0, -.08, .015], [.17, -.32, .32])];
-ARMS.bucky = [supportHand([0, -.045, -.47], [-.36, -.42, .1], { hy: .02, hz: .026 }), triggerHand([0, -.08, .035], [.17, -.32, .34])];
+ARMS.ump = [supportHand([0, -.045, -.27], [-.06, -.38, -.07]), triggerHand([0, -.08, .015], [.17, -.32, .32])];
+ARMS.bucky = [supportHand([0, -.045, -.47], [-.06, -.37, -.27], { hy: .02, hz: .026 }), triggerHand([0, -.08, .035], [.17, -.32, .34])];
 // Pegada medida em cada modelo: [centro do cabo, meia altura, meia profundidade, polegar]. O canal é o perfil real do
 // cabo sob os dedos (fatia da arma na faixa dos dedos, contorno que envolve o ponto da pegada); os dedos dobram em
 // volta dele. Nas pistolas, a mão esquerda envolve a direita (o canal dela inclui os dedos da direita). Ver o README.
@@ -3046,7 +3049,7 @@ setSleeveColor(S.pcol);
    A mão é orientada pelo cabo (eixo do indicador ao mindinho) e pelo cotovelo (ou pelo lado do dorso), e a manga
    sai do pulso da luva até o cotovelo: punho, mão e antebraço sempre ligados. */
 const HAND_PALM = -.016, HAND_KNUCKLE = -.036, HAND_T = .015, HAND_REACH = .03, HAND_WRIST = new V3(0, -.001, .068);
-const HAND_COL = { skin: 0xd39c76, knuckle: 0xc48b66, nail: 0xf0cdb8, band: 0x2c3238 };
+const HAND_COL = { skin: 0xd39c76, knuckle: 0xc48b66, nail: 0xf0cdb8, band: 0x2c3238, glove: 0x3a3e43, arm: 0xc98d66, sleeve: 0x2f3b47 };
 // Peça arredondada da mão: seções transversais em superelipse (quadrado de cantos bem redondos, 10 lados) ao longo
 // de -Z, com tampas nas pontas e faces planas. secs: [z, largura, altura, centro y, centro x].
 function handLoft(secs, hex, part, n = 2.6, N = 10) {
@@ -3123,7 +3126,7 @@ const BASE_HAND = globalThis.BODY_BASE && BODY_BASE.hand, baseHandGeo = [null, n
 let baseHandMat = null;
 function baseHandGeometry(left) {
   const k = left ? 1 : 0; if (baseHandGeo[k]) return baseHandGeo[k];
-  const H = BASE_HAND, n = H.p.length / 3, pos = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), col = new Float32Array(n * 3), c = new THREE.Color(HAND_COL.skin);
+  const H = BASE_HAND, n = H.p.length / 3, pos = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), col = new Float32Array(n * 3), c = new THREE.Color(HAND_COL.glove);
   for (let i = 0; i < n; i++) {
     pos[i * 3] = H.p[i * 3] / 1e5 * (left ? -1 : 1); pos[i * 3 + 1] = H.p[i * 3 + 1] / 1e5; pos[i * 3 + 2] = H.p[i * 3 + 2] / 1e5;
     si[i * 4] = H.b[i * 2]; si[i * 4 + 1] = H.b[i * 2 + 1]; sw[i * 4] = H.w[i * 2]; sw[i * 4 + 1] = H.w[i * 2 + 1];
@@ -3136,8 +3139,13 @@ function baseHandGeometry(left) {
   g = g.toNonIndexed(); g.computeVertexNormals(); g.computeBoundingSphere();   // faces planas, como o resto do jogo
   return (baseHandGeo[k] = g);
 }
+// Mão 15% maior que a do rig (tamanho de mão de adulto ao lado da arma em escala real); o canal medido de cada cabo é
+// dividido pela mesma escala, então a mão continua encostando no cabo sem atravessar.
+const BASE_HAND_SCALE = 1.15;
 function buildBaseHand(left, ch) {
-  const T = HAND_T, s = left ? -1 : 1, root = new THREE.Group(), set = gripSet(ch);
+  const T = HAND_T, s = left ? -1 : 1, root = new THREE.Group(), k = BASE_HAND_SCALE;
+  ch = { ...ch, hy: (ch.hy ?? .013) / k, hz: (ch.hz ?? .02) / k, ...(ch.iz != null ? { iz: ch.iz / k } : {}) };
+  const set = gripSet(ch); root.scale.setScalar(k);
   if (!baseHandMat) { baseHandMat = globalThis.V2Operators && typeof v2Mats !== 'undefined' && v2Mats ? V2Operators.createCharacterMaterial(THREE, v2Mats) : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .7, metalness: .05 }); baseHandMat.skinning = true; }
   const palm = new THREE.Bone(); root.add(palm); const bones = [palm], fingers = [];
   for (let f = 0; f < 4; f++) {
@@ -3155,6 +3163,7 @@ function buildBaseHand(left, ch) {
   root.userData = { hand: true, s, C: set.C, fingers, closed: set.closed, thumb: [t1, t2], thumbClosed: set.thumbClosed, curl: [-1, -1, -1, -1], rest: [1, ch.ci ?? 1, ch.ct ?? 1], sets: { main: set }, mix: '',
     wrist: new V3(s * (wr[0] + wr[1]) / 2, (wr[2] + wr[3]) / 2, .066) };
   setHandCurl(root, 1, ch.ci ?? 1, ch.ct ?? 1);
+  root.userData.baseScale = k;
   return root;
 }
 function buildHand(left = false, ch = {}) {
@@ -3223,12 +3232,15 @@ function fitSleeve(sleeve, hand, elbow) {
 }
 // Antebraço: anéis ovais de 8 lados ao longo de +Y (-0,5 cotovelo, +0,5 pulso), medidas em metros na escala da mão.
 function forearmGeometry() {
-  const wr = BASE_HAND.wrist, ax = (wr[1] - wr[0]) / 2 + .006, az = Math.max((wr[3] - wr[2]) / 2 + .006, ax * .85);
-  const rings = [[-.56, .058, .055], [-.3, .062, .058], [0, .056, .052], [.3, .046, .043], [.47, ax + .003, az + .003], [.5, ax, az]], N = 8, p = [];
-  const pt = (r, i) => { const a = (i + .5) / N * TAU; return [Math.cos(a) * r[1], r[0], Math.sin(a) * r[2]]; };
-  for (let k = 0; k < rings.length - 1; k++) for (let i = 0; i < N; i++) { const a = pt(rings[k], i), b = pt(rings[k], i + 1), c = pt(rings[k + 1], i + 1), d = pt(rings[k + 1], i); p.push(...a, ...c, ...b, ...a, ...d, ...c); }
-  const r0 = rings[0]; for (let i = 0; i < N; i++) p.push(0, r0[0], 0, ...pt(r0, i), ...pt(r0, i + 1));
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.computeVertexNormals(); g.computeBoundingSphere(); return g;
+  // Antebraço grosso como no CS: pele do pulso até perto do cotovelo, punho da luva no pulso e a manga no cotovelo.
+  const wr = BASE_HAND.wrist, k = BASE_HAND_SCALE, ax = ((wr[1] - wr[0]) / 2 + .007) * k, az = Math.max(((wr[3] - wr[2]) / 2 + .007) * k, ax * .86);
+  const C = { skin: HAND_COL.arm, glove: HAND_COL.glove, sleeve: HAND_COL.sleeve };
+  const rings = [[-.56, .068, .064, 'sleeve'], [-.2, .07, .065, 'sleeve'], [-.12, .066, .061, 'skin'], [.15, .058, .053, 'skin'], [.4, ax + .006, az + .005, 'skin'], [.44, ax + .004, az + .004, 'glove'], [.5, ax + .003, az + .003, 'glove']], N = 10, p = [], c = [];
+  const pt = (r, i) => { const a = (i + .5) / N * TAU; return [Math.cos(a) * r[1], r[0], Math.sin(a) * r[2]]; }, col = new THREE.Color();
+  const tri = (a, b, d, hex) => { p.push(...a, ...b, ...d); col.setHex(hex); for (let j = 0; j < 3; j++) c.push(col.r, col.g, col.b); };
+  for (let q = 0; q < rings.length - 1; q++) for (let i = 0; i < N; i++) { const hex = C[rings[q + 1][3]], a = pt(rings[q], i), b = pt(rings[q], i + 1), d = pt(rings[q + 1], i + 1), e = pt(rings[q + 1], i); tri(a, d, b, hex); tri(a, e, d, hex); }
+  const r0 = rings[0]; for (let i = 0; i < N; i++) tri([0, r0[0], 0], pt(r0, i), pt(r0, i + 1), C.sleeve);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3)); g.computeVertexNormals(); g.computeBoundingSphere(); return g;
 }
 const handRoll = new THREE.Quaternion(), handEuler = new THREE.Euler(), handTmp = new V3(), handTmp2 = new V3(), AXIS_Z = new V3(0, 0, 1);
 const smooth01 = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
@@ -3375,6 +3387,7 @@ function buildButterfly() {
   return { pivot, blade, free };
 }
 // Manga em prisma de 6 lados facetado (V2Weapons) ou bloco (fallback de testes).
+const armMat = BASE_HAND && globalThis.V2Operators && typeof v2Mats !== 'undefined' && v2Mats ? V2Operators.createCharacterMaterial(THREE, v2Mats) : BASE_HAND ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .75 }) : sleeveMat;
 const knifeArmGeo = BASE_HAND ? forearmGeometry() : globalThis.V2Weapons ? V2Weapons.createSleeveGeometry(THREE) : new THREE.BoxGeometry(2,1,2), knifeArmUp = new V3(0,1,0);
 const knifeArmA = new V3(), knifeArmB = new V3(), knifeArmDir = new V3();
 // Pose channels: hand x/y/z, pitch/yaw/roll, blade hinge, free hinge, left x/y/z/roll, finger opening, presentation at the index finger,
@@ -3628,7 +3641,7 @@ function fitKnifeGlove(right, holder, pivot, butterfly, V) {
   holder.updateMatrix(); pivot.updateMatrix();
   const M = holder.matrix.clone().multiply(pivot.matrix), at = new V3(KG.at[0] ?? .0255*hs/ks, KG.at[1], KG.at[2]).applyMatrix4(M);
   const axis = new V3(1,0,0).transformDirection(M), back = new V3(0,0,1).transformDirection(M);
-  const glove = buildHand(false,{ hy: KG.hy*ks/hs, hz: KG.hz*ks/hs, iz: KG.iz }); glove.scale.setScalar(hs);
+  const glove = buildHand(false,{ hy: KG.hy*ks/hs, hz: KG.hz*ks/hs, iz: KG.iz }); glove.scale.setScalar(hs * (glove.userData.baseScale || 1));
   // o dorso fica do lado em que o pulso aponta para o cotovelo
   const elbow = new V3(...V.elbows[0]).sub(new V3(...V.right)), spec = { grip: at.toArray(), axis: axis.toArray(), back: back.toArray() };
   placeHand(glove,spec);
@@ -3644,11 +3657,11 @@ function buildKnifeHands(g, butterfly = false) {
   const pivot = rig.pivot; holder.add(pivot); right.add(holder); if (!butterfly) pivot.scale.setScalar(KARAMBIT_SCALE);
   const glove = fitKnifeGlove(right, holder, pivot, butterfly, V);
   // Como nas facas do CS2, a mão esquerda fica à vista, baixa e à esquerda: solta, palma para baixo, dedos meio dobrados.
-  const lh=new THREE.Group(), leftGlove=buildHand(true,{ hy: .008, hz: .012 }); leftGlove.scale.setScalar(KNIFE_GRIP[butterfly ? 'butterfly' : 'knife'].hand);
+  const lh=new THREE.Group(), leftGlove=buildHand(true,{ hy: .008, hz: .012 }); leftGlove.scale.setScalar(KNIFE_GRIP[butterfly ? 'butterfly' : 'knife'].hand * (leftGlove.userData.baseScale || 1));
   placeHand(leftGlove,{ center: [0,0,0], axis: [-1,0,.15], back: [-.4,1,.1] }); setHandCurl(leftGlove,.55,.45,.4); lh.add(leftGlove);
   g.add(lh);
   const arms = V.elbows.map(elbow=> {
-    const sleeve = new THREE.Mesh(knifeArmGeo,sleeveMat); g.add(sleeve);
+    const sleeve = new THREE.Mesh(knifeArmGeo,armMat); g.add(sleeve);
     return { sleeve, elbow: new V3(...elbow) };
   });
   // direção "para baixo da palma" da luva, no espaço da mão (para a faca descer pelo indicador no giro)
@@ -3672,7 +3685,7 @@ function buildDeagleHands(g,body){
   right.position.copy(rest);right.add(rg);left.add(lg);g.add(right,left);
   pivot.position.copy(trigger);weapon.position.copy(trigger).multiplyScalar(-1);pivot.add(weapon);g.add(pivot);weapon.add(body);
   deagleSlide=boxModel(DEAGLE_SLIDE, weaponPbrMat);weapon.add(deagleSlide);
-  const arms=[new V3(.17,-.32,.32),new V3(-.22,-.33,.26)].map(elbow=>{const sleeve=new THREE.Mesh(knifeArmGeo,sleeveMat);g.add(sleeve);return {elbow,sleeve};});
+  const arms=[new V3(.17,-.32,.32),new V3(-.22,-.33,.26)].map(elbow=>{const sleeve=new THREE.Mesh(knifeArmGeo,armMat);g.add(sleeve);return {elbow,sleeve};});
   const rig={right,left,rg,lg,pivot,weapon,rest,index:trigger.clone().sub(rest),up:new V3(0,1,0),support:new V3(-.037,-.005,-.015),arms};applyDeaglePose(rig,DEAGLE_REST);return rig;
 }
 function applyDeaglePose(rig,pose){
@@ -3693,9 +3706,9 @@ let deagleSlide = null,deagleRig=null;
 // Autoaplicação do Doctor: antebraço esquerdo que entra na tela (no lugar da mão esquerda da pistola) para receber o dardo.
 const vmMedLeft = [], vmInjectArm = new THREE.Group();
 // Mão aberta, palma para baixo, com a manga saindo do pulso até o cotovelo fora da tela.
-{ vmInjectArm.userData.armSpace = true; const h = placeHand(buildHand(true, { hy: .008, hz: .012 }), { center: [.1, .02, -.33], axis: [.2, 0, -1], back: [0, 1, 0] }), sleeve = new THREE.Mesh(knifeArmGeo, sleeveMat);
+{ vmInjectArm.userData.armSpace = true; const h = placeHand(buildHand(true, { hy: .008, hz: .012 }), { center: [.1, .02, -.33], axis: [.2, 0, -1], back: [0, 1, 0] }), sleeve = new THREE.Mesh(knifeArmGeo, armMat);
   setHandCurl(h, .3, .2, .3); vmInjectArm.add(h, sleeve); fitSleeve(sleeve, h, new V3(-.7, -.3, .05)); }
-vmInjectArm.scale.setScalar(.5); vmInjectArm.visible = false; vmHands.add(vmInjectArm);
+vmInjectArm.scale.setScalar(1); vmInjectArm.visible = false; vmHands.add(vmInjectArm);
 const vmBody = {}, vmSkin = {};
 /* ---- Saque, recarga, ferrolho e telha (base: animações do CS) ---- */
 // Peças móveis de cada arma, achadas pela posição no espaço da arma (c = centro, s = tamanho de cada peça):
@@ -3907,7 +3920,7 @@ function buildGunRig(k, g) {
   rig.pump = rigPart(rig, 'pump', parts.pump);
   for (const a of ARMS[k]) {
     const hand = placeHand(buildHand(a.left, a.ch), { ...a, elbow: a.to }); g.add(hand);
-    const sleeve = new THREE.Mesh(knifeArmGeo, sleeveMat); g.add(sleeve);
+    const sleeve = new THREE.Mesh(knifeArmGeo, armMat); g.add(sleeve);
     const h = { hand, sleeve, rest: hand.position.clone(), restQ: hand.quaternion.clone(), elbow: new V3(...a.to) }; h.chan = handChan(h); rig.hands.push(h);
     const gf = GRAB_FIT[k] || {};
     // pegadas extras: pente (fecha em volta da metade de baixo dele) e alavanca do ferrolho (pinça pequena)
@@ -3947,7 +3960,7 @@ for (const k of ALL_WEAPONS) {
     const at = partsCenter(parts.mag), grp = new THREE.Group(), mesh = meshOf(parts.mag); grp.position.set(...at); mesh.position.set(-at[0], -at[1], -at[2]); grp.add(mesh); deagleRig.weapon.add(grp); deagleRig.mag = { grp, mesh, rest: at };
   } else if (GUNS[k].length) { vmBody[k] = boxModel(GUNS[k], weaponPbrMat); g.add(vmBody[k]); }
   if (W[k].melee) vmKnives[k] = buildKnifeHands(g, k === 'butterfly');
-  if(k!=='pistol'&&!rigged)ARMS[k].forEach((a, i) => { const before = g.children.length, h = placeHand(buildHand(a.left, a.ch), { ...a, elbow: a.to }), sleeve = new THREE.Mesh(knifeArmGeo, sleeveMat);
+  if(k!=='pistol'&&!rigged)ARMS[k].forEach((a, i) => { const before = g.children.length, h = placeHand(buildHand(a.left, a.ch), { ...a, elbow: a.to }), sleeve = new THREE.Mesh(knifeArmGeo, armMat);
     g.add(h, sleeve); fitSleeve(sleeve, h, new V3(...a.to));
     if (k === 'medgun' && i === 0) vmMedLeft.push(...g.children.slice(before)); });
   if (MUZZLE[k]) { const f = new THREE.Mesh(k==='pistol'?deagleFlashGeo:flashGeo,k==='pistol'?deagleFlashMat:flashMat); f.position.set(...MUZZLE[k]); f.visible = false; (k==='pistol'?deagleRig.weapon:g).add(f); vmFlash[k] = f; }
@@ -5804,7 +5817,6 @@ const AIMBOTZ_TARGETS = [
   ...[-11,-6,-1,4].flatMap(z => [-15,-10,-5,0,5,10,15].map(x => [x,z])),
 ];
 const AIMBOTZ_BOARD = { x: 0, z: 13.96, y: 2.54, w: 8.4, h: 4.48, width: 960, height: 512 };
-const AIMBOTZ_VIEWMODEL_BOARD = { ...AIMBOTZ_BOARD, x: -9.2 };
 const AIMBOTZ_PREFIRE_BOARD={x:6.4,z:13.96,y:2.54,w:3.2,h:1.9,width:512,height:304};
 const AIMBOTZ_PREFIRE_BUTTONS=[{x:0,y:0,w:512,h:304,prefire:true}];
 const AIMBOTZ_BUTTONS = [
@@ -5816,13 +5828,7 @@ const AIMBOTZ_BUTTONS = [
   })),
   { x: 32, y: 432, w: 896, h: 52, infinite: true },
 ];
-const AIMBOTZ_VIEWMODEL_BUTTONS = [
-  ...Object.entries(VIEWMODEL_LIMITS).flatMap(([axis,[min,max]],row)=>Array.from({length:Math.round((max-min)*2)+1},(_,i)=>({
-    x:212+i*70,y:154+row*88,w:64,h:50,axis,value:min+i*.5,label:String(min+i*.5),
-  }))),
-  { x:32,y:432,w:896,h:52,reset:true,label:'RESTAURAR PADRÃO · 0 / 0 / 0' },
-];
-let aimbotzBoard = null, aimbotzViewmodelBoard = null, aimbotzPrefireBoard = null;
+let aimbotzBoard = null, aimbotzPrefireBoard = null;
 const PREFIRE={active:false,loading:false,phase:'idle',elapsed:0,killed:0,lastTick:0,retryAt:0,returnAt:0};
 const PREFIRE_LEVEL={...LEVELS.medio,burst:[2,3],spread:1.15};
 const PREFIRE_START_RADIUS=2.5;
@@ -5847,7 +5853,7 @@ function practiceSpawnPoints(){
 function practiceSpawnIndex(e){const n=DM.spawnPoints.length,i=HUMAN_SLOTS.indexOf(e.id);return (i<0?0:i)%Math.max(1,n);}
 function togglePracticeFly(){if(!mapPracticeOn()||!P.alive)return;P.fly=!P.fly;P.vel.set(0,0,0);P.onGround=false;toast(P.fly?'Voo ligado · atravessa paredes · Espaço sobe, C desce, Shift acelera · N desliga':'Voo desligado');}
 function prefireTime(ms){const seconds=Math.floor(ms/1000);return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')+'.'+String(Math.floor(ms%1000/10)).padStart(2,'0');}
-function aimbotzHideBoards(){for(const p of [aimbotzBoard,aimbotzViewmodelBoard,aimbotzPrefireBoard])if(p)p.mesh.visible=false;}
+function aimbotzHideBoards(){for(const p of [aimbotzBoard,aimbotzPrefireBoard])if(p)p.mesh.visible=false;}
 function prefireStop(){PREFIRE.active=PREFIRE.loading=false;PREFIRE.phase='idle';aimbotzHideBoards();}
 async function startPrefire(){
   if(G.mode!=='aimbotz'||PREFIRE.active||PREFIRE.loading)return;
@@ -6012,7 +6018,6 @@ function aimbotzPanelButtonAt(board,buttons,origin,direction) {
   return button && clearLine(origin, [x, y, board.z]) ? button : null;
 }
 function aimbotzButtonAt(origin,direction) { return aimbotzPanelButtonAt(AIMBOTZ_BOARD,AIMBOTZ_BUTTONS,origin,direction); }
-function aimbotzViewmodelButtonAt(origin,direction) { return aimbotzPanelButtonAt(AIMBOTZ_VIEWMODEL_BOARD,AIMBOTZ_VIEWMODEL_BUTTONS,origin,direction); }
 function aimbotzPrefireButtonAt(origin,direction){return aimbotzPanelButtonAt(AIMBOTZ_PREFIRE_BOARD,AIMBOTZ_PREFIRE_BUTTONS,origin,direction);}
 function aimbotzCreatePanel(board) {
   const art=document.createElement('canvas');art.width=board.width;art.height=board.height;
@@ -6053,25 +6058,7 @@ function aimbotzDrawBoard() {
     aimbotzPaintButton(ctx,b,chosen,b.infinite?'MUNIÇÃO SEM RECARGA · '+(chosen?'LIGADA':'DESLIGADA'):b.label,atLimit);
   }
   texture.needsUpdate = true;
-  aimbotzDrawViewmodelBoard();
   aimbotzDrawPrefireBoard();
-}
-function aimbotzDrawViewmodelBoard() {
-  if(prefireOn())return;
-  if (!aimbotzViewmodelBoard) aimbotzViewmodelBoard=aimbotzCreatePanel(AIMBOTZ_VIEWMODEL_BOARD);
-  const {ctx,texture}=aimbotzViewmodelBoard;
-  aimbotzPanelHeader(aimbotzViewmodelBoard,AIMBOTZ_VIEWMODEL_BOARD,'VIEWMODEL');
-  ctx.fillStyle='#a7b2c1';ctx.font='20px Arial, sans-serif';ctx.fillText('POSIÇÃO DA ARMA · SALVA EM PREFERÊNCIAS',32,111);
-  const rows=[['x','LATERAL','ESQUERDA','DIREITA','#ef8d7f'],['y','PROFUNDIDADE','TRÁS','FRENTE','#91cb9b'],['z','ALTURA','BAIXO','CIMA','#91baf1']];
-  rows.forEach(([axis,label,left,right,color],row)=>{
-    const y=154+row*88;
-    ctx.textAlign='left';ctx.fillStyle=color;ctx.font='bold 42px Arial, sans-serif';ctx.fillText(axis.toUpperCase(),32,y+25);
-    ctx.font='bold 16px Arial, sans-serif';ctx.fillText(label,76,y+12);
-    ctx.fillStyle='#f2f3f6';ctx.font='bold 23px Arial, sans-serif';ctx.fillText(String(S.viewmodel[axis]),76,y+38);
-    ctx.font='15px Arial, sans-serif';ctx.fillStyle='#a7b2c1';ctx.fillText(left,212,y-12);ctx.textAlign='right';ctx.fillText(right,928,y-12);
-  });
-  for (const b of AIMBOTZ_VIEWMODEL_BUTTONS) aimbotzPaintButton(ctx,b,b.axis?S.viewmodel[b.axis]===b.value:false,b.label);
-  texture.needsUpdate=true;
 }
 function aimbotzDrawPrefireBoard(){
   if(!aimbotzPrefireBoard)aimbotzPrefireBoard=aimbotzCreatePanel(AIMBOTZ_PREFIRE_BOARD);
@@ -6086,15 +6073,13 @@ function aimbotzDrawPrefireBoard(){
 function aimbotzClickBoard() {
   if (!P.alive||prefireOn()||mapPracticeOn()||PREFIRE.loading) return false;
   const recoil=viewRecoilScale(),direction=dirFrom(P.yaw+P.recoilY*recoil,P.pitch+P.recoilP*recoil+P.punch);
-  const button = aimbotzButtonAt(eyePos(), direction) || aimbotzViewmodelButtonAt(eyePos(),direction) || aimbotzPrefireButtonAt(eyePos(),direction);
+  const button = aimbotzButtonAt(eyePos(), direction) || aimbotzPrefireButtonAt(eyePos(),direction);
   if (!button) return false;
   P.m1=P.m1Press=false;if(P.zoom){P.zoom=0;applyFov();}
   if(button.prefire){startPrefire();return true;}
   if (button.weapon) aimbotzEquip(button.weapon);
   else if (button.count) aimbotzSetBots(S.aimbotzBots + button.count);
   else if (button.infinite) aimbotzSetInfiniteAmmo(!S.aimbotzInfiniteAmmo);
-  else if (button.axis) setViewmodelAxis(button.axis,button.value);
-  else if (button.reset) resetViewmodel();
   aimbotzDrawBoard(); saveS(); syncInputs(); AU.tone(1300, .04, .05);
   return true;
 }
@@ -8124,15 +8109,14 @@ function specCamera(dt, t) {
 }
 // Arma do companheiro assistido no lugar da sua: só a pose de repouso, com o coice e o clarão dos tiros dele.
 function specViewmodel(s, t) {
-  const held = botHeldWeapon(s.e), gun = vmGuns[held] ? held : 'knife', b = VM_BASE[gun] || VM_BASE.rifle, kick = clamp(1 - (t - (s.e.lastShot || 0)) / 110, 0, 1);
-  applyVmSize(vmHands, S.weaponHand === 'left' ? -1 : 1, gun); vmInjectArm.visible = false;
+  const held = botHeldWeapon(s.e), gun = vmGuns[held] ? held : 'knife', kick = clamp(1 - (t - (s.e.lastShot || 0)) / 110, 0, 1);
+  const std = vmPlace(gun, S.weaponHand === 'left' ? -1 : 1), b = std ? vmStdBase(gun) : VM_BASE[gun] || VM_BASE.rifle; vmInjectArm.visible = false;
   for (const k of ALL_WEAPONS) vmGuns[k].visible = k === gun;
-  vmRoot.position.set(b[0], b[1], b[2] + kick * .03); vmRoot.rotation.set(kick * .05, VM_YAW[gun] || 0, 0);
+  vmRoot.position.set(b[0], b[1], b[2] + kick * .03); vmRoot.rotation.set((std ? VM_STD.pitch : 0) + kick * .05, std ? VM_STD.yaw : VM_YAW[gun] || 0, std ? VM_STD.roll : 0);
   if (gun === 'pistol') applyDeaglePose(deagleRig, deaglePose.fill(0));
   if (VM_RIG[gun]) applyGunPose(VM_RIG[gun], GUN_REST);
   if (vmKnives[gun]) applyKnifePose(vmKnives[gun], (gun === 'knife' ? sampleKarambitIdle : sampleButterflyIdle)(t, knifePose));
   for (const k in vmFlash) vmFlash[k].visible = k === gun && t < (s.e.flashUntil || 0) && !W[gun].silenced;
-  offsetViewmodel(vmRoot.position);
 }
 /* ================= Oponente na tela ================= */
 function spat(x, z) {
@@ -8202,9 +8186,9 @@ function updateCamera(dt, t) {
 }
 function updateVM(dt, t) {
   if (SPEC.view) { const s = specCurrent(); if (s) return specViewmodel(s, t); }
-  applyVmSize(vmHands, S.weaponHand === 'left' ? -1 : 1);
+  const std = vmPlace(P.weapon, S.weaponHand === 'left' ? -1 : 1);
   for (const k of ALL_WEAPONS) vmGuns[k].visible = (k === P.weapon);
-  const b = VM_BASE[P.weapon], w = W[P.weapon], hs = Math.hypot(P.vel.x, P.vel.z), mv = P.onGround ? clamp(hs / 6, 0, 1) : 0;
+  const b = std ? vmStdBase(P.weapon) : VM_BASE[P.weapon], w = W[P.weapon], hs = Math.hypot(P.vel.x, P.vel.z), mv = P.onGround ? clamp(hs / 6, 0, 1) : 0;
   P.bob += dt * hs * 1.9;
   // Armas com animação própria (saque, recarga, ferrolho) não usam o mergulho genérico.
   const own = !!VM_RIG[P.weapon] || P.weapon === 'pistol';
@@ -8224,7 +8208,7 @@ function updateVM(dt, t) {
   vmRoot.position.set(b[0] + Math.sin(P.bob) * .008 * mv, b[1] - Math.abs(Math.cos(P.bob)) * .008 * mv + idleBreath - (P.landDip || 0) - drawK * .25 - relK * .08 + (P.onGround ? 0 : .012) + vk * .08, b[2] + vk * .5);
   const sw = Math.exp(-dt * 9); P.swayX *= sw; P.swayY *= sw;
   vmRoot.position.x -= P.swayX * .00005; vmRoot.position.y += P.swayY * .00005;
-  vmRoot.rotation.set(vk * .9 + relK * .5 - drawK * .6 - P.swayY * .00012, VM_YAW[P.weapon] - P.swayX * .00012, P.vmRoll || 0);
+  vmRoot.rotation.set((std ? VM_STD.pitch : 0) + vk * .9 + relK * .5 - drawK * .6 - P.swayY * .00012, (std ? VM_STD.yaw : VM_YAW[P.weapon]) - P.swayX * .00012, (P.vmRoll || 0) + (std ? VM_STD.roll : 0));
   vmInjectArm.visible = false; for (const m of vmMedLeft) m.visible = true;
   if (P.weapon === 'medgun' && P.injectT) {
     // Autoaplicação: o antebraço esquerdo sobe na frente, a pistola vira para ele, crava o dardo e volta.
@@ -8264,7 +8248,6 @@ function updateVM(dt, t) {
     applyKnifePose(vmKnife,sampleKnifeAnimation(P.kAnim,t));
     if (P.kAnim && t >= P.kAnim.t0 + P.kAnim.duration) P.kAnim = null;
   }
-  offsetViewmodel(vmRoot.position);
 }
 
 /* ================= HUD ================= */
@@ -9046,7 +9029,7 @@ async function startSession(mode, opts = {}) {
     }
     aimbotzSetup(); dmEnsureRender(); dmRender(now()); aimbotzDrawBoard();
     showMenu(false); lock();
-    banner('Practice', 'Quadros atrás de você: bots, armas, munição e viewmodel. 1 / 3 ou Q troca arma e faca.', '', 4500);
+    banner('Practice', 'Quadros atrás de você: bots, armas e munição. 1 / 3 ou Q troca arma e faca.', '', 4500);
     return;
   }
   if(mode==='dm'){
@@ -9087,7 +9070,6 @@ function leaveSession() {
   resetRoundAudio();
   netStop();arenaNetStop();ARENA.net=false;closeBuy();dmStop();nadesClear();clearDecals();if(typeof v2Fx!=='undefined'&&v2Fx)v2Fx.clear();setSleeveColor(S.pcol);G.mode = null; G.opp = null; H.st = null; oppGroup.visible = false;
   if (aimbotzBoard) aimbotzBoard.mesh.visible = false;
-  if (aimbotzViewmodelBoard) aimbotzViewmodelBoard.mesh.visible = false;
   $('dmResult').hidden=true;el.board.hidden=true;el.hud.classList.remove('dm');el.hud.hidden = true;configureLoadout();syncInputs($('inName'));showMenu(true);applySettings();
   if (document.pointerLockElement) document.exitPointerLock();
 }
@@ -9192,7 +9174,7 @@ function syncLobbyPreview() {
   const title=bomb&&!five&&S.bombMap==='rotacao'?'Rotação':MAPS[id]?.name||'Rotação',image=$('stageImage'),source='assets/menu/play/'+id+'.webp';
   if(image.getAttribute('src')!==source){image.srcset='assets/menu/play/thumb/'+id+'.webp 320w, '+source+' 1280w';image.src=source;}
   $('stageTitle').textContent=title;
-  $('stageDetail').textContent=bomb&&!five&&S.bombMap==='rotacao'?BOMB_MAPS.map(id=>MAPS[id].name).join(', ')+', alternados a cada rodada.':MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots, munição e viewmodel nos quadros da arena.':MAP_CARD_DETAILS[id];
+  $('stageDetail').textContent=bomb&&!five&&S.bombMap==='rotacao'?BOMB_MAPS.map(id=>MAPS[id].name).join(', ')+', alternados a cada rodada.':MAPS[id]?.credit?MAPS[id].credit:practice?'Arma + faca. Ajuste bots e munição nos quadros da arena.':MAP_CARD_DETAILS[id];
   $('lobbyFormat').textContent=practice?(lobbyRoute==='online'?'Com amigos · até 10':S.practiceMap==='aimbotz'?S.aimbotzBots+' alvos':'Sozinho'):tdm?S.tdmSize+' contra '+S.tdmSize:dm?'10 participantes':five?'5 contra 5':bomb?'2 contra 2 · Wingman':S.xvx.mine+' contra '+S.xvx.foes;
   $('lobbyGoalLabel').textContent=practice?'Treino':dm?'Duração':'Vitória';
   $('lobbyGoal').textContent=practice?'Sem limite':tdm?S.tdmSize*10+' abates · 10 min':dm?'5 minutos':bomb?'9 rodadas · melhor de 16':S.target+' rodadas';
@@ -9289,8 +9271,7 @@ document.querySelectorAll('[data-k]').forEach(e => {
     if (e.type === 'checkbox') v = e.checked;
     else if (e.type === 'range' || e.type === 'number' || e.dataset.num) { v = parseFloat(e.value); if (!isFinite(v)) return; }
     else v = e.value;
-    if (e.dataset.k.startsWith('viewmodel.')) { setViewmodelAxis(e.dataset.k.split('.')[1],v);e.value=getK(e.dataset.k);if(G.mode==='aimbotz')aimbotzDrawViewmodelBoard(); }
-    else setK(e.dataset.k, v);
+    setK(e.dataset.k, v);
     if (e.dataset.k === 'gfxPreset' && globalThis.V2Materials?.PRESETS[v]) {
       const pr = V2Materials.PRESETS[v];
       S.scale = pr.scale; S.gfxShadows = pr.shadows; S.gfxTextures = pr.textures; S.gfxParticles = pr.particles; S.gfxEffects = pr.fx;
@@ -9311,7 +9292,6 @@ $('swatches').addEventListener('click', e => { const b = e.target.closest('butto
   box.addEventListener('click', e => { const b = e.target.closest('button[data-pcol]'); if (!b) return; S.pcol = b.dataset.pcol; saveS(); setSleeveColor(S.pcol); syncInputs(); });
 }
 $('btnChReset').addEventListener('click', () => { S.ch = Object.assign({}, DEFAULTS.ch); saveS(); syncInputs(); applySettings(); });
-$('btnViewmodelReset').addEventListener('click',()=>{resetViewmodel();saveS();syncInputs();if(G.mode==='aimbotz')aimbotzDrawViewmodelBoard();});
 const settingsDialog = $('settingsDialog'), settingsTabs = $('settingsTabs');
 const settingsButtons = [...settingsTabs.querySelectorAll('[data-tab]')];
 for (const tab of settingsButtons) {

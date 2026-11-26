@@ -58,7 +58,7 @@ function game(saved) {
     setTimeout() {}, console,
   });
   vm.runInContext(section('const V3 =', '/* ================= Configurações').replace('const V3 = THREE.Vector3, ', 'const '), context);
-  vm.runInContext(section('const VIEWMODEL_LIMITS =', '/* ================= Render'), context);
+  vm.runInContext(section('const DEFAULTS =', '/* ================= Render'), context);
   vm.runInContext(section('const THEMES =', 'const RAMP_FLIP'), context);
   vm.runInContext(section('function stat(', '/* ================= Rede P2P'), context);
   vm.runInContext(section('const RAMP_FLIP', '// Rotação:'), context);
@@ -562,61 +562,29 @@ test('Aimbotz infinite magazines cancel a reload, keep every gun full, and stay 
   assert.equal(game({aimbotzInfiniteAmmo:'yes'}).S.aimbotzInfiniteAmmo,false);
 });
 
-test('weapon size on screen: +45% around the trigger hand, with per-weapon fits that keep every gun in the AK standard', () => {
-  const g = game(), cx = g.context, ev = s => vm.runInContext(s, cx);
-  assert.equal(ev('VM_SIZE'), 1.45);
-  const fake = () => { const v = () => ({ x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }); return { scale: v(), position: v() }; };
-  const A = ev('VM_ANCHOR');
-  for (const [w, side] of [['rifle', 1], ['sniper', 1], ['rifle', -1], ['knife', 1], ['pistol', 1]]) {
-    const h = fake(); cx.applyVmSize(h, side, w); const fit = ev(`VM_FIT['${w}']||{}`), k = 1.45 * (fit.s || 1);
-    assert.ok(Math.abs(h.scale.y - k) < 1e-12 && Math.abs(h.scale.x - side * k) < 1e-12, w);
-    // A mão do gatilho (âncora) fica parada na tela: só a arma cresce em volta dela.
-    const ax = side * A[0], fixed = [h.position.x + h.scale.x * A[0], h.position.y + k * A[1], h.position.z + k * A[2]];
-    assert.ok(Math.abs(fixed[0] - ax) < 1e-12 && Math.abs(fixed[1] - A[1] - (fit.y || 0)) < 1e-12 && Math.abs(fixed[2] - A[2]) < 1e-12, w);
+test('standard viewmodel: every gun puts its trigger grip at the same spot with the same angles (CS framing), no per-player offsets', () => {
+  // Euler XYZ do three.js, só o que o viewmodel usa
+  class V3 { constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }
+    applyEuler(e) { const [a, b, c] = [e.x, e.y, e.z], ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cc = Math.cos(c), sc = Math.sin(c);
+      const m = [[cb * cc, -cb * sc, sb], [ca * sc + sa * sb * cc, ca * cc - sa * sb * sc, -sa * cb], [sa * sc - ca * sb * cc, sa * cc + ca * sb * sc, ca * cb]];
+      const v = [this.x, this.y, this.z]; [this.x, this.y, this.z] = m.map(r => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]); return this; } }
+  const cx = vm.createContext({ THREE: { Vector3: V3, Euler: class { constructor(x, y, z) { this.x = x; this.y = y; this.z = z; } } } });
+  vm.runInContext(section('// braços: mão', 'vmScene.add(new THREE.HemisphereLight'), cx);
+  vm.runInContext(section('const VM_STD =', 'function vmPlace('), cx);
+  const std = vm.runInContext('VM_STD', cx), arms = vm.runInContext('ARMS', cx), base = w => vm.runInContext(`vmStdBase('${w}')`, cx);
+  // L2: a AK encaixada no print do CS (massa de mira, alça, tampa da culatra e carregador) e tombada 4° para a esquerda
+  assert.deepEqual(Array.from(std.anchor), [.131, -.206, -.263]); assert.equal(std.pitch, -.013); assert.equal(std.yaw, -.076); assert.equal(std.roll, .018);
+  for (const w of ['rifle', 'm4a4', 'm4a1s', 'galil', 'famas', 'ump', 'bucky', 'sniper', 'ssg', 'usps', 'glock', 'pistol', 'medgun']) {
+    const grip = arms[w].find(a => !a.left).grip, b = base(w), p = new V3(...grip).applyEuler({ x: std.pitch, y: std.yaw, z: std.roll });
+    // todas iguais: USP, Glock e Deagle não ficam mais recuadas nem mais à frente que os fuzis
+    assert.ok(Math.abs(b[0] + p.x - std.anchor[0]) < 1e-9 && Math.abs(b[1] + p.y - std.anchor[1]) < 1e-9 && Math.abs(b[2] + p.z - std.anchor[2]) < 1e-9, w + ' mão do gatilho no ponto padrão');
+    assert.equal(std.reach[w], undefined, w + ' sem ajuste próprio');
   }
-  // Os fuzis seguem o padrão puro; a Deagle (vista de trás) fica menor e mais baixa para não subir até o meio da tela.
-  for (const w of ['rifle', 'm4a4', 'm4a1s', 'galil', 'famas', 'ump', 'bucky', 'ssg', 'sniper', 'usps', 'glock']) assert.equal(ev(`VM_FIT['${w}']`), undefined, w);
-  assert.ok(ev("VM_FIT.pistol.s") < 1 && ev("VM_FIT.pistol.y") < 0);
-});
-test('viewmodel settings migrate, clamp each axis, reset, and change only the held model', () => {
-  const g=game(),cx=g.context;
-  assert.deepEqual(JSON.parse(JSON.stringify(g.S.viewmodel)),{x:0,y:0,z:0});
-  assert.deepEqual(JSON.parse(JSON.stringify(game({viewmodel:{x:200,y:-10,z:'2'}}).S.viewmodel)),{x:2.5,y:-2,z:0});
-  assert.deepEqual(JSON.parse(JSON.stringify(game({viewmodel:null}).S.viewmodel)),{x:0,y:0,z:0});
-  assert.equal(cx.setViewmodelAxis('x',2.57),true);assert.equal(g.S.viewmodel.x,2.5);
-  cx.setViewmodelAxis('y',-10);cx.setViewmodelAxis('z',.16);
-  assert.deepEqual(JSON.parse(JSON.stringify(g.S.viewmodel)),{x:2.5,y:-2,z:.2});
-  const unchanged=JSON.stringify(g.S.viewmodel);
-  for(const [axis,value] of [['q',0],['__proto__',1],['x',NaN],['y',Infinity]])assert.equal(cx.setViewmodelAxis(axis,value),false);
-  assert.equal(JSON.stringify(g.S.viewmodel),unchanged);
-  const position=new Vec(.15,-.16,-.4);cx.offsetViewmodel(position);
-  assert.ok(Math.abs(position.x-.2125)<1e-9);assert.ok(Math.abs(position.y+.156)<1e-9);assert.ok(Math.abs(position.z+.35)<1e-9);
-  cx.resetViewmodel();assert.equal(g.S.viewmodel.x,0);assert.equal(g.S.viewmodel.y,0);assert.equal(g.S.viewmodel.z,0);
-  const shots=[[],[]];
-  for(const [i,viewmodel] of [{x:0,y:0,z:0},{x:-2,y:2,z:2}].entries()){
-    const gameState=game({viewmodel});gameState.spawnSelf(0,[0,0,0]);gameState.P.yaw=gameState.P.pitch=0;
-    gameState.context.tracer=(start,end)=>shots[i].push(Array.from(end));
-    for(let n=0;n<20;n++)gameState.shoot(12000+n*100,false);
-  }
-  assert.deepEqual(shots[0],shots[1]);
-});
-
-test('all viewmodel board buttons match world-space hits, update the shared setting, and reset', () => {
-  const g=game(),cx=g.context;cx.buildMap('aimbotz');cx.G.mode='aimbotz';g.spawnSelf(0,[0,9,0]);cx.aimbotzSetup();
-  cx.aimbotzDrawBoard=()=>{};cx.syncInputs=()=>{};cx.saveS=()=>{};
-  const {board,buttons}=vm.runInContext('({board:AIMBOTZ_VIEWMODEL_BOARD,buttons:AIMBOTZ_VIEWMODEL_BUTTONS})',cx),from=cx.eyePos();
-  for(const button of buttons){
-    const x=board.x+(.5-(button.x+button.w/2)/board.width)*board.w,y=board.y+(.5-(button.y+button.h/2)/board.height)*board.h;
-    const direction=[x-from[0],y-from[1],board.z-from[2]],distance=Math.hypot(...direction);
-    assert.equal(cx.aimbotzViewmodelButtonAt(from,direction),button);
-    g.P.yaw=Math.atan2(-direction[0],-direction[2]);g.P.pitch=Math.asin(direction[1]/distance);g.P.recoilP=g.P.recoilY=g.P.punch=0;
-    g.P.zoom=1;g.P.m1=g.P.m1Press=true;
-    assert.equal(cx.aimbotzClickBoard(),true);
-    assert.equal(g.P.zoom,0);assert.equal(g.P.m1,false);assert.equal(g.P.m1Press,false);
-    if(button.axis)assert.equal(g.S.viewmodel[button.axis],button.value);
-    else assert.deepEqual(JSON.parse(JSON.stringify(g.S.viewmodel)),{x:0,y:0,z:0});
-  }
-  assert.equal(cx.aimbotzViewmodelButtonAt(from,[0,0,-1]),null);
+  // granadas e C4 (sem cabo de pistola) sobem um pouco para aparecer
+  for (const w of ['he', 'flash', 'smoke', 'c4']) assert.ok(std.reach[w][1] > 0, w);
+  // sem posição ajustável pelo jogador
+  assert.equal(/viewmodel\.x|setViewmodelAxis|offsetViewmodel|AIMBOTZ_VIEWMODEL/.test(html), false);
+  const g = game({ viewmodel: { x: 2, y: -2, z: 1 } }); assert.equal(g.S.viewmodel, undefined);
 });
 
 test('round audio ticks once at 3, 2 and 1 and ends once despite repeated or jittered round states', () => {
@@ -2968,10 +2936,10 @@ test('first-person hands close around each weapon grip: fitted grip per gun, tri
   for(const w of ['rifle','galil','m4a4','m4a1s','famas','ump','bucky','sniper','ssg','usps','glock']){
     assert.equal(arms[w][0].left,true,w);assert.ok(!arms[w][1].left,w);assert.ok(arms[w][1].ch.ci<1,w+' indicador no gatilho');
   }
-  // apoio por baixo do guarda-mão: indicador para a frente e o pulso virado para o cotovelo, que fica embaixo, à
-  // esquerda e mais perto da câmera (o antebraço entra pelo canto de baixo da tela)
+  // apoio por baixo do guarda-mão: indicador para a frente e o pulso virado para o cotovelo, que fica logo abaixo da
+  // mão e mais perto da câmera (o antebraço sobe quase reto de baixo, como no CS)
   for(const w of ['rifle','sniper','famas','ump','bucky']){const a=arms[w][0];assert.equal(a.back,null,w);assert.equal(JSON.stringify(a.axis),'[0,0,1]',w);
-    assert.ok(a.to[0]<a.grip[0]-.25&&a.to[1]<a.grip[1]-.3&&a.to[2]>a.grip[2]+.3,w+' cotovelo embaixo à esquerda');}
+    assert.ok(a.to[0]<a.grip[0]&&a.to[0]>a.grip[0]-.12&&a.to[1]<a.grip[1]-.3&&a.to[2]>a.grip[2]+.15,w+' cotovelo logo abaixo da mão');}
   const grab=vm.runInContext(section('const GRAB_FIT =','\n};')+'\n};GRAB_FIT',cx);
   for(const w of ['rifle','galil','ump'])assert.ok(grab[w].mag&&grab[w].bolt,w+' pega pente e alavanca');
   for(const [w,g] of Object.entries(grab))for(const k of Object.keys(g))assert.ok(g[k][3]>0&&g[k][3]<=1,w+' '+k+' fecha a mão');
